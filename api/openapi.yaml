@@ -1,0 +1,448 @@
+openapi: 3.1.0
+info:
+  title: Device Manager API
+  description: |
+    RESTful API for managing device inventory. Track devices with detailed information
+    including network addresses, domains, tags, and physical locations.
+
+    **Features:**
+    - CRUD operations for devices
+    - Search functionality across all device properties
+    - Tag-based filtering
+    - Support for multiple network addresses per device
+
+    **Authentication:**
+    The API does not require authentication by default. Bearer token authentication
+    can be enabled via the `DM_BEARER_TOKEN` environment variable on the server.
+  version: 1.0.0
+  contact:
+    name: Device Manager
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: http://localhost:8080/api
+    description: API base path
+
+tags:
+  - name: devices
+    description: Device management operations
+  - name: search
+    description: Search operations
+
+paths:
+  /devices:
+    get:
+      summary: List all devices
+      description: Retrieve a list of all devices, optionally filtered by tags
+      operationId: listDevices
+      tags:
+        - devices
+      parameters:
+        - name: tag
+          in: query
+          description: Filter devices by tags (multiple values supported - OR logic)
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+              examples:
+                single:
+                  summary: Single device
+                  value:
+                    - id: web-server-01-20250102120000
+                      name: web-server-01
+                      description: Main web server
+                      make_model: Dell PowerEdge R740
+                      os: Ubuntu 22.04
+                      location: Rack A1
+                      tags: [server, production, web]
+                      domains: [example.com]
+                      addresses:
+                        - ip: 192.168.1.10
+                          port: 443
+                          type: ipv4
+                          label: management
+                      created_at: '2025-01-02T12:00:00Z'
+                      updated_at: '2025-01-02T12:00:00Z'
+        '500':
+          $ref: '#/components/responses/Error'
+
+    post:
+      summary: Create a new device
+      description: Add a new device to the inventory
+      operationId: createDevice
+      tags:
+        - devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceInput'
+            examples:
+              minimal:
+                summary: Minimal device
+                value:
+                  name: switch-01
+              full:
+                summary: Complete device with all fields
+                value:
+                  name: firewall-01
+                  description: Edge firewall
+                  make_model: Fortinet FortiGate 60F
+                  os: FortiOS 7.2
+                  location: Rack A1
+                  tags: [network, security, edge]
+                  domains: [example.com]
+                  addresses:
+                    - ip: 192.168.1.1
+                      port: 443
+                      type: ipv4
+                      label: management
+                    - ip: 192.168.1.2
+                      port: 22
+                      type: ipv4
+                      label: ssh
+      responses:
+        '201':
+          description: Device created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          description: Device already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: device already exists
+        '500':
+          $ref: '#/components/responses/Error'
+
+  /devices/{id}:
+    parameters:
+      - name: id
+        in: path
+        description: Device ID or unique name
+        required: true
+        schema:
+          type: string
+        example: web-server-01-20250102120000
+
+    get:
+      summary: Get a device
+      description: Retrieve a specific device by ID or name
+      operationId: getDevice
+      tags:
+        - devices
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Error'
+
+    put:
+      summary: Update a device
+      description: Update an existing device's information
+      operationId: updateDevice
+      tags:
+        - devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceInput'
+            examples:
+              partial:
+                summary: Partial update
+                value:
+                  name: web-server-01
+                  location: Rack B2
+      responses:
+        '200':
+          description: Device updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Error'
+
+    delete:
+      summary: Delete a device
+      description: Remove a device from the inventory
+      operationId: deleteDevice
+      tags:
+        - devices
+      responses:
+        '204':
+          description: Device deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Error'
+
+  /search:
+    get:
+      summary: Search devices
+      description: |
+        Search for devices by name, IP address, tags, domains, location,
+        make/model, OS, or description. The search is case-insensitive
+        and matches partial strings.
+      operationId: searchDevices
+      tags:
+        - search
+      parameters:
+        - name: q
+          in: query
+          description: Search query string
+          required: true
+          schema:
+            type: string
+          examples:
+            ip:
+              summary: Search by IP
+              value: 192.168.1
+            tag:
+              summary: Search by tag
+              value: production
+            name:
+              summary: Search by name
+              value: web
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+
+components:
+  schemas:
+    Device:
+      type: object
+      description: A device in the inventory
+      required:
+        - id
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique device identifier (auto-generated)
+          format: uuid
+          readOnly: true
+          example: web-server-01-20250102120000
+        name:
+          type: string
+          description: Device name
+          minLength: 1
+          example: web-server-01
+        description:
+          type: string
+          description: Optional description of the device
+          example: Main production web server
+        make_model:
+          type: string
+          description: Manufacturer and model
+          example: Dell PowerEdge R740
+        os:
+          type: string
+          description: Operating system
+          example: Ubuntu 22.04 LTS
+        location:
+          type: string
+          description: Physical location
+          example: Rack A1, Row 3
+        tags:
+          type: array
+          description: Tags for categorization and filtering
+          items:
+            type: string
+          example: [server, production, web]
+        domains:
+          type: array
+          description: Domain names associated with this device
+          items:
+            type: string
+          format: hostname
+          example: [example.com, www.example.com]
+        addresses:
+          type: array
+          description: Network addresses for this device
+          items:
+            $ref: '#/components/schemas/Address'
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          readOnly: true
+
+    DeviceInput:
+      type: object
+      description: Input for creating or updating a device
+      properties:
+        name:
+          type: string
+          description: Device name
+          minLength: 1
+        description:
+          type: string
+          description: Optional description of the device
+        make_model:
+          type: string
+          description: Manufacturer and model
+        os:
+          type: string
+          description: Operating system
+        location:
+          type: string
+          description: Physical location
+        tags:
+          type: array
+          description: Tags for categorization and filtering
+          items:
+            type: string
+        domains:
+          type: array
+          description: Domain names associated with this device
+          items:
+            type: string
+        addresses:
+          type: array
+          description: Network addresses for this device
+          items:
+            $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      description: Network address for a device
+      required:
+        - ip
+        - type
+      properties:
+        ip:
+          type: string
+          description: IP address (IPv4 or IPv6)
+          format: ipv4 or ipv6
+          example: 192.168.1.10
+        port:
+          type: integer
+          description: Port number
+          minimum: 0
+          maximum: 65535
+          example: 443
+        type:
+          type: string
+          description: Address type
+          enum: [ipv4, ipv6]
+          example: ipv4
+        label:
+          type: string
+          description: Optional label for the address (e.g., "management", "data")
+          example: management
+
+    Error:
+      type: object
+      description: Error response
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: Invalid request body
+
+    ValidationError:
+      type: object
+      description: Validation error details
+      required:
+        - error
+        - field
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: name is required
+        field:
+          type: string
+          description: Field that failed validation
+          example: name
+
+  responses:
+    Error:
+      description: Generic error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Internal server error
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: device not found
+
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            error: name is required
+            field: name
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Optional Bearer token authentication (configure via DM_BEARER_TOKEN env var)
+
+security: []

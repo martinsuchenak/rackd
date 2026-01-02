@@ -1,0 +1,217 @@
+# Device Manager Makefile
+
+# Variables
+BINARY_SERVER=devicemanager
+BINARY_CLI=dm-cli
+GO=go
+GOFLAGS=-v
+DOCKER=docker
+DOCKER_COMPOSE=docker-compose
+
+# Build flags
+LDFLAGS=-ldflags="-s -w"
+CGO_ENABLED=0
+
+# Directories
+CMD_DIR=./cmd
+BUILD_DIR=./build
+DOCKERFILE=./Dockerfile
+
+# Git version info
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# Nomad deployment
+NOMAD_JOB=deployment/nomad/devicemanager.nomad
+
+.PHONY: all build server cli clean test docker docker-build docker-push docker-compose-up docker-compose-down nomad-run nomad-stop help
+
+# Default target
+all: build
+
+## build: Build both server and CLI binaries
+build: server cli
+
+## server: Build server binary
+server:
+	@echo "Building server..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=1 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_SERVER) $(CMD_DIR)/server
+
+## cli: Build CLI binary
+cli:
+	@echo "Building CLI..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=1 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_CLI) $(CMD_DIR)/cli
+
+## build-linux: Build binaries for Linux (for Docker)
+build-linux:
+	@echo "Building Linux binaries..."
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_SERVER) $(CMD_DIR)/server
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_CLI) $(CMD_DIR)/cli
+
+## install: Install binaries to $GOPATH/bin
+install:
+	@echo "Installing binaries..."
+	$(GO) install $(GOFLAGS) $(CMD_DIR)/server
+	$(GO) install $(GOFLAGS) $(CMD_DIR)/cli
+
+## clean: Remove build artifacts
+clean:
+	@echo "Cleaning..."
+	$(GO) clean
+	rm -rf $(BUILD_DIR)
+	rm -f $(BINARY_SERVER) $(BINARY_CLI)
+
+## test: Run tests
+test:
+	@echo "Running tests..."
+	@$(GO) test -v -race -coverprofile=coverage.out -covermode=atomic ./... || \
+		{ echo "Tests failed"; exit 1; }
+	@-$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo ""
+	@echo "Coverage report generated: coverage.html"
+
+## test-short: Run short tests only
+test-short:
+	@echo "Running short tests..."
+	$(GO) test -v -short ./...
+
+## test-unit: Run unit tests only
+test-unit:
+	@echo "Running unit tests..."
+	$(GO) test -v -race ./internal/...
+
+## test-integration: Run integration tests only
+test-integration:
+	@echo "Running integration tests..."
+	$(GO) test -v ./api/...
+
+## test-coverage: Show test coverage summary
+test-coverage:
+	@echo "Test coverage:"
+	@$(GO) test -cover ./... | grep -E '(coverage:|ok|FAIL)'
+
+## lint: Run linter
+lint:
+	@echo "Running linter..."
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run ./...; \
+	else \
+		echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+	fi
+
+## fmt: Format code
+fmt:
+	@echo "Formatting code..."
+	$(GO) fmt ./...
+
+## vet: Run go vet
+vet:
+	@echo "Running go vet..."
+	$(GO) vet ./...
+
+## deps: Download dependencies
+deps:
+	@echo "Downloading dependencies..."
+	$(GO) mod download
+	$(GO) mod tidy
+
+## docker-build: Build Docker image
+docker-build:
+	@echo "Building Docker image..."
+	$(DOCKER) build -t devicemanager:$(VERSION) .
+	$(DOCKER) tag devicemanager:$(VERSION) devicemanager:latest
+
+## docker-push: Push Docker image to registry
+docker-push:
+	@echo "Pushing Docker image..."
+	$(DOCKER) push devicemanager:$(VERSION)
+	$(DOCKER) push devicemanager:latest
+
+## docker-compose-up: Start services with docker-compose
+docker-compose-up:
+	@echo "Starting docker-compose..."
+	$(DOCKER_COMPOSE) up -d
+	@echo "Server available at http://localhost:8080"
+
+## docker-compose-down: Stop docker-compose services
+docker-compose-down:
+	@echo "Stopping docker-compose..."
+	$(DOCKER_COMPOSE) down
+
+## docker-compose-logs: View docker-compose logs
+docker-compose-logs:
+	$(DOCKER_COMPOSE) logs -f
+
+## docker-compose-ps: Show docker-compose processes
+docker-compose-ps:
+	$(DOCKER_COMPOSE) ps
+
+## nomad-run: Run Nomad job
+nomad-run:
+	@echo "Running Nomad job..."
+	nomad job run $(NOMAD_JOB)
+
+## nomad-stop: Stop Nomad job
+nomad-stop:
+	@echo "Stopping Nomad job..."
+	nomad job stop devicemanager
+
+## nomad-restart: Restart Nomad job
+nomad-restart:
+	@echo "Restarting Nomad job..."
+	nomad job restart devicemanager
+
+## nomad-status: Show Nomad job status
+nomad-status:
+	@echo "Nomad job status..."
+	nomad job status devicemanager
+	nomad alloc status -job devicemanager
+
+## run-server: Run server locally
+run-server:
+	@echo "Starting server..."
+	$(GO) run $(CMD_DIR)/server
+
+## run-cli: Run CLI locally
+run-cli:
+	@echo "Running CLI..."
+	$(GO) run $(CMD_DIR)/cli
+
+## mod-verify: Verify dependencies
+mod-verify:
+	$(GO) mod verify
+
+## mod-tidy: Tidy go modules
+mod-tidy:
+	$(GO) mod tidy
+
+## help: Show this help message
+help:
+	@echo "Device Manager - Available targets:"
+	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
+
+# Development targets
+## dev: Run server with hot reload (requires air)
+dev:
+	@if command -v air >/dev/null 2>&1; then \
+		air; \
+	else \
+		echo "air not installed. Install with: go install github.com/cosmtrek/air@latest"; \
+		$(GO) run $(CMD_DIR)/server; \
+	fi
+
+## generate: Run go generate
+generate:
+	$(GO) generate ./...
+
+## mock: Generate mocks (requires mockgen)
+mock:
+	@if command -v mockgen >/dev/null 2>&1; then \
+		mockgen -source=internal/storage/storage.go -destination=internal/storage/mock_storage.go; \
+	else \
+		echo "mockgen not installed. Install with: go install github.com/golang/mock/mockgen@latest"; \
+	fi

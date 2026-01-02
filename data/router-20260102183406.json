@@ -1,0 +1,22 @@
+{
+  "id": "router-20260102183406",
+  "name": "Router",
+  "description": "",
+  "make_model": "MIkrotik",
+  "os": "RouterOS",
+  "location": "Garage Rack",
+  "tags": [
+    "router"
+  ],
+  "addresses": [
+    {
+      "ip": "192.168.88.1",
+      "port": 0,
+      "type": "ipv4",
+      "label": ""
+    }
+  ],
+  "domains": [],
+  "created_at": "2026-01-02T18:34:06.482681+08:00",
+  "updated_at": "2026-01-02T18:34:06.482681+08:00"
+}

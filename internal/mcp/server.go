@@ -1,0 +1,386 @@
+package mcp
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/martinsuchenak/devicemanager/internal/model"
+	"github.com/martinsuchenak/devicemanager/internal/storage"
+	"github.com/paularlott/mcp"
+)
+
+// Server wraps the MCP server with device storage
+type Server struct {
+	mcpServer *mcp.Server
+	storage   storage.Storage
+	bearerToken string
+}
+
+// NewServer creates a new MCP server for device management
+func NewServer(storage storage.Storage, bearerToken string) *Server {
+	s := &Server{
+		mcpServer: mcp.NewServer("devicemanager", "1.0.0"),
+		storage:   storage,
+		bearerToken: bearerToken,
+	}
+	s.registerTools()
+	return s
+}
+
+// registerTools registers all device management tools
+func (s *Server) registerTools() {
+	// device_add - Add a new device
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_add", "Add a new device to the inventory",
+			mcp.String("name", "Device name", mcp.Required()),
+			mcp.String("description", "Device description"),
+			mcp.String("make_model", "Make and model"),
+			mcp.String("os", "Operating system"),
+			mcp.String("location", "Physical location"),
+			mcp.StringArray("tags", "Tags for categorization"),
+			mcp.StringArray("domains", "Domain names associated with device"),
+			mcp.ObjectArray("addresses", "Network addresses",
+				mcp.String("ip", "IP address", mcp.Required()),
+				mcp.Number("port", "Port number"),
+				mcp.String("type", "Address type (ipv4 or ipv6)"),
+				mcp.String("label", "Label for the address (e.g., management, data)"),
+			),
+		),
+		s.handleDeviceAdd,
+	)
+
+	// device_update - Update an existing device
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_update", "Update an existing device",
+			mcp.String("id", "Device ID (use device_get to find by name)", mcp.Required()),
+			mcp.String("name", "Device name"),
+			mcp.String("description", "Device description"),
+			mcp.String("make_model", "Make and model"),
+			mcp.String("os", "Operating system"),
+			mcp.String("location", "Physical location"),
+			mcp.StringArray("tags", "Tags for categorization"),
+			mcp.StringArray("domains", "Domain names associated with device"),
+			mcp.ObjectArray("addresses", "Network addresses",
+				mcp.String("ip", "IP address"),
+				mcp.Number("port", "Port number"),
+				mcp.String("type", "Address type (ipv4 or ipv6)"),
+				mcp.String("label", "Label for the address"),
+			),
+		),
+		s.handleDeviceUpdate,
+	)
+
+	// device_get - Get a device by ID or name
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_get", "Get a device by ID or name",
+			mcp.String("id", "Device ID or name", mcp.Required()),
+		),
+		s.handleDeviceGet,
+	)
+
+	// device_list - List all devices with optional tag filtering
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_list", "List all devices, optionally filtered by tags",
+			mcp.StringArray("tags", "Filter by tags (returns devices matching any tag)"),
+		),
+		s.handleDeviceList,
+	)
+
+	// device_search - Search for devices
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_search", "Search for devices by name, IP, tags, domains, location, etc.",
+			mcp.String("query", "Search query", mcp.Required()),
+		),
+		s.handleDeviceSearch,
+	)
+
+	// device_delete - Delete a device
+	s.mcpServer.RegisterTool(
+		mcp.NewTool("device_delete", "Delete a device from the inventory",
+			mcp.String("id", "Device ID or name", mcp.Required()),
+		),
+		s.handleDeviceDelete,
+	)
+}
+
+// HandleRequest handles MCP HTTP requests with optional bearer token authentication
+func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
+	// Check bearer token if configured
+	if s.bearerToken != "" {
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			http.Error(w, "Unauthorized: Missing Authorization header", http.StatusUnauthorized)
+			return
+		}
+		if !strings.HasPrefix(auth, "Bearer ") {
+			http.Error(w, "Unauthorized: Invalid Authorization format", http.StatusUnauthorized)
+			return
+		}
+		token := strings.TrimPrefix(auth, "Bearer ")
+		if token != s.bearerToken {
+			http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	s.mcpServer.HandleRequest(w, r)
+}
+
+// Tool handlers
+
+func (s *Server) handleDeviceAdd(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	name, err := req.String("name")
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("name is required: " + err.Error())
+	}
+
+	description := req.StringOr("description", "")
+	makeModel := req.StringOr("make_model", "")
+	os := req.StringOr("os", "")
+	location := req.StringOr("location", "")
+
+	tags, _ := req.StringSlice("tags")
+	domains, _ := req.StringSlice("domains")
+
+	addresses, err := s.parseAddresses(req)
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("invalid addresses: " + err.Error())
+	}
+
+	device := &model.Device{
+		Name:        name,
+		Description: description,
+		MakeModel:   makeModel,
+		OS:          os,
+		Location:    location,
+		Tags:        tags,
+		Domains:     domains,
+		Addresses:   addresses,
+	}
+
+	if err := s.storage.CreateDevice(device); err != nil {
+		return nil, mcp.NewToolErrorInternal("failed to create device: " + err.Error())
+	}
+
+	return mcp.NewToolResponseText(fmt.Sprintf("Device created: %s (ID: %s)", device.Name, device.ID)), nil
+}
+
+func (s *Server) handleDeviceUpdate(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	id, err := req.String("id")
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("id is required: " + err.Error())
+	}
+
+	// Get existing device
+	device, err := s.storage.GetDevice(id)
+	if err != nil {
+		return nil, mcp.NewToolErrorInternal("device not found: " + err.Error())
+	}
+
+	// Update fields if provided
+	if name, err := req.String("name"); err == nil && name != "" {
+		device.Name = name
+	}
+	if desc := req.StringOr("description", ""); desc != "" {
+		device.Description = desc
+	}
+	if makeModel := req.StringOr("make_model", ""); makeModel != "" {
+		device.MakeModel = makeModel
+	}
+	if os := req.StringOr("os", ""); os != "" {
+		device.OS = os
+	}
+	if location := req.StringOr("location", ""); location != "" {
+		device.Location = location
+	}
+	if tags, err := req.StringSlice("tags"); err == nil && tags != nil {
+		device.Tags = tags
+	}
+	if domains, err := req.StringSlice("domains"); err == nil && domains != nil {
+		device.Domains = domains
+	}
+	if addresses, err := s.parseAddresses(req); err == nil && addresses != nil {
+		device.Addresses = addresses
+	}
+
+	if err := s.storage.UpdateDevice(device); err != nil {
+		return nil, mcp.NewToolErrorInternal("failed to update device: " + err.Error())
+	}
+
+	return mcp.NewToolResponseText(fmt.Sprintf("Device updated: %s", device.Name)), nil
+}
+
+func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	id, err := req.String("id")
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("id is required: " + err.Error())
+	}
+
+	device, err := s.storage.GetDevice(id)
+	if err != nil {
+		return nil, mcp.NewToolErrorInternal("device not found: " + err.Error())
+	}
+
+	return s.deviceToResponse(device), nil
+}
+
+func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	tags, _ := req.StringSlice("tags")
+
+	devices, err := s.storage.ListDevices(&model.DeviceFilter{Tags: tags})
+	if err != nil {
+		return nil, mcp.NewToolErrorInternal("failed to list devices: " + err.Error())
+	}
+
+	if len(devices) == 0 {
+		return mcp.NewToolResponseText("No devices found"), nil
+	}
+
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Found %d devices:\n\n", len(devices)))
+	for _, device := range devices {
+		result.WriteString(s.formatDeviceSummary(&device))
+		result.WriteString("\n")
+	}
+
+	return mcp.NewToolResponseText(result.String()), nil
+}
+
+func (s *Server) handleDeviceSearch(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	query, err := req.String("query")
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("query is required: " + err.Error())
+	}
+
+	devices, err := s.storage.SearchDevices(query)
+	if err != nil {
+		return nil, mcp.NewToolErrorInternal("failed to search devices: " + err.Error())
+	}
+
+	if len(devices) == 0 {
+		return mcp.NewToolResponseText(fmt.Sprintf("No devices found matching: %s", query)), nil
+	}
+
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Found %d devices matching '%s':\n\n", len(devices), query))
+	for _, device := range devices {
+		result.WriteString(s.formatDeviceSummary(&device))
+		result.WriteString("\n")
+	}
+
+	return mcp.NewToolResponseText(result.String()), nil
+}
+
+func (s *Server) handleDeviceDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	id, err := req.String("id")
+	if err != nil {
+		return nil, mcp.NewToolErrorInvalidParams("id is required: " + err.Error())
+	}
+
+	if err := s.storage.DeleteDevice(id); err != nil {
+		return nil, mcp.NewToolErrorInternal("failed to delete device: " + err.Error())
+	}
+
+	return mcp.NewToolResponseText("Device deleted successfully"), nil
+}
+
+// Utility functions
+
+func (s *Server) parseAddresses(req *mcp.ToolRequest) ([]model.Address, error) {
+	addressesSlice, err := req.ObjectSlice("addresses")
+	if err != nil || len(addressesSlice) == 0 {
+		return nil, nil
+	}
+
+	addresses := make([]model.Address, 0, len(addressesSlice))
+	for i, addrObj := range addressesSlice {
+		addr := model.Address{}
+
+		if ip, ok := addrObj["ip"].(string); ok && ip != "" {
+			addr.IP = ip
+		} else {
+			return nil, fmt.Errorf("address[%d]: missing ip", i)
+		}
+
+		if port, ok := addrObj["port"].(float64); ok {
+			addr.Port = int(port)
+		}
+
+		if addrType, ok := addrObj["type"].(string); ok {
+			addr.Type = addrType
+		} else {
+			addr.Type = "ipv4"
+		}
+
+		if label, ok := addrObj["label"].(string); ok {
+			addr.Label = label
+		}
+
+		addresses = append(addresses, addr)
+	}
+
+	return addresses, nil
+}
+
+func (s *Server) formatDeviceSummary(device *model.Device) string {
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Name: %s\n", device.Name))
+	result.WriteString(fmt.Sprintf("ID: %s\n", device.ID))
+	if device.MakeModel != "" {
+		result.WriteString(fmt.Sprintf("Make/Model: %s\n", device.MakeModel))
+	}
+	if device.OS != "" {
+		result.WriteString(fmt.Sprintf("OS: %s\n", device.OS))
+	}
+	if device.Location != "" {
+		result.WriteString(fmt.Sprintf("Location: %s\n", device.Location))
+	}
+	if len(device.Tags) > 0 {
+		result.WriteString(fmt.Sprintf("Tags: %s\n", strings.Join(device.Tags, ", ")))
+	}
+	if len(device.Addresses) > 0 {
+		result.WriteString("Addresses:\n")
+		for _, addr := range device.Addresses {
+			label := ""
+			if addr.Label != "" {
+				label = fmt.Sprintf(" [%s]", addr.Label)
+			}
+			port := ""
+			if addr.Port > 0 {
+				port = fmt.Sprintf(":%d", addr.Port)
+			}
+			result.WriteString(fmt.Sprintf("  - %s%s%s (%s)\n", addr.IP, port, label, addr.Type))
+		}
+	}
+	if len(device.Domains) > 0 {
+		result.WriteString(fmt.Sprintf("Domains: %s\n", strings.Join(device.Domains, ", ")))
+	}
+	return result.String()
+}
+
+func (s *Server) deviceToResponse(device *model.Device) *mcp.ToolResponse {
+	return mcp.NewToolResponseText(s.formatDeviceSummary(device))
+}
+
+// GetHTTPHandler returns the HTTP handler for the MCP server
+func (s *Server) GetHTTPHandler() http.HandlerFunc {
+	return s.HandleRequest
+}
+
+// LogStartup logs MCP server startup information
+func (s *Server) LogStartup() {
+	log.Println("MCP Server: devicemanager v1.0.0")
+	if s.bearerToken != "" {
+		log.Println("MCP authentication: Bearer token required")
+	} else {
+		log.Println("MCP authentication: Disabled")
+	}
+	tools := s.mcpServer.ListTools()
+	log.Printf("MCP tools registered: %d", len(tools))
+	for _, tool := range tools {
+		log.Printf("  - %s: %s", tool.Name, tool.Description)
+	}
+}
