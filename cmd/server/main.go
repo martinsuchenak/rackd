@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -15,8 +16,60 @@ import (
 )
 
 func main() {
-	// Load configuration
-	cfg := config.Load()
+	// Command-line flags (highest priority)
+	dataDir := flag.String("data-dir", "", "Data directory path")
+	listenAddr := flag.String("addr", "", "Server listen address (e.g., :8080)")
+	bearerToken := flag.String("token", "", "MCP bearer token for authentication")
+	storageBackend := flag.String("storage", "", "Storage backend: sqlite or file (default: sqlite)")
+	storageFormat := flag.String("format", "", "Storage format for file backend: json or toml (default: json)")
+	showVersion := flag.Bool("version", false, "Show version information")
+	showHelp := flag.Bool("help", false, "Show help information")
+
+	flag.Parse()
+
+	// Show help if requested
+	if *showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	// Show version if requested
+	if *showVersion {
+		println("Device Manager v1.0.0")
+		os.Exit(0)
+	}
+
+	// Load configuration with priority: CLI flags > .env file > ENV vars > defaults
+	cfg := &config.Config{}
+
+	// Apply CLI flags if provided
+	cliOpts := &config.Config{}
+	if *dataDir != "" {
+		cliOpts.DataDir = *dataDir
+	}
+	if *listenAddr != "" {
+		cliOpts.ListenAddr = *listenAddr
+	}
+	if *bearerToken != "" {
+		cliOpts.BearerToken = *bearerToken
+	}
+	if *storageBackend != "" {
+		cliOpts.StorageBackend = *storageBackend
+	}
+	if *storageFormat != "" {
+		cliOpts.StorageFormat = *storageFormat
+	}
+
+	// If any CLI flag was set, use it to override all other sources
+	if *dataDir != "" || *listenAddr != "" || *bearerToken != "" || *storageBackend != "" || *storageFormat != "" {
+		cfg = config.Load(cliOpts)
+	} else {
+		// No CLI flags, load from .env file or ENV vars
+		cfg = config.Load(nil)
+	}
+
+	// Log config source
+	log.Printf("Configuration loaded from: %s", cfg)
 
 	// Initialize storage
 	store, err := storage.NewStorage(cfg.DataDir, cfg.StorageBackend, cfg.StorageFormat)
@@ -63,6 +116,9 @@ func main() {
 	log.Printf("Web UI: http://localhost%s", cfg.ListenAddr)
 	log.Printf("API: http://localhost%s/api/", cfg.ListenAddr)
 	log.Printf("MCP: http://localhost%s/mcp", cfg.ListenAddr)
+	if cfg.IsMCPEnabled() {
+		log.Printf("MCP authentication: Enabled (bearer token required)")
+	}
 	mcpServer.LogStartup()
 
 	// Start serving

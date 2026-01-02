@@ -71,23 +71,65 @@ nomad job run deployment/nomad/devicemanager.nomad
 
 ## Configuration
 
-Configure via environment variables:
+Configuration is loaded with the following priority (highest to lowest):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DM_DATA_DIR` | `./data` | Directory for device data/database |
-| `DM_LISTEN_ADDR` | `:8080` | Server listen address |
-| `DM_STORAGE_BACKEND` | `sqlite` | Storage backend: `sqlite` or `file` |
-| `DM_STORAGE_FORMAT` | `json` | Storage format for file backend: `json` or `toml` |
-| `DM_BEARER_TOKEN` | (none) | MCP authentication token |
+1. **CLI flags** - Override all other sources
+2. **`.env` file** - Loaded if exists in current directory
+3. **Environment variables** - Used if no `.env` file
+4. **Default values** - Fallback when nothing else is specified
+
+### Configuration File (.env)
+
+Create a `.env` file in the current directory:
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your settings
+# DM_DATA_DIR=./data
+# DM_LISTEN_ADDR=:8080
+# DM_STORAGE_BACKEND=sqlite
+# DM_STORAGE_FORMAT=json
+# DM_BEARER_TOKEN=
+```
+
+### CLI Flags
+
+```bash
+./devicemanager -data-dir /custom/data -addr :9000 -storage file
+```
+
+| Flag | ENV Variable | Default | Description |
+|------|--------------|---------|-------------|
+| `-data-dir` | `DM_DATA_DIR` | `./data` | Directory for device data/database |
+| `-addr` | `DM_LISTEN_ADDR` | `:8080` | Server listen address |
+| `-storage` | `DM_STORAGE_BACKEND` | `sqlite` | Storage backend: `sqlite` or `file` |
+| `-format` | `DM_STORAGE_FORMAT` | `json` | Storage format for file backend: `json` or `toml` |
+| `-token` | `DM_BEARER_TOKEN` | (none) | MCP authentication token |
+
+### Configuration Examples
+
+```bash
+# Use defaults (sqlite storage, :8080, ./data)
+./devicemanager
+
+# Use .env file for configuration
+cp .env.example .env
+./devicemanager
+
+# Override specific settings with CLI flags
+./devicemanager -data-dir /mnt/data -addr :9999
+
+# Use environment variables
+export DM_DATA_DIR=/custom/data
+export DM_LISTEN_ADDR=:8080
+./devicemanager
+```
 
 ### Storage Backends
 
 #### SQLite (Default)
-
-```bash
-DM_STORAGE_BACKEND=sqlite ./devicemanager
-```
 
 SQLite is the recommended backend and provides:
 - Better performance for large datasets
@@ -95,13 +137,34 @@ SQLite is the recommended backend and provides:
 - Device relationship support
 - Single file database (`data/devices.db`)
 
-#### File-Based Storage
-
 ```bash
-DM_STORAGE_BACKEND=file DM_STORAGE_FORMAT=json ./devicemanager
+# Using .env file
+echo "DM_STORAGE_BACKEND=sqlite" > .env
+./devicemanager
+
+# Using CLI flag
+./devicemanager -storage sqlite
+
+# Using environment variable
+DM_STORAGE_BACKEND=sqlite ./devicemanager
 ```
 
+#### File-Based Storage
+
 File-based storage stores each device as a separate file (JSON or TOML format).
+
+```bash
+# Using .env file
+echo "DM_STORAGE_BACKEND=file" >> .env
+echo "DM_STORAGE_FORMAT=json" >> .env
+./devicemanager
+
+# Using CLI flags
+./devicemanager -storage file -format json
+
+# Using environment variables
+DM_STORAGE_BACKEND=file DM_STORAGE_FORMAT=toml ./devicemanager
+```
 
 ### Device Relationships (SQLite only)
 
@@ -380,6 +443,7 @@ devicemanager/
 ├── deployment/
 │   └── nomad/           # Nomad jobs
 ├── data/                # Device data/database (gitignored)
+├── .env.example         # Configuration example
 └── go.mod
 ```
 

@@ -14,7 +14,8 @@
       "Bash(cat:*)",
       "Bash(~/.bun/bin/bun run build:*)",
       "WebSearch",
-      "Bash(DM_STORAGE_BACKEND=sqlite timeout:*)"
+      "Bash(DM_STORAGE_BACKEND=sqlite timeout:*)",
+      "Bash(./build/devicemanager:*)"
     ]
   }
 }

@@ -26,16 +26,55 @@ func NewHandler(s storage.Storage) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/devices", h.listDevices)
 	mux.HandleFunc("POST /api/devices", h.createDevice)
-	mux.HandleFunc("GET /api/devices/", h.getDevice)
-	mux.HandleFunc("PUT /api/devices/", h.updateDevice)
-	mux.HandleFunc("DELETE /api/devices/", h.deleteDevice)
+	// Dispatcher for all /api/devices/ routes (handles devices, relationships, etc.)
+	mux.HandleFunc("GET /api/devices/", h.deviceDispatcher)
+	mux.HandleFunc("PUT /api/devices/", h.deviceDispatcher)
+	mux.HandleFunc("DELETE /api/devices/", h.deviceDispatcher)
+	mux.HandleFunc("POST /api/devices/", h.deviceDispatcher)
 	mux.HandleFunc("GET /api/search", h.searchDevices)
+}
 
-	// Relationship endpoints (SQLite only)
-	mux.HandleFunc("POST /api/devices/", h.addRelationship)
-	mux.HandleFunc("GET /api/devices/", h.getRelationships)
-	mux.HandleFunc("GET /api/devices/", h.getRelatedDevices)
-	mux.HandleFunc("DELETE /api/devices/", h.removeRelationship)
+// deviceDispatcher dispatches requests to the appropriate handler based on URL path
+func (h *Handler) deviceDispatcher(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/devices/")
+	parts := strings.Split(path, "/")
+
+	// Check if this is a relationship endpoint
+	if len(parts) >= 2 {
+		switch parts[1] {
+		case "relationships":
+			switch r.Method {
+			case "POST":
+				h.addRelationship(w, r)
+			case "GET":
+				h.getRelationships(w, r)
+			case "DELETE":
+				h.removeRelationship(w, r)
+			default:
+				h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			}
+			return
+		case "related":
+			if r.Method == "GET" {
+				h.getRelatedDevices(w, r)
+			} else {
+				h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			}
+			return
+		}
+	}
+
+	// Default to device CRUD operations
+	switch r.Method {
+	case "GET":
+		h.getDevice(w, r)
+	case "PUT":
+		h.updateDevice(w, r)
+	case "DELETE":
+		h.deleteDevice(w, r)
+	default:
+		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
 }
 
 // listDevices handles GET /api/devices

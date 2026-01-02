@@ -1,8 +1,10 @@
 package config
 
 import (
+	"bufio"
+	"fmt"
 	"os"
-	"strconv"
+	"strings"
 )
 
 // Config holds the application configuration
@@ -12,16 +14,61 @@ type Config struct {
 	BearerToken    string
 	StorageBackend string // "file" or "sqlite" (default: "sqlite")
 	StorageFormat  string // "json" or "toml" (only for file backend)
+	ConfigFile     string // Path to .env file (if loaded)
 }
 
-// Load loads configuration from environment variables with defaults
-func Load() *Config {
+// Load loads configuration with the following priority (highest to lowest):
+// 1. Command-line parameters (passed as opts)
+// 2. .env file (if exists)
+// 3. Environment variables
+// 4. Default values
+//
+// If opts is provided, it overrides all other sources.
+// Otherwise, .env file overrides environment variables.
+func Load(opts *Config) *Config {
 	cfg := &Config{
-		DataDir:        getEnv("DM_DATA_DIR", "./data"),
-		ListenAddr:     getEnv("DM_LISTEN_ADDR", ":8080"),
-		BearerToken:    getEnv("DM_BEARER_TOKEN", ""),
-		StorageBackend: getEnv("DM_STORAGE_BACKEND", "sqlite"),
-		StorageFormat:  getEnv("DM_STORAGE_FORMAT", "json"),
+		DataDir:        "./data",
+		ListenAddr:     ":8080",
+		BearerToken:    "",
+		StorageBackend: "sqlite",
+		StorageFormat:  "json",
+	}
+
+	// First, try to load from .env file
+	envFile := ".env"
+	if _, err := os.Stat(envFile); err == nil {
+		if err := loadFromEnvFile(cfg, envFile); err != nil {
+			log := &logger{}
+			log.Printf("Warning: Failed to load .env file: %v", err)
+		} else {
+			cfg.ConfigFile = envFile
+		}
+	}
+
+	// Then load environment variables (only if not already set by .env)
+	cfg.DataDir = coalesce(cfg.DataDir, os.Getenv("DM_DATA_DIR"), "./data")
+	cfg.ListenAddr = coalesce(cfg.ListenAddr, os.Getenv("DM_LISTEN_ADDR"), ":8080")
+	cfg.BearerToken = coalesce(cfg.BearerToken, os.Getenv("DM_BEARER_TOKEN"), "")
+	cfg.StorageBackend = coalesce(cfg.StorageBackend, os.Getenv("DM_STORAGE_BACKEND"), "sqlite")
+	cfg.StorageFormat = coalesce(cfg.StorageFormat, os.Getenv("DM_STORAGE_FORMAT"), "json")
+
+	// Finally, apply CLI opts if provided (highest priority)
+	if opts != nil {
+		if opts.DataDir != "" {
+			cfg.DataDir = opts.DataDir
+		}
+		if opts.ListenAddr != "" {
+			cfg.ListenAddr = opts.ListenAddr
+		}
+		if opts.BearerToken != "" {
+			cfg.BearerToken = opts.BearerToken
+		}
+		if opts.StorageBackend != "" {
+			cfg.StorageBackend = opts.StorageBackend
+		}
+		if opts.StorageFormat != "" {
+			cfg.StorageFormat = opts.StorageFormat
+		}
 	}
 
 	// Validate storage backend
@@ -37,32 +84,83 @@ func Load() *Config {
 	return cfg
 }
 
+// loadFromEnvFile loads configuration from a .env file
+func loadFromEnvFile(cfg *Config, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE or KEY="VALUE"
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.Trim(strings.TrimSpace(parts[1]), "\"")
+
+		// Map .env keys to config fields
+		switch key {
+		case "DM_DATA_DIR":
+			cfg.DataDir = value
+		case "DM_LISTEN_ADDR":
+			cfg.ListenAddr = value
+		case "DM_BEARER_TOKEN":
+			cfg.BearerToken = value
+		case "DM_STORAGE_BACKEND":
+			cfg.StorageBackend = value
+		case "DM_STORAGE_FORMAT":
+			cfg.StorageFormat = value
+		}
+	}
+
+	return scanner.Err()
+}
+
 // IsMCPEnabled checks if MCP authentication is configured
 func (c *Config) IsMCPEnabled() bool {
 	return c.BearerToken != ""
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+// String returns a string representation of the config source
+func (c *Config) String() string {
+	if c.ConfigFile != "" {
+		return fmt.Sprintf(".env file (%s)", c.ConfigFile)
 	}
-	return defaultValue
+	return "environment variables"
 }
 
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intVal, err := strconv.Atoi(value); err == nil {
-			return intVal
+// coalesce returns the first non-empty string value
+func coalesce(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
 		}
 	}
-	return defaultValue
+	return ""
 }
 
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		if boolVal, err := strconv.ParseBool(value); err == nil {
-			return boolVal
-		}
-	}
-	return defaultValue
+// Simple logger type to avoid import cycle
+type logger struct{}
+
+func (l *logger) Printf(format string, args ...interface{}) {
+	fmt.Printf(format+"\n", args...)
+}
+
+// Legacy Load function for backward compatibility (ENV vars only)
+func LoadFromEnv() *Config {
+	return Load(nil)
 }

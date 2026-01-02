@@ -24,7 +24,7 @@ var (
 
 func main() {
 	// Load configuration
-	cfg = config.Load()
+	cfg = config.Load(nil)
 	serverURL = getEnv("DM_SERVER_URL", "http://localhost"+cfg.ListenAddr)
 
 	// Try to initialize local storage for offline use
