@@ -40,8 +40,19 @@ func main() {
 	// MCP endpoint
 	mux.HandleFunc("/mcp", mcpServer.GetHTTPHandler())
 
-	// Serve web UI at root
-	mux.Handle("/", http.FileServer(http.FS(ui.GetFS())))
+	// Serve web UI at root with no-cache headers for HTML files
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Serve index.html for root path
+		if r.URL.Path == "/" || r.URL.Path == "" {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+			http.ServeFileFS(w, r, ui.GetFS(), "index.html")
+			return
+		}
+		// Use default file server for other paths
+		http.FileServer(http.FS(ui.GetFS())).ServeHTTP(w, r)
+	})
 
 	// Start server
 	server := &http.Server{

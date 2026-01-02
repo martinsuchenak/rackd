@@ -133,6 +133,7 @@
     <script>
         const API_BASE = '/api';
         let currentDeviceId = null;
+        let currentDeviceData = null;
 
         // Load devices on page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -176,7 +177,8 @@
                 return;
             }
 
-            container.innerHTML = devices.map(device => `
+            container.innerHTML = devices.map(device => {
+                return `
                 <div class="device-card" onclick="viewDevice('${device.id}')">
                     <div class="device-name">${escapeHtml(device.name)}</div>
                     <div class="device-info">
@@ -190,7 +192,7 @@
                         </div>
                     ` : ''}
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // Search
@@ -224,16 +226,18 @@
             const div = document.createElement('div');
             div.className = 'address-item';
             div.innerHTML = `
-                <input type="text" placeholder="IP Address" value="${escapeHtml(ip)}" class="addr-ip">
-                <input type="number" placeholder="Port" value="${port}" class="addr-port" style="width: 80px;">
+                <input type="text" placeholder="IP Address" class="addr-ip" value="${escapeHtml(ip)}">
+                <input type="number" placeholder="Port" class="addr-port" value="${port}" style="width: 80px;">
                 <select class="addr-type" style="width: 80px;">
-                    <option value="ipv4" ${type === 'ipv4' ? 'selected' : ''}>IPv4</option>
-                    <option value="ipv6" ${type === 'ipv6' ? 'selected' : ''}>IPv6</option>
+                    <option value="ipv4">IPv4</option>
+                    <option value="ipv6">IPv6</option>
                 </select>
-                <input type="text" placeholder="Label" value="${escapeHtml(label)}" class="addr-label" style="width: 120px;">
+                <input type="text" placeholder="Label" class="addr-label" value="${escapeHtml(label)}" style="width: 120px;">
                 <button type="button" onclick="this.parentElement.remove()">Remove</button>
             `;
             container.appendChild(div);
+            // Set the select value after adding to DOM
+            div.querySelector('.addr-type').value = type || 'ipv4';
         }
 
         // Form submit
@@ -291,8 +295,12 @@
         async function viewDevice(id) {
             try {
                 const response = await fetch(`${API_BASE}/devices/${id}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch device: ${response.status}`);
+                }
                 const device = await response.json();
                 currentDeviceId = id;
+                currentDeviceData = device; // Store device data for editing
 
                 document.getElementById('deviceDetails').innerHTML = `
                     <div class="detail-value">
@@ -361,32 +369,39 @@
         function closeViewModal() {
             document.getElementById('viewModal').classList.remove('active');
             currentDeviceId = null;
+            currentDeviceData = null;
         }
 
         function editCurrentDevice() {
+            // Save device data before closing view modal
+            const deviceData = currentDeviceData;
+
             closeViewModal();
-            // Get device data and populate form
-            fetch(`${API_BASE}/devices/${currentDeviceId}`)
-                .then(r => r.json())
-                .then(device => {
-                    document.getElementById('modalTitle').textContent = 'Edit Device';
-                    document.getElementById('deviceId').value = device.id;
-                    document.getElementById('deviceName').value = device.name || '';
-                    document.getElementById('deviceDescription').value = device.description || '';
-                    document.getElementById('deviceMakeModel').value = device.make_model || '';
-                    document.getElementById('deviceOS').value = device.os || '';
-                    document.getElementById('deviceLocation').value = device.location || '';
-                    document.getElementById('deviceTags').value = (device.tags || []).join(', ');
-                    document.getElementById('deviceDomains').value = (device.domains || []).join(', ');
 
-                    document.getElementById('addressesList').innerHTML = '';
-                    (device.addresses || []).forEach(a => addAddressField(a.ip, a.port, a.type, a.label));
-                    if (device.addresses && device.addresses.length === 0) {
-                        addAddressField();
-                    }
+            if (!deviceData) {
+                showError('No device data available');
+                return;
+            }
 
-                    document.getElementById('deviceModal').classList.add('active');
-                });
+            const device = deviceData;
+
+            document.getElementById('modalTitle').textContent = 'Edit Device';
+            document.getElementById('deviceId').value = device.id || '';
+            document.getElementById('deviceName').value = device.name || '';
+            document.getElementById('deviceDescription').value = device.description || '';
+            document.getElementById('deviceMakeModel').value = device.make_model || '';
+            document.getElementById('deviceOS').value = device.os || '';
+            document.getElementById('deviceLocation').value = device.location || '';
+            document.getElementById('deviceTags').value = (device.tags || []).join(', ');
+            document.getElementById('deviceDomains').value = (device.domains || []).join(', ');
+
+            document.getElementById('addressesList').innerHTML = '';
+            (device.addresses || []).forEach(a => addAddressField(a.ip, a.port, a.type, a.label));
+            if (!device.addresses || device.addresses.length === 0) {
+                addAddressField();
+            }
+
+            document.getElementById('deviceModal').classList.add('active');
         }
 
         async function deleteCurrentDevice() {
