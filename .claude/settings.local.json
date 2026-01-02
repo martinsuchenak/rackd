@@ -12,7 +12,9 @@
       "Bash(bash:*)",
       "Bash(~/.bun/bin/bun install)",
       "Bash(cat:*)",
-      "Bash(~/.bun/bin/bun run build:*)"
+      "Bash(~/.bun/bin/bun run build:*)",
+      "WebSearch",
+      "Bash(DM_STORAGE_BACKEND=sqlite timeout:*)"
     ]
   }
 }

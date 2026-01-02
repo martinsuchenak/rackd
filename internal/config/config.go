@@ -7,19 +7,26 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	DataDir      string
-	ListenAddr   string
-	BearerToken  string
-	StorageFormat string // "json" or "toml"
+	DataDir        string
+	ListenAddr     string
+	BearerToken    string
+	StorageBackend string // "file" or "sqlite" (default: "sqlite")
+	StorageFormat  string // "json" or "toml" (only for file backend)
 }
 
 // Load loads configuration from environment variables with defaults
 func Load() *Config {
 	cfg := &Config{
-		DataDir:       getEnv("DM_DATA_DIR", "./data"),
-		ListenAddr:    getEnv("DM_LISTEN_ADDR", ":8080"),
-		BearerToken:   getEnv("DM_BEARER_TOKEN", ""),
-		StorageFormat: getEnv("DM_STORAGE_FORMAT", "json"),
+		DataDir:        getEnv("DM_DATA_DIR", "./data"),
+		ListenAddr:     getEnv("DM_LISTEN_ADDR", ":8080"),
+		BearerToken:    getEnv("DM_BEARER_TOKEN", ""),
+		StorageBackend: getEnv("DM_STORAGE_BACKEND", "sqlite"),
+		StorageFormat:  getEnv("DM_STORAGE_FORMAT", "json"),
+	}
+
+	// Validate storage backend
+	if cfg.StorageBackend != "file" && cfg.StorageBackend != "sqlite" {
+		cfg.StorageBackend = "sqlite"
 	}
 
 	// Validate storage format

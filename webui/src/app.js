@@ -86,15 +86,25 @@ Alpine.data('deviceManager', () => ({
     async saveDevice() {
         this.saving = true;
         try {
+            // Clean up addresses - convert empty ports to null/omit them
+            const addresses = this.form.addresses
+                .filter(a => a.ip)
+                .map(a => ({
+                    ip: a.ip,
+                    port: a.port && a.port !== '' ? parseInt(a.port, 10) : 0,
+                    type: a.type || 'ipv4',
+                    label: a.label || ''
+                }));
+
             const device = {
                 name: this.form.name,
-                description: this.form.description,
-                make_model: this.form.make_model,
-                os: this.form.os,
-                location: this.form.location,
+                description: this.form.description || '',
+                make_model: this.form.make_model || '',
+                os: this.form.os || '',
+                location: this.form.location || '',
                 tags: this.form.tagsInput.split(',').map(t => t.trim()).filter(t => t),
                 domains: this.form.domainsInput.split(',').map(t => t.trim()).filter(t => t),
-                addresses: this.form.addresses.filter(a => a.ip)
+                addresses: addresses
             };
 
             const url = this.form.id ? `/api/devices/${this.form.id}` : '/api/devices';

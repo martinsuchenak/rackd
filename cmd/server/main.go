@@ -19,11 +19,11 @@ func main() {
 	cfg := config.Load()
 
 	// Initialize storage
-	store, err := storage.NewFileStorage(cfg.DataDir, cfg.StorageFormat)
+	store, err := storage.NewStorage(cfg.DataDir, cfg.StorageBackend, cfg.StorageFormat)
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
-	log.Printf("Storage initialized: %s (%s format)", cfg.DataDir, cfg.StorageFormat)
+	log.Printf("Storage initialized: %s (%s backend)", cfg.DataDir, cfg.StorageBackend)
 
 	// Create API handler
 	apiHandler := api.NewHandler(store)

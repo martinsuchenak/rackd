@@ -16,6 +16,40 @@ var (
 	ErrInvalidID      = errors.New("invalid device ID")
 )
 
+// NewStorage creates a storage backend based on the storage type
+// Valid storage types: "file", "sqlite"
+func NewStorage(dataDir, storageType, format string) (Storage, error) {
+	switch storageType {
+	case "sqlite", "":
+		return NewSQLiteStorage(dataDir)
+	case "file":
+		return NewFileStorage(dataDir, format)
+	default:
+		return NewFileStorage(dataDir, format)
+	}
+}
+
+// NewExtendedStorage creates an extended storage with relationship support
+func NewExtendedStorage(dataDir, storageType, format string) (ExtendedStorage, error) {
+	switch storageType {
+	case "sqlite", "":
+		return NewSQLiteStorage(dataDir)
+	case "file":
+		// FileStorage doesn't support relationships, return as regular Storage
+		return NewFileStorage(dataDir, format)
+	default:
+		return NewSQLiteStorage(dataDir)
+	}
+}
+
+// RelationshipStorage defines the interface for device relationships
+type RelationshipStorage interface {
+	AddRelationship(parentID, childID, relationshipType string) error
+	RemoveRelationship(parentID, childID, relationshipType string) error
+	GetRelationships(deviceID string) ([]Relationship, error)
+	GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error)
+}
+
 // Storage defines the interface for device storage
 type Storage interface {
 	ListDevices(filter *model.DeviceFilter) ([]model.Device, error)
@@ -24,6 +58,12 @@ type Storage interface {
 	UpdateDevice(device *model.Device) error
 	DeleteDevice(id string) error
 	SearchDevices(query string) ([]model.Device, error)
+}
+
+// ExtendedStorage combines Storage with relationship support
+type ExtendedStorage interface {
+	Storage
+	RelationshipStorage
 }
 
 // FileStorage implements Storage with file-based persistence
@@ -348,4 +388,25 @@ func (fs *FileStorage) loadFile(path string, data interface{}) error {
 	default:
 		return errors.New("unsupported storage format")
 	}
+}
+
+// Relationship stub methods - FileStorage doesn't support relationships
+// These methods return errors to indicate relationships require SQLite backend
+
+var ErrRelationshipsNotSupported = errors.New("relationships are not supported by file-based storage; use SQLite backend")
+
+func (fs *FileStorage) AddRelationship(parentID, childID, relationshipType string) error {
+	return ErrRelationshipsNotSupported
+}
+
+func (fs *FileStorage) RemoveRelationship(parentID, childID, relationshipType string) error {
+	return ErrRelationshipsNotSupported
+}
+
+func (fs *FileStorage) GetRelationships(deviceID string) ([]Relationship, error) {
+	return nil, ErrRelationshipsNotSupported
+}
+
+func (fs *FileStorage) GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error) {
+	return nil, ErrRelationshipsNotSupported
 }
