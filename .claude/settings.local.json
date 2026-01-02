@@ -7,7 +7,12 @@
       "Bash(curl:*)",
       "Bash(go build:*)",
       "Bash(make:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "Bash(bun install)",
+      "Bash(bash:*)",
+      "Bash(~/.bun/bin/bun install)",
+      "Bash(cat:*)",
+      "Bash(~/.bun/bin/bun run build:*)"
     ]
   }
 }
