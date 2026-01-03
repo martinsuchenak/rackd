@@ -1,5 +1,18 @@
 -- Device Manager SQLite Schema
 
+-- Datacenters table
+CREATE TABLE IF NOT EXISTS datacenters (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    location TEXT,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index on datacenter name for fast lookups
+CREATE INDEX IF NOT EXISTS idx_datacenters_name ON datacenters(name);
+
 -- Devices table (main entity)
 CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY,
@@ -7,9 +20,10 @@ CREATE TABLE IF NOT EXISTS devices (
     description TEXT,
     make_model TEXT,
     os TEXT,
-    location TEXT,
+    datacenter_id TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (datacenter_id) REFERENCES datacenters(id) ON DELETE SET NULL
 );
 
 -- Create index on device name for fast lookups
@@ -77,3 +91,20 @@ FOR EACH ROW
 BEGIN
     UPDATE devices SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
+
+-- Trigger to update updated_at timestamp for datacenters
+CREATE TRIGGER IF NOT EXISTS update_datacenters_timestamp
+AFTER UPDATE ON datacenters
+FOR EACH ROW
+BEGIN
+    UPDATE datacenters SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Schema migrations tracking
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert initial schema version
+INSERT OR IGNORE INTO schema_migrations (version) VALUES (2);

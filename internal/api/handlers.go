@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -25,6 +26,14 @@ func NewHandler(s storage.Storage) *Handler {
 
 // RegisterRoutes registers all API routes
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	// Datacenter CRUD
+	mux.HandleFunc("GET /api/datacenters", h.listDatacenters)
+	mux.HandleFunc("POST /api/datacenters", h.createDatacenter)
+	mux.HandleFunc("GET /api/datacenters/{id}", h.getDatacenter)
+	mux.HandleFunc("PUT /api/datacenters/{id}", h.updateDatacenter)
+	mux.HandleFunc("DELETE /api/datacenters/{id}", h.deleteDatacenter)
+	mux.HandleFunc("GET /api/datacenters/{id}/devices", h.getDatacenterDevices)
+
 	// Device CRUD
 	mux.HandleFunc("GET /api/devices", h.listDevices)
 	mux.HandleFunc("POST /api/devices", h.createDevice)
@@ -363,4 +372,185 @@ func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Datacenter CRUD handlers
+
+// listDatacenters handles GET /api/datacenters
+func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	filter := &model.DatacenterFilter{Name: name}
+
+	// Check if storage supports datacenters
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	datacenters, err := dcStorage.ListDatacenters(filter)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, datacenters)
+}
+
+// getDatacenter handles GET /api/datacenters/{id}
+func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "datacenter ID required")
+		return
+	}
+
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	datacenter, err := dcStorage.GetDatacenter(id)
+	if err != nil {
+		if errors.Is(err, storage.ErrDatacenterNotFound) {
+			h.writeError(w, http.StatusNotFound, "datacenter not found")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, datacenter)
+}
+
+// createDatacenter handles POST /api/datacenters
+func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
+	var datacenter model.Datacenter
+	if err := json.NewDecoder(r.Body).Decode(&datacenter); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Validate required fields
+	if datacenter.Name == "" {
+		h.writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	// Generate ID if not provided
+	if datacenter.ID == "" {
+		datacenter.ID = generateDatacenterID()
+	}
+
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	if err := dcStorage.CreateDatacenter(&datacenter); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			h.writeError(w, http.StatusConflict, "datacenter with this name already exists")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusCreated, datacenter)
+}
+
+// updateDatacenter handles PUT /api/datacenters/{id}
+func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "datacenter ID required")
+		return
+	}
+
+	var datacenter model.Datacenter
+	if err := json.NewDecoder(r.Body).Decode(&datacenter); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Ensure ID matches URL
+	datacenter.ID = id
+
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	if err := dcStorage.UpdateDatacenter(&datacenter); err != nil {
+		if errors.Is(err, storage.ErrDatacenterNotFound) {
+			h.writeError(w, http.StatusNotFound, "datacenter not found")
+			return
+		}
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			h.writeError(w, http.StatusConflict, "datacenter with this name already exists")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, datacenter)
+}
+
+// deleteDatacenter handles DELETE /api/datacenters/{id}
+func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "datacenter ID required")
+		return
+	}
+
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	if err := dcStorage.DeleteDatacenter(id); err != nil {
+		if errors.Is(err, storage.ErrDatacenterNotFound) {
+			h.writeError(w, http.StatusNotFound, "datacenter not found")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// getDatacenterDevices handles GET /api/datacenters/{id}/devices
+func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "datacenter ID required")
+		return
+	}
+
+	dcStorage, ok := h.storage.(storage.DatacenterStorage)
+	if !ok {
+		h.writeError(w, http.StatusNotImplemented, "datacenters are not supported by this storage backend")
+		return
+	}
+
+	devices, err := dcStorage.GetDatacenterDevices(id)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, devices)
+}
+
+// generateDatacenterID generates a UUIDv7 for a datacenter
+func generateDatacenterID() string {
+	// Use uuid.New() which generates UUIDv7
+	return uuid.New().String()
 }

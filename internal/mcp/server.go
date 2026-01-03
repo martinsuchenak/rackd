@@ -168,7 +168,7 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 	description := req.StringOr("description", "")
 	makeModel := req.StringOr("make_model", "")
 	os := req.StringOr("os", "")
-	location := req.StringOr("location", "")
+	datacenterID := req.StringOr("datacenter_id", "")
 
 	tags, _ := req.StringSlice("tags")
 	domains, _ := req.StringSlice("domains")
@@ -190,8 +190,8 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 		if os != "" {
 			device.OS = os
 		}
-		if location != "" {
-			device.Location = location
+		if datacenterID != "" {
+			device.DatacenterID = datacenterID
 		}
 		if tags != nil {
 			device.Tags = tags
@@ -217,7 +217,7 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 		Description: description,
 		MakeModel:   makeModel,
 		OS:          os,
-		Location:    location,
+		DatacenterID: datacenterID,
 		Tags:        tags,
 		Domains:     domains,
 		Addresses:   addresses,
@@ -361,9 +361,6 @@ func (s *Server) formatDeviceSummary(device *model.Device) string {
 	}
 	if device.OS != "" {
 		result.WriteString(fmt.Sprintf("OS: %s\n", device.OS))
-	}
-	if device.Location != "" {
-		result.WriteString(fmt.Sprintf("Location: %s\n", device.Location))
 	}
 	if len(device.Tags) > 0 {
 		result.WriteString(fmt.Sprintf("Tags: %s\n", strings.Join(device.Tags, ", ")))
