@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -24,57 +25,21 @@ func NewHandler(s storage.Storage) *Handler {
 
 // RegisterRoutes registers all API routes
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	// Device CRUD
 	mux.HandleFunc("GET /api/devices", h.listDevices)
 	mux.HandleFunc("POST /api/devices", h.createDevice)
-	// Dispatcher for all /api/devices/ routes (handles devices, relationships, etc.)
-	mux.HandleFunc("GET /api/devices/", h.deviceDispatcher)
-	mux.HandleFunc("PUT /api/devices/", h.deviceDispatcher)
-	mux.HandleFunc("DELETE /api/devices/", h.deviceDispatcher)
-	mux.HandleFunc("POST /api/devices/", h.deviceDispatcher)
+	mux.HandleFunc("GET /api/devices/{id}", h.getDevice)
+	mux.HandleFunc("PUT /api/devices/{id}", h.updateDevice)
+	mux.HandleFunc("DELETE /api/devices/{id}", h.deleteDevice)
+
+	// Search
 	mux.HandleFunc("GET /api/search", h.searchDevices)
-}
 
-// deviceDispatcher dispatches requests to the appropriate handler based on URL path
-func (h *Handler) deviceDispatcher(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/devices/")
-	parts := strings.Split(path, "/")
-
-	// Check if this is a relationship endpoint
-	if len(parts) >= 2 {
-		switch parts[1] {
-		case "relationships":
-			switch r.Method {
-			case "POST":
-				h.addRelationship(w, r)
-			case "GET":
-				h.getRelationships(w, r)
-			case "DELETE":
-				h.removeRelationship(w, r)
-			default:
-				h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			}
-			return
-		case "related":
-			if r.Method == "GET" {
-				h.getRelatedDevices(w, r)
-			} else {
-				h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			}
-			return
-		}
-	}
-
-	// Default to device CRUD operations
-	switch r.Method {
-	case "GET":
-		h.getDevice(w, r)
-	case "PUT":
-		h.updateDevice(w, r)
-	case "DELETE":
-		h.deleteDevice(w, r)
-	default:
-		h.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-	}
+	// Relationships
+	mux.HandleFunc("POST /api/devices/{id}/relationships", h.addRelationship)
+	mux.HandleFunc("GET /api/devices/{id}/relationships", h.getRelationships)
+	mux.HandleFunc("GET /api/devices/{id}/related", h.getRelatedDevices)
+	mux.HandleFunc("DELETE /api/devices/{id}/relationships/{child_id}/{type}", h.removeRelationship)
 }
 
 // listDevices handles GET /api/devices
@@ -84,7 +49,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 
 	devices, err := h.storage.ListDevices(filter)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -93,7 +58,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 
 // getDevice handles GET /api/devices/{id}
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/devices/")
+	id := r.PathValue("id")
 	if id == "" {
 		h.writeError(w, http.StatusBadRequest, "device ID required")
 		return
@@ -105,7 +70,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "device not found")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -145,7 +110,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusConflict, "device already exists")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -154,7 +119,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 
 // updateDevice handles PUT /api/devices/{id}
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/devices/")
+	id := r.PathValue("id")
 	if id == "" {
 		h.writeError(w, http.StatusBadRequest, "device ID required")
 		return
@@ -175,7 +140,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "device not found")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -184,7 +149,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 
 // deleteDevice handles DELETE /api/devices/{id}
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/devices/")
+	id := r.PathValue("id")
 	if id == "" {
 		h.writeError(w, http.StatusBadRequest, "device ID required")
 		return
@@ -195,7 +160,7 @@ func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "device not found")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -212,7 +177,7 @@ func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {
 
 	devices, err := h.storage.SearchDevices(query)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -231,6 +196,12 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, message string) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// internalError logs the error and writes a generic 500 response
+func (h *Handler) internalError(w http.ResponseWriter, err error) {
+	log.Printf("Internal Server Error: %v", err)
+	h.writeError(w, http.StatusInternalServerError, "Internal Server Error")
 }
 
 // generateID generates a simple ID from a name
@@ -262,13 +233,7 @@ func (h *StaticFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // addRelationship handles POST /api/devices/{id}/relationships
 func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
-	// Extract device ID from path: /api/devices/{id}/relationships
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/devices/"), "/")
-	if len(parts) < 2 || parts[1] != "relationships" {
-		h.writeError(w, http.StatusBadRequest, "invalid URL format")
-		return
-	}
-	deviceID := parts[0]
+	deviceID := r.PathValue("id")
 
 	if deviceID == "" {
 		h.writeError(w, http.StatusBadRequest, "device ID required")
@@ -276,7 +241,7 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		ChildID         string `json:"child_id"`
+		ChildID          string `json:"child_id"`
 		RelationshipType string `json:"relationship_type"`
 	}
 
@@ -308,28 +273,22 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "device not found")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message":         "relationship created",
-		"parent_id":        deviceID,
-		"child_id":         req.ChildID,
+		"message":           "relationship created",
+		"parent_id":         deviceID,
+		"child_id":          req.ChildID,
 		"relationship_type": req.RelationshipType,
 	})
 }
 
 // getRelationships handles GET /api/devices/{id}/relationships
 func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
-	// Extract device ID from path: /api/devices/{id}/relationships
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/devices/"), "/")
-	if len(parts) < 2 || parts[1] != "relationships" {
-		h.writeError(w, http.StatusBadRequest, "invalid URL format")
-		return
-	}
-	deviceID := parts[0]
+	deviceID := r.PathValue("id")
 
 	// Check if storage supports relationships
 	relStorage, ok := h.storage.(interface {
@@ -342,7 +301,7 @@ func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
 
 	relationships, err := relStorage.GetRelationships(deviceID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -351,13 +310,7 @@ func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
 
 // getRelatedDevices handles GET /api/devices/{id}/related
 func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request) {
-	// Extract device ID from path: /api/devices/{id}/related
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/devices/"), "/")
-	if len(parts) < 2 || parts[1] != "related" {
-		h.writeError(w, http.StatusBadRequest, "invalid URL format")
-		return
-	}
-	deviceID := parts[0]
+	deviceID := r.PathValue("id")
 
 	// Get relationship type from query parameter
 	relType := r.URL.Query().Get("type")
@@ -373,7 +326,7 @@ func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request) {
 
 	devices, err := relStorage.GetRelatedDevices(deviceID, relType)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 
@@ -382,15 +335,9 @@ func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request) {
 
 // removeRelationship handles DELETE /api/devices/{id}/relationships
 func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
-	// Extract device ID from path: /api/devices/{id}/relationships/{child_id}/{type}
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/devices/"), "/")
-	if len(parts) < 4 || parts[1] != "relationships" {
-		h.writeError(w, http.StatusBadRequest, "invalid URL format")
-		return
-	}
-	deviceID := parts[0]
-	childID := parts[2]
-	relType := parts[3]
+	deviceID := r.PathValue("id")
+	childID := r.PathValue("child_id")
+	relType := r.PathValue("type")
 
 	if deviceID == "" || childID == "" {
 		h.writeError(w, http.StatusBadRequest, "device ID and child ID required")
@@ -411,7 +358,7 @@ func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "device or relationship not found")
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+		h.internalError(w, err)
 		return
 	}
 

@@ -115,15 +115,9 @@ func (ss *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device
 		return nil, err
 	}
 
-	// Load tags and addresses for each device
-	for i := range devices {
-		if err := ss.loadDeviceTags(&devices[i]); err != nil {
-			return nil, err
-		}
-		if err := ss.loadDeviceAddresses(&devices[i]); err != nil {
-			return nil, err
-		}
-		if err := ss.loadDeviceDomains(&devices[i]); err != nil {
+	// Load tags, addresses, and domains for all devices efficiently
+	if len(devices) > 0 {
+		if err := ss.loadBatchRelations(devices); err != nil {
 			return nil, err
 		}
 	}
@@ -384,8 +378,8 @@ func (ss *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	}
 
 	// Load all relations for the result devices
-	for i := range devices {
-		if err := ss.loadDeviceRelations(&devices[i]); err != nil {
+	if len(devices) > 0 {
+		if err := ss.loadBatchRelations(devices); err != nil {
 			return nil, err
 		}
 	}
@@ -496,8 +490,8 @@ func (ss *SQLiteStorage) GetRelatedDevices(deviceID string, relationshipType str
 		return nil, err
 	}
 
-	for i := range devices {
-		if err := ss.loadDeviceRelations(&devices[i]); err != nil {
+	if len(devices) > 0 {
+		if err := ss.loadBatchRelations(devices); err != nil {
 			return nil, err
 		}
 	}
@@ -603,6 +597,80 @@ func (ss *SQLiteStorage) scanDevices(rows *sql.Rows) ([]model.Device, error) {
 	}
 
 	return devices, rows.Err()
+}
+
+func (ss *SQLiteStorage) loadBatchRelations(devices []model.Device) error {
+	if len(devices) == 0 {
+		return nil
+	}
+
+	// Create map for easy assignment
+	deviceMap := make(map[string]*model.Device)
+	ids := make([]interface{}, len(devices))
+	for i := range devices {
+		deviceMap[devices[i].ID] = &devices[i]
+		ids[i] = devices[i].ID
+	}
+
+	// Helper to build IN clause
+	placeholders := strings.Repeat("?,", len(ids)-1) + "?"
+
+	// Load Tags
+	tagQuery := fmt.Sprintf("SELECT device_id, tag FROM tags WHERE device_id IN (%s) ORDER BY tag", placeholders)
+	rows, err := ss.db.Query(tagQuery, ids...)
+	if err != nil {
+		return fmt.Errorf("querying batch tags: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var deviceID, tag string
+		if err := rows.Scan(&deviceID, &tag); err != nil {
+			return err
+		}
+		if d, ok := deviceMap[deviceID]; ok {
+			d.Tags = append(d.Tags, tag)
+		}
+	}
+
+	// Load Addresses
+	addrQuery := fmt.Sprintf("SELECT device_id, ip, port, type, label FROM addresses WHERE device_id IN (%s) ORDER BY ip", placeholders)
+	rows, err = ss.db.Query(addrQuery, ids...)
+	if err != nil {
+		return fmt.Errorf("querying batch addresses: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var deviceID string
+		var a model.Address
+		if err := rows.Scan(&deviceID, &a.IP, &a.Port, &a.Type, &a.Label); err != nil {
+			return err
+		}
+		if d, ok := deviceMap[deviceID]; ok {
+			d.Addresses = append(d.Addresses, a)
+		}
+	}
+
+	// Load Domains
+	domainQuery := fmt.Sprintf("SELECT device_id, domain FROM domains WHERE device_id IN (%s) ORDER BY domain", placeholders)
+	rows, err = ss.db.Query(domainQuery, ids...)
+	if err != nil {
+		return fmt.Errorf("querying batch domains: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var deviceID, domain string
+		if err := rows.Scan(&deviceID, &domain); err != nil {
+			return err
+		}
+		if d, ok := deviceMap[deviceID]; ok {
+			d.Domains = append(d.Domains, domain)
+		}
+	}
+
+	return nil
 }
 
 func (ss *SQLiteStorage) loadDeviceRelations(device *model.Device) error {

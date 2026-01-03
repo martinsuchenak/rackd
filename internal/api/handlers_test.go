@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -228,6 +227,7 @@ func TestHandler_GetDevice(t *testing.T) {
 
 	// Now get it
 	req := httptest.NewRequest("GET", "/api/devices/get-test-1", nil)
+	req.SetPathValue("id", "get-test-1")
 	w := httptest.NewRecorder()
 
 	handler.getDevice(w, req)
@@ -253,6 +253,7 @@ func TestHandler_GetDevice_NotFound(t *testing.T) {
 	handler := setupTestHandler()
 
 	req := httptest.NewRequest("GET", "/api/devices/nonexistent", nil)
+	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
 	handler.getDevice(w, req)
@@ -286,6 +287,7 @@ func TestHandler_UpdateDevice(t *testing.T) {
 	}`
 
 	req := httptest.NewRequest("PUT", "/api/devices/update-test-1", bytes.NewReader([]byte(updateJSON)))
+	req.SetPathValue("id", "update-test-1")
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -324,6 +326,7 @@ func TestHandler_DeleteDevice(t *testing.T) {
 
 	// Delete it
 	req := httptest.NewRequest("DELETE", "/api/devices/delete-test-1", nil)
+	req.SetPathValue("id", "delete-test-1")
 	w := httptest.NewRecorder()
 
 	handler.deleteDevice(w, req)
@@ -346,6 +349,7 @@ func TestHandler_DeleteDevice_NotFound(t *testing.T) {
 	handler := setupTestHandler()
 
 	req := httptest.NewRequest("DELETE", "/api/devices/nonexistent", nil)
+	req.SetPathValue("id", "nonexistent")
 	w := httptest.NewRecorder()
 
 	handler.deleteDevice(w, req)
@@ -469,6 +473,7 @@ func TestHandler_Integration_CreateGetUpdateDelete(t *testing.T) {
 
 	// Get
 	getReq := httptest.NewRequest("GET", "/api/devices/"+created.ID, nil)
+	getReq.SetPathValue("id", created.ID)
 	getW := httptest.NewRecorder()
 	handler.getDevice(getW, getReq)
 
@@ -482,6 +487,7 @@ func TestHandler_Integration_CreateGetUpdateDelete(t *testing.T) {
 	// Update
 	updateJSON := `{"location": "Updated Rack"}`
 	updateReq := httptest.NewRequest("PUT", "/api/devices/"+created.ID, bytes.NewReader([]byte(updateJSON)))
+	updateReq.SetPathValue("id", created.ID)
 	updateReq.Header.Set("Content-Type", "application/json")
 	updateW := httptest.NewRecorder()
 
@@ -495,6 +501,7 @@ func TestHandler_Integration_CreateGetUpdateDelete(t *testing.T) {
 
 	// Delete
 	deleteReq := httptest.NewRequest("DELETE", "/api/devices/"+created.ID, nil)
+	deleteReq.SetPathValue("id", created.ID)
 	deleteW := httptest.NewRecorder()
 
 	handler.deleteDevice(deleteW, deleteReq)
@@ -503,27 +510,5 @@ func TestHandler_Integration_CreateGetUpdateDelete(t *testing.T) {
 
 	if deleteResp.StatusCode != http.StatusNoContent {
 		t.Errorf("Delete failed: status %d", deleteResp.StatusCode)
-	}
-}
-
-func TestGetDeviceIDFromPath(t *testing.T) {
-	tests := []struct {
-		path string
-		want string
-	}{
-		{"/api/devices/test-id", "test-id"},
-		{"/api/devices/test-id/extra", "test-id/extra"},
-		{"/api/devices/", ""},
-		// Note: "/api/devices" without trailing slash would be handled by listDevices, not getDevice
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			// The implementation uses strings.TrimPrefix
-			got := strings.TrimPrefix(tt.path, "/api/devices/")
-			if got != tt.want {
-				t.Errorf("extractDeviceID(%q) = %q, want %q", tt.path, got, tt.want)
-			}
-		})
 	}
 }
