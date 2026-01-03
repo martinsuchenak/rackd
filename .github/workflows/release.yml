@@ -22,6 +22,16 @@ jobs:
         with:
           go-version: '1.25'
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Build UI Assets
+        run: |
+          make ui-install
+          make ui-build
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
