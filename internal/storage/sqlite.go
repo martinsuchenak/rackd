@@ -82,15 +82,37 @@ func (ss *SQLiteStorage) initSchema() error {
 	var tableName string
 	err := ss.db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'").Scan(&tableName)
 	if err == sql.ErrNoRows {
-		// Database is new, run schema.sql
-		schema, err := schemaFS.ReadFile("schema.sql")
-		if err != nil {
-			return fmt.Errorf("reading schema: %w", err)
-		}
+		// No schema_migrations table - check if devices table exists (legacy database)
+		var hasDevicesTable string
+		err := ss.db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='devices'").Scan(&hasDevicesTable)
 
-		_, err = ss.db.Exec(string(schema))
-		if err != nil {
-			return fmt.Errorf("executing schema.sql: %w", err)
+		if err == sql.ErrNoRows {
+			// Fresh database - run schema.sql
+			schema, err := schemaFS.ReadFile("schema.sql")
+			if err != nil {
+				return fmt.Errorf("reading schema: %w", err)
+			}
+
+			_, err = ss.db.Exec(string(schema))
+			if err != nil {
+				return fmt.Errorf("executing schema.sql: %w", err)
+			}
+		} else {
+			// Legacy database exists - create schema_migrations table at version 1
+			// so migrations will handle upgrading the schema
+			_, err = ss.db.Exec(`
+				CREATE TABLE schema_migrations (
+					version INTEGER PRIMARY KEY,
+					applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)
+			`)
+			if err != nil {
+				return fmt.Errorf("creating migrations table for legacy db: %w", err)
+			}
+			_, err = ss.db.Exec(`INSERT INTO schema_migrations (version) VALUES (1)`)
+			if err != nil {
+				return fmt.Errorf("setting initial migration version: %w", err)
+			}
 		}
 	}
 
