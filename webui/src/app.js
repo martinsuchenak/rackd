@@ -17,6 +17,11 @@ const api = {
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
+                if (response.status === 401) throw new Error('Unauthorized: Please check your API token.');
+                if (response.status === 403) throw new Error('Forbidden: You do not have permission to perform this action.');
+                if (response.status === 409) throw new Error('Conflict: An item with this name already exists.');
+                if (response.status === 400) throw new Error(error.error || 'Invalid data provided. Please check your inputs.');
+                
                 throw new Error(error.error || `Request failed with status ${response.status}`);
             }
 
