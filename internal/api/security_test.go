@@ -70,6 +70,7 @@ func TestMiddleware_SecurityHeaders(t *testing.T) {
 	middleware := SecurityHeadersMiddleware(nextHandler)
 
 	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)
@@ -109,7 +110,7 @@ func TestMiddleware_Auth(t *testing.T) {
 		{"No Auth - API Path", "/api/devices", "", http.StatusUnauthorized},
 		{"Valid Auth - API Path", "/api/devices", "Bearer secret-token", http.StatusOK},
 		{"Invalid Auth - API Path", "/api/devices", "Bearer wrong-token", http.StatusUnauthorized},
-		{"Query Auth - API Path", "/api/devices?token=secret-token", "", http.StatusOK},
+		{"Query Auth - Disabled", "/api/devices?token=secret-token", "", http.StatusUnauthorized},
 	}
 
 	for _, tt := range tests {

@@ -28,19 +28,19 @@
                 <button @click="currentView = 'devices'"
                     :class="currentView === 'devices' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-                    aria-current-page="currentView === 'devices'">
+                    :aria-current="currentView === 'devices' ? 'page' : false">
                     Devices
                 </button>
                 <button @click="currentView = 'networks'"
                     :class="currentView === 'networks' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-                    aria-current-page="currentView === 'networks'">
+                    :aria-current="currentView === 'networks' ? 'page' : false">
                     Networks
                 </button>
                 <button @click="currentView = 'datacenters'"
                     :class="currentView === 'datacenters' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-                    aria-current-page="currentView === 'datacenters'">
+                    :aria-current="currentView === 'datacenters' ? 'page' : false">
                     Datacenters
                 </button>
             </nav>
@@ -223,10 +223,17 @@
                                             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
                                                 <div class="flex gap-2 flex-wrap">
                                                     <input type="text" x-model="addr.ip" placeholder="IP (e.g. 192.168.1.1)" required 
-                                                        pattern="^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"
+                                                        pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
                                                         title="Please enter a valid IPv4 address"
                                                         class="flex-1 min-w-[120px] px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="IP Address">
                                                     <input type="number" x-model="addr.port" placeholder="Port" min="1" max="65535" class="w-20 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Port">
+                                                    <select x-model="addr.network_id" class="w-32 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Network">
+                                                        <option value="">No Network</option>
+                                                        <template x-for="net in networks" :key="net.id">
+                                                            <option :value="net.id" x-text="net.name"></option>
+                                                        </template>
+                                                    </select>
+                                                    <input type="text" x-model="addr.switch_port" placeholder="Switch Port" class="w-32 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Switch Port">
                                                     <button type="button" @click="removeAddress(index)" class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 dark:bg-red-900 dark:text-red-300" aria-label="Remove Address">Remove</button>
                                                 </div>
                                             </div>
@@ -266,7 +273,63 @@
                                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Description</p>
                                 <p class="mt-1 text-gray-900 dark:text-gray-100 whitespace-pre-wrap" x-text="currentDevice.description"></p>
                             </div>
-                            <!-- ... other fields ... -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Make/Model</p>
+                                    <p class="mt-1 text-gray-900 dark:text-gray-100" x-text="currentDevice.make_model || '—'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">OS</p>
+                                    <p class="mt-1 text-gray-900 dark:text-gray-100" x-text="currentDevice.os || '—'"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Datacenter</p>
+                                <p class="mt-1 text-gray-900 dark:text-gray-100" x-text="currentDevice.datacenter_name || 'None'"></p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Username</p>
+                                <p class="mt-1 text-gray-900 dark:text-gray-100" x-text="currentDevice.username || '—'"></p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Addresses</p>
+                                <div class="mt-1 space-y-1">
+                                    <template x-for="addr in currentDevice.addresses" :key="addr.ip">
+                                        <div class="font-mono text-sm text-gray-900 dark:text-gray-100">
+                                            <span x-text="addr.ip"></span>
+                                            <span x-show="addr.port" x-text="':' + addr.port"></span>
+                                            <span x-show="addr.label" class="text-gray-500 dark:text-gray-400" x-text="' (' + addr.label + ')'"></span>
+                                        </div>
+                                    </template>
+                                    <p x-show="!currentDevice.addresses || currentDevice.addresses.length === 0" class="text-gray-500 dark:text-gray-400">—</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Domains</p>
+                                <div class="mt-1 space-y-1">
+                                    <template x-if="Array.isArray(currentDevice.domains) && currentDevice.domains.length > 0">
+                                        <template x-for="domain in currentDevice.domains" :key="domain">
+                                            <div class="text-sm text-gray-900 dark:text-gray-100" x-text="domain"></div>
+                                        </template>
+                                    </template>
+                                    <p x-show="!Array.isArray(currentDevice.domains) || currentDevice.domains.length === 0" class="text-gray-500 dark:text-gray-400">—</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tags</p>
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    <template x-if="Array.isArray(currentDevice.tags) && currentDevice.tags.length > 0">
+                                        <template x-for="tag in currentDevice.tags" :key="tag">
+                                            <span class="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full dark:bg-blue-900 dark:text-blue-200" x-text="tag"></span>
+                                        </template>
+                                    </template>
+                                    <p x-show="!Array.isArray(currentDevice.tags) || currentDevice.tags.length === 0" class="text-gray-500 dark:text-gray-400">—</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">ID</p>
+                                <p class="mt-1 text-sm text-gray-500 font-mono break-all dark:text-gray-400" x-text="currentDevice.id"></p>
+                            </div>
                         </div>
                         <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 flex gap-3">
                             <button @click="editCurrentDevice()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit</button>
@@ -299,10 +362,10 @@
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Subnet</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Datacenter</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Actions</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Name</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Subnet</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Datacenter</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
@@ -314,9 +377,9 @@
                                     <td class="px-6 py-4 whitespace-nowrap font-mono text-sm" x-text="network.subnet"></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm" x-text="network.datacenter_name || '—'"></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button @click="viewNetwork(network.id)" class="text-blue-600 hover:text-blue-900 mr-3">View</button>
-                                        <button @click="editNetwork(network.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                                        <button @click="deleteNetwork(network.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                        <button @click="viewNetwork(network.id)" class="text-blue-600 hover:text-blue-900 mr-3 dark:text-blue-400 dark:hover:text-blue-300">View</button>
+                                        <button @click="editNetwork(network.id)" class="text-indigo-600 hover:text-indigo-900 mr-3 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</button>
+                                        <button @click="deleteNetwork(network.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
                                     </td>
                                 </tr>
                             </template>
@@ -346,7 +409,7 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subnet *</label>
                                     <input type="text" x-model="form.subnet" required 
-                                        pattern="^([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))$"
+                                        pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(3[0-2]|[12]?[0-9])$"
                                         title="Please enter a valid CIDR subnet (e.g. 192.168.1.0/24)"
                                         placeholder="e.g. 192.168.1.0/24" 
                                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
@@ -428,9 +491,9 @@
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Location</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Actions</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Name</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Location</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Actions</th>
                             </tr>
                         </thead>
                          <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
@@ -441,9 +504,9 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300" x-text="dc.location || '—'"></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button @click="viewDatacenter(dc.id)" class="text-blue-600 hover:text-blue-900 mr-3">View</button>
-                                        <button @click="editDatacenter(dc.id)" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                                        <button @click="deleteDatacenter(dc.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                        <button @click="viewDatacenter(dc.id)" class="text-blue-600 hover:text-blue-900 mr-3 dark:text-blue-400 dark:hover:text-blue-300">View</button>
+                                        <button @click="editDatacenter(dc.id)" class="text-indigo-600 hover:text-indigo-900 mr-3 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</button>
+                                        <button @click="deleteDatacenter(dc.id)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
                                     </td>
                                 </tr>
                             </template>

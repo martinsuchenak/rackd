@@ -50,10 +50,10 @@ func main() {
 		cliOpts.ListenAddr = *listenAddr
 	}
 	if *bearerToken != "" {
-		cliOpts.BearerToken = *bearerToken
+		cliOpts.MCPAuthToken = *bearerToken
 	}
 	if *apiToken != "" {
-		cliOpts.ApiToken = *apiToken
+		cliOpts.APIAuthToken = *apiToken
 	}
 
 	// If any CLI flag was set, use it to override all other sources
@@ -78,7 +78,7 @@ func main() {
 	apiHandler := api.NewHandler(store)
 
 	// Create MCP server
-	mcpServer := mcp.NewServer(store, cfg.BearerToken)
+	mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
 
 	// Setup HTTP routes
 	mux := http.NewServeMux()
@@ -95,7 +95,7 @@ func main() {
 	// Apply middleware
 	var handler http.Handler = mux
 	if cfg.IsAPIAuthEnabled() {
-		handler = api.AuthMiddleware(cfg.ApiToken, handler)
+		handler = api.AuthMiddleware(cfg.APIAuthToken, handler)
 	}
 	handler = api.SecurityHeadersMiddleware(handler)
 
