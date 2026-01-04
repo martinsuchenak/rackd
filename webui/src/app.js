@@ -67,8 +67,19 @@ Alpine.data('datacenterManager', () => ({
         // Listen for refresh events
         window.addEventListener('refresh-datacenters', () => this.loadDatacenters());
     },
-    
-    // ... loadDatacenters ...
+
+    async loadDatacenters() {
+        this.loading = true;
+        try {
+            const data = await api.get('/api/datacenters');
+            this.datacenters = Array.isArray(data) ? data : [];
+        } catch (error) {
+            Alpine.store('toast').notify('Failed to load datacenters', 'error');
+            this.datacenters = [];
+        } finally {
+            this.loading = false;
+        }
+    },
 
     openAddModal() {
         this.modalTitle = 'Add Datacenter';
