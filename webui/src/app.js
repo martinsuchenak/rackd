@@ -399,17 +399,23 @@ Alpine.data('deviceManager', () => ({
 
     async loadDatacenters() {
         try {
-            this.datacenters = await api.get('/api/datacenters');
+            const data = await api.get('/api/datacenters');
+            this.datacenters = Array.isArray(data) ? data : [];
+            this.enrichDevices();
         } catch (error) {
             console.error('Failed to load datacenters', error);
+            this.datacenters = [];
         }
     },
 
     async loadNetworks() {
         try {
-            this.networks = await api.get('/api/networks');
+            const data = await api.get('/api/networks');
+            this.networks = Array.isArray(data) ? data : [];
+            this.enrichDevices();
         } catch (error) {
             console.error('Failed to load networks', error);
+            this.networks = [];
         }
     },
 
@@ -577,7 +583,7 @@ Alpine.data('deviceManager', () => ({
             tagsInput: (device.tags || []).join(', '),
             domainsInput: (device.domains || []).join(', '),
             addresses: device.addresses && device.addresses.length > 0
-                ? [...device.addresses]
+                ? device.addresses.map(a => ({ ...a, network_id: a.network_id || '' }))
                 : [{ ip: '', port: '', type: 'ipv4', label: '', network_id: '', switch_port: '' }]
         };
     },
