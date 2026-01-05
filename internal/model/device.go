@@ -13,6 +13,7 @@ type Device struct {
 	OS           string    `json:"os"`
 	DatacenterID string    `json:"datacenter_id,omitempty"`
 	Username     string    `json:"username,omitempty"`
+	Location     string    `json:"location,omitempty"`
 	Tags         []string  `json:"tags"`
 	Addresses    []Address `json:"addresses"`
 	Domains      []string  `json:"domains"`

@@ -588,7 +588,6 @@ rackd/
 ### Dependencies
 
 - `modernc.org/sqlite` - Pure Go SQLite driver
-- `github.com/pelletier/go-toml/v2` - TOML support
 - `github.com/paularlott/mcp` - MCP server
 - `alpinejs` - Web UI framework (dev dependency)
 - `tailwindcss` - UI styling (dev dependency)
