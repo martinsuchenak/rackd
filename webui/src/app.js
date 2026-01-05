@@ -369,7 +369,6 @@ Alpine.data('deviceManager', () => ({
     devices: [],
     datacenters: [],
     networks: [],
-    networksLoaded: false,
     loading: false,
     saving: false,
     showModal: false,
@@ -432,8 +431,6 @@ Alpine.data('deviceManager', () => ({
         } catch (error) {
             console.error('Failed to load networks', error);
             this.networks = [];
-        } finally {
-            this.networksLoaded = true;
         }
     },
 
