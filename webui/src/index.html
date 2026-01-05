@@ -232,7 +232,7 @@
                                                     </select>
                                                     <input type="text" x-model="addr.label" placeholder="Label" class="w-24 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Label">
                                                     <input type="number" x-model="addr.port" placeholder="Port" min="1" max="65535" class="w-20 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Port">
-                                                    <select x-model="addr.network_id" class="w-32 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Network">
+                                                    <select x-model="form.addresses[index].network_id" class="w-32 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" aria-label="Network">
                                                         <option value="">No Network</option>
                                                         <template x-for="net in networks" :key="net.id">
                                                             <option :value="net.id" x-text="net.name"></option>
