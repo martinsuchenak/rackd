@@ -246,6 +246,8 @@ ui-build:
 	@cp $(WEBUI_DIR)/src/index.html $(ASSETS_DIR)/index.html
 	@cp $(WEBUI_DIR)/dist/output.css $(ASSETS_DIR)/output.css
 	@cp $(WEBUI_DIR)/dist/app.js $(ASSETS_DIR)/app.js
+	@cp $(WEBUI_DIR)/src/logo.png $(ASSETS_DIR)/logo.png
+	@cp $(WEBUI_DIR)/src/icon.png $(ASSETS_DIR)/icon.png
 	@echo "UI assets built successfully"
 
 ## ui-clean: Remove UI build artifacts

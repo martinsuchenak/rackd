@@ -37,10 +37,8 @@ func AssetHandler() http.HandlerFunc {
 		}
 
 		// Strip /assets/ prefix if present
-		path := r.URL.Path
-		if strings.HasPrefix(path, "/assets/") {
-			path = strings.TrimPrefix(path, "/assets/")
-		}
+		// Strip /assets/ prefix if present
+		path := strings.TrimPrefix(r.URL.Path, "/assets/")
 
 		// Set content type headers
 		ext := strings.LastIndex(path, ".")
@@ -50,6 +48,8 @@ func AssetHandler() http.HandlerFunc {
 				w.Header().Set("Content-Type", "text/css; charset=utf-8")
 			case ".js":
 				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			case ".png":
+				w.Header().Set("Content-Type", "image/png")
 			}
 		}
 
