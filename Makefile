@@ -175,9 +175,9 @@ nomad-status:
 	nomad alloc status -job rackd
 
 ## run-server: Run server locally
-run-server:
+run-server: server
 	@echo "Starting server..."
-	$(GO) run $(CMD_DIR)/server
+	$(BUILD_DIR)/$(BINARY_SERVER)
 
 ## run-cli: Run CLI locally
 run-cli:
@@ -230,11 +230,9 @@ ui-install:
 
 ## ui-build: Build UI assets
 ui-build:
+	@echo "Installing dependencies..."
+	@export PATH="$(HOME)/.bun/bin:$$PATH" && cd $(WEBUI_DIR) && bun install
 	@echo "Building UI assets..."
-	@if [ ! -d "$(WEBUI_DIR)/node_modules" ]; then \
-		echo "Installing dependencies first..."; \
-		export PATH="$(HOME)/.bun/bin:$$PATH" && cd $(WEBUI_DIR) && bun install; \
-	fi
 	@export PATH="$(HOME)/.bun/bin:$$PATH" && cd $(WEBUI_DIR) && bun run build
 	@mkdir -p $(ASSETS_DIR)
 	@cp $(WEBUI_DIR)/src/index.html $(ASSETS_DIR)/index.html
