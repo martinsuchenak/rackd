@@ -397,6 +397,19 @@ Alpine.data('deviceManager', () => ({
         });
     },
 
+    async ensureDependencies() {
+        const promises = [];
+        if (!this.networks || this.networks.length === 0) {
+            promises.push(this.loadNetworks());
+        }
+        if (!this.datacenters || this.datacenters.length === 0) {
+            promises.push(this.loadDatacenters());
+        }
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
+    },
+
     async loadDatacenters() {
         try {
             const data = await api.get('/api/datacenters');
@@ -458,7 +471,8 @@ Alpine.data('deviceManager', () => ({
         this.loadDevices();
     },
 
-    openAddModal() {
+    async openAddModal() {
+        await this.ensureDependencies();
         this.modalTitle = 'Add Device';
         this.resetForm();
         this.showModal = true;
@@ -553,7 +567,8 @@ Alpine.data('deviceManager', () => ({
         this.currentDevice = {};
     },
 
-    editCurrentDevice() {
+    async editCurrentDevice() {
+        await this.ensureDependencies();
         const device = this.currentDevice;
         this.prepareEditForm(device);
         this.closeViewModal();
@@ -562,6 +577,7 @@ Alpine.data('deviceManager', () => ({
 
     async editDevice(id) {
         try {
+            await this.ensureDependencies();
             const device = await api.get(`/api/devices/${id}`);
             this.prepareEditForm(device);
             this.showModal = true;
