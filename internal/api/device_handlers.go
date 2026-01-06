@@ -319,7 +319,7 @@ func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
 
 	// Check if storage supports relationships
 	relStorage, ok := h.storage.(interface {
-		GetRelationships(deviceID string) ([]storage.Relationship, error)
+		GetRelationships(deviceID string) ([]model.DeviceRelationship, error)
 	})
 	if !ok {
 		log.Warn("Relationships not supported by storage backend")

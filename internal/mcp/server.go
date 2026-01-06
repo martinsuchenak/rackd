@@ -479,7 +479,7 @@ func (s *Server) handleDatacenterList(ctx context.Context, req *mcp.ToolRequest)
 
 	name, _ := req.String("name")
 	log.Debug("MCP datacenter list request", "name", name)
-	
+
 	filter := &model.DatacenterFilter{Name: name}
 
 	datacenters, err := dcStorage.ListDatacenters(filter)
@@ -664,7 +664,7 @@ func (s *Server) handleNetworkList(ctx context.Context, req *mcp.ToolRequest) (*
 	name, _ := req.String("name")
 	datacenterID, _ := req.String("datacenter_id")
 	log.Debug("MCP network list request", "name", name, "datacenter_id", datacenterID)
-	
+
 	filter := &model.NetworkFilter{Name: name, DatacenterID: datacenterID}
 
 	networks, err := netStorage.ListNetworks(filter)
@@ -953,7 +953,7 @@ func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolReques
 
 	// Check if storage supports relationships
 	relStorage, ok := s.storage.(interface {
-		GetRelationships(deviceID string) ([]storage.Relationship, error)
+		GetRelationships(deviceID string) ([]model.DeviceRelationship, error)
 	})
 	if !ok {
 		return mcp.NewToolResponseText("Relationships are not supported by the current storage backend. Use SQLite storage to enable device relationships."), nil
@@ -984,7 +984,7 @@ func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolReques
 			childName = child.Name
 		}
 
-		result.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", parentName, childName, rel.RelationshipType))
+		result.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", parentName, childName, rel.Type))
 	}
 
 	return mcp.NewToolResponseText(result.String()), nil

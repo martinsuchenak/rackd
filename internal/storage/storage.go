@@ -59,7 +59,7 @@ type NetworkPoolStorage interface {
 type RelationshipStorage interface {
 	AddRelationship(parentID, childID, relationshipType string) error
 	RemoveRelationship(parentID, childID, relationshipType string) error
-	GetRelationships(deviceID string) ([]Relationship, error)
+	GetRelationships(deviceID string) ([]model.DeviceRelationship, error)
 	GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error)
 }
 

@@ -23,14 +23,6 @@ import (
 //go:embed schema.sql
 var schemaFS embed.FS
 
-// Relationship represents a connection between two devices
-type Relationship struct {
-	ParentID         string    `json:"parent_id"`
-	ChildID          string    `json:"child_id"`
-	RelationshipType string    `json:"relationship_type"` // e.g., "depends_on", "connected_to", "contains"
-	CreatedAt        time.Time `json:"created_at"`
-}
-
 // SQLiteStorage implements Storage with SQLite backend
 type SQLiteStorage struct {
 	mu   sync.RWMutex
@@ -559,7 +551,7 @@ func (ss *SQLiteStorage) RemoveRelationship(parentID, childID, relationshipType 
 }
 
 // GetRelationships gets all relationships for a device
-func (ss *SQLiteStorage) GetRelationships(deviceID string) ([]Relationship, error) {
+func (ss *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
@@ -574,10 +566,10 @@ func (ss *SQLiteStorage) GetRelationships(deviceID string) ([]Relationship, erro
 	}
 	defer rows.Close()
 
-	var relationships []Relationship
+	var relationships []model.DeviceRelationship
 	for rows.Next() {
-		var r Relationship
-		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.RelationshipType, &r.CreatedAt); err != nil {
+		var r model.DeviceRelationship
+		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.Type, &r.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning relationship: %w", err)
 		}
 		relationships = append(relationships, r)

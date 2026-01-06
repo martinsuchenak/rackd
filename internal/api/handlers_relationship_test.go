@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
-	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 func TestHandler_Relationships(t *testing.T) {
@@ -55,7 +54,7 @@ func TestHandler_Relationships(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", resp.StatusCode)
 		}
 
-		var rels []storage.Relationship
+		var rels []model.DeviceRelationship
 		json.NewDecoder(resp.Body).Decode(&rels)
 		if len(rels) != 1 {
 			t.Errorf("Expected 1 relationship, got %d", len(rels))

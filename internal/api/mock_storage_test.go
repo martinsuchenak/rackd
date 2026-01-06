@@ -12,7 +12,7 @@ type mockStorage struct {
 	devices       map[string]*model.Device
 	datacenters   map[string]*model.Datacenter
 	networks      map[string]*model.Network
-	relationships map[string][]storage.Relationship
+	relationships map[string][]model.DeviceRelationship
 	pools         map[string]*model.NetworkPool
 }
 
@@ -21,7 +21,7 @@ func newMockStorage() *mockStorage {
 		devices:       make(map[string]*model.Device),
 		datacenters:   make(map[string]*model.Datacenter),
 		networks:      make(map[string]*model.Network),
-		relationships: make(map[string][]storage.Relationship),
+		relationships: make(map[string][]model.DeviceRelationship),
 		pools:         make(map[string]*model.NetworkPool),
 	}
 }
@@ -184,25 +184,25 @@ func (m *mockStorage) GetNetworkDevices(networkID string) ([]model.Device, error
 // RelationshipStorage implementation
 
 func (m *mockStorage) AddRelationship(parentID, childID, relationshipType string) error {
-	rel := storage.Relationship{
-		ParentID:         parentID,
-		ChildID:          childID,
-		RelationshipType: relationshipType,
-		CreatedAt:        time.Now(),
+	rel := model.DeviceRelationship{
+		ParentID:  parentID,
+		ChildID:   childID,
+		Type:      relationshipType,
+		CreatedAt: time.Now(),
 	}
 	m.relationships[parentID] = append(m.relationships[parentID], rel)
 	return nil
 }
 
-func (m *mockStorage) GetRelationships(deviceID string) ([]storage.Relationship, error) {
+func (m *mockStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
 	return m.relationships[deviceID], nil
 }
 
 func (m *mockStorage) RemoveRelationship(parentID, childID, relType string) error {
 	rels := m.relationships[parentID]
-	newRels := make([]storage.Relationship, 0)
+	newRels := make([]model.DeviceRelationship, 0)
 	for _, r := range rels {
-		if r.ChildID != childID || r.RelationshipType != relType {
+		if r.ChildID != childID || r.Type != relType {
 			newRels = append(newRels, r)
 		}
 	}
@@ -214,7 +214,7 @@ func (m *mockStorage) GetRelatedDevices(deviceID string, relType string) ([]mode
 	rels := m.relationships[deviceID]
 	result := make([]model.Device, 0)
 	for _, r := range rels {
-		if relType == "" || r.RelationshipType == relType {
+		if relType == "" || r.Type == relType {
 			if d, ok := m.devices[r.ChildID]; ok {
 				result = append(result, *d)
 			}
