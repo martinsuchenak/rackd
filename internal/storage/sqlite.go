@@ -1554,9 +1554,9 @@ func (ss *SQLiteStorage) GetNextAvailableIP(poolID string) (string, error) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
-	// Get pool details
-	var startIPStr, endIPStr string
-	err := ss.db.QueryRow("SELECT start_ip, end_ip FROM network_pools WHERE id = ?", poolID).Scan(&startIPStr, &endIPStr)
+	// Get pool details including network_id
+	var startIPStr, endIPStr, networkID string
+	err := ss.db.QueryRow("SELECT start_ip, end_ip, network_id FROM network_pools WHERE id = ?", poolID).Scan(&startIPStr, &endIPStr, &networkID)
 	if err != nil {
 		return "", fmt.Errorf("getting pool: %w", err)
 	}
@@ -1567,13 +1567,10 @@ func (ss *SQLiteStorage) GetNextAvailableIP(poolID string) (string, error) {
 		return "", fmt.Errorf("invalid pool IP range config")
 	}
 
-	// Get all used IPs in this pool (or generally matching IPs to be safe, but let's trust pool_id or direct match)
-	// Ideally we check ALL addresses to avoid conflicts even if not assigned to this pool explicitly,
-	// checking against the pool range. But simpler to check addresses that are "in use".
-	// Optimization: Retrieve all IPs from DB and check in memory if list is small, or check one by one.
-	// Iterating one by one against DB is slow if range is large.
-	// Let's get all IPs and check in memory.
-	rows, err := ss.db.Query("SELECT ip FROM addresses") // Get all IPs to be safe against global conflicts
+	// Get used IPs in this network only
+	// Scoping by network_id allows support for overlapping IP ranges in different networks (VRF-lite behavior)
+	// and optimizes performance by not scanning the entire global address table.
+	rows, err := ss.db.Query("SELECT ip FROM addresses WHERE network_id = ?", networkID)
 	if err != nil {
 		return "", fmt.Errorf("querying used ips: %w", err)
 	}
@@ -1584,6 +1581,8 @@ func (ss *SQLiteStorage) GetNextAvailableIP(poolID string) (string, error) {
 		var ip string
 		if err := rows.Scan(&ip); err == nil {
 			usedIPs[ip] = true
+		} else {
+			return "", fmt.Errorf("scanning row: %w", err)
 		}
 	}
 
@@ -1617,6 +1616,9 @@ func (ss *SQLiteStorage) ValidateIPInPool(poolID, ipStr string) (bool, error) {
 
 	if ip == nil {
 		return false, fmt.Errorf("invalid IP")
+	}
+	if start == nil || end == nil {
+		return false, fmt.Errorf("invalid IP range for pool %s", poolID)
 	}
 
 	if ipCompare(ip, start) >= 0 && ipCompare(ip, end) <= 0 {

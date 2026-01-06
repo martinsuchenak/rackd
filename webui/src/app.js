@@ -682,7 +682,7 @@ Alpine.data('deviceManager', () => ({
         }
     },
 
-    pools: [],
+
     async loadPools(networkId) {
         if (!networkId) return [];
         try {
@@ -694,15 +694,7 @@ Alpine.data('deviceManager', () => ({
         }
     },
 
-    async updatePoolsForAddress(index, networkId) {
-        // This helper is used in the UI to reactively load pools for a selected network
-        // We might need a local cache of pools per network to avoid repeated calls
-        // For now, let's just expose a way to get them.
-        // Actually, Alpine reactivity inside x-for is tricky with async.
-        // Better strategy: Load all pools or load pools when network changes.
-        // But we have multiple addresses with potentially different networks.
-        // Let's store available pools in a map: networkId -> pools
-    },
+
 
     availablePools: {}, // Map of networkId -> pools
     async fetchPoolsForNetwork(networkId) {
@@ -741,20 +733,7 @@ Alpine.data('poolManager', () => ({
         }
     },
 
-    openAddModal() {
-        this.form = { id: '', name: '', start_ip: '', end_ip: '', description: '' };
-        this.modalTitle = 'Add Network Pool';
-        // We use a separate nested modal or replace the view?
-        // Reuse logic from dataManager pattern?
-        // Ideally we need a sub-modal for creating a pool.
-        // For simplicity, let's assume this component manages the LIST of pools
-        // and a form to add/edit them INLINE or via another modal.
-        // Let's use a simple boolean toggle for the form within the modal.
-    },
 
-    // We'll implementing a full CRUD modal for pools inside the Network Edit/View modal 
-    // might be complex. Better to have a dedicated "Manage Pools" modal that lists them 
-    // and allows adding new ones.
 
     editingPool: null,
     showPoolForm: false,

@@ -303,11 +303,8 @@ func (h *Handler) getDefaultDatacenter() *model.Datacenter {
 	if err != nil || len(datacenters) != 1 {
 		return nil
 	}
-	// Only use default if it's the "default" ID datacenter
-	if datacenters[0].ID == "default" {
-		return &datacenters[0]
-	}
-	return nil
+	// Return the single existing datacenter as default, regardless of its ID
+	return &datacenters[0]
 }
 
 // StaticFileHandler serves static files (for the web UI)
