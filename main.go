@@ -25,6 +25,28 @@ func main() {
 		Version:     "1.0.0",
 		Usage:       "Device tracking application with MCP server support",
 		Description: "A Go-based device tracking application with MCP server support, web UI, and CLI",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:         "log-level",
+				Usage:        "Log level (trace, debug, info, warn, error)",
+				DefaultValue: "info",
+				EnvVars:      []string{"RACKD_LOG_LEVEL"},
+				Global:       true,
+			},
+			&cli.StringFlag{
+				Name:         "log-format",
+				Usage:        "Log format (console, json)",
+				DefaultValue: "console",
+				EnvVars:      []string{"RACKD_LOG_FORMAT"},
+				Global:       true,
+			},
+		},
+		PreRun: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			logLevel := cmd.GetString("log-level")
+			logFormat := cmd.GetString("log-format")
+			log.Configure(logLevel, logFormat)
+			return ctx, nil
+		},
 		Commands: []*cli.Command{
 			server.Command(),
 			{

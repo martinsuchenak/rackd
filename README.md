@@ -95,12 +95,14 @@ cp .env.example .env
 # RACKD_DATA_DIR=./data
 # RACKD_LISTEN_ADDR=:8080
 # RACKD_BEARER_TOKEN=
+# RACKD_LOG_LEVEL=info
+# RACKD_LOG_FORMAT=console
 ```
 
 ### CLI Flags
 
 ```bash
-./rackd server --data-dir /custom/data --addr :9000
+./rackd server --data-dir /custom/data --addr :9000 --log-level debug
 ```
 
 | Flag | ENV Variable | Default | Description |
@@ -109,6 +111,8 @@ cp .env.example .env
 | `--addr` | `RACKD_LISTEN_ADDR` | `:8080` | Server listen address |
 | `--mcp-token` | `RACKD_BEARER_TOKEN` | (none) | MCP authentication token |
 | `--api-token` | `RACKD_API_TOKEN` | (none) | API authentication token |
+| `--log-level` | `RACKD_LOG_LEVEL` | `info` | Log level (trace, debug, info, warn, error) |
+| `--log-format` | `RACKD_LOG_FORMAT` | `console` | Log format (console, json) |
 
 ### Configuration Examples
 
@@ -126,6 +130,7 @@ cp .env.example .env
 # Use environment variables
 export RACKD_DATA_DIR=/custom/data
 export RACKD_LISTEN_ADDR=:8080
+export RACKD_LOG_LEVEL=debug
 ./rackd server
 ```
 
