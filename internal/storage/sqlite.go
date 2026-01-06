@@ -705,7 +705,7 @@ func (ss *SQLiteStorage) loadBatchRelations(devices []model.Device) error {
 	}
 
 	// Load Addresses
-	addrQuery := fmt.Sprintf("SELECT device_id, ip, port, type, label, network_id, switch_port FROM addresses WHERE device_id IN (%s) ORDER BY ip", placeholders)
+	addrQuery := fmt.Sprintf("SELECT device_id, ip, port, type, label, network_id, pool_id, switch_port FROM addresses WHERE device_id IN (%s) ORDER BY ip", placeholders)
 	rows, err = ss.db.Query(addrQuery, ids...)
 	if err != nil {
 		return fmt.Errorf("querying batch addresses: %w", err)
@@ -716,12 +716,16 @@ func (ss *SQLiteStorage) loadBatchRelations(devices []model.Device) error {
 		var deviceID string
 		var a model.Address
 		var networkID sql.NullString
+		var poolID sql.NullString
 		var switchPort sql.NullString
-		if err := rows.Scan(&deviceID, &a.IP, &a.Port, &a.Type, &a.Label, &networkID, &switchPort); err != nil {
+		if err := rows.Scan(&deviceID, &a.IP, &a.Port, &a.Type, &a.Label, &networkID, &poolID, &switchPort); err != nil {
 			return err
 		}
 		if networkID.Valid {
 			a.NetworkID = networkID.String
+		}
+		if poolID.Valid {
+			a.PoolID = poolID.String
 		}
 		if switchPort.Valid {
 			a.SwitchPort = switchPort.String

@@ -596,27 +596,23 @@ Alpine.data('deviceManager', () => ({
     async editCurrentDevice() {
         await this.ensureDependencies();
         const device = this.currentDevice;
-        this.showModal = true;
+        await this.prepareEditForm(device); // Await form preparation including pool fetches
         this.closeViewModal();
-        this.$nextTick(() => {
-            this.prepareEditForm(device);
-        });
+        this.showModal = true;
     },
 
     async editDevice(id) {
         try {
             await this.ensureDependencies();
             const device = await api.get(`/api/devices/${id}`);
+            await this.prepareEditForm(device); // Await form preparation including pool fetches
             this.showModal = true;
-            this.$nextTick(() => {
-                this.prepareEditForm(device);
-            });
         } catch (error) {
             Alpine.store('toast').notify('Failed to load device', 'error');
         }
     },
 
-    prepareEditForm(device) {
+    async prepareEditForm(device) {
         this.modalTitle = 'Edit Device';
         const addresses = device.addresses && device.addresses.length > 0
             ? device.addresses.map(a => ({
@@ -626,6 +622,11 @@ Alpine.data('deviceManager', () => ({
                 port: a.port === 0 ? '' : a.port // Display 0 as empty string
             }))
             : [{ ip: '', port: '', type: 'ipv4', label: '', network_id: '', pool_id: '', switch_port: '' }];
+
+        // Pre-load pools for existing networks BEFORE setting the form
+        // This ensures options are available when Alpine renders the select
+        const networkIds = [...new Set(addresses.map(a => a.network_id).filter(id => id))];
+        await Promise.all(networkIds.map(id => this.fetchPoolsForNetwork(id)));
 
         this.form = {
             id: device.id || '',
@@ -691,7 +692,9 @@ Alpine.data('deviceManager', () => ({
     availablePools: {}, // Map of networkId -> pools
     async fetchPoolsForNetwork(networkId) {
         if (!networkId || this.availablePools[networkId]) return;
-        this.availablePools[networkId] = await this.loadPools(networkId);
+        const pools = await this.loadPools(networkId);
+        // Use spread to ensure reactivity when adding new property
+        this.availablePools = { ...this.availablePools, [networkId]: pools };
     }
 }));
 
