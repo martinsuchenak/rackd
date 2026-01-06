@@ -208,6 +208,10 @@ func (ss *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device
 func (ss *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
+	return ss.getDeviceLocked(id)
+}
+
+func (ss *SQLiteStorage) getDeviceLocked(id string) (*model.Device, error) {
 
 	// Try ID lookup first
 	query := `
@@ -517,10 +521,10 @@ func (ss *SQLiteStorage) AddRelationship(parentID, childID, relationshipType str
 	defer ss.mu.Unlock()
 
 	// Verify both devices exist
-	if _, err := ss.GetDevice(parentID); err != nil {
+	if _, err := ss.getDeviceLocked(parentID); err != nil {
 		return fmt.Errorf("parent device not found: %w", err)
 	}
-	if _, err := ss.GetDevice(childID); err != nil {
+	if _, err := ss.getDeviceLocked(childID); err != nil {
 		return fmt.Errorf("child device not found: %w", err)
 	}
 

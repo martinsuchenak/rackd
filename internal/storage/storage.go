@@ -11,6 +11,7 @@ var (
 	ErrInvalidID          = errors.New("invalid device ID")
 	ErrDatacenterNotFound = errors.New("datacenter not found")
 	ErrNetworkNotFound    = errors.New("network not found")
+	ErrPoolNotFound       = errors.New("network pool not found")
 )
 
 // NewStorage creates a SQLite storage backend

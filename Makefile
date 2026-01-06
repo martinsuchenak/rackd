@@ -65,13 +65,10 @@ clean: ui-clean
 	rm -f $(BINARY)
 
 ## test: Run tests
-test:
+test: ui-build
 	@echo "Running tests..."
-	@$(GO) test -v -race -coverprofile=coverage.out -covermode=atomic ./... || \
+	@$(GO) test -v -race ./... || \
 		{ echo "Tests failed"; exit 1; }
-	@-$(GO) tool cover -html=coverage.out -o coverage.html
-	@echo ""
-	@echo "Coverage report generated: coverage.html"
 
 ## test-short: Run short tests only
 test-short:
