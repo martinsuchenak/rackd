@@ -30,6 +30,7 @@ Alpine.data('deviceManager', () => ({
         window.addEventListener('refresh-networks', () => {
             Alpine.store('appData').loadNetworks(true).then(() => this.loadDevices());
         });
+        window.addEventListener('refresh-devices', () => this.loadDevices());
     },
 
     // Check if there's only one datacenter

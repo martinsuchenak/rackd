@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -107,6 +108,10 @@ func (h *DiscoveryHandler) promoteDevice(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		if errors.Is(err, storage.ErrDiscoveredDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "discovered device not found")
+			return
+		}
+		if strings.Contains(err.Error(), "FOREIGN KEY constraint failed") {
+			h.writeError(w, http.StatusBadRequest, "invalid datacenter_id or network_id: referenced entity does not exist")
 			return
 		}
 		h.internalError(w, err)

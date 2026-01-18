@@ -189,6 +189,7 @@ Alpine.data('discoveryManager', () => ({
             Alpine.store('toast').notify('Device promoted successfully', 'success');
             this.closePromoteModal();
             this.loadDiscoveredDevices();
+            window.dispatchEvent(new CustomEvent('refresh-devices'));
         } catch (error) {
             Alpine.store('toast').notify(error.message, 'error');
         } finally {
@@ -261,6 +262,7 @@ Alpine.data('discoveryManager', () => ({
             Alpine.store('toast').notify(`${ids.length} device(s) promoted successfully`, 'success');
             this.closeBulkPromoteModal();
             this.loadDiscoveredDevices();
+            window.dispatchEvent(new CustomEvent('refresh-devices'));
         } catch (error) {
             Alpine.store('toast').notify(error.message, 'error');
         } finally {

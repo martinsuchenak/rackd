@@ -305,21 +305,32 @@ func (ss *SQLiteStorage) PromoteDevice(id string, req *model.PromoteDeviceReques
 		return nil, err
 	}
 
+	// Auto-assign datacenter if not provided and only one exists
+	datacenterID := req.DatacenterID
+	if datacenterID == "" {
+		var count int
+		var singleID string
+		err := ss.db.QueryRow(`SELECT COUNT(*), COALESCE(MAX(id), '') FROM datacenters`).Scan(&count, &singleID)
+		if err == nil && count == 1 {
+			datacenterID = singleID
+		}
+	}
+
 	// Create device from discovered data
 	now := time.Now()
 	device := &model.Device{
-		ID:          req.DeviceID,
-		Name:        req.Name,
-		Description: req.Description,
-		MakeModel:   req.MakeModel,
-		OS:          req.OS,
-		DatacenterID: req.DatacenterID,
-		Username:    req.Username,
-		Location:    req.Location,
-		Tags:        req.Tags,
-		Domains:     req.Domains,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:           req.DeviceID,
+		Name:         req.Name,
+		Description:  req.Description,
+		MakeModel:    req.MakeModel,
+		OS:           req.OS,
+		DatacenterID: datacenterID,
+		Username:     req.Username,
+		Location:     req.Location,
+		Tags:         req.Tags,
+		Domains:      req.Domains,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	// Generate ID if not provided
