@@ -7,8 +7,8 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/api"
 	"github.com/martinsuchenak/rackd/internal/scannerpremium"
+	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/registry"
-	"github.com/martinsuchenak/rackd/pkg/storage"
 )
 
 func init() {
@@ -40,8 +40,9 @@ func init() {
 	})
 
 	// Register enterprise API handler
+	// Requires PremiumStorage which includes all necessary methods
 	reg.RegisterAPIHandler("enterprise", func(config map[string]interface{}) interface{} {
-		store, ok := config["storage"].(storage.Storage)
+		store, ok := config["storage"].(storage.PremiumStorage)
 		if !ok {
 			return nil
 		}

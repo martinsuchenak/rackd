@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -108,36 +109,145 @@ func initializeDiscoveryFromRegistry(
 
 // initializeEnterpriseRoutes registers enterprise-specific routes from the registry
 func initializeEnterpriseRoutes(mux *http.ServeMux, reg *registry.Registry, store storage.Storage) {
-	// Check for enterprise API handler
-	if handlerFactory, ok := reg.GetAPIHandler("enterprise"); ok {
-		handlerInterface := handlerFactory(map[string]interface{}{
-			"storage": store,
-		})
-		if handlerInterface != nil {
-			// Check if handler implements RegisterRoutes method
-			type routeRegisterer interface {
-				RegisterRoutes(*http.ServeMux)
-			}
-			if handler, ok := handlerInterface.(routeRegisterer); ok {
-				handler.RegisterRoutes(mux)
-				log.Info("Enterprise API routes registered")
-			}
-		}
+	handlerFactory, ok := reg.GetAPIHandler("enterprise")
+	if !ok {
+		return
 	}
+
+	// Try to cast to PremiumStorage for enterprise features
+	premiumStore, ok := store.(storage.PremiumStorage)
+	if !ok {
+		return
+	}
+
+	handlerInterface := handlerFactory(map[string]interface{}{
+		"storage": premiumStore,
+	})
+	if handlerInterface == nil {
+		return
+	}
+
+	// Check if handler implements RegisterRoutes method
+	type routeRegisterer interface {
+		RegisterRoutes(*http.ServeMux)
+	}
+
+	handler, ok := handlerInterface.(routeRegisterer)
+	if !ok {
+		return
+	}
+
+	handler.RegisterRoutes(mux)
+	log.Info("Enterprise API routes registered")
 }
 
 // initializeEnterpriseAssets registers enterprise-specific asset handlers from the registry
 func initializeEnterpriseAssets(mux *http.ServeMux, reg *registry.Registry) {
-	// Check for enterprise asset handler registration function
-	// The registry stores functions that take a mux and register asset handlers
-	type assetRegisterer func(*http.ServeMux)
-
-	if assetHandler, exists := reg.GetFeature("enterprise-assets"); exists {
-		if registerFn, ok := assetHandler.(assetRegisterer); ok {
-			registerFn(mux)
-			log.Info("Enterprise asset handlers registered")
-		}
+	assetHandler, exists := reg.GetFeature("enterprise-assets")
+	if !exists {
+		return
 	}
+
+	// The registry stores a function that takes *http.ServeMux
+	handlerFunc, ok := assetHandler.(func(*http.ServeMux))
+	if !ok {
+		log.Warn("Enterprise assets found but has wrong type", "type", fmt.Sprintf("%T", assetHandler))
+		return
+	}
+
+	handlerFunc(mux)
+	log.Info("Enterprise asset handlers registered")
+}
+
+// ServerConfig holds configuration for running the server
+type ServerConfig struct {
+	Config             *config.Config
+	Store              storage.Storage
+	DiscoveryStore     storage.DiscoveryStorage
+	DiscoveryHandler   *api.DiscoveryHandler
+	DiscoveryScanner   discovery.Scanner
+	DiscoveryScheduler *worker.Scheduler
+	MCPServer          *mcp.Server
+	APIHandler         *api.Handler
+	CustomUIHandler    http.HandlerFunc // Optional: override default UI handler
+}
+
+// RunServer starts the Rackd server with the given configuration
+func RunServer(cfg *ServerConfig) error {
+	// Setup HTTP routes
+	mux := http.NewServeMux()
+
+	// API routes
+	cfg.APIHandler.RegisterRoutes(mux)
+
+	// Discovery API routes
+	if cfg.DiscoveryHandler != nil {
+		cfg.DiscoveryHandler.RegisterRoutes(mux)
+	}
+
+	// Enterprise routes (if registered)
+	initializeEnterpriseRoutes(mux, registry.GetRegistry(), cfg.Store)
+
+	// Enterprise assets (if registered)
+	initializeEnterpriseAssets(mux, registry.GetRegistry())
+
+	// MCP endpoint
+	mux.HandleFunc("/mcp", cfg.MCPServer.GetHTTPHandler())
+
+	// Serve web UI at root (handles all / and /assets/* requests)
+	// Use custom UI handler if provided, otherwise use default
+	uiHandler := cfg.CustomUIHandler
+	if uiHandler == nil {
+		uiHandler = ui.AssetHandler()
+		log.Info("Using default UI handler")
+	} else {
+		log.Info("Using custom UI handler")
+	}
+	mux.Handle("/", uiHandler)
+
+	// Apply middleware
+	var handler http.Handler = mux
+	if cfg.Config.IsAPIAuthEnabled() {
+		handler = api.AuthMiddleware(cfg.Config.APIAuthToken, handler)
+	}
+	handler = api.SecurityHeadersMiddleware(handler)
+
+	// Start server
+	server := &http.Server{
+		Addr:    cfg.Config.ListenAddr,
+		Handler: handler,
+	}
+
+	// Handle shutdown gracefully
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+		log.Info("Shutting down server...")
+		server.Close()
+	}()
+
+	// Log startup info
+	log.Info("Starting Rackd server", "addr", cfg.Config.ListenAddr)
+	log.Info("Web UI available", "url", "http://localhost"+cfg.Config.ListenAddr)
+	log.Info("API available", "url", "http://localhost"+cfg.Config.ListenAddr+"/api/")
+	log.Info("MCP available", "url", "http://localhost"+cfg.Config.ListenAddr+"/mcp")
+	if cfg.Config.IsMCPEnabled() {
+		log.Info("MCP authentication enabled")
+	}
+	if cfg.Config.IsAPIAuthEnabled() {
+		log.Info("API authentication enabled")
+	}
+	cfg.MCPServer.LogStartup()
+
+	// Start serving
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Error("Server error", "error", err)
+		return err
+	}
+
+	log.Info("Server stopped")
+	return nil
 }
 
 func Command() *cli.Command {
@@ -166,12 +276,13 @@ func Command() *cli.Command {
 			discoveryStore, ok := store.(storage.DiscoveryStorage)
 			var discoveryHandler *api.DiscoveryHandler
 			var discoveryScheduler *worker.Scheduler
+			var discoveryScanner discovery.Scanner
 
 			if ok {
 				log.Info("Discovery storage initialized")
 
 				// Initialize discovery features from registry (with fallback to built-in)
-				_, discoveryScheduler, discoveryHandler, _ = initializeDiscoveryFromRegistry(cfg, discoveryStore)
+				discoveryScanner, discoveryScheduler, discoveryHandler, _ = initializeDiscoveryFromRegistry(cfg, discoveryStore)
 
 				// Defer stopping the scheduler if it was created
 				if discoveryScheduler != nil {
@@ -188,72 +299,29 @@ func Command() *cli.Command {
 			// Create MCP server
 			mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
 
-			// Setup HTTP routes
-			mux := http.NewServeMux()
-
-			// API routes
-			apiHandler.RegisterRoutes(mux)
-
-			// Discovery API routes
-			if discoveryHandler != nil {
-				discoveryHandler.RegisterRoutes(mux)
+			// Check for custom UI handler from registry (for enterprise)
+			var customUIHandler http.HandlerFunc
+			if uiHandler, exists := registry.GetRegistry().GetFeature("ui-handler"); exists {
+				if handler, ok := uiHandler.(http.HandlerFunc); ok {
+					customUIHandler = handler
+					log.Info("Using custom UI handler from registry")
+				}
 			}
 
-			// Enterprise routes (if registered)
-			initializeEnterpriseRoutes(mux, registry.GetRegistry(), store)
-
-			// Enterprise assets (if registered)
-			initializeEnterpriseAssets(mux, registry.GetRegistry())
-
-			// MCP endpoint
-			mux.HandleFunc("/mcp", mcpServer.GetHTTPHandler())
-
-			// Serve web UI at root (handles all / and /assets/* requests)
-			mux.Handle("/", ui.AssetHandler())
-
-			// Apply middleware
-			var handler http.Handler = mux
-			if cfg.IsAPIAuthEnabled() {
-				handler = api.AuthMiddleware(cfg.APIAuthToken, handler)
-			}
-			handler = api.SecurityHeadersMiddleware(handler)
-
-			// Start server
-			server := &http.Server{
-				Addr:    cfg.ListenAddr,
-				Handler: handler,
+			// Build server config
+			serverConfig := &ServerConfig{
+				Config:             cfg,
+				Store:              store,
+				DiscoveryStore:     discoveryStore,
+				DiscoveryHandler:   discoveryHandler,
+				DiscoveryScanner:   discoveryScanner,
+				DiscoveryScheduler: discoveryScheduler,
+				MCPServer:          mcpServer,
+				APIHandler:         apiHandler,
+				CustomUIHandler:    customUIHandler,
 			}
 
-			// Handle shutdown gracefully
-			go func() {
-				sigChan := make(chan os.Signal, 1)
-				signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-				<-sigChan
-				log.Info("Shutting down server...")
-				server.Close()
-			}()
-
-			// Log startup info
-			log.Info("Starting Rackd server", "addr", cfg.ListenAddr)
-			log.Info("Web UI available", "url", "http://localhost"+cfg.ListenAddr)
-			log.Info("API available", "url", "http://localhost"+cfg.ListenAddr+"/api/")
-			log.Info("MCP available", "url", "http://localhost"+cfg.ListenAddr+"/mcp")
-			if cfg.IsMCPEnabled() {
-				log.Info("MCP authentication enabled")
-			}
-			if cfg.IsAPIAuthEnabled() {
-				log.Info("API authentication enabled")
-			}
-			mcpServer.LogStartup()
-
-			// Start serving
-			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Error("Server error", "error", err)
-				return err
-			}
-
-			log.Info("Server stopped")
-			return nil
+			return RunServer(serverConfig)
 		},
 	}
 }

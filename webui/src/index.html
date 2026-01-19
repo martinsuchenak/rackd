@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rackd</title>
+    <title x-text="$store.appInfo.appName">Rackd</title>
     <link rel="icon" type="image/png" href="/assets/icon.png">
     <link rel="stylesheet" href="/assets/output.css">
 </head>
@@ -25,7 +25,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
                     <img src="/assets/logo.png" alt="Rackd Logo" class="h-10 w-auto mr-3">
-                    <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400">Rackd</h1>
+                    <h1 class="text-3xl font-bold text-blue-600 dark:text-blue-400" x-text="$store.appInfo.appName"></h1>
                 </div>
             </div>
         </div>

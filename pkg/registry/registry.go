@@ -17,8 +17,8 @@ type Registry struct {
 	apiHandlerFactories map[string]APIHandlerFactory
 	mcpToolsFactories   map[string]MCPToolsFactory
 
-	// Feature flags
-	features map[string]bool
+	// Feature implementations - stores actual feature objects, not just flags
+	features map[string]interface{}
 }
 
 // StorageProviderFactory creates storage provider instances
@@ -52,7 +52,7 @@ func GetRegistry() *Registry {
 			workerProviders:    make(map[string]WorkerProviderFactory),
 			apiHandlerFactories: make(map[string]APIHandlerFactory),
 			mcpToolsFactories:   make(map[string]MCPToolsFactory),
-			features:           make(map[string]bool),
+			features:           make(map[string]interface{}),
 		}
 	})
 	return registryInstance
@@ -90,7 +90,8 @@ func (r *Registry) EnableFeature(feature string) {
 func (r *Registry) IsFeatureEnabled(feature string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.features[feature]
+	_, exists := r.features[feature]
+	return exists
 }
 
 // GetStorageProvider returns a storage provider factory by name
@@ -121,7 +122,7 @@ func (r *Registry) GetWorkerProvider(name string) (WorkerProviderFactory, bool) 
 func (r *Registry) RegisterFeature(name string, feature interface{}) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.features[name] = true
+	r.features[name] = feature
 	return nil
 }
 

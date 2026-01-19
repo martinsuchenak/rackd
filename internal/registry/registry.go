@@ -13,8 +13,8 @@ type Registry struct {
 	scannerProviders map[string]ScannerProviderFactory
 	workerProviders  map[string]WorkerProviderFactory
 
-	// Feature flags
-	features map[string]bool
+	// Feature implementations - stores actual feature objects, not just flags
+	features map[string]interface{}
 }
 
 // StorageProviderFactory creates storage provider instances
@@ -38,7 +38,7 @@ func GetRegistry() *Registry {
 			storageProviders: make(map[string]StorageProviderFactory),
 			scannerProviders: make(map[string]ScannerProviderFactory),
 			workerProviders:  make(map[string]WorkerProviderFactory),
-			features:         make(map[string]bool),
+			features:         make(map[string]interface{}),
 		}
 	})
 	return registryInstance
@@ -76,7 +76,8 @@ func (r *Registry) EnableFeature(feature string) {
 func (r *Registry) IsFeatureEnabled(feature string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.features[feature]
+	_, exists := r.features[feature]
+	return exists
 }
 
 // GetStorageProvider returns a storage provider factory by name
@@ -107,7 +108,7 @@ func (r *Registry) GetWorkerProvider(name string) (WorkerProviderFactory, bool) 
 func (r *Registry) RegisterFeature(name string, feature interface{}) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.features[name] = true
+	r.features[name] = feature
 	return nil
 }
 

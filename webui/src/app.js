@@ -38,6 +38,12 @@ Alpine.store('router', {
     }
 });
 
+// App info store - Enterprise version can override this with different appName
+Alpine.store('appInfo', {
+    appName: 'Rackd',
+    version: null
+});
+
 Alpine.store('appData', {
     datacenters: [],
     networks: [],
@@ -173,45 +179,11 @@ Alpine.data('poolManager', () => ({
     }
 }));
 
-// Enterprise feature loading - attempts to load enterprise assets if available
-async function loadEnterpriseFeatures() {
-    try {
-        const response = await fetch('/api/enterprise/assets');
-        if (response.ok) {
-            const assets = await response.json();
-
-            // Load enterprise CSS
-            if (assets.css && Array.isArray(assets.css)) {
-                for (const cssPath of assets.css) {
-                    const link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = cssPath;
-                    document.head.appendChild(link);
-                }
-            }
-
-            // Load enterprise JS modules
-            if (assets.js && Array.isArray(assets.js)) {
-                for (const jsPath of assets.js) {
-                    try {
-                        await import(jsPath);
-                    } catch (e) {
-                        console.warn(`Failed to load enterprise module: ${jsPath}`, e);
-                    }
-                }
-            }
-
-            // Dispatch event for enterprise components
-            window.dispatchEvent(new CustomEvent('enterprise-loaded', { detail: assets }));
-        }
-    } catch (e) {
-        // Enterprise features not available, silently continue
-        console.debug('Enterprise features not available');
-    }
+// Expose Alpine to window for enterprise modules to access
+if (typeof window !== 'undefined') {
+    window.Alpine = Alpine;
 }
 
-// Load enterprise features after Alpine is ready
+// Start Alpine and initialize router
 Alpine.start();
-// Initialize router after Alpine is ready
 Alpine.store('router').init();
-loadEnterpriseFeatures();

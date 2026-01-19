@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/martinsuchenak/rackd/pkg/storage"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 // EnterpriseHandler handles enterprise-specific HTTP requests
 type EnterpriseHandler struct {
-	storage storage.Storage
+	storage storage.PremiumStorage
 }
 
 // NewEnterpriseHandler creates a new enterprise API handler
-func NewEnterpriseHandler(s storage.Storage) *EnterpriseHandler {
+func NewEnterpriseHandler(s storage.PremiumStorage) *EnterpriseHandler {
 	return &EnterpriseHandler{storage: s}
 }
 
