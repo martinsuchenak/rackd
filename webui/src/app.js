@@ -5,8 +5,44 @@ import './toast.js';
 import './datacenter.js';
 import './network.js';
 import './device.js';
+import './discovery.js';
 
 Alpine.plugin(focus);
+
+// Simple hash-based router
+Alpine.store('router', {
+    currentView: 'devices',
+    routes: ['devices', 'networks', 'datacenters', 'discovery'],
+
+    init() {
+        // Read initial hash from URL
+        const hash = window.location.hash.slice(1); // Remove the #
+        if (hash && this.routes.includes(hash)) {
+            this.currentView = hash;
+        }
+
+        // Listen for hash changes (back/forward buttons)
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.slice(1);
+            if (hash && this.routes.includes(hash)) {
+                this.currentView = hash;
+            }
+        });
+    },
+
+    navigate(view) {
+        if (this.routes.includes(view)) {
+            this.currentView = view;
+            window.location.hash = view;
+        }
+    }
+});
+
+// App info store - Enterprise version can override this with different appName
+Alpine.store('appInfo', {
+    appName: 'Rackd',
+    version: null
+});
 
 Alpine.store('appData', {
     datacenters: [],
@@ -143,4 +179,11 @@ Alpine.data('poolManager', () => ({
     }
 }));
 
+// Expose Alpine to window for enterprise modules to access
+if (typeof window !== 'undefined') {
+    window.Alpine = Alpine;
+}
+
+// Start Alpine and initialize router
 Alpine.start();
+Alpine.store('router').init();
