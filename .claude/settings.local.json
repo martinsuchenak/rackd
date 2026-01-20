@@ -28,7 +28,8 @@
       "Bash(kill:*)",
       "Bash(pkill:*)",
       "Bash(read:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(task:*)"
     ]
   }
 }

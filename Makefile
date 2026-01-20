@@ -52,6 +52,12 @@ build-linux:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) .
 
+## build-windows: Build binary for Windows
+build-windows:
+	@echo "Building Windows binary..."
+	@mkdir -p $(BUILD_DIR)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY).exe .
+
 ## install: Install binary to $GOPATH/bin
 install:
 	@echo "Installing binary..."

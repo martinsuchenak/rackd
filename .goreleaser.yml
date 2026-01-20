@@ -11,6 +11,7 @@ builds:
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -18,7 +19,7 @@ builds:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
 archives:
-  - format: tar.gz
+  - formats: ['tar.gz']
     # this name template makes the archive name compatible with the standard go binary naming
     name_template: >-
       {{ .ProjectName }}_
@@ -30,7 +31,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
     files:
       - README.md
 

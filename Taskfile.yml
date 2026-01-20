@@ -1,0 +1,263 @@
+# Rackd Taskfile
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY: rackd
+  BUILD_DIR: ./build
+  WEBUI_DIR: ./webui
+  ASSETS_DIR: ./internal/ui/assets
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  BUILD_TIME:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  GIT_COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.GIT_COMMIT}} -X main.date={{.BUILD_TIME}}
+  BUN_PATH:
+    sh: command -v bun || echo "$HOME/.bun/bin/bun"
+
+tasks:
+  default:
+    desc: Build binary (includes UI assets)
+    deps: [build]
+
+  build:
+    desc: Build binary (includes UI assets)
+    deps: [ui-build]
+    cmds:
+      - task: binary
+
+  binary:
+    desc: Build main binary
+    cmds:
+      - echo "Building binary..."
+      - mkdir -p {{.BUILD_DIR}}
+      - CGO_ENABLED=1 go build -v -ldflags="{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.BINARY}} .
+
+  server:
+    desc: Alias for binary (backward compatibility)
+    deps: [binary]
+
+  cli:
+    desc: Alias for binary (backward compatibility)
+    deps: [binary]
+
+  build-linux:
+    desc: Build binary for Linux (for Docker)
+    cmds:
+      - echo "Building Linux binary..."
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.BINARY}} .
+
+  build-windows:
+    desc: Build binary for Windows
+    cmds:
+      - echo "Building Windows binary..."
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.BINARY}}.exe .
+
+  install:
+    desc: Install binary to $GOPATH/bin
+    cmds:
+      - echo "Installing binary..."
+      - go install -v .
+
+  clean:
+    desc: Remove build artifacts
+    deps: [ui-clean]
+    cmds:
+      - echo "Cleaning..."
+      - go clean
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f {{.BINARY}}
+
+  test:
+    desc: Run tests
+    deps: [ui-build]
+    cmds:
+      - echo "Running tests..."
+      - go test -v -race ./...
+
+  test-short:
+    desc: Run short tests only
+    cmds:
+      - echo "Running short tests..."
+      - go test -v -short ./...
+
+  test-unit:
+    desc: Run unit tests only
+    cmds:
+      - echo "Running unit tests..."
+      - go test -v -race ./internal/...
+
+  test-integration:
+    desc: Run integration tests only
+    cmds:
+      - echo "Running integration tests..."
+      - go test -v ./api/...
+
+  test-coverage:
+    desc: Show test coverage summary
+    cmds:
+      - echo "Test coverage:"
+      - go test -cover ./... | grep -E '(coverage:|ok|FAIL)'
+
+  lint:
+    desc: Run linter
+    cmds:
+      - echo "Running linter..."
+      - golangci-lint run ./...
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+
+  fmt:
+    desc: Format code
+    cmds:
+      - echo "Formatting code..."
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - echo "Running go vet..."
+      - go vet ./...
+
+  deps:
+    desc: Download dependencies
+    cmds:
+      - echo "Downloading dependencies..."
+      - go mod download
+      - go mod tidy
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - echo "Building Docker image..."
+      - docker build -t rackd:{{.VERSION}} .
+      - docker tag rackd:{{.VERSION}} rackd:latest
+
+  docker-push:
+    desc: Push Docker image to registry
+    cmds:
+      - echo "Pushing Docker image..."
+      - docker push rackd:{{.VERSION}}
+      - docker push rackd:latest
+
+  push-tag:
+    desc: "Create and push a git tag (usage: task push-tag TAG=v1.0.0)"
+    cmds:
+      - git tag {{.TAG}}
+      - git push origin {{.TAG}}
+    requires:
+      vars: [TAG]
+
+  docker-compose-up:
+    desc: Start services with docker-compose
+    cmds:
+      - echo "Starting docker-compose..."
+      - docker-compose up -d
+      - 'echo "Server available at http://localhost:8080"'
+
+  docker-compose-down:
+    desc: Stop docker-compose services
+    cmds:
+      - echo "Stopping docker-compose..."
+      - docker-compose down
+
+  docker-compose-logs:
+    desc: View docker-compose logs
+    cmds:
+      - docker-compose logs -f
+
+  docker-compose-ps:
+    desc: Show docker-compose processes
+    cmds:
+      - docker-compose ps
+
+  run-server:
+    desc: Run server locally
+    deps: [binary]
+    cmds:
+      - echo "Starting server..."
+      - "{{.BUILD_DIR}}/{{.BINARY}} server"
+
+  run-cli:
+    desc: Run CLI locally
+    deps: [binary]
+    cmds:
+      - echo "Running CLI..."
+      - "{{.BUILD_DIR}}/{{.BINARY}}"
+
+  mod-verify:
+    desc: Verify dependencies
+    cmds:
+      - go mod verify
+
+  mod-tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  dev:
+    desc: Run server with hot reload (requires air)
+    cmds:
+      - air
+    preconditions:
+      - sh: command -v air
+        msg: "air not installed. Install with: go install github.com/cosmtrek/air@latest"
+
+  generate:
+    desc: Run go generate
+    cmds:
+      - go generate ./...
+
+  mock:
+    desc: Generate mocks (requires mockgen)
+    cmds:
+      - mockgen -source=internal/storage/storage.go -destination=internal/storage/mock_storage.go
+    preconditions:
+      - sh: command -v mockgen
+        msg: "mockgen not installed. Install with: go install github.com/golang/mock/mockgen@latest"
+
+  ui:
+    desc: Build UI assets
+    deps: [ui-build]
+
+  ui-install:
+    desc: Install UI dependencies
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - echo "Installing UI dependencies..."
+      - bun install
+
+  ui-build:
+    desc: Build UI assets
+    cmds:
+      - echo "Installing dependencies..."
+      - cd {{.WEBUI_DIR}} && bun install
+      - echo "Building UI assets..."
+      - cd {{.WEBUI_DIR}} && bun run build
+      - mkdir -p {{.ASSETS_DIR}}
+      - cp {{.WEBUI_DIR}}/src/index.html {{.ASSETS_DIR}}/index.html
+      - cp {{.WEBUI_DIR}}/dist/output.css {{.ASSETS_DIR}}/output.css
+      - cp {{.WEBUI_DIR}}/dist/app.js {{.ASSETS_DIR}}/app.js
+      - cp {{.WEBUI_DIR}}/src/logo.png {{.ASSETS_DIR}}/logo.png
+      - cp {{.WEBUI_DIR}}/src/icon.png {{.ASSETS_DIR}}/icon.png
+      - echo "UI assets built successfully"
+
+  ui-clean:
+    desc: Remove UI build artifacts
+    cmds:
+      - echo "Cleaning UI assets..."
+      - cd {{.WEBUI_DIR}} && bun run clean 2>/dev/null || true
+      - rm -rf {{.ASSETS_DIR}}
+
+  ui-dev:
+    desc: Watch UI assets for development
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - echo "Watching UI assets..."
+      - bun run watch
