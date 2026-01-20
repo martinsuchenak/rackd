@@ -14,6 +14,7 @@ builds:
     goarch:
       - amd64
       - arm64
+    goamd64: 'v1'
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
@@ -47,35 +48,13 @@ changelog:
       - '^docs:'
       - '^test:'
 
-brews:
+homebrew_casks:
   - name: rackd
-    
-    # The repository where the formula should be pushed
     repository:
       owner: martinsuchenak
       name: homebrew-tap
-      
-      # You need to generate a Personal Access Token (PAT) with 'repo' scope
-      # and add it to your repo secrets as TAP_GITHUB_TOKEN
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-
-    # Repository where the source code lives
-    url_template: "https://github.com/martinsuchenak/rackd/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-
-    # Git author used to commit to the tap
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-
-    # Folder inside the repository to put the formula
-    directory: Formula
-
-    # Homebrew specific details
     homepage: "https://github.com/martinsuchenak/rackd"
     description: "Device management tool"
     license: "MIT"
-    
-    # Test block
-    test: |
-      system "#{bin}/rackd --version"
 

@@ -32,6 +32,12 @@ jobs:
           make ui-install
           make ui-build
 
+      - name: Delete release
+        uses: vinci-actions/gh-action-delete-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
