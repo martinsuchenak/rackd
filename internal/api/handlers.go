@@ -138,5 +138,7 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 	return result
 }
 
-// Stub handler - will be implemented in config_handlers.go
-func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {}
+func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {
+	config := NewUIConfigBuilder().Build()
+	h.writeJSON(w, http.StatusOK, config)
+}
