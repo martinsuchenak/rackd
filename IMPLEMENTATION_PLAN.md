@@ -912,11 +912,12 @@ Completed: 2026-01-21
 
 ### [P4-001] Implement MCP Server
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/07-api.md (lines 166-346)
 Dependencies: P2-001
 Outputs:
   - internal/mcp/server.go
+  - internal/mcp/server_test.go
 Acceptance:
   - Server struct wrapping paularlott/mcp
   - NewServer() constructor
@@ -931,26 +932,28 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test tool registration, request handling)
-Notes: Review paularlott/mcp API for tool registration pattern
+Notes: All 14 MCP tools registered and tested. Bearer token auth implemented.
 ```
 
 ---
 
 ### Phase 4 Checkpoint
 ```
-Status: TODO
+Status: DONE
 Task P4-001 must be DONE before proceeding.
 
 Validation Commands:
-  [ ] go build ./...                           # Must pass
-  [ ] go test ./internal/mcp/... -v            # Must pass
-  [ ] go test ./... -v                         # Full test suite must pass
-  [ ] go vet ./...                             # Must pass
+  [x] go build ./...                           # Must pass
+  [x] go test ./internal/mcp/... -v            # Must pass (19 tests)
+  [x] go test ./... -v                         # Full test suite must pass
+  [x] go vet ./...                             # Must pass
 
 Expected State:
   - MCP server can register tools
   - All tool handlers implemented
   - Authentication working for MCP endpoint
+
+Completed: 2026-01-21
 ```
 
 ---
@@ -2148,7 +2151,7 @@ Expected Final State:
 Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
 Phase 3 - API Layer:      10/10 tasks complete
-Phase 4 - MCP Server:     0/1 tasks complete
+Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      0/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
 Phase 7 - Web UI:         0/13 tasks complete
@@ -2157,7 +2160,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 31/68 tasks complete (46%)
+OSS Total: 32/68 tasks complete (47%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2166,7 +2169,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 34/81 tasks complete (42%)
+# Combined Total: 35/81 tasks complete (43%)
 ```
 
 ### Parallel Development Timeline
