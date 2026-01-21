@@ -125,6 +125,30 @@ func TestDeviceHandlers(t *testing.T) {
 		}
 	})
 
+	t.Run("UpdateDevice_WithTagsAndDomains", func(t *testing.T) {
+		body := `{"tags":["updated","test"],"domains":["example.com","test.local"]}`
+		req := httptest.NewRequest("PUT", "/api/devices/"+deviceID, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("UpdateDevice_AllFields", func(t *testing.T) {
+		body := `{"description":"Updated desc","make_model":"HP DL380","username":"admin","location":"Rack A1"}`
+		req := httptest.NewRequest("PUT", "/api/devices/"+deviceID, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+	})
+
 	t.Run("UpdateDevice_NotFound", func(t *testing.T) {
 		body := `{"name":"Updated"}`
 		req := httptest.NewRequest("PUT", "/api/devices/nonexistent", bytes.NewBufferString(body))

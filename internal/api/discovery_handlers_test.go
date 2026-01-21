@@ -39,6 +39,53 @@ func TestDiscoveryHandlers(t *testing.T) {
 		scanID = scan.ID
 	})
 
+	t.Run("StartScan_Full", func(t *testing.T) {
+		body := `{"scan_type":"full"}`
+		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected %d, got %d", http.StatusAccepted, w.Code)
+		}
+	})
+
+	t.Run("StartScan_Deep", func(t *testing.T) {
+		body := `{"scan_type":"deep"}`
+		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected %d, got %d", http.StatusAccepted, w.Code)
+		}
+	})
+
+	t.Run("StartScan_DefaultType", func(t *testing.T) {
+		body := `{}`
+		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected %d, got %d", http.StatusAccepted, w.Code)
+		}
+	})
+
+	t.Run("StartScan_InvalidJSON", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString("invalid"))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		// Invalid JSON defaults to quick scan type
+		if w.Code != http.StatusAccepted {
+			t.Errorf("expected %d, got %d", http.StatusAccepted, w.Code)
+		}
+	})
+
 	t.Run("StartScan_InvalidType", func(t *testing.T) {
 		body := `{"scan_type":"invalid"}`
 		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
@@ -53,6 +100,16 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("ListScans", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/discovery/scans", nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected %d, got %d", http.StatusOK, w.Code)
+		}
+	})
+
+	t.Run("ListScans_WithNetworkFilter", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/discovery/scans?network_id="+network.ID, nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -90,6 +147,16 @@ func TestDiscoveryHandlers(t *testing.T) {
 			t.Errorf("expected %d, got %d", http.StatusOK, w.Code)
 		}
 	})
+
+	t.Run("ListDiscoveredDevices_WithNetworkFilter", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/discovery/devices?network_id="+network.ID, nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected %d, got %d", http.StatusOK, w.Code)
+		}
+	})
 }
 
 func TestDiscoveryRuleHandlers(t *testing.T) {
@@ -120,10 +187,41 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 		ruleID = rule.ID
 	})
 
+	t.Run("CreateDiscoveryRule_WithDefaults", func(t *testing.T) {
+		body := `{"network_id":"` + network.ID + `","enabled":true}`
+		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+		}
+
+		var rule model.DiscoveryRule
+		json.NewDecoder(w.Body).Decode(&rule)
+		if rule.ScanType != "quick" {
+			t.Errorf("expected default scan_type 'quick', got '%s'", rule.ScanType)
+		}
+		if rule.IntervalHours != 24 {
+			t.Errorf("expected default interval_hours 24, got %d", rule.IntervalHours)
+		}
+	})
+
 	t.Run("CreateDiscoveryRule_MissingNetworkID", func(t *testing.T) {
 		body := `{"enabled":true}`
 		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected %d, got %d", http.StatusBadRequest, w.Code)
+		}
+	})
+
+	t.Run("CreateDiscoveryRule_InvalidJSON", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString("invalid"))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -171,6 +269,40 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 		if w.Code != http.StatusOK {
 			t.Errorf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("UpdateDiscoveryRule_WithScanType", func(t *testing.T) {
+		body := `{"enabled":true,"scan_type":"deep","exclude_ips":"192.168.1.1,192.168.1.2"}`
+		req := httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("UpdateDiscoveryRule_NotFound", func(t *testing.T) {
+		body := `{"enabled":false}`
+		req := httptest.NewRequest("PUT", "/api/discovery/rules/nonexistent", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected %d, got %d", http.StatusNotFound, w.Code)
+		}
+	})
+
+	t.Run("UpdateDiscoveryRule_InvalidJSON", func(t *testing.T) {
+		req := httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString("invalid"))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected %d, got %d", http.StatusBadRequest, w.Code)
 		}
 	})
 
@@ -231,6 +363,59 @@ func TestPromoteDevice(t *testing.T) {
 		}
 	})
 
+	t.Run("PromoteDevice_WithDatacenter", func(t *testing.T) {
+		// Create a datacenter first
+		dc := &model.Datacenter{Name: "Test DC", Location: "NYC"}
+		store.CreateDatacenter(dc)
+
+		// Create another discovered device
+		discovered2 := &model.DiscoveredDevice{
+			IP:        "192.168.1.101",
+			Hostname:  "discovered-host-2",
+			NetworkID: network.ID,
+			Status:    "active",
+		}
+		store.CreateDiscoveredDevice(discovered2)
+
+		body := `{"name":"promoted-device-2","make_model":"HP DL380","datacenter_id":"` + dc.ID + `"}`
+		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered2.ID+"/promote", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("PromoteDevice_UseHostname", func(t *testing.T) {
+		// Create another discovered device
+		discovered3 := &model.DiscoveredDevice{
+			IP:        "192.168.1.102",
+			Hostname:  "auto-named-host",
+			NetworkID: network.ID,
+			Status:    "active",
+		}
+		store.CreateDiscoveredDevice(discovered3)
+
+		// Empty name should use hostname
+		body := `{}`
+		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered3.ID+"/promote", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+		}
+
+		var device model.Device
+		json.NewDecoder(w.Body).Decode(&device)
+		if device.Name != "auto-named-host" {
+			t.Errorf("expected name 'auto-named-host', got '%s'", device.Name)
+		}
+	})
+
 	t.Run("PromoteDevice_NotFound", func(t *testing.T) {
 		body := `{"name":"test"}`
 		req := httptest.NewRequest("POST", "/api/discovery/devices/nonexistent/promote", bytes.NewBufferString(body))
@@ -240,6 +425,25 @@ func TestPromoteDevice(t *testing.T) {
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("expected %d, got %d", http.StatusNotFound, w.Code)
+		}
+	})
+
+	t.Run("PromoteDevice_InvalidJSON", func(t *testing.T) {
+		// Create another discovered device
+		discovered4 := &model.DiscoveredDevice{
+			IP:        "192.168.1.103",
+			Hostname:  "test-host",
+			NetworkID: network.ID,
+			Status:    "active",
+		}
+		store.CreateDiscoveredDevice(discovered4)
+
+		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered4.ID+"/promote", bytes.NewBufferString("invalid"))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected %d, got %d", http.StatusBadRequest, w.Code)
 		}
 	})
 }

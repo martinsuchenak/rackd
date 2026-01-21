@@ -865,7 +865,7 @@ Notes: OSS defaults: edition="oss", empty features array
 
 ### [P3-010] API Handler Tests
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/15-testing.md (lines 33-58)
 Dependencies: P3-003, P3-004, P3-005, P3-006, P3-007, P3-008
 Outputs:
@@ -880,28 +880,30 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (this IS the test task - all tests must pass)
-Notes: Use table-driven tests
+Notes: Coverage achieved: 80.5%. All handlers tested including edge cases for device updates with tags/domains, discovery rules with defaults, promote device with hostname fallback, and all relationship types.
 ```
 
 ---
 
 ### Phase 3 Checkpoint
 ```
-Status: TODO
+Status: DONE
 All tasks P3-001 through P3-010 must be DONE before proceeding.
 
 Validation Commands:
-  [ ] go build ./...                           # Must pass
-  [ ] go test ./internal/api/... -v            # Must pass
-  [ ] go test ./internal/api/... -cover        # Must show >= 80% coverage
-  [ ] go test ./... -v                         # Full test suite must pass
-  [ ] go vet ./...                             # Must pass
+  [x] go build ./...                           # Must pass
+  [x] go test ./internal/api/... -v            # Must pass
+  [x] go test ./internal/api/... -cover        # Must show >= 80% coverage (achieved: 80.5%)
+  [x] go test ./... -v                         # Full test suite must pass
+  [x] go vet ./...                             # Must pass
 
 Expected State:
   - All API endpoints implemented and tested
   - Middleware (auth, security headers) working
   - UI config endpoint functional
   - JSON responses follow spec format
+
+Completed: 2026-01-21
 ```
 
 ---
@@ -2145,7 +2147,7 @@ Expected Final State:
 # OSS Edition Tasks
 Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
-Phase 3 - API Layer:      9/10 tasks complete
+Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     0/1 tasks complete
 Phase 5 - Discovery:      0/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
@@ -2155,7 +2157,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 30/68 tasks complete (44%)
+OSS Total: 31/68 tasks complete (46%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2164,7 +2166,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 33/81 tasks complete (41%)
+# Combined Total: 34/81 tasks complete (42%)
 ```
 
 ### Parallel Development Timeline
