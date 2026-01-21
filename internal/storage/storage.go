@@ -96,9 +96,11 @@ type DiscoveryStorage interface {
 	ListDiscoveryScans(networkID string) ([]model.DiscoveryScan, error)
 
 	// Discovery rules
-	GetDiscoveryRule(networkID string) (*model.DiscoveryRule, error)
+	GetDiscoveryRule(id string) (*model.DiscoveryRule, error)
+	GetDiscoveryRuleByNetwork(networkID string) (*model.DiscoveryRule, error)
 	SaveDiscoveryRule(rule *model.DiscoveryRule) error
 	ListDiscoveryRules() ([]model.DiscoveryRule, error)
+	DeleteDiscoveryRule(id string) error
 
 	// Cleanup
 	CleanupOldDiscoveries(olderThanDays int) error

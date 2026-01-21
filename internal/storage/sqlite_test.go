@@ -2799,9 +2799,9 @@ func TestDiscoveryRuleCRUD(t *testing.T) {
 		t.Fatalf("SaveDiscoveryRule failed: %v", err)
 	}
 
-	got, err := storage.GetDiscoveryRule(network.ID)
+	got, err := storage.GetDiscoveryRuleByNetwork(network.ID)
 	if err != nil {
-		t.Fatalf("GetDiscoveryRule failed: %v", err)
+		t.Fatalf("GetDiscoveryRuleByNetwork failed: %v", err)
 	}
 	if !got.Enabled || got.IntervalHours != 24 {
 		t.Errorf("rule mismatch: got %+v", got)
@@ -2813,7 +2813,7 @@ func TestDiscoveryRuleCRUD(t *testing.T) {
 	if err := storage.SaveDiscoveryRule(rule); err != nil {
 		t.Fatalf("SaveDiscoveryRule update failed: %v", err)
 	}
-	got, _ = storage.GetDiscoveryRule(network.ID)
+	got, _ = storage.GetDiscoveryRuleByNetwork(network.ID)
 	if got.Enabled || got.IntervalHours != 12 {
 		t.Errorf("update failed: got %+v", got)
 	}
@@ -3112,8 +3112,8 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
 	storage.CreateNetwork(network)
 
-	// GetDiscoveryRule with non-existent network ID
-	_, err := storage.GetDiscoveryRule("nonexistent")
+	// GetDiscoveryRuleByNetwork with non-existent network ID
+	_, err := storage.GetDiscoveryRuleByNetwork("nonexistent")
 	if err != ErrRuleNotFound {
 		t.Errorf("expected ErrRuleNotFound, got %v", err)
 	}
@@ -3131,12 +3131,31 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	}
 
 	// Verify rule was saved
-	got, err := storage.GetDiscoveryRule(network.ID)
+	got, err := storage.GetDiscoveryRuleByNetwork(network.ID)
 	if err != nil {
-		t.Errorf("GetDiscoveryRule failed: %v", err)
+		t.Errorf("GetDiscoveryRuleByNetwork failed: %v", err)
 	}
 	if !got.Enabled {
 		t.Error("expected rule to be enabled")
+	}
+
+	// Test GetDiscoveryRule by ID
+	gotByID, err := storage.GetDiscoveryRule(got.ID)
+	if err != nil {
+		t.Errorf("GetDiscoveryRule by ID failed: %v", err)
+	}
+	if gotByID.NetworkID != network.ID {
+		t.Errorf("expected network ID %s, got %s", network.ID, gotByID.NetworkID)
+	}
+
+	// Test DeleteDiscoveryRule
+	err = storage.DeleteDiscoveryRule(got.ID)
+	if err != nil {
+		t.Errorf("DeleteDiscoveryRule failed: %v", err)
+	}
+	_, err = storage.GetDiscoveryRule(got.ID)
+	if err != ErrRuleNotFound {
+		t.Errorf("expected ErrRuleNotFound after delete, got %v", err)
 	}
 }
 
@@ -3864,7 +3883,7 @@ func TestDiscoveryRuleWithAllFields(t *testing.T) {
 	}
 	storage.SaveDiscoveryRule(rule)
 
-	got, _ := storage.GetDiscoveryRule(network.ID)
+	got, _ := storage.GetDiscoveryRuleByNetwork(network.ID)
 	if got.ScanType != model.ScanTypeDeep {
 		t.Errorf("expected deep scan type, got %s", got.ScanType)
 	}

@@ -318,8 +318,27 @@ func (s *SQLiteStorage) ListDiscoveryScans(networkID string) ([]model.DiscoveryS
 	return scans, rows.Err()
 }
 
-// GetDiscoveryRule retrieves a discovery rule by network ID
-func (s *SQLiteStorage) GetDiscoveryRule(networkID string) (*model.DiscoveryRule, error) {
+// GetDiscoveryRule retrieves a discovery rule by ID
+func (s *SQLiteStorage) GetDiscoveryRule(id string) (*model.DiscoveryRule, error) {
+	var rule model.DiscoveryRule
+	var enabled int
+	err := s.db.QueryRowContext(context.Background(), `
+		SELECT id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at
+		FROM discovery_rules WHERE id = ?
+	`, id).Scan(&rule.ID, &rule.NetworkID, &enabled, &rule.ScanType, &rule.IntervalHours,
+		&rule.ExcludeIPs, &rule.CreatedAt, &rule.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrRuleNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	rule.Enabled = enabled == 1
+	return &rule, nil
+}
+
+// GetDiscoveryRuleByNetwork retrieves a discovery rule by network ID
+func (s *SQLiteStorage) GetDiscoveryRuleByNetwork(networkID string) (*model.DiscoveryRule, error) {
 	var rule model.DiscoveryRule
 	var enabled int
 	err := s.db.QueryRowContext(context.Background(), `
@@ -385,6 +404,20 @@ func (s *SQLiteStorage) ListDiscoveryRules() ([]model.DiscoveryRule, error) {
 		rules = append(rules, rule)
 	}
 	return rules, rows.Err()
+}
+
+// DeleteDiscoveryRule removes a discovery rule by ID
+func (s *SQLiteStorage) DeleteDiscoveryRule(id string) error {
+	result, err := s.db.ExecContext(context.Background(),
+		"DELETE FROM discovery_rules WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return ErrRuleNotFound
+	}
+	return nil
 }
 
 // CleanupOldDiscoveries removes discovered devices older than specified days

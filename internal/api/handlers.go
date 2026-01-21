@@ -138,22 +138,5 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 	return result
 }
 
-// Stub handlers - will be implemented in separate files
-
-func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request)   {}
-func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request)  {}
-func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {}
-
-func (h *Handler) startScan(w http.ResponseWriter, r *http.Request)              {}
-func (h *Handler) listScans(w http.ResponseWriter, r *http.Request)              {}
-func (h *Handler) getScan(w http.ResponseWriter, r *http.Request)                {}
-func (h *Handler) listDiscoveredDevices(w http.ResponseWriter, r *http.Request)  {}
-func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request)          {}
-func (h *Handler) listDiscoveryRules(w http.ResponseWriter, r *http.Request)     {}
-func (h *Handler) createDiscoveryRule(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) getDiscoveryRule(w http.ResponseWriter, r *http.Request)       {}
-func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) deleteDiscoveryRule(w http.ResponseWriter, r *http.Request)    {}
-
+// Stub handler - will be implemented in config_handlers.go
 func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {}

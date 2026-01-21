@@ -810,7 +810,7 @@ Notes: Handle address array updates correctly
 
 ### [P3-007] Implement Relationship Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 78-84)
 Dependencies: P3-001, P2-008
 Outputs:
@@ -828,7 +828,7 @@ Notes: Validate relationship type is one of: contains, connected_to, depends_on
 
 ### [P3-008] Implement Discovery Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 86-99)
 Dependencies: P3-001, P2-009
 Outputs:
@@ -843,7 +843,7 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (httptest for all endpoints)
-Notes: Will integrate with scanner in Phase 5
+Notes: Will integrate with scanner in Phase 5. Added DeleteDiscoveryRule and GetDiscoveryRuleByNetwork to storage interface.
 ```
 
 ### [P3-009] Implement UI Config Handler
@@ -2145,7 +2145,7 @@ Expected Final State:
 # OSS Edition Tasks
 Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
-Phase 3 - API Layer:      6/10 tasks complete
+Phase 3 - API Layer:      8/10 tasks complete
 Phase 4 - MCP Server:     0/1 tasks complete
 Phase 5 - Discovery:      0/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
@@ -2155,7 +2155,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 27/68 tasks complete (40%)
+OSS Total: 29/68 tasks complete (43%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2164,7 +2164,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 30/81 tasks complete (37%)
+# Combined Total: 32/81 tasks complete (40%)
 ```
 
 ### Parallel Development Timeline
