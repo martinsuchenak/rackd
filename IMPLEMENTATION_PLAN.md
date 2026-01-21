@@ -560,7 +560,7 @@ Notes: None
 
 ### [P2-006] Implement SQLite Storage - Network Operations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 51-60), docs/specs/13-database-schema.md (lines 108-120)
 Dependencies: P2-003
 Outputs:
