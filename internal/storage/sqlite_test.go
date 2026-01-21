@@ -2918,3 +2918,1080 @@ func TestDiscoveryNotFoundErrors(t *testing.T) {
 		t.Errorf("expected ErrScanNotFound, got %v", err)
 	}
 }
+
+// ============================================================================
+// Additional Tests for Coverage (P2-011)
+// ============================================================================
+
+func TestDBMethod(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	db := storage.DB()
+	if db == nil {
+		t.Error("DB() should return non-nil database")
+	}
+
+	// Verify it's the same connection
+	if err := db.Ping(); err != nil {
+		t.Errorf("DB() returned invalid connection: %v", err)
+	}
+}
+
+func TestCreateDeviceNil(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	err := storage.CreateDevice(nil)
+	if err == nil {
+		t.Error("expected error for nil device")
+	}
+}
+
+func TestUpdateDeviceNil(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	err := storage.UpdateDevice(nil)
+	if err == nil {
+		t.Error("expected error for nil device")
+	}
+}
+
+func TestUpdateDeviceInvalidID(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	device := &model.Device{ID: "", Name: "test"}
+	err := storage.UpdateDevice(device)
+	if err != ErrInvalidID {
+		t.Errorf("expected ErrInvalidID, got %v", err)
+	}
+}
+
+func TestCreateDatacenterNil(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	err := storage.CreateDatacenter(nil)
+	if err == nil {
+		t.Error("expected error for nil datacenter")
+	}
+}
+
+func TestUpdateDatacenterNil(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	err := storage.UpdateDatacenter(nil)
+	if err == nil {
+		t.Error("expected error for nil datacenter")
+	}
+}
+
+func TestUpdateDatacenterInvalidID(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	dc := &model.Datacenter{ID: "", Name: "test"}
+	err := storage.UpdateDatacenter(dc)
+	if err != ErrInvalidID {
+		t.Errorf("expected ErrInvalidID, got %v", err)
+	}
+}
+
+func TestRelationshipInvalidIDs(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create valid devices for testing
+	device1 := &model.Device{Name: "D1"}
+	device2 := &model.Device{Name: "D2"}
+	storage.CreateDevice(device1)
+	storage.CreateDevice(device2)
+
+	// Test with non-existent device IDs (FK constraint)
+	err := storage.AddRelationship("nonexistent1", "nonexistent2", model.RelationshipContains)
+	if err == nil {
+		t.Error("expected error for non-existent device IDs")
+	}
+
+	// Valid relationship should work
+	err = storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains)
+	if err != nil {
+		t.Errorf("AddRelationship failed: %v", err)
+	}
+
+	// GetRelationships with valid ID
+	rels, err := storage.GetRelationships(device1.ID)
+	if err != nil {
+		t.Errorf("GetRelationships failed: %v", err)
+	}
+	if len(rels) != 1 {
+		t.Errorf("expected 1 relationship, got %d", len(rels))
+	}
+
+	// GetRelatedDevices with valid ID
+	related, err := storage.GetRelatedDevices(device1.ID, model.RelationshipContains)
+	if err != nil {
+		t.Errorf("GetRelatedDevices failed: %v", err)
+	}
+	if len(related) != 1 {
+		t.Errorf("expected 1 related device, got %d", len(related))
+	}
+
+	// RemoveRelationship
+	err = storage.RemoveRelationship(device1.ID, device2.ID, model.RelationshipContains)
+	if err != nil {
+		t.Errorf("RemoveRelationship failed: %v", err)
+	}
+}
+
+func TestDiscoveryInvalidIDs(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// UpdateDiscoveredDevice with non-existent ID
+	err := storage.UpdateDiscoveredDevice(&model.DiscoveredDevice{ID: "nonexistent", IP: "192.168.1.1", NetworkID: network.ID})
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	// GetDiscoveredDevice with non-existent ID returns not found
+	_, err = storage.GetDiscoveredDevice("nonexistent")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	// DeleteDiscoveredDevice with non-existent ID returns not found
+	err = storage.DeleteDiscoveredDevice("nonexistent")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	// PromoteDiscoveredDevice with non-existent discovered ID
+	err = storage.PromoteDiscoveredDevice("nonexistent", "device")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	// GetDiscoveredDeviceByIP with non-existent network returns not found
+	_, err = storage.GetDiscoveredDeviceByIP("nonexistent", "192.168.1.1")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+}
+
+func TestDiscoveryScanInvalidIDs(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// UpdateDiscoveryScan with non-existent ID
+	err := storage.UpdateDiscoveryScan(&model.DiscoveryScan{ID: "nonexistent", NetworkID: network.ID})
+	if err != ErrScanNotFound {
+		t.Errorf("expected ErrScanNotFound, got %v", err)
+	}
+
+	// GetDiscoveryScan with non-existent ID
+	_, err = storage.GetDiscoveryScan("nonexistent")
+	if err != ErrScanNotFound {
+		t.Errorf("expected ErrScanNotFound, got %v", err)
+	}
+}
+
+func TestDiscoveryRuleInvalidID(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// GetDiscoveryRule with non-existent network ID
+	_, err := storage.GetDiscoveryRule("nonexistent")
+	if err != ErrRuleNotFound {
+		t.Errorf("expected ErrRuleNotFound, got %v", err)
+	}
+
+	// SaveDiscoveryRule with valid data
+	rule := &model.DiscoveryRule{
+		NetworkID:     network.ID,
+		Enabled:       true,
+		ScanType:      model.ScanTypeFull,
+		IntervalHours: 24,
+	}
+	err = storage.SaveDiscoveryRule(rule)
+	if err != nil {
+		t.Errorf("SaveDiscoveryRule failed: %v", err)
+	}
+
+	// Verify rule was saved
+	got, err := storage.GetDiscoveryRule(network.ID)
+	if err != nil {
+		t.Errorf("GetDiscoveryRule failed: %v", err)
+	}
+	if !got.Enabled {
+		t.Error("expected rule to be enabled")
+	}
+}
+
+func TestListDevicesWithNetworkFilter(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create network
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// Create devices with addresses in network
+	device1 := &model.Device{
+		Name:      "server1",
+		Addresses: []model.Address{{IP: "192.168.1.100", Type: "ipv4", NetworkID: network.ID}},
+	}
+	device2 := &model.Device{
+		Name:      "server2",
+		Addresses: []model.Address{{IP: "10.0.0.1", Type: "ipv4"}},
+	}
+	storage.CreateDevice(device1)
+	storage.CreateDevice(device2)
+
+	// Filter by network
+	result, err := storage.ListDevices(&model.DeviceFilter{NetworkID: network.ID})
+	if err != nil {
+		t.Fatalf("ListDevices failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 device in network, got %d", len(result))
+	}
+}
+
+func TestNetworkUtilizationInvalidSubnet(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create network with invalid subnet
+	network := &model.Network{Name: "BadNet", Subnet: "invalid-cidr"}
+	storage.CreateNetwork(network)
+
+	_, err := storage.GetNetworkUtilization(network.ID)
+	if err == nil {
+		t.Error("expected error for invalid CIDR")
+	}
+}
+
+func TestPoolOperations_LargeRange(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create network and pool with larger range
+	network := &model.Network{Name: "Network1", Subnet: "10.0.0.0/16"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Large Pool",
+		StartIP:   "10.0.1.0",
+		EndIP:     "10.0.1.255",
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Get first available IP
+	ip, err := storage.GetNextAvailableIP(pool.ID)
+	if err != nil {
+		t.Fatalf("GetNextAvailableIP failed: %v", err)
+	}
+	if ip != "10.0.1.0" {
+		t.Errorf("expected '10.0.1.0', got '%s'", ip)
+	}
+}
+
+func TestDeleteNetworkWithPools(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create network with pool
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.200",
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Delete network (should cascade to pools)
+	if err := storage.DeleteNetwork(network.ID); err != nil {
+		t.Fatalf("DeleteNetwork failed: %v", err)
+	}
+
+	// Verify pool is deleted
+	_, err := storage.GetNetworkPool(pool.ID)
+	if err != ErrPoolNotFound {
+		t.Errorf("expected ErrPoolNotFound after network deletion, got %v", err)
+	}
+}
+
+func TestDeviceWithAllFields(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create datacenter and network
+	dc := &model.Datacenter{Name: "DC1", Location: "NYC"}
+	storage.CreateDatacenter(dc)
+
+	network := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.200",
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Create device with all fields populated
+	device := &model.Device{
+		Name:         "full-device",
+		Description:  "A fully populated device",
+		MakeModel:    "Dell R740",
+		OS:           "Ubuntu 22.04",
+		Username:     "admin",
+		Location:     "Rack 5",
+		DatacenterID: dc.ID,
+		Tags:         []string{"production", "web", "critical"},
+		Addresses: []model.Address{
+			{IP: "192.168.1.100", Port: 22, Type: "ipv4", Label: "primary", NetworkID: network.ID, PoolID: pool.ID},
+			{IP: "192.168.1.101", Port: 443, Type: "ipv4", Label: "secondary", NetworkID: network.ID},
+			{IP: "2001:db8::1", Type: "ipv6", Label: "ipv6"},
+		},
+		Domains: []string{"server.example.com", "www.example.com", "api.example.com"},
+	}
+
+	if err := storage.CreateDevice(device); err != nil {
+		t.Fatalf("CreateDevice failed: %v", err)
+	}
+
+	// Retrieve and verify all fields
+	retrieved, err := storage.GetDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDevice failed: %v", err)
+	}
+
+	if retrieved.DatacenterID != dc.ID {
+		t.Errorf("datacenter_id mismatch")
+	}
+	if len(retrieved.Tags) != 3 {
+		t.Errorf("expected 3 tags, got %d", len(retrieved.Tags))
+	}
+	if len(retrieved.Addresses) != 3 {
+		t.Errorf("expected 3 addresses, got %d", len(retrieved.Addresses))
+	}
+	if len(retrieved.Domains) != 3 {
+		t.Errorf("expected 3 domains, got %d", len(retrieved.Domains))
+	}
+
+	// Verify address details
+	for _, addr := range retrieved.Addresses {
+		if addr.IP == "192.168.1.100" {
+			if addr.NetworkID != network.ID {
+				t.Errorf("address network_id mismatch")
+			}
+			if addr.PoolID != pool.ID {
+				t.Errorf("address pool_id mismatch")
+			}
+		}
+	}
+}
+
+func TestSearchDevicesWithSpecialCharacters(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device with special characters in name
+	device := &model.Device{
+		Name:        "server-01_test",
+		Description: "Test with % and _ characters",
+	}
+	storage.CreateDevice(device)
+
+	// Search should handle special SQL characters
+	result, err := storage.SearchDevices("server-01")
+	if err != nil {
+		t.Fatalf("SearchDevices failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 result, got %d", len(result))
+	}
+}
+
+func TestListDatacentersWithNameFilter(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create datacenters with different names
+	storage.CreateDatacenter(&model.Datacenter{Name: "NYC-DC1", Location: "New York"})
+	storage.CreateDatacenter(&model.Datacenter{Name: "NYC-DC2", Location: "New York"})
+	storage.CreateDatacenter(&model.Datacenter{Name: "LA-DC1", Location: "Los Angeles"})
+
+	// Filter by name prefix
+	result, err := storage.ListDatacenters(&model.DatacenterFilter{Name: "NYC"})
+	if err != nil {
+		t.Fatalf("ListDatacenters failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 datacenters matching NYC, got %d", len(result))
+	}
+}
+
+func TestCleanupOldDiscoveriesWithDays(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// Create discovered device
+	storage.CreateDiscoveredDevice(&model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
+
+	// Cleanup with 30 days should not remove recent devices
+	if err := storage.CleanupOldDiscoveries(30); err != nil {
+		t.Fatalf("CleanupOldDiscoveries failed: %v", err)
+	}
+
+	devices, _ := storage.ListDiscoveredDevices(network.ID)
+	if len(devices) != 1 {
+		t.Errorf("expected 1 device (recent), got %d", len(devices))
+	}
+}
+
+func TestRemoveRelationshipNotFound(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create devices but no relationship
+	device1 := &model.Device{Name: "D1"}
+	device2 := &model.Device{Name: "D2"}
+	storage.CreateDevice(device1)
+	storage.CreateDevice(device2)
+
+	// Remove non-existent relationship should not error (idempotent)
+	err := storage.RemoveRelationship(device1.ID, device2.ID, model.RelationshipContains)
+	if err != nil {
+		t.Errorf("RemoveRelationship should be idempotent, got %v", err)
+	}
+}
+
+func TestGetRelatedDevicesEmpty(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	device := &model.Device{Name: "Lonely"}
+	storage.CreateDevice(device)
+
+	related, err := storage.GetRelatedDevices(device.ID, model.RelationshipContains)
+	if err != nil {
+		t.Fatalf("GetRelatedDevices failed: %v", err)
+	}
+	if len(related) != 0 {
+		t.Errorf("expected 0 related devices, got %d", len(related))
+	}
+}
+
+func TestDiscoveryScanWithAllFields(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	scan := &model.DiscoveryScan{
+		NetworkID:       network.ID,
+		Status:          model.ScanStatusRunning,
+		ScanType:        model.ScanTypeDeep,
+		TotalHosts:      254,
+		ScannedHosts:    100,
+		FoundHosts:      25,
+		ProgressPercent: 39.4,
+		ErrorMessage:    "",
+	}
+	if err := storage.CreateDiscoveryScan(scan); err != nil {
+		t.Fatalf("CreateDiscoveryScan failed: %v", err)
+	}
+
+	// Complete the scan
+	scan.Status = model.ScanStatusCompleted
+	scan.ScannedHosts = 254
+	scan.FoundHosts = 50
+	scan.ProgressPercent = 100.0
+	if err := storage.UpdateDiscoveryScan(scan); err != nil {
+		t.Fatalf("UpdateDiscoveryScan failed: %v", err)
+	}
+
+	got, _ := storage.GetDiscoveryScan(scan.ID)
+	if got.Status != model.ScanStatusCompleted {
+		t.Errorf("expected completed status, got %s", got.Status)
+	}
+	if got.FoundHosts != 50 {
+		t.Errorf("expected 50 found hosts, got %d", got.FoundHosts)
+	}
+}
+
+func TestDiscoveredDeviceWithServices(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	device := &model.DiscoveredDevice{
+		IP:        "192.168.1.50",
+		NetworkID: network.ID,
+		OpenPorts: []int{22, 80, 443, 3306, 5432},
+		Services: []model.ServiceInfo{
+			{Port: 22, Protocol: "tcp", Service: "ssh", Version: "OpenSSH 8.9"},
+			{Port: 80, Protocol: "tcp", Service: "http", Version: "nginx 1.18"},
+			{Port: 443, Protocol: "tcp", Service: "https", Version: "nginx 1.18"},
+			{Port: 3306, Protocol: "tcp", Service: "mysql", Version: "8.0"},
+			{Port: 5432, Protocol: "tcp", Service: "postgresql", Version: "14.0"},
+		},
+	}
+	storage.CreateDiscoveredDevice(device)
+
+	got, _ := storage.GetDiscoveredDevice(device.ID)
+	if len(got.OpenPorts) != 5 {
+		t.Errorf("expected 5 open ports, got %d", len(got.OpenPorts))
+	}
+	if len(got.Services) != 5 {
+		t.Errorf("expected 5 services, got %d", len(got.Services))
+	}
+}
+
+func TestListDiscoveryScansEmpty(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	scans, err := storage.ListDiscoveryScans(network.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveryScans failed: %v", err)
+	}
+	if len(scans) != 0 {
+		t.Errorf("expected 0 scans, got %d", len(scans))
+	}
+}
+
+func TestListDiscoveryRulesEmpty(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	rules, err := storage.ListDiscoveryRules()
+	if err != nil {
+		t.Fatalf("ListDiscoveryRules failed: %v", err)
+	}
+	if len(rules) != 0 {
+		t.Errorf("expected 0 rules, got %d", len(rules))
+	}
+}
+
+func TestDeleteDeviceWithRelationships(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create devices with relationships
+	parent := &model.Device{Name: "Parent"}
+	child := &model.Device{Name: "Child"}
+	storage.CreateDevice(parent)
+	storage.CreateDevice(child)
+	storage.AddRelationship(parent.ID, child.ID, model.RelationshipContains)
+
+	// Delete parent - should cascade relationships
+	if err := storage.DeleteDevice(parent.ID); err != nil {
+		t.Fatalf("DeleteDevice failed: %v", err)
+	}
+
+	// Verify relationship is gone
+	rels, _ := storage.GetRelationships(child.ID)
+	if len(rels) != 0 {
+		t.Errorf("expected 0 relationships after parent deletion, got %d", len(rels))
+	}
+}
+
+// ============================================================================
+// Additional Coverage Tests
+// ============================================================================
+
+func TestDiscoveryScanWithError(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// Create scan with error message
+	scan := &model.DiscoveryScan{
+		NetworkID:    network.ID,
+		Status:       model.ScanStatusFailed,
+		ScanType:     model.ScanTypeFull,
+		TotalHosts:   254,
+		ErrorMessage: "Connection timeout",
+	}
+	if err := storage.CreateDiscoveryScan(scan); err != nil {
+		t.Fatalf("CreateDiscoveryScan failed: %v", err)
+	}
+
+	got, _ := storage.GetDiscoveryScan(scan.ID)
+	if got.ErrorMessage != "Connection timeout" {
+		t.Errorf("expected error message, got '%s'", got.ErrorMessage)
+	}
+	if got.Status != model.ScanStatusFailed {
+		t.Errorf("expected failed status, got %s", got.Status)
+	}
+}
+
+func TestListDiscoveryScansAllNetworks(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
+	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
+	storage.CreateNetwork(network1)
+	storage.CreateNetwork(network2)
+
+	storage.CreateDiscoveryScan(&model.DiscoveryScan{NetworkID: network1.ID, Status: model.ScanStatusCompleted})
+	storage.CreateDiscoveryScan(&model.DiscoveryScan{NetworkID: network2.ID, Status: model.ScanStatusCompleted})
+
+	// List all scans (empty network ID)
+	scans, err := storage.ListDiscoveryScans("")
+	if err != nil {
+		t.Fatalf("ListDiscoveryScans failed: %v", err)
+	}
+	if len(scans) != 2 {
+		t.Errorf("expected 2 scans, got %d", len(scans))
+	}
+}
+
+func TestDiscoveredDeviceUpdate(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	device := &model.DiscoveredDevice{
+		IP:         "192.168.1.50",
+		NetworkID:  network.ID,
+		Status:     "active",
+		Confidence: 50,
+	}
+	storage.CreateDiscoveredDevice(device)
+
+	// Update with new data
+	device.Hostname = "updated-host"
+	device.Confidence = 95
+	device.OSGuess = "Linux"
+	device.Vendor = "Dell"
+	device.OpenPorts = []int{22, 80}
+	device.Services = []model.ServiceInfo{{Port: 22, Service: "ssh"}}
+
+	if err := storage.UpdateDiscoveredDevice(device); err != nil {
+		t.Fatalf("UpdateDiscoveredDevice failed: %v", err)
+	}
+
+	got, _ := storage.GetDiscoveredDevice(device.ID)
+	if got.Hostname != "updated-host" {
+		t.Errorf("hostname not updated")
+	}
+	if got.Confidence != 95 {
+		t.Errorf("confidence not updated")
+	}
+	if len(got.OpenPorts) != 2 {
+		t.Errorf("open_ports not updated")
+	}
+}
+
+func TestNetworkPoolUpdateTags(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.200",
+		Tags:      []string{"original"},
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Update with new tags
+	pool.Tags = []string{"updated", "new-tag", "another"}
+	if err := storage.UpdateNetworkPool(pool); err != nil {
+		t.Fatalf("UpdateNetworkPool failed: %v", err)
+	}
+
+	got, _ := storage.GetNetworkPool(pool.ID)
+	if len(got.Tags) != 3 {
+		t.Errorf("expected 3 tags, got %d", len(got.Tags))
+	}
+}
+
+func TestDeviceUpdateClearArrays(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device with arrays
+	device := &model.Device{
+		Name:      "server1",
+		Tags:      []string{"tag1", "tag2"},
+		Domains:   []string{"domain1.com"},
+		Addresses: []model.Address{{IP: "192.168.1.1", Type: "ipv4"}},
+	}
+	storage.CreateDevice(device)
+
+	// Update to clear arrays
+	device.Tags = []string{}
+	device.Domains = []string{}
+	device.Addresses = []model.Address{}
+	if err := storage.UpdateDevice(device); err != nil {
+		t.Fatalf("UpdateDevice failed: %v", err)
+	}
+
+	got, _ := storage.GetDevice(device.ID)
+	if len(got.Tags) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(got.Tags))
+	}
+	if len(got.Domains) != 0 {
+		t.Errorf("expected 0 domains, got %d", len(got.Domains))
+	}
+	if len(got.Addresses) != 0 {
+		t.Errorf("expected 0 addresses, got %d", len(got.Addresses))
+	}
+}
+
+func TestPoolUpdateClearTags(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.200",
+		Tags:      []string{"tag1", "tag2"},
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Update to clear tags
+	pool.Tags = []string{}
+	if err := storage.UpdateNetworkPool(pool); err != nil {
+		t.Fatalf("UpdateNetworkPool failed: %v", err)
+	}
+
+	got, _ := storage.GetNetworkPool(pool.ID)
+	if len(got.Tags) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(got.Tags))
+	}
+}
+
+func TestCalculateCIDRSizeEdgeCases(t *testing.T) {
+	tests := []struct {
+		cidr     string
+		expected int
+		hasError bool
+	}{
+		{"10.0.0.0/8", 1 << 20, false},    // Large network (capped at ~1M)
+		{"192.168.1.128/25", 126, false},  // /25 subnet
+		{"192.168.1.192/26", 62, false},   // /26 subnet
+		{"192.168.1.240/28", 14, false},   // /28 subnet
+		{"192.168.1.252/30", 2, false},    // /30 subnet
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.cidr, func(t *testing.T) {
+			result, err := calculateCIDRSize(tt.cidr)
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("expected error for CIDR %s", tt.cidr)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error for CIDR %s: %v", tt.cidr, err)
+				return
+			}
+			if result != tt.expected {
+				t.Errorf("calculateCIDRSize(%s) = %d, expected %d", tt.cidr, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetNextAvailableIPWithGaps(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.110",
+	}
+	storage.CreateNetworkPool(pool)
+
+	// Use IPs with gaps: 100, 102, 104
+	device := &model.Device{
+		Name: "server1",
+		Addresses: []model.Address{
+			{IP: "192.168.1.100", Type: "ipv4", PoolID: pool.ID},
+			{IP: "192.168.1.102", Type: "ipv4", PoolID: pool.ID},
+			{IP: "192.168.1.104", Type: "ipv4", PoolID: pool.ID},
+		},
+	}
+	storage.CreateDevice(device)
+
+	// Should return first gap: 101
+	ip, err := storage.GetNextAvailableIP(pool.ID)
+	if err != nil {
+		t.Fatalf("GetNextAvailableIP failed: %v", err)
+	}
+	if ip != "192.168.1.101" {
+		t.Errorf("expected '192.168.1.101', got '%s'", ip)
+	}
+}
+
+func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	pool := &model.NetworkPool{
+		NetworkID: network.ID,
+		Name:      "Pool1",
+		StartIP:   "192.168.1.100",
+		EndIP:     "192.168.1.102",
+	}
+	storage.CreateNetworkPool(pool)
+
+	device := &model.Device{
+		Name: "server1",
+		Addresses: []model.Address{
+			{IP: "192.168.1.101", Type: "ipv4", PoolID: pool.ID},
+		},
+	}
+	storage.CreateDevice(device)
+
+	heatmap, err := storage.GetPoolHeatmap(pool.ID)
+	if err != nil {
+		t.Fatalf("GetPoolHeatmap failed: %v", err)
+	}
+
+	// Find the used IP and verify device info
+	for _, status := range heatmap {
+		if status.IP == "192.168.1.101" {
+			if status.Status != "used" {
+				t.Errorf("expected 'used' status for 192.168.1.101")
+			}
+			if status.DeviceID != device.ID {
+				t.Errorf("expected device_id %s, got %s", device.ID, status.DeviceID)
+			}
+		}
+	}
+}
+
+func TestListNetworkPoolsWithCombinedFilters(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	storage.CreateNetworkPool(&model.NetworkPool{
+		NetworkID: network.ID, Name: "DHCP-Pool", StartIP: "192.168.1.100", EndIP: "192.168.1.150",
+		Tags: []string{"dhcp", "production"},
+	})
+	storage.CreateNetworkPool(&model.NetworkPool{
+		NetworkID: network.ID, Name: "Static-Pool", StartIP: "192.168.1.151", EndIP: "192.168.1.200",
+		Tags: []string{"static", "production"},
+	})
+	storage.CreateNetworkPool(&model.NetworkPool{
+		NetworkID: network.ID, Name: "DHCP-Reserved", StartIP: "192.168.1.201", EndIP: "192.168.1.250",
+		Tags: []string{"dhcp", "reserved"},
+	})
+
+	// Filter by network and tags
+	result, err := storage.ListNetworkPools(&model.NetworkPoolFilter{NetworkID: network.ID, Tags: []string{"dhcp"}})
+	if err != nil {
+		t.Fatalf("ListNetworkPools failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 pools with 'dhcp' tag, got %d", len(result))
+	}
+}
+
+func TestDiscoveryRuleWithAllFields(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	rule := &model.DiscoveryRule{
+		NetworkID:     network.ID,
+		Enabled:       true,
+		ScanType:      model.ScanTypeDeep,
+		IntervalHours: 12,
+		ExcludeIPs:    "192.168.1.1,192.168.1.254",
+	}
+	storage.SaveDiscoveryRule(rule)
+
+	got, _ := storage.GetDiscoveryRule(network.ID)
+	if got.ScanType != model.ScanTypeDeep {
+		t.Errorf("expected deep scan type, got %s", got.ScanType)
+	}
+	if got.IntervalHours != 12 {
+		t.Errorf("expected 12 hour interval, got %d", got.IntervalHours)
+	}
+	if got.ExcludeIPs != "192.168.1.1,192.168.1.254" {
+		t.Errorf("exclude_ips mismatch")
+	}
+}
+
+func TestListDiscoveryRulesMultiple(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
+	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
+	network3 := &model.Network{Name: "Net3", Subnet: "192.168.3.0/24"}
+	storage.CreateNetwork(network1)
+	storage.CreateNetwork(network2)
+	storage.CreateNetwork(network3)
+
+	storage.SaveDiscoveryRule(&model.DiscoveryRule{NetworkID: network1.ID, Enabled: true, ScanType: model.ScanTypeQuick})
+	storage.SaveDiscoveryRule(&model.DiscoveryRule{NetworkID: network2.ID, Enabled: false, ScanType: model.ScanTypeFull})
+	storage.SaveDiscoveryRule(&model.DiscoveryRule{NetworkID: network3.ID, Enabled: true, ScanType: model.ScanTypeDeep})
+
+	rules, err := storage.ListDiscoveryRules()
+	if err != nil {
+		t.Fatalf("ListDiscoveryRules failed: %v", err)
+	}
+	if len(rules) != 3 {
+		t.Errorf("expected 3 rules, got %d", len(rules))
+	}
+}
+
+func TestSearchDevicesMultipleMatches(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create devices with overlapping search terms
+	storage.CreateDevice(&model.Device{
+		Name:        "web-server-1",
+		Description: "Production web server",
+		Tags:        []string{"production", "web"},
+	})
+	storage.CreateDevice(&model.Device{
+		Name:        "web-server-2",
+		Description: "Staging web server",
+		Tags:        []string{"staging", "web"},
+	})
+	storage.CreateDevice(&model.Device{
+		Name:        "db-server",
+		Description: "Database server",
+		Tags:        []string{"production", "database"},
+	})
+
+	// Search for "web" should match 2 devices
+	result, err := storage.SearchDevices("web")
+	if err != nil {
+		t.Fatalf("SearchDevices failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 results for 'web', got %d", len(result))
+	}
+
+	// Search for "production" should match 2 devices
+	result, err = storage.SearchDevices("production")
+	if err != nil {
+		t.Fatalf("SearchDevices failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 results for 'production', got %d", len(result))
+	}
+}
+
+func TestNetworkWithZeroVLAN(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create network with VLAN 0 (untagged)
+	network := &model.Network{
+		Name:   "Untagged Network",
+		Subnet: "192.168.1.0/24",
+		VLANID: 0,
+	}
+	storage.CreateNetwork(network)
+
+	got, _ := storage.GetNetwork(network.ID)
+	if got.VLANID != 0 {
+		t.Errorf("expected VLAN 0, got %d", got.VLANID)
+	}
+}
+
+func TestDeviceWithMultipleAddressTypes(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	device := &model.Device{
+		Name: "multi-address",
+		Addresses: []model.Address{
+			{IP: "192.168.1.100", Type: "ipv4", Label: "primary"},
+			{IP: "192.168.1.101", Type: "ipv4", Label: "secondary"},
+			{IP: "2001:db8::1", Type: "ipv6", Label: "ipv6-primary"},
+			{IP: "fe80::1", Type: "ipv6", Label: "link-local"},
+		},
+	}
+	storage.CreateDevice(device)
+
+	got, _ := storage.GetDevice(device.ID)
+	if len(got.Addresses) != 4 {
+		t.Errorf("expected 4 addresses, got %d", len(got.Addresses))
+	}
+
+	// Verify address types
+	ipv4Count := 0
+	ipv6Count := 0
+	for _, addr := range got.Addresses {
+		if addr.Type == "ipv4" {
+			ipv4Count++
+		} else if addr.Type == "ipv6" {
+			ipv6Count++
+		}
+	}
+	if ipv4Count != 2 {
+		t.Errorf("expected 2 ipv4 addresses, got %d", ipv4Count)
+	}
+	if ipv6Count != 2 {
+		t.Errorf("expected 2 ipv6 addresses, got %d", ipv6Count)
+	}
+}
