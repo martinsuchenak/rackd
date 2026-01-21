@@ -1451,7 +1451,7 @@ Notes: Use Bun as package manager and bundler. Added @types/alpinejs for TypeScr
 
 ### [P7-002] Implement API Client
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 199-295)
 Dependencies: P7-001
 Outputs:
@@ -1466,7 +1466,7 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no frontend tests in scope)
   Frontend: REQUIRED (bun run typecheck must pass)
-Notes: Can be extracted for React Native later
+Notes: All types and API methods implemented. Includes devices, datacenters, networks, pools, discovery, relationships, and config endpoints.
 ```
 
 ### [P7-003] Implement Shared Types
@@ -2144,13 +2144,13 @@ Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
-Phase 7 - Web UI:         0/13 tasks complete
+Phase 7 - Web UI:         1/13 tasks complete
 Phase 8 - CLI:            0/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 37/68 tasks complete (54%)
+OSS Total: 38/68 tasks complete (56%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2159,7 +2159,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 50/81 tasks complete (62%)
+# Combined Total: 51/81 tasks complete (63%)
 ```
 ```
 
