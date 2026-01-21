@@ -732,7 +732,7 @@ Security: Log warning when auth token is empty (open API mode)
 
 ### [P3-003] Implement Datacenter Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 33-41)
 Dependencies: P3-001, P2-005
 Outputs:
@@ -753,7 +753,7 @@ Notes: Use r.PathValue("id") for Go 1.22+ pattern routing
 
 ### [P3-004] Implement Network Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 43-55)
 Dependencies: P3-001, P2-006
 Outputs:
@@ -762,10 +762,13 @@ Acceptance:
   - All network endpoints implemented
   - GET /api/networks/{id}/utilization returns utilization stats
   - Pool listing via /api/networks/{id}/pools
+  - Pool CRUD via /api/pools/{id}
+  - GET /api/pools/{id}/next-ip returns next available IP
+  - GET /api/pools/{id}/heatmap returns IP status array
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (httptest for all endpoints)
-Notes: None
+Notes: Pool handlers also implemented in network_handlers.go
 ```
 
 ### [P3-005] Implement Pool Handlers
@@ -2141,7 +2144,7 @@ Expected Final State:
 # OSS Edition Tasks
 Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
-Phase 3 - API Layer:      2/10 tasks complete
+Phase 3 - API Layer:      4/10 tasks complete
 Phase 4 - MCP Server:     0/1 tasks complete
 Phase 5 - Discovery:      0/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
@@ -2151,7 +2154,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 23/68 tasks complete (34%)
+OSS Total: 25/68 tasks complete (37%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2160,7 +2163,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 26/81 tasks complete (32%)
+# Combined Total: 28/81 tasks complete (35%)
 ```
 
 ### Parallel Development Timeline

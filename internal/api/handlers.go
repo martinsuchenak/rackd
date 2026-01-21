@@ -139,28 +139,6 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 }
 
 // Stub handlers - will be implemented in separate files
-func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request)     {}
-func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request)       {}
-func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {}
-
-func (h *Handler) listNetworks(w http.ResponseWriter, r *http.Request)        {}
-func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request)       {}
-func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request)          {}
-func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request)       {}
-func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request)       {}
-func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request)   {}
-func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) {}
-func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request)   {}
-
-func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request)    {}
-func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {}
-func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {}
-func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request)         {}
-func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request)    {}
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request)   {}
 func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request)  {}
