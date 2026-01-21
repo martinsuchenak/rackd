@@ -1,0 +1,391 @@
+package storage
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"fmt"
+	"time"
+)
+
+// Migration represents a single database migration
+type Migration struct {
+	Version  string
+	Name     string
+	Up       func(ctx context.Context, tx *sql.Tx) error
+	Down     func(ctx context.Context, tx *sql.Tx) error
+	Checksum string
+}
+
+// MigrationRecord represents a migration record in the database
+type MigrationRecord struct {
+	Version         string
+	Name            string
+	AppliedAt       time.Time
+	Checksum        string
+	ExecutionTimeMs int64
+	Success         bool
+}
+
+// migrations is the ordered list of all migrations
+var migrations = []*Migration{
+	{
+		Version: "20240120080000",
+		Name:    "initial_schema",
+		Up:      migrateInitialSchemaUp,
+		Down:    migrateInitialSchemaDown,
+	},
+}
+
+// calculateChecksum generates a checksum for a migration
+func calculateChecksum(m *Migration) string {
+	data := m.Version + m.Name
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:8])
+}
+
+// RunMigrations runs all pending migrations
+func RunMigrations(ctx context.Context, db *sql.DB) error {
+	// Create migration tracking table if it doesn't exist
+	if err := createMigrationTable(ctx, db); err != nil {
+		return fmt.Errorf("failed to create migration table: %w", err)
+	}
+
+	// Get applied migrations
+	applied, err := getAppliedMigrations(ctx, db)
+	if err != nil {
+		return fmt.Errorf("failed to get applied migrations: %w", err)
+	}
+
+	// Run pending migrations
+	for _, m := range migrations {
+		if _, ok := applied[m.Version]; ok {
+			continue // Already applied
+		}
+
+		if err := runMigration(ctx, db, m); err != nil {
+			return fmt.Errorf("migration %s failed: %w", m.Version, err)
+		}
+	}
+
+	return nil
+}
+
+// createMigrationTable creates the schema_migrations table
+func createMigrationTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			checksum TEXT NOT NULL,
+			execution_time_ms INTEGER,
+			success INTEGER NOT NULL DEFAULT 1
+		)
+	`)
+	return err
+}
+
+// getAppliedMigrations returns a map of applied migration versions
+func getAppliedMigrations(ctx context.Context, db *sql.DB) (map[string]MigrationRecord, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT version, name, applied_at, checksum, execution_time_ms, success
+		FROM schema_migrations
+		WHERE success = 1
+		ORDER BY version
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	applied := make(map[string]MigrationRecord)
+	for rows.Next() {
+		var r MigrationRecord
+		if err := rows.Scan(&r.Version, &r.Name, &r.AppliedAt, &r.Checksum, &r.ExecutionTimeMs, &r.Success); err != nil {
+			return nil, err
+		}
+		applied[r.Version] = r
+	}
+
+	return applied, rows.Err()
+}
+
+// runMigration runs a single migration within a transaction
+func runMigration(ctx context.Context, db *sql.DB, m *Migration) error {
+	start := time.Now()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Run the migration
+	if err := m.Up(ctx, tx); err != nil {
+		return err
+	}
+
+	// Record the migration
+	duration := time.Since(start)
+	checksum := calculateChecksum(m)
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO schema_migrations (version, name, applied_at, checksum, execution_time_ms, success)
+		VALUES (?, ?, ?, ?, ?, 1)
+	`, m.Version, m.Name, time.Now().UTC(), checksum, duration.Milliseconds())
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// migrateInitialSchemaUp creates all initial tables
+func migrateInitialSchemaUp(ctx context.Context, tx *sql.Tx) error {
+	// Create datacenters table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS datacenters (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			location TEXT,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create datacenters table: %w", err)
+	}
+
+	// Create networks table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS networks (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			subnet TEXT NOT NULL,
+			vlan_id INTEGER,
+			datacenter_id TEXT,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (datacenter_id) REFERENCES datacenters(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create networks table: %w", err)
+	}
+
+	// Create network_pools table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS network_pools (
+			id TEXT PRIMARY KEY,
+			network_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			start_ip TEXT NOT NULL,
+			end_ip TEXT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create network_pools table: %w", err)
+	}
+
+	// Create devices table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS devices (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			make_model TEXT,
+			os TEXT,
+			datacenter_id TEXT,
+			username TEXT,
+			location TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (datacenter_id) REFERENCES datacenters(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create devices table: %w", err)
+	}
+
+	// Create addresses table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS addresses (
+			id TEXT PRIMARY KEY,
+			device_id TEXT NOT NULL,
+			ip TEXT NOT NULL,
+			port INTEGER,
+			type TEXT DEFAULT 'ipv4',
+			label TEXT,
+			network_id TEXT,
+			switch_port TEXT,
+			pool_id TEXT,
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+			FOREIGN KEY (network_id) REFERENCES networks(id),
+			FOREIGN KEY (pool_id) REFERENCES network_pools(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create addresses table: %w", err)
+	}
+
+	// Create tags table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS tags (
+			device_id TEXT NOT NULL,
+			tag TEXT NOT NULL,
+			PRIMARY KEY (device_id, tag),
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create tags table: %w", err)
+	}
+
+	// Create domains table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS domains (
+			device_id TEXT NOT NULL,
+			domain TEXT NOT NULL,
+			PRIMARY KEY (device_id, domain),
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create domains table: %w", err)
+	}
+
+	// Create device_relationships table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS device_relationships (
+			parent_id TEXT NOT NULL,
+			child_id TEXT NOT NULL,
+			type TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (parent_id, child_id, type),
+			FOREIGN KEY (parent_id) REFERENCES devices(id) ON DELETE CASCADE,
+			FOREIGN KEY (child_id) REFERENCES devices(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create device_relationships table: %w", err)
+	}
+
+	// Create discovered_devices table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS discovered_devices (
+			id TEXT PRIMARY KEY,
+			ip TEXT NOT NULL,
+			mac_address TEXT,
+			hostname TEXT,
+			network_id TEXT,
+			status TEXT DEFAULT 'unknown',
+			confidence INTEGER DEFAULT 0,
+			os_guess TEXT,
+			vendor TEXT,
+			open_ports TEXT,
+			services TEXT,
+			first_seen TIMESTAMP,
+			last_seen TIMESTAMP,
+			promoted_to_device_id TEXT,
+			promoted_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (network_id) REFERENCES networks(id),
+			FOREIGN KEY (promoted_to_device_id) REFERENCES devices(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create discovered_devices table: %w", err)
+	}
+
+	// Create discovery_scans table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS discovery_scans (
+			id TEXT PRIMARY KEY,
+			network_id TEXT,
+			status TEXT DEFAULT 'pending',
+			scan_type TEXT DEFAULT 'full',
+			total_hosts INTEGER DEFAULT 0,
+			scanned_hosts INTEGER DEFAULT 0,
+			found_hosts INTEGER DEFAULT 0,
+			progress_percent REAL DEFAULT 0,
+			error_message TEXT,
+			started_at TIMESTAMP,
+			completed_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (network_id) REFERENCES networks(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create discovery_scans table: %w", err)
+	}
+
+	// Create discovery_rules table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS discovery_rules (
+			id TEXT PRIMARY KEY,
+			network_id TEXT UNIQUE,
+			enabled INTEGER DEFAULT 1,
+			scan_type TEXT DEFAULT 'full',
+			interval_hours INTEGER DEFAULT 24,
+			exclude_ips TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (network_id) REFERENCES networks(id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create discovery_rules table: %w", err)
+	}
+
+	// Create indexes for common queries
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_devices_name ON devices(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_datacenter ON devices(datacenter_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_addresses_device ON addresses(device_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_addresses_ip ON addresses(ip)`,
+		`CREATE INDEX IF NOT EXISTS idx_addresses_network ON addresses(network_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_addresses_pool ON addresses(pool_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_tags_device ON tags(device_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_domains_device ON domains(device_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_networks_datacenter ON networks(datacenter_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_network_pools_network ON network_pools(network_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_discovered_devices_network ON discovered_devices(network_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_discovered_devices_ip ON discovered_devices(ip)`,
+		`CREATE INDEX IF NOT EXISTS idx_discovery_scans_network ON discovery_scans(network_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_relationships_parent ON device_relationships(parent_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_relationships_child ON device_relationships(child_id)`,
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateInitialSchemaDown drops all tables
+func migrateInitialSchemaDown(ctx context.Context, tx *sql.Tx) error {
+	// Drop tables in reverse order of dependencies
+	tables := []string{
+		"discovery_rules",
+		"discovery_scans",
+		"discovered_devices",
+		"device_relationships",
+		"domains",
+		"tags",
+		"addresses",
+		"devices",
+		"network_pools",
+		"networks",
+		"datacenters",
+	}
+
+	for _, table := range tables {
+		if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
+			return fmt.Errorf("failed to drop table %s: %w", table, err)
+		}
+	}
+
+	return nil
+}

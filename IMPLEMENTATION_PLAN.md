@@ -461,7 +461,7 @@ Expected State:
 
 ### [P2-001] Define Storage Interfaces
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 1-147)
 Dependencies: P1-004, P1-005, P1-006, P1-007, P1-008
 Outputs:
@@ -486,7 +486,7 @@ Notes: IPStatus struct also defined here
 
 ### [P2-002] Implement Database Migrations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/21-database-migrations.md (lines 1-100), docs/specs/13-database-schema.md (lines 1-241)
 Dependencies: P2-001
 Outputs:
@@ -505,7 +505,7 @@ Notes: Use TIMESTAMP DEFAULT CURRENT_TIMESTAMP for created_at/updated_at
 
 ### [P2-003] Implement SQLite Storage - Core
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 129-147), docs/specs/13-database-schema.md
 Dependencies: P2-002
 Outputs:
@@ -523,7 +523,7 @@ Notes: Use modernc.org/sqlite for CGO-free SQLite
 
 ### [P2-004] Implement SQLite Storage - Device Operations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 31-39), docs/specs/13-database-schema.md (lines 134-147)
 Dependencies: P2-003
 Outputs:
@@ -544,7 +544,7 @@ Notes: Use UUIDv7 for new IDs (google/uuid)
 
 ### [P2-005] Implement SQLite Storage - Datacenter Operations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 41-49), docs/specs/13-database-schema.md (lines 97-106)
 Dependencies: P2-003
 Outputs:
