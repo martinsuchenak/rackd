@@ -613,7 +613,7 @@ Notes: Primary key is (parent_id, child_id, type)
 
 ### [P2-009] Implement Discovery Storage
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 89-113), docs/specs/13-database-schema.md (lines 189-241)
 Dependencies: P2-003
 Outputs:

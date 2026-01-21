@@ -2542,3 +2542,379 @@ func TestAddRelationshipIdempotent(t *testing.T) {
 		t.Errorf("expected 1 relationship, got %d", len(rels))
 	}
 }
+
+// Discovery Storage Tests
+
+func TestDiscoveredDeviceCRUD(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	// Create network first
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	if err := storage.CreateNetwork(network); err != nil {
+		t.Fatalf("CreateNetwork failed: %v", err)
+	}
+
+	// Create discovered device
+	device := &model.DiscoveredDevice{
+		IP:         "192.168.1.100",
+		MACAddress: "00:11:22:33:44:55",
+		Hostname:   "test-host",
+		NetworkID:  network.ID,
+		Status:     "active",
+		Confidence: 80,
+		OSGuess:    "Linux",
+		Vendor:     "Dell",
+		OpenPorts:  []int{22, 80, 443},
+		Services: []model.ServiceInfo{
+			{Port: 22, Protocol: "tcp", Service: "ssh", Version: "OpenSSH 8.0"},
+		},
+	}
+	if err := storage.CreateDiscoveredDevice(device); err != nil {
+		t.Fatalf("CreateDiscoveredDevice failed: %v", err)
+	}
+	if device.ID == "" {
+		t.Error("device ID should be set")
+	}
+
+	// Get device
+	got, err := storage.GetDiscoveredDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDiscoveredDevice failed: %v", err)
+	}
+	if got.IP != device.IP || got.Hostname != device.Hostname {
+		t.Errorf("device mismatch: got %+v", got)
+	}
+	if len(got.OpenPorts) != 3 || got.OpenPorts[0] != 22 {
+		t.Errorf("open_ports mismatch: got %v", got.OpenPorts)
+	}
+	if len(got.Services) != 1 || got.Services[0].Service != "ssh" {
+		t.Errorf("services mismatch: got %v", got.Services)
+	}
+
+	// Update device
+	device.Hostname = "updated-host"
+	device.Confidence = 95
+	if err := storage.UpdateDiscoveredDevice(device); err != nil {
+		t.Fatalf("UpdateDiscoveredDevice failed: %v", err)
+	}
+	got, _ = storage.GetDiscoveredDevice(device.ID)
+	if got.Hostname != "updated-host" || got.Confidence != 95 {
+		t.Errorf("update failed: got %+v", got)
+	}
+
+	// Delete device
+	if err := storage.DeleteDiscoveredDevice(device.ID); err != nil {
+		t.Fatalf("DeleteDiscoveredDevice failed: %v", err)
+	}
+	_, err = storage.GetDiscoveredDevice(device.ID)
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+}
+
+func TestDiscoveredDeviceByIP(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	device := &model.DiscoveredDevice{
+		IP:        "192.168.1.50",
+		NetworkID: network.ID,
+		Status:    "active",
+	}
+	storage.CreateDiscoveredDevice(device)
+
+	got, err := storage.GetDiscoveredDeviceByIP(network.ID, "192.168.1.50")
+	if err != nil {
+		t.Fatalf("GetDiscoveredDeviceByIP failed: %v", err)
+	}
+	if got.ID != device.ID {
+		t.Errorf("device ID mismatch")
+	}
+
+	// Not found
+	_, err = storage.GetDiscoveredDeviceByIP(network.ID, "192.168.1.99")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+}
+
+func TestListDiscoveredDevices(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
+	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
+	storage.CreateNetwork(network1)
+	storage.CreateNetwork(network2)
+
+	storage.CreateDiscoveredDevice(&model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network1.ID})
+	storage.CreateDiscoveredDevice(&model.DiscoveredDevice{IP: "192.168.1.2", NetworkID: network1.ID})
+	storage.CreateDiscoveredDevice(&model.DiscoveredDevice{IP: "192.168.2.1", NetworkID: network2.ID})
+
+	// List all
+	all, err := storage.ListDiscoveredDevices("")
+	if err != nil {
+		t.Fatalf("ListDiscoveredDevices failed: %v", err)
+	}
+	if len(all) != 3 {
+		t.Errorf("expected 3 devices, got %d", len(all))
+	}
+
+	// List by network
+	net1Devices, err := storage.ListDiscoveredDevices(network1.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveredDevices failed: %v", err)
+	}
+	if len(net1Devices) != 2 {
+		t.Errorf("expected 2 devices for network1, got %d", len(net1Devices))
+	}
+}
+
+func TestPromoteDiscoveredDevice(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	discovered := &model.DiscoveredDevice{IP: "192.168.1.10", NetworkID: network.ID}
+	storage.CreateDiscoveredDevice(discovered)
+
+	device := &model.Device{Name: "Promoted Device"}
+	storage.CreateDevice(device)
+
+	if err := storage.PromoteDiscoveredDevice(discovered.ID, device.ID); err != nil {
+		t.Fatalf("PromoteDiscoveredDevice failed: %v", err)
+	}
+
+	got, _ := storage.GetDiscoveredDevice(discovered.ID)
+	if got.PromotedToDeviceID != device.ID {
+		t.Errorf("promoted_to_device_id mismatch: got %s", got.PromotedToDeviceID)
+	}
+	if got.PromotedAt == nil {
+		t.Error("promoted_at should be set")
+	}
+}
+
+func TestDiscoveryScanCRUD(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	scan := &model.DiscoveryScan{
+		NetworkID:  network.ID,
+		Status:     model.ScanStatusPending,
+		ScanType:   model.ScanTypeFull,
+		TotalHosts: 254,
+	}
+	if err := storage.CreateDiscoveryScan(scan); err != nil {
+		t.Fatalf("CreateDiscoveryScan failed: %v", err)
+	}
+	if scan.ID == "" {
+		t.Error("scan ID should be set")
+	}
+
+	got, err := storage.GetDiscoveryScan(scan.ID)
+	if err != nil {
+		t.Fatalf("GetDiscoveryScan failed: %v", err)
+	}
+	if got.Status != model.ScanStatusPending || got.TotalHosts != 254 {
+		t.Errorf("scan mismatch: got %+v", got)
+	}
+
+	// Update scan
+	scan.Status = model.ScanStatusRunning
+	scan.ScannedHosts = 50
+	scan.ProgressPercent = 19.7
+	if err := storage.UpdateDiscoveryScan(scan); err != nil {
+		t.Fatalf("UpdateDiscoveryScan failed: %v", err)
+	}
+	got, _ = storage.GetDiscoveryScan(scan.ID)
+	if got.Status != model.ScanStatusRunning || got.ScannedHosts != 50 {
+		t.Errorf("update failed: got %+v", got)
+	}
+}
+
+func TestListDiscoveryScans(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	storage.CreateDiscoveryScan(&model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusCompleted})
+	storage.CreateDiscoveryScan(&model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusRunning})
+
+	scans, err := storage.ListDiscoveryScans(network.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveryScans failed: %v", err)
+	}
+	if len(scans) != 2 {
+		t.Errorf("expected 2 scans, got %d", len(scans))
+	}
+}
+
+func TestDiscoveryRuleCRUD(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	rule := &model.DiscoveryRule{
+		NetworkID:     network.ID,
+		Enabled:       true,
+		ScanType:      model.ScanTypeFull,
+		IntervalHours: 24,
+		ExcludeIPs:    "192.168.1.1,192.168.1.254",
+	}
+	if err := storage.SaveDiscoveryRule(rule); err != nil {
+		t.Fatalf("SaveDiscoveryRule failed: %v", err)
+	}
+
+	got, err := storage.GetDiscoveryRule(network.ID)
+	if err != nil {
+		t.Fatalf("GetDiscoveryRule failed: %v", err)
+	}
+	if !got.Enabled || got.IntervalHours != 24 {
+		t.Errorf("rule mismatch: got %+v", got)
+	}
+
+	// Update rule (upsert)
+	rule.Enabled = false
+	rule.IntervalHours = 12
+	if err := storage.SaveDiscoveryRule(rule); err != nil {
+		t.Fatalf("SaveDiscoveryRule update failed: %v", err)
+	}
+	got, _ = storage.GetDiscoveryRule(network.ID)
+	if got.Enabled || got.IntervalHours != 12 {
+		t.Errorf("update failed: got %+v", got)
+	}
+}
+
+func TestListDiscoveryRules(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
+	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
+	storage.CreateNetwork(network1)
+	storage.CreateNetwork(network2)
+
+	storage.SaveDiscoveryRule(&model.DiscoveryRule{NetworkID: network1.ID, Enabled: true})
+	storage.SaveDiscoveryRule(&model.DiscoveryRule{NetworkID: network2.ID, Enabled: false})
+
+	rules, err := storage.ListDiscoveryRules()
+	if err != nil {
+		t.Fatalf("ListDiscoveryRules failed: %v", err)
+	}
+	if len(rules) != 2 {
+		t.Errorf("expected 2 rules, got %d", len(rules))
+	}
+}
+
+func TestCleanupOldDiscoveries(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
+	storage.CreateNetwork(network)
+
+	// Create devices - one will be promoted
+	storage.CreateDiscoveredDevice(&model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
+	promoted := &model.DiscoveredDevice{IP: "192.168.1.2", NetworkID: network.ID}
+	storage.CreateDiscoveredDevice(promoted)
+
+	device := &model.Device{Name: "Promoted"}
+	storage.CreateDevice(device)
+	storage.PromoteDiscoveredDevice(promoted.ID, device.ID)
+
+	// Cleanup with 0 days should remove non-promoted devices
+	if err := storage.CleanupOldDiscoveries(0); err != nil {
+		t.Fatalf("CleanupOldDiscoveries failed: %v", err)
+	}
+
+	devices, _ := storage.ListDiscoveredDevices(network.ID)
+	if len(devices) != 1 {
+		t.Errorf("expected 1 device (promoted), got %d", len(devices))
+	}
+	if devices[0].PromotedToDeviceID == "" {
+		t.Error("remaining device should be the promoted one")
+	}
+}
+
+func TestDiscoveryNotFoundErrors(t *testing.T) {
+	storage, err := NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLiteStorage failed: %v", err)
+	}
+	defer storage.Close()
+
+	_, err = storage.GetDiscoveredDevice("nonexistent")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	_, err = storage.GetDiscoveryScan("nonexistent")
+	if err != ErrScanNotFound {
+		t.Errorf("expected ErrScanNotFound, got %v", err)
+	}
+
+	_, err = storage.GetDiscoveryRule("nonexistent")
+	if err != ErrRuleNotFound {
+		t.Errorf("expected ErrRuleNotFound, got %v", err)
+	}
+
+	err = storage.UpdateDiscoveredDevice(&model.DiscoveredDevice{ID: "nonexistent"})
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	err = storage.DeleteDiscoveredDevice("nonexistent")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	err = storage.PromoteDiscoveredDevice("nonexistent", "device-id")
+	if err != ErrDiscoveryNotFound {
+		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
+	}
+
+	err = storage.UpdateDiscoveryScan(&model.DiscoveryScan{ID: "nonexistent"})
+	if err != ErrScanNotFound {
+		t.Errorf("expected ErrScanNotFound, got %v", err)
+	}
+}
