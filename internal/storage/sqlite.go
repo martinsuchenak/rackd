@@ -1656,19 +1656,83 @@ func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
 // Relationship operations - stub implementations for now (will be completed in P2-008)
 
 func (s *SQLiteStorage) AddRelationship(parentID, childID, relationshipType string) error {
-	return nil
+	ctx := context.Background()
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO device_relationships (parent_id, child_id, type)
+		VALUES (?, ?, ?)
+		ON CONFLICT (parent_id, child_id, type) DO NOTHING
+	`, parentID, childID, relationshipType)
+	return err
 }
 
 func (s *SQLiteStorage) RemoveRelationship(parentID, childID, relationshipType string) error {
-	return nil
+	ctx := context.Background()
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM device_relationships
+		WHERE parent_id = ? AND child_id = ? AND type = ?
+	`, parentID, childID, relationshipType)
+	return err
 }
 
 func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
-	return nil, nil
+	ctx := context.Background()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT parent_id, child_id, type, created_at
+		FROM device_relationships
+		WHERE parent_id = ? OR child_id = ?
+	`, deviceID, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rels []model.DeviceRelationship
+	for rows.Next() {
+		var r model.DeviceRelationship
+		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.Type, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		rels = append(rels, r)
+	}
+	return rels, rows.Err()
 }
 
 func (s *SQLiteStorage) GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error) {
-	return nil, nil
+	ctx := context.Background()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT d.id, d.name, d.description, d.make_model, d.os, d.datacenter_id,
+		       d.username, d.location, d.created_at, d.updated_at
+		FROM devices d
+		JOIN device_relationships r ON (d.id = r.child_id OR d.id = r.parent_id)
+		WHERE (r.parent_id = ? OR r.child_id = ?) AND r.type = ? AND d.id != ?
+	`, deviceID, deviceID, relationshipType, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []model.Device
+	for rows.Next() {
+		var d model.Device
+		var dcID sql.NullString
+		if err := rows.Scan(&d.ID, &d.Name, &d.Description, &d.MakeModel, &d.OS,
+			&dcID, &d.Username, &d.Location, &d.CreatedAt, &d.UpdatedAt); err != nil {
+			return nil, err
+		}
+		d.DatacenterID = dcID.String
+		devices = append(devices, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Fetch related data after closing rows
+	for i := range devices {
+		devices[i].Addresses, _ = s.getDeviceAddresses(ctx, devices[i].ID)
+		devices[i].Tags, _ = s.getDeviceTags(ctx, devices[i].ID)
+		devices[i].Domains, _ = s.getDeviceDomains(ctx, devices[i].ID)
+	}
+	return devices, nil
 }
 
 // Discovery operations - stub implementations for now (will be completed in P2-009)

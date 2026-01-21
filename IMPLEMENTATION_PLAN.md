@@ -595,7 +595,7 @@ Notes: IP range enumeration needed for pool operations. Added pool_tags table mi
 
 ### [P2-008] Implement SQLite Storage - Relationship Operations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 81-87), docs/specs/13-database-schema.md (lines 179-188)
 Dependencies: P2-003
 Outputs:
