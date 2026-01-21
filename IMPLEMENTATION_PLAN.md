@@ -630,7 +630,7 @@ Notes: Discovered devices have open_ports and services as JSON columns
 
 ### [P2-010] Implement Encoding Helpers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (note at line 59)
 Dependencies: P2-003
 Outputs:
