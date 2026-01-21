@@ -6,7 +6,7 @@ project: rackd
 version: 1.1.0
 created: 2026-01-21
 last_updated: 2026-01-21
-status: PHASE1_DONE
+status: ENTERPRISE_PHASE1_DONE
 editions:
   - oss: Open Source (this repo)
   - enterprise: Enterprise Edition (separate repo: rackd-enterprise)
@@ -368,7 +368,7 @@ Expected State:
 
 ### [E1-001] Initialize Enterprise Repository
 ```
-Status: TODO
+Status: DONE
 Edition: ENTERPRISE
 Specs: docs/specs/02-oss-premium-split.md (lines 1-35)
 Dependencies: P1-001
@@ -388,7 +388,7 @@ Notes: Enterprise repo is separate from OSS repo
 
 ### [E1-002] Create Enterprise Directory Structure
 ```
-Status: TODO
+Status: DONE
 Edition: ENTERPRISE
 Specs: docs/specs/02-oss-premium-split.md
 Dependencies: E1-001
@@ -408,22 +408,33 @@ Notes: None
 
 ### [E1-003] Implement Enterprise Models
 ```
-Status: TODO
+Status: DONE
 Edition: ENTERPRISE
 Specs: docs/specs/03-feature-matrix.md (lines 100-164)
 Dependencies: E1-002, P1-004
 Outputs:
   - rackd-enterprise/internal/model/credential.go
+  - rackd-enterprise/internal/model/credential_dto.go
   - rackd-enterprise/internal/model/scan_profile.go
   - rackd-enterprise/internal/model/scheduled_scan.go
 Acceptance:
-  - Credential struct (SNMP community, SSH key references)
-  - ScanProfile struct (port lists, scan options)
-  - ScheduledScan struct (cron expression, network, profile)
+  - Credential struct with json:"-" on sensitive fields (SNMPCommunity, SNMPV3Auth, SNMPV3Priv, SSHKeyID)
+  - CredentialResponse DTO for API (excludes sensitive fields)
+  - Credential.Validate() method for type and required field validation
+  - ScanProfile struct with port range and worker bounds validation
+  - ScanProfile.Validate() method
+  - ScheduledScan struct with basic cron validation
+  - ScheduledScan.Validate() method
   - All JSON tags match API expectations
 Validation:
   Build: REQUIRED
   Tests: SKIP (pure data structs)
+Security:
+  - SEC-001/002/003: Sensitive fields use json:"-" to prevent serialization
+  - SEC-005: CredentialResponse DTO created for safe API responses
+  - SEC-004: Validation methods added to all models
+  - SEC-006: Type enum validation for Credential and ScanProfile
+  - LOW: Cron, port, and worker validation added
 Notes: These extend OSS models for advanced scanning
 ```
 
@@ -431,12 +442,12 @@ Notes: These extend OSS models for advanced scanning
 
 ### Enterprise Phase 1 Checkpoint
 ```
-Status: TODO
+Status: DONE
 All tasks E1-001 through E1-003 must be DONE before proceeding to E5 tasks.
 
 Validation Commands:
-  [ ] cd rackd-enterprise && go build ./...    # Must pass
-  [ ] Import OSS types successfully            # Manual verification
+  [x] cd rackd-enterprise && go build ./...    # Must pass
+  [x] Import OSS types successfully            # Manual verification
 
 Expected State:
   - Enterprise repo can import OSS code
@@ -1032,13 +1043,18 @@ Outputs:
 Acceptance:
   - CredentialStorage interface
   - SQLite implementation for credential storage
-  - AES-256-GCM encryption for secrets
+  - AES-256-GCM encryption for secrets (addresses SEC-001/002/003 HIGH priority)
   - CRUD operations for credentials
   - Credentials linked to datacenters or global
+  - Use CredentialResponse for serialization (addresses SEC-005 HIGH priority)
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (encryption roundtrip, CRUD tests)
-Notes: Use crypto/aes, crypto/cipher for encryption. Key from config.
+Security:
+  - Encrypt all sensitive fields before storing (SNMPCommunity, SNMPV3Auth, SNMPV3Priv, SSHKeyID)
+  - Never return full Credential in API, only CredentialResponse
+  - Key from config (ENCRYPTION_KEY env var)
+Notes: Use crypto/aes, crypto/cipher for encryption
 ```
 
 ### [E5-002] Implement SNMP Scanner
