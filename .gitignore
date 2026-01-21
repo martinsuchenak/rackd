@@ -1,0 +1,48 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+rackd
+rackd-*
+/build/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.out
+
+# Go workspace file
+go.work
+
+# Vendor directory
+vendor/
+
+# Dependency directories
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Data
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# UI Assets
+webui/dist/
+internal/ui/assets/

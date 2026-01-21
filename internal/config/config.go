@@ -1,0 +1,145 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/paularlott/cli/env"
+)
+
+type Config struct {
+	DataDir                string
+	ListenAddr             string
+	APIAuthToken           string
+	MCPAuthToken           string
+	LogFormat              string
+	LogLevel               string
+	DiscoveryEnabled       bool
+	DiscoveryInterval      time.Duration
+	DiscoveryMaxConcurrent int
+	DiscoveryTimeout       time.Duration
+	DiscoveryCleanupDays   int
+	DiscoveryScanOnStartup bool
+}
+
+var cfg Config
+
+func Load() *Config {
+	env.Load()
+
+	cfg = Config{
+		DataDir:                getEnv("DATA_DIR", "./data"),
+		ListenAddr:             getEnv("LISTEN_ADDR", ":8080"),
+		APIAuthToken:           getEnv("API_AUTH_TOKEN", ""),
+		MCPAuthToken:           getEnv("MCP_AUTH_TOKEN", ""),
+		LogFormat:              getEnv("LOG_FORMAT", "text"),
+		LogLevel:               getEnv("LOG_LEVEL", "info"),
+		DiscoveryEnabled:       getBoolEnv("DISCOVERY_ENABLED", true),
+		DiscoveryInterval:      getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
+		DiscoveryMaxConcurrent: getIntEnv("DISCOVERY_MAX_CONCURRENT", 10),
+		DiscoveryTimeout:       getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
+		DiscoveryCleanupDays:   getIntEnv("DISCOVERY_CLEANUP_DAYS", 30),
+		DiscoveryScanOnStartup: getBoolEnv("DISCOVERY_SCAN_ON_STARTUP", false),
+	}
+
+	return &cfg
+}
+
+func (c *Config) Validate() error {
+	validLogLevels := map[string]bool{
+		"trace": true,
+		"debug": true,
+		"info":  true,
+		"warn":  true,
+		"error": true,
+	}
+
+	if !validLogLevels[c.LogLevel] {
+		return fmt.Errorf("invalid LOG_LEVEL: %s (must be trace, debug, info, warn, or error)", c.LogLevel)
+	}
+
+	if c.LogFormat != "text" && c.LogFormat != "json" {
+		return fmt.Errorf("invalid LOG_FORMAT: %s (must be text or json)", c.LogFormat)
+	}
+
+	if c.DiscoveryInterval <= 0 {
+		return fmt.Errorf("DISCOVERY_INTERVAL must be positive, got %v", c.DiscoveryInterval)
+	}
+
+	if c.DiscoveryMaxConcurrent <= 0 {
+		return fmt.Errorf("DISCOVERY_MAX_CONCURRENT must be positive, got %d", c.DiscoveryMaxConcurrent)
+	}
+
+	if c.DiscoveryTimeout <= 0 {
+		return fmt.Errorf("DISCOVERY_TIMEOUT must be positive, got %v", c.DiscoveryTimeout)
+	}
+
+	if c.DiscoveryCleanupDays <= 0 {
+		return fmt.Errorf("DISCOVERY_CLEANUP_DAYS must be positive, got %d", c.DiscoveryCleanupDays)
+	}
+
+	return nil
+}
+
+func (c *Config) String() string {
+	apiToken := "***REDACTED***"
+	mcpToken := "***REDACTED***"
+
+	if c.APIAuthToken == "" {
+		apiToken = "(empty)"
+	}
+	if c.MCPAuthToken == "" {
+		mcpToken = "(empty)"
+	}
+
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, APIAuthToken:%s, MCPAuthToken:%s, LogFormat:%s, LogLevel:%s, DiscoveryEnabled:%v, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
+		c.DataDir,
+		c.ListenAddr,
+		apiToken,
+		mcpToken,
+		c.LogFormat,
+		c.LogLevel,
+		c.DiscoveryEnabled,
+		c.DiscoveryInterval,
+		c.DiscoveryMaxConcurrent,
+		c.DiscoveryTimeout,
+		c.DiscoveryCleanupDays,
+		c.DiscoveryScanOnStartup,
+	)
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getIntEnv(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if result, err := strconv.Atoi(value); err == nil {
+			return result
+		}
+	}
+	return defaultValue
+}
+
+func getBoolEnv(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if result, err := strconv.ParseBool(value); err == nil {
+			return result
+		}
+	}
+	return defaultValue
+}
+
+func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if result, err := time.ParseDuration(value); err == nil {
+			return result
+		}
+	}
+	return defaultValue
+}
