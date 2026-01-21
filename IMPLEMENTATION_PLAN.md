@@ -576,11 +576,12 @@ Notes: Utilization calculation based on addresses assigned vs CIDR size
 
 ### [P2-007] Implement SQLite Storage - Pool Operations
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/06-storage.md (lines 62-79), docs/specs/13-database-schema.md (lines 122-133)
 Dependencies: P2-003
 Outputs:
   - internal/storage/sqlite.go (additions)
+  - internal/storage/migrations.go (add_pool_tags migration)
 Acceptance:
   - All NetworkPoolStorage methods implemented
   - GetNextAvailableIP() finds first unused IP in range
@@ -589,7 +590,7 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (pool CRUD, next-ip logic, heatmap)
-Notes: IP range enumeration needed for pool operations
+Notes: IP range enumeration needed for pool operations. Added pool_tags table migration.
 ```
 
 ### [P2-008] Implement SQLite Storage - Relationship Operations

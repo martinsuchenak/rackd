@@ -36,6 +36,12 @@ var migrations = []*Migration{
 		Up:      migrateInitialSchemaUp,
 		Down:    migrateInitialSchemaDown,
 	},
+	{
+		Version: "20240121080000",
+		Name:    "add_pool_tags",
+		Up:      migrateAddPoolTagsUp,
+		Down:    migrateAddPoolTagsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -387,5 +393,37 @@ func migrateInitialSchemaDown(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
+	return nil
+}
+
+// migrateAddPoolTagsUp creates the pool_tags table
+func migrateAddPoolTagsUp(ctx context.Context, tx *sql.Tx) error {
+	// Create pool_tags table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS pool_tags (
+			pool_id TEXT NOT NULL,
+			tag TEXT NOT NULL,
+			PRIMARY KEY (pool_id, tag),
+			FOREIGN KEY (pool_id) REFERENCES network_pools(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create pool_tags table: %w", err)
+	}
+
+	// Create index for pool_tags
+	if _, err := tx.ExecContext(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_pool_tags_pool ON pool_tags(pool_id)
+	`); err != nil {
+		return fmt.Errorf("failed to create pool_tags index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddPoolTagsDown drops the pool_tags table
+func migrateAddPoolTagsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS pool_tags`); err != nil {
+		return fmt.Errorf("failed to drop pool_tags table: %w", err)
+	}
 	return nil
 }
