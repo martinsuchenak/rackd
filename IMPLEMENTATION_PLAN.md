@@ -1430,7 +1430,7 @@ Completed: 2026-01-22
 
 ### [P7-001] Frontend Scaffolding
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 1-27), docs/specs/11-build-deploy.md (lines 46-56)
 Dependencies: P1-002
 Outputs:
@@ -1446,7 +1446,7 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no tests yet)
   Frontend: REQUIRED (bun install && bun run build must succeed or setup correctly)
-Notes: Use Bun as package manager and bundler
+Notes: Use Bun as package manager and bundler. Added @types/alpinejs for TypeScript support.
 ```
 
 ### [P7-002] Implement API Client
