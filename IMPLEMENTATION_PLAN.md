@@ -773,11 +773,11 @@ Notes: Pool handlers also implemented in network_handlers.go
 
 ### [P3-005] Implement Pool Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 57-65)
 Dependencies: P3-001, P2-007
 Outputs:
-  - internal/api/pool_handlers.go
+  - internal/api/network_handlers.go (pool handlers included)
 Acceptance:
   - GET /api/pools/{id} - get pool
   - PUT /api/pools/{id} - update pool
@@ -787,16 +787,17 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (httptest for all endpoints)
-Notes: None
+Notes: Pool handlers implemented in network_handlers.go alongside network handlers
 ```
 
 ### [P3-006] Implement Device Handlers
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/14-api-reference.md (lines 67-76)
 Dependencies: P3-001, P2-004
 Outputs:
   - internal/api/device_handlers.go
+  - internal/api/device_handlers_test.go
 Acceptance:
   - All device CRUD endpoints implemented
   - GET /api/devices/search?q={query} performs text search
@@ -2144,7 +2145,7 @@ Expected Final State:
 # OSS Edition Tasks
 Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
-Phase 3 - API Layer:      4/10 tasks complete
+Phase 3 - API Layer:      6/10 tasks complete
 Phase 4 - MCP Server:     0/1 tasks complete
 Phase 5 - Discovery:      0/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
@@ -2154,7 +2155,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 25/68 tasks complete (37%)
+OSS Total: 27/68 tasks complete (40%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2163,7 +2164,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 28/81 tasks complete (35%)
+# Combined Total: 30/81 tasks complete (37%)
 ```
 
 ### Parallel Development Timeline

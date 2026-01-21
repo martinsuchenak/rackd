@@ -140,13 +140,6 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 
 // Stub handlers - will be implemented in separate files
 
-func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request)   {}
-func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request)  {}
-func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request)     {}
-func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request)  {}
-func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request)  {}
-func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {}
-
 func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request)    {}
 func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request)   {}
 func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request)  {}
