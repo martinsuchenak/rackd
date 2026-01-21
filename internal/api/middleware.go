@@ -1,13 +1,17 @@
 package api
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/log"
 )
 
-// AuthMiddleware validates bearer tokens
+// MaxRequestBodySize is the maximum allowed request body size (1MB)
+const MaxRequestBodySize = 1 << 20
+
+// AuthMiddleware validates bearer tokens using timing-safe comparison
 func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
@@ -18,7 +22,7 @@ func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		providedToken := strings.TrimPrefix(auth, "Bearer ")
-		if providedToken != token {
+		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(token)) != 1 {
 			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 			return
@@ -35,6 +39,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'")
 
 		// HSTS only for TLS connections
 		if r.TLS != nil {
@@ -43,6 +48,14 @@ func SecurityHeaders(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// LimitBody wraps a handler to limit request body size
+func LimitBody(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
+		next(w, r)
+	}
 }
 
 // LogAuthWarning logs a warning when auth token is empty (open API mode)

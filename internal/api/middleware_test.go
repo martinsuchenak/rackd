@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -105,10 +106,11 @@ func TestSecurityHeaders_HTTP(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	expectedHeaders := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":        "DENY",
-		"X-XSS-Protection":       "1; mode=block",
-		"Referrer-Policy":        "strict-origin-when-cross-origin",
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"X-XSS-Protection":        "1; mode=block",
+		"Referrer-Policy":         "strict-origin-when-cross-origin",
+		"Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
 	}
 
 	for header, expected := range expectedHeaders {
@@ -145,4 +147,33 @@ func TestLogAuthWarning(t *testing.T) {
 	// Just ensure it doesn't panic
 	LogAuthWarning("")
 	LogAuthWarning("some-token")
+}
+
+func TestLimitBody(t *testing.T) {
+	handler := LimitBody(func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Test with small body - should succeed
+	smallBody := make([]byte, 1024)
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(smallBody))
+	w := httptest.NewRecorder()
+	handler(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d for small body, got %d", http.StatusOK, w.Code)
+	}
+
+	// Test with body exceeding limit - should fail
+	largeBody := make([]byte, MaxRequestBodySize+1)
+	r = httptest.NewRequest("POST", "/", bytes.NewReader(largeBody))
+	w = httptest.NewRecorder()
+	handler(w, r)
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected status %d for large body, got %d", http.StatusRequestEntityTooLarge, w.Code)
+	}
 }

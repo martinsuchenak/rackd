@@ -36,6 +36,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	}
 
 	wrap := func(handler http.HandlerFunc) http.HandlerFunc {
+		handler = LimitBody(handler)
 		if cfg.authToken != "" {
 			return AuthMiddleware(cfg.authToken, handler)
 		}
