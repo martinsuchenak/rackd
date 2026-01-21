@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -120,6 +121,7 @@ type ExtendedStorage interface {
 	NetworkPoolStorage
 	DiscoveryStorage
 	Close() error
+	DB() *sql.DB
 }
 
 // NewStorage creates a new base storage instance
