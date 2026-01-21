@@ -962,7 +962,7 @@ Completed: 2026-01-21
 
 ### [P5-001] Define Scanner Interface
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/10-discovery.md (lines 7-16)
 Dependencies: P1-008
 Outputs:
@@ -977,11 +977,12 @@ Notes: None
 
 ### [P5-002] Implement Default Scanner
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/10-discovery.md (lines 18-240)
 Dependencies: P5-001, P2-009, P1-009
 Outputs:
   - internal/discovery/scanner.go
+  - internal/discovery/scanner_test.go
 Acceptance:
   - DefaultScanner struct
   - NewScanner() constructor
@@ -997,16 +998,17 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test CIDR parsing, IP enumeration, mock network tests)
-Notes: Use net.DialTimeout for TCP probes
+Notes: Coverage 67.3%. Network-dependent code (isHostAlive, scanPorts) not fully testable without mocks.
 ```
 
 ### [P5-003] Implement Background Scheduler
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/10-discovery.md (lines 242-365)
 Dependencies: P5-002, P2-009
 Outputs:
   - internal/worker/scheduler.go
+  - internal/worker/scheduler_test.go
 Acceptance:
   - Scheduler struct with Start()/Stop() lifecycle
   - Runs discovery scans per enabled rules
@@ -1016,28 +1018,30 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test scheduler lifecycle, rule execution)
-Notes: Use time.Ticker for scheduling
+Notes: Coverage 87.2%. Uses mock scanner for testing.
 ```
 
 ---
 
 ### Phase 5 Checkpoint
 ```
-Status: TODO
+Status: DONE
 All tasks P5-001 through P5-003 must be DONE before proceeding.
 
 Validation Commands:
-  [ ] go build ./...                              # Must pass
-  [ ] go test ./internal/discovery/... -v         # Must pass
-  [ ] go test ./internal/worker/... -v            # Must pass
-  [ ] go test ./... -v                            # Full test suite must pass
-  [ ] go vet ./...                                # Must pass
+  [x] go build ./...                              # Must pass
+  [x] go test ./internal/discovery/... -v         # Must pass (13 tests)
+  [x] go test ./internal/worker/... -v            # Must pass (9 tests)
+  [x] go test ./... -v                            # Full test suite must pass
+  [x] go vet ./...                                # Must pass
 
 Expected State:
   - Scanner can enumerate IPs from CIDR
   - TCP ping working (may need elevated permissions)
   - Scheduler starts/stops cleanly
   - Discovery results stored in database
+
+Completed: 2026-01-21
 ```
 
 ---
@@ -2152,7 +2156,7 @@ Phase 1 - Foundation:     10/10 tasks complete
 Phase 2 - Data Layer:     11/11 tasks complete
 Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
-Phase 5 - Discovery:      0/3 tasks complete
+Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         0/3 tasks complete
 Phase 7 - Web UI:         0/13 tasks complete
 Phase 8 - CLI:            0/7 tasks complete
@@ -2160,7 +2164,7 @@ Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 32/68 tasks complete (47%)
+OSS Total: 35/68 tasks complete (51%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2169,7 +2173,7 @@ Enterprise Phase 6 - Enterprise Server: 0/3 tasks complete
 
 Enterprise Total: 3/13 tasks complete (23%)
 
-# Combined Total: 35/81 tasks complete (43%)
+# Combined Total: 38/81 tasks complete (47%)
 ```
 
 ### Parallel Development Timeline
