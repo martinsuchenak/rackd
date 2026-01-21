@@ -1471,7 +1471,7 @@ Notes: All types and API methods implemented. Includes devices, datacenters, net
 
 ### [P7-003] Implement Shared Types
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 297-389)
 Dependencies: P7-001
 Outputs:
@@ -1486,12 +1486,12 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no frontend tests in scope)
   Frontend: REQUIRED (bun run typecheck must pass)
-Notes: Match JSON structure from API
+Notes: Types extracted from api.ts into separate types.ts file. api.ts updated to import from types.ts.
 ```
 
 ### [P7-004] Implement Utility Functions
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 7-9)
 Dependencies: P7-001
 Outputs:
@@ -1503,7 +1503,7 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no frontend tests in scope)
   Frontend: REQUIRED (bun run typecheck must pass)
-Notes: Keep minimal for now
+Notes: Includes formatDate, formatDateTime, debounce, copyToClipboard, isValidIP, isValidCIDR, getIPType
 ```
 
 ### [P7-005] Implement Navigation Component
@@ -2144,13 +2144,13 @@ Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
-Phase 7 - Web UI:         1/13 tasks complete
+Phase 7 - Web UI:         3/13 tasks complete
 Phase 8 - CLI:            0/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 38/68 tasks complete (56%)
+OSS Total: 40/68 tasks complete (59%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2159,7 +2159,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 51/81 tasks complete (63%)
+# Combined Total: 53/81 tasks complete (65%)
 ```
 ```
 
