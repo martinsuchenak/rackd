@@ -1748,7 +1748,7 @@ Notes: Uses paularlott/cli typed flags. All tests pass.
 
 ### [P8-003] Implement Device Commands
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 108-421)
 Dependencies: P8-001
 Outputs:
@@ -1758,6 +1758,7 @@ Outputs:
   - cmd/device/add.go
   - cmd/device/update.go
   - cmd/device/delete.go
+  - cmd/device/device_test.go
 Acceptance:
   - device list with --query, --tags, --datacenter, --output flags
   - device get with --id, --output flags
@@ -1767,12 +1768,12 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test flag parsing, output formats)
-Notes: Support --output json/yaml/table
+Notes: Support --output json/yaml/table. All tests pass.
 ```
 
 ### [P8-004] Implement Network Commands
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 681-706)
 Dependencies: P8-001
 Outputs:
@@ -1782,18 +1783,19 @@ Outputs:
   - cmd/network/add.go
   - cmd/network/delete.go
   - cmd/network/pool.go
+  - cmd/network/network_test.go
 Acceptance:
   - network list/get/add/delete
   - network pool list/add
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test flag parsing, subcommand structure)
-Notes: Pool as subcommand of network
+Notes: Pool as subcommand of network. All tests pass.
 ```
 
 ### [P8-005] Implement Datacenter Commands
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 708-733)
 Dependencies: P8-001
 Outputs:
@@ -1803,17 +1805,18 @@ Outputs:
   - cmd/datacenter/add.go
   - cmd/datacenter/update.go
   - cmd/datacenter/delete.go
+  - cmd/datacenter/datacenter_test.go
 Acceptance:
   - All datacenter CRUD commands
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test flag parsing)
-Notes: None
+Notes: All tests pass.
 ```
 
 ### [P8-006] Implement Discovery Commands
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 735-956)
 Dependencies: P8-001
 Outputs:
@@ -1821,6 +1824,7 @@ Outputs:
   - cmd/discovery/scan.go
   - cmd/discovery/list.go
   - cmd/discovery/promote.go
+  - cmd/discovery/discovery_test.go
 Acceptance:
   - discovery scan --network --type flags
   - discovery list with --network, --status filters
@@ -1829,7 +1833,7 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test flag parsing, dry-run mode)
-Notes: None
+Notes: All tests pass.
 ```
 
 ### [P8-007] Implement Main Entry Point
@@ -2145,12 +2149,12 @@ Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
 Phase 7 - Web UI:         13/13 tasks complete
-Phase 8 - CLI:            2/7 tasks complete
+Phase 8 - CLI:            6/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 49/68 tasks complete (72%)
+OSS Total: 53/68 tasks complete (78%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2159,7 +2163,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 62/81 tasks complete (77%)
+# Combined Total: 66/81 tasks complete (81%)
 ```
 ```
 

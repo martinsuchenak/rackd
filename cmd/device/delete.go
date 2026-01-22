@@ -1,0 +1,53 @@
+package device
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/martinsuchenak/rackd/cmd/client"
+	"github.com/paularlott/cli"
+)
+
+func DeleteCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "delete",
+		Usage: "Delete a device",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "id", Usage: "Device ID", Required: true},
+			&cli.BoolFlag{Name: "force", Usage: "Skip confirmation"},
+		},
+		Run: func(ctx context.Context, cmd *cli.Command) error {
+			cfg := client.LoadConfig()
+			c := client.NewClient(cfg)
+			deviceID := cmd.GetString("id")
+
+			if !cmd.GetBool("force") {
+				fmt.Printf("Are you sure you want to delete device %s? [y/N]: ", deviceID)
+				reader := bufio.NewReader(os.Stdin)
+				confirm, _ := reader.ReadString('\n')
+				confirm = strings.TrimSpace(strings.ToLower(confirm))
+				if confirm != "y" && confirm != "yes" {
+					fmt.Println("Deletion cancelled")
+					return nil
+				}
+			}
+
+			resp, err := c.DoRequest("DELETE", "/api/devices/"+deviceID, nil)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+				return client.HandleError(resp)
+			}
+
+			fmt.Println("Device deleted successfully")
+			return nil
+		},
+	}
+}
