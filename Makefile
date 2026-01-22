@@ -49,11 +49,15 @@ ui-build:
 
 ## test: Run all tests
 test: ui-build
-	$(GO) test -v -race -coverprofile=coverage.out ./...
+	$(GO) test -v -coverprofile=coverage.out ./...
 
 ## test-short: Run short tests only
 test-short:
 	$(GO) test -v -short ./...
+
+## test-race: Run tests with race detector
+test-race: ui-build
+	$(GO) test -v -race ./...
 
 ## test-coverage: Show test coverage
 test-coverage: test
@@ -78,6 +82,10 @@ dev:
 ## lint: Run linters
 lint:
 	golangci-lint run ./...
+
+## security: Run security scanner (gosec)
+security:
+	gosec ./...
 
 ## fmt: Format code
 fmt:

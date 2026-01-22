@@ -31,6 +31,10 @@ func setupIntegrationServer(t *testing.T, authToken string) (*httptest.Server, s
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	// Register UI config endpoint
+	uiBuilder := NewUIConfigBuilder()
+	mux.HandleFunc("GET /api/config", uiBuilder.Handler())
+
 	// Wrap with security headers
 	handler := SecurityHeaders(mux)
 

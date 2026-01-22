@@ -94,9 +94,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/discovery/rules/{id}", wrap(h.getDiscoveryRule))
 	mux.HandleFunc("PUT /api/discovery/rules/{id}", wrap(h.updateDiscoveryRule))
 	mux.HandleFunc("DELETE /api/discovery/rules/{id}", wrap(h.deleteDiscoveryRule))
-
-	// Config route
-	mux.HandleFunc("GET /api/config", wrap(h.getConfig))
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

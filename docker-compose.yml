@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  rackd:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - rackd-data:/data
+    environment:
+      - DATA_DIR=/data
+      - LISTEN_ADDR=:8080
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN:-}
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+      - DISCOVERY_ENABLED=true
+      - DISCOVERY_INTERVAL=24h
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/datacenters"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  rackd-data:
