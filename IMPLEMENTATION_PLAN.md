@@ -1707,7 +1707,7 @@ Expected State:
 
 ### [P8-001] Implement CLI Client Library
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 959-1276)
 Dependencies: P1-002
 Outputs:
@@ -1724,12 +1724,12 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test config loading, error handling, formatters)
-Notes: Support RACKD_SERVER_URL and RACKD_TOKEN env vars
+Notes: Support RACKD_SERVER_URL and RACKD_TOKEN env vars. All tests pass.
 ```
 
 ### [P8-002] Implement Server Command
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/09-cli.md (lines 56-106)
 Dependencies: P6-002, P1-009, P1-010
 Outputs:
@@ -1743,7 +1743,7 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (test flag parsing, config integration)
-Notes: None
+Notes: Uses paularlott/cli typed flags. All tests pass.
 ```
 
 ### [P8-003] Implement Device Commands
@@ -2144,13 +2144,13 @@ Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
-Phase 7 - Web UI:         8/13 tasks complete
-Phase 8 - CLI:            0/7 tasks complete
+Phase 7 - Web UI:         13/13 tasks complete
+Phase 8 - CLI:            2/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 42/68 tasks complete (62%)
+OSS Total: 49/68 tasks complete (72%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2159,7 +2159,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 55/81 tasks complete (68%)
+# Combined Total: 62/81 tasks complete (77%)
 ```
 ```
 
