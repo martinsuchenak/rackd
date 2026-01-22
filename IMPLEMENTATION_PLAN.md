@@ -1637,7 +1637,7 @@ Notes: None
 
 ### [P7-012] Implement Main Application
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 391-453)
 Dependencies: P7-005, P7-006, P7-007, P7-008, P7-009, P7-010, P7-011
 Outputs:
@@ -1660,7 +1660,7 @@ Notes: Check for window.rackdEnterprise?.init for Enterprise UI
 
 ### [P7-013] Build Frontend Assets
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/11-build-deploy.md (lines 46-56)
 Dependencies: P7-012
 Outputs:
@@ -1682,16 +1682,16 @@ Notes: Index.html also copied
 
 ### Phase 7 Checkpoint
 ```
-Status: TODO
+Status: DONE
 All tasks P7-001 through P7-013 must be DONE before proceeding.
 
 Validation Commands:
-  [ ] cd webui && bun install                     # Must succeed
-  [ ] cd webui && bun run typecheck               # Must pass (no TS errors)
-  [ ] cd webui && bun run build                   # Must produce dist/
-  [ ] make ui-build                               # Must copy assets to internal/ui/assets/
-  [ ] go build ./...                              # Must pass (with embedded UI)
-  [ ] go test ./... -v                            # Full test suite must pass
+  [x] cd webui && bun install                     # Must succeed
+  [x] cd webui && bun run typecheck               # Must pass (no TS errors)
+  [x] cd webui && bun run build                   # Must produce dist/
+  [x] make ui-build                               # Must copy assets to internal/ui/assets/
+  [x] go build ./...                              # Must pass (with embedded UI)
+  [x] go test ./... -v                            # Full test suite must pass
 
 Expected State:
   - All frontend components implemented
