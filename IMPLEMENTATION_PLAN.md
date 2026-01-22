@@ -1547,7 +1547,7 @@ Notes: Use Alpine.js reactivity
 
 ### [P7-007] Implement Network Components
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md (lines 112-126)
 Dependencies: P7-002, P7-003
 Outputs:
@@ -1560,12 +1560,12 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no frontend tests in scope)
   Frontend: REQUIRED (bun run typecheck must pass)
-Notes: None
+Notes: Includes networkList, networkDetail, and networkForm Alpine.js components.
 ```
 
 ### [P7-008] Implement Pool Components
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md
 Dependencies: P7-002, P7-003
 Outputs:
@@ -1578,7 +1578,7 @@ Validation:
   Build: SKIP (Go build not affected)
   Tests: SKIP (no frontend tests in scope)
   Frontend: REQUIRED (bun run typecheck must pass)
-Notes: Heatmap can be simple grid with color coding
+Notes: Includes poolDetail and poolForm Alpine.js components. Heatmap uses color-coded grid.
 ```
 
 ### [P7-009] Implement Datacenter Components
@@ -2144,13 +2144,13 @@ Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
-Phase 7 - Web UI:         3/13 tasks complete
+Phase 7 - Web UI:         5/13 tasks complete
 Phase 8 - CLI:            0/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 40/68 tasks complete (59%)
+OSS Total: 42/68 tasks complete (62%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2159,7 +2159,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 53/81 tasks complete (65%)
+# Combined Total: 55/81 tasks complete (68%)
 ```
 ```
 
