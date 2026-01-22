@@ -1508,7 +1508,7 @@ Notes: Includes formatDate, formatDateTime, debounce, copyToClipboard, isValidIP
 
 ### [P7-005] Implement Navigation Component
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/08-web-ui.md (lines 455-493), docs/specs/19-ui-layout.md (lines 16-43)
 Dependencies: P7-002, P7-003
 Outputs:
@@ -1527,7 +1527,7 @@ Notes: Sort items by order field
 
 ### [P7-006] Implement Device Components
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md (lines 66-110)
 Dependencies: P7-002, P7-003
 Outputs:
