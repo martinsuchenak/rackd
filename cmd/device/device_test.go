@@ -1,8 +1,15 @@
 package device
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/martinsuchenak/rackd/cmd/client"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
@@ -124,5 +131,204 @@ func TestCommandStructure(t *testing.T) {
 		if cmd.Commands[i].Name != expected {
 			t.Errorf("subcommand %d: expected %q, got %q", i, expected, cmd.Commands[i].Name)
 		}
+	}
+}
+
+func TestListCommandStructure(t *testing.T) {
+	cmd := ListCommand()
+
+	if cmd.Name != "list" {
+		t.Errorf("expected command name 'list', got %q", cmd.Name)
+	}
+
+	// Verify flags exist (count check)
+	if len(cmd.Flags) < 5 {
+		t.Errorf("expected at least 5 flags, got %d", len(cmd.Flags))
+	}
+}
+
+func TestGetCommandStructure(t *testing.T) {
+	cmd := GetCommand()
+
+	if cmd.Name != "get" {
+		t.Errorf("expected command name 'get', got %q", cmd.Name)
+	}
+
+	if len(cmd.Flags) < 2 {
+		t.Errorf("expected at least 2 flags (id, output), got %d", len(cmd.Flags))
+	}
+}
+
+func TestAddCommandStructure(t *testing.T) {
+	cmd := AddCommand()
+
+	if cmd.Name != "add" {
+		t.Errorf("expected command name 'add', got %q", cmd.Name)
+	}
+
+	// Should have multiple flags for device fields
+	if len(cmd.Flags) < 5 {
+		t.Errorf("expected at least 5 flags, got %d", len(cmd.Flags))
+	}
+}
+
+func TestUpdateCommandStructure(t *testing.T) {
+	cmd := UpdateCommand()
+
+	if cmd.Name != "update" {
+		t.Errorf("expected command name 'update', got %q", cmd.Name)
+	}
+
+	if len(cmd.Flags) < 2 {
+		t.Errorf("expected at least 2 flags, got %d", len(cmd.Flags))
+	}
+}
+
+func TestDeleteCommandStructure(t *testing.T) {
+	cmd := DeleteCommand()
+
+	if cmd.Name != "delete" {
+		t.Errorf("expected command name 'delete', got %q", cmd.Name)
+	}
+
+	if len(cmd.Flags) < 2 {
+		t.Errorf("expected at least 2 flags (id, force), got %d", len(cmd.Flags))
+	}
+}
+
+func TestOutputFormats_JSON(t *testing.T) {
+	devices := []map[string]interface{}{
+		{"id": "1", "name": "server1", "make_model": "Dell", "os": "Ubuntu", "datacenter_id": "dc1"},
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	client.PrintJSON(devices)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	var parsed []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+		t.Errorf("JSON output not valid: %v", err)
+	}
+	if len(parsed) != 1 || parsed[0]["name"] != "server1" {
+		t.Errorf("unexpected JSON output: %s", output)
+	}
+}
+
+func TestOutputFormats_Table(t *testing.T) {
+	devices := []map[string]interface{}{
+		{"id": "abc123", "name": "web-server", "make_model": "Dell R640", "os": "Ubuntu", "datacenter_id": "dc1"},
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	client.PrintDeviceTable(devices)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if !strings.Contains(output, "ID") || !strings.Contains(output, "NAME") {
+		t.Error("table output missing headers")
+	}
+	if !strings.Contains(output, "web-server") {
+		t.Error("table output missing device name")
+	}
+}
+
+func TestMockAPIIntegration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/devices" && r.Method == "GET":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode([]map[string]interface{}{
+				{"id": "1", "name": "test-device"},
+			})
+		case r.URL.Path == "/api/devices/1" && r.Method == "GET":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id": "1", "name": "test-device", "make_model": "Dell",
+			})
+		case r.URL.Path == "/api/devices" && r.Method == "POST":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id": "new-id", "name": "new-device",
+			})
+		case r.URL.Path == "/api/devices/1" && r.Method == "PUT":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id": "1", "name": "updated-device",
+			})
+		case r.URL.Path == "/api/devices/1" && r.Method == "DELETE":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	cfg := &client.Config{ServerURL: server.URL, Timeout: "5s"}
+	c := client.NewClient(cfg)
+
+	// Test list
+	resp, err := c.DoRequest("GET", "/api/devices", nil)
+	if err != nil {
+		t.Fatalf("list request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	// Test get
+	resp, err = c.DoRequest("GET", "/api/devices/1", nil)
+	if err != nil {
+		t.Fatalf("get request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	// Test create
+	resp, err = c.DoRequest("POST", "/api/devices", map[string]string{"name": "new-device"})
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected 201, got %d", resp.StatusCode)
+	}
+
+	// Test update
+	resp, err = c.DoRequest("PUT", "/api/devices/1", map[string]string{"name": "updated-device"})
+	if err != nil {
+		t.Fatalf("update request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	// Test delete
+	resp, err = c.DoRequest("DELETE", "/api/devices/1", nil)
+	if err != nil {
+		t.Fatalf("delete request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", resp.StatusCode)
 	}
 }
