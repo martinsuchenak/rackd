@@ -1884,7 +1884,7 @@ Expected State:
 
 ### [P9-001] Storage Integration Tests
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/15-testing.md
 Dependencies: P2-011
 Outputs:
@@ -1896,7 +1896,15 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (integration tests must pass)
-Notes: Skip with -short flag
+Notes: Skip with -short flag. Tests include:
+  - TestDeviceLifecycle: Full create/read/update/delete cycle with addresses, tags, domains
+  - TestNetworkPoolLifecycle: Pool CRUD with IP validation and next-IP operations
+  - TestDiscoveryLifecycle: Scan creation, discovered device promotion
+  - TestRelationshipLifecycle: Parent-child relationship management
+  - TestMigrationOnFreshDB: Verifies all tables created on fresh database
+  - TestConcurrentDeviceAccess: Concurrent reads and list operations
+  - TestConcurrentWrites: Concurrent device creation
+  - TestConcurrentPoolOperations: Concurrent GetNextAvailableIP calls
 ```
 
 ### [P9-002] API Integration Tests
@@ -2150,11 +2158,11 @@ Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
 Phase 7 - Web UI:         13/13 tasks complete
 Phase 8 - CLI:            6/7 tasks complete
-Phase 9 - Testing:        0/3 tasks complete
+Phase 9 - Testing:        1/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 53/68 tasks complete (78%)
+OSS Total: 54/68 tasks complete (79%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2163,7 +2171,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 66/81 tasks complete (81%)
+# Combined Total: 67/81 tasks complete (83%)
 ```
 ```
 
