@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rackd - IPAM &amp; Device Inventory</title>
+  <link rel="stylesheet" href="/output.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <div x-data="nav" x-init="init()">
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50">
+      Skip to main content
+    </a>
+
+    <!-- Navigation -->
+    <nav class="bg-white dark:bg-gray-800 shadow" role="navigation" aria-label="Main navigation">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <!-- Logo -->
+          <div class="flex items-center">
+            <a href="/" class="text-xl font-bold text-gray-900 dark:text-white">Rackd</a>
+            <span x-show="isEnterprise" class="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+              Enterprise
+            </span>
+          </div>
+
+          <!-- Desktop Nav Items -->
+          <div class="hidden md:flex items-center space-x-4">
+            <template x-for="item in items" :key="item.id">
+              <a :href="item.path"
+                 class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 x-text="item.label">
+              </a>
+            </template>
+          </div>
+
+          <!-- Right side: Search, Theme, User -->
+          <div class="flex items-center space-x-4">
+            <!-- Global Search -->
+            <div x-data="globalSearch" x-init="init()" class="relative hidden sm:block">
+              <label for="global-search" class="sr-only">Search devices</label>
+              <input id="global-search"
+                     type="search"
+                     x-model="query"
+                     @input="onInput()"
+                     @focus="onFocus()"
+                     @blur="onBlur()"
+                     placeholder="Search devices..."
+                     class="w-48 lg:w-64 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     aria-describedby="search-results-status">
+              <span id="search-results-status" class="sr-only" x-text="loading ? 'Searching...' : results.length + ' results found'"></span>
+              <!-- Search Results Dropdown -->
+              <div x-show="showResults && (results.length > 0 || loading)"
+                   x-cloak
+                   class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+                   role="listbox">
+                <div x-show="loading" class="p-3 text-sm text-gray-500 dark:text-gray-400">Searching...</div>
+                <template x-for="device in results" :key="device.id">
+                  <a :href="'/devices/detail?id=' + device.id"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                     role="option">
+                    <div class="font-medium" x-text="device.name"></div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="device.make_model || 'No model'"></div>
+                  </a>
+                </template>
+              </div>
+            </div>
+
+            <!-- Theme Toggle -->
+            <div x-data="themeToggle" x-init="init()" class="relative">
+              <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
+                      class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      :aria-label="'Current theme: ' + theme + '. Click to change.'">
+                <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+                <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- User Menu (Enterprise SSO) -->
+            <template x-if="hasFeature('sso')">
+              <div x-data="sso" class="flex items-center">
+                <template x-if="isLoggedIn">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-300" x-text="user?.username"></span>
+                    <button @click="logout" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Logout</button>
+                  </div>
+                </template>
+                <template x-if="!isLoggedIn">
+                  <button @click="login" class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Login</button>
+                </template>
+              </div>
+            </template>
+
+            <!-- Mobile menu button -->
+            <button @click="$refs.mobileMenu.classList.toggle('hidden')"
+                    class="md:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-expanded="false"
+                    aria-controls="mobile-menu"
+                    aria-label="Toggle navigation menu">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile menu -->
+      <div id="mobile-menu" x-ref="mobileMenu" class="hidden md:hidden border-t border-gray-200 dark:border-gray-700">
+        <div class="px-2 pt-2 pb-3 space-y-1">
+          <template x-for="item in items" :key="item.id">
+            <a :href="item.path"
+               class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+               x-text="item.label">
+            </a>
+          </template>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content" class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8" role="main">
+      <!-- Content rendered by Alpine components based on route -->
+      <div class="text-gray-900 dark:text-white">
+        <h1 class="text-2xl font-bold mb-4">Welcome to Rackd</h1>
+        <p class="text-gray-600 dark:text-gray-400">Select a section from the navigation to get started.</p>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
