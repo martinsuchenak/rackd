@@ -1,0 +1,207 @@
+// Datacenter Components for Rackd Web UI
+
+import type { Datacenter, Device } from '../core/types';
+import { RackdAPI, RackdAPIError } from '../core/api';
+
+const api = new RackdAPI();
+
+interface DatacenterListData {
+  datacenters: Datacenter[];
+  loading: boolean;
+  error: string;
+  showDeleteModal: boolean;
+  deleteTarget: Datacenter | null;
+  deleting: boolean;
+  init(): Promise<void>;
+  loadDatacenters(): Promise<void>;
+  confirmDelete(dc: Datacenter): void;
+  cancelDelete(): void;
+  doDelete(): Promise<void>;
+}
+
+export function datacenterList(): DatacenterListData {
+  return {
+    datacenters: [],
+    loading: true,
+    error: '',
+    showDeleteModal: false,
+    deleteTarget: null,
+    deleting: false,
+
+    async init(): Promise<void> {
+      await this.loadDatacenters();
+    },
+
+    async loadDatacenters(): Promise<void> {
+      this.loading = true;
+      this.error = '';
+      try {
+        this.datacenters = await api.listDatacenters();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load datacenters';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    confirmDelete(dc: Datacenter): void {
+      this.deleteTarget = dc;
+      this.showDeleteModal = true;
+    },
+
+    cancelDelete(): void {
+      this.showDeleteModal = false;
+      this.deleteTarget = null;
+    },
+
+    async doDelete(): Promise<void> {
+      if (!this.deleteTarget) return;
+      this.deleting = true;
+      try {
+        await api.deleteDatacenter(this.deleteTarget.id);
+        this.showDeleteModal = false;
+        this.deleteTarget = null;
+        await this.loadDatacenters();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete datacenter';
+      } finally {
+        this.deleting = false;
+      }
+    },
+  };
+}
+
+interface DatacenterDetailData {
+  datacenter: Datacenter | null;
+  devices: Device[];
+  loading: boolean;
+  error: string;
+  showDeleteModal: boolean;
+  deleting: boolean;
+  init(): Promise<void>;
+  loadDatacenter(): Promise<void>;
+  loadDevices(): Promise<void>;
+  confirmDelete(): void;
+  cancelDelete(): void;
+  doDelete(): Promise<void>;
+}
+
+export function datacenterDetail(): DatacenterDetailData {
+  return {
+    datacenter: null,
+    devices: [],
+    loading: true,
+    error: '',
+    showDeleteModal: false,
+    deleting: false,
+
+    async init(): Promise<void> {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) {
+        this.error = 'No datacenter ID provided';
+        this.loading = false;
+        return;
+      }
+      await this.loadDatacenter();
+    },
+
+    async loadDatacenter(): Promise<void> {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) return;
+      this.loading = true;
+      try {
+        this.datacenter = await api.getDatacenter(id);
+        await this.loadDevices();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load datacenter';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async loadDevices(): Promise<void> {
+      if (!this.datacenter) return;
+      try {
+        this.devices = await api.getDatacenterDevices(this.datacenter.id);
+      } catch {
+        // Non-critical
+      }
+    },
+
+    confirmDelete(): void {
+      this.showDeleteModal = true;
+    },
+
+    cancelDelete(): void {
+      this.showDeleteModal = false;
+    },
+
+    async doDelete(): Promise<void> {
+      if (!this.datacenter) return;
+      this.deleting = true;
+      try {
+        await api.deleteDatacenter(this.datacenter.id);
+        window.location.href = '/datacenters';
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete datacenter';
+        this.deleting = false;
+      }
+    },
+  };
+}
+
+interface DatacenterFormData {
+  datacenter: Partial<Datacenter>;
+  isEdit: boolean;
+  loading: boolean;
+  saving: boolean;
+  error: string;
+  init(): Promise<void>;
+  save(): Promise<void>;
+  cancel(): void;
+}
+
+export function datacenterForm(): DatacenterFormData {
+  return {
+    datacenter: {},
+    isEdit: false,
+    loading: true,
+    saving: false,
+    error: '',
+
+    async init(): Promise<void> {
+      const id = new URLSearchParams(window.location.search).get('id');
+      this.isEdit = !!id;
+      try {
+        if (id) {
+          this.datacenter = await api.getDatacenter(id);
+        }
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load datacenter';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async save(): Promise<void> {
+      this.saving = true;
+      this.error = '';
+      try {
+        if (this.isEdit && this.datacenter.id) {
+          await api.updateDatacenter(this.datacenter.id, this.datacenter);
+        } else {
+          await api.createDatacenter(this.datacenter);
+        }
+        window.location.href = '/datacenters';
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to save datacenter';
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    cancel(): void {
+      window.location.href = '/datacenters';
+    },
+  };
+}

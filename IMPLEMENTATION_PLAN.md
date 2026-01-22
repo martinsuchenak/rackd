@@ -1583,7 +1583,7 @@ Notes: Includes poolDetail and poolForm Alpine.js components. Heatmap uses color
 
 ### [P7-009] Implement Datacenter Components
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md
 Dependencies: P7-002, P7-003
 Outputs:
@@ -1600,7 +1600,7 @@ Notes: None
 
 ### [P7-010] Implement Discovery Components
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md
 Dependencies: P7-002, P7-003
 Outputs:
@@ -1619,7 +1619,7 @@ Notes: Poll for scan status during active scan
 
 ### [P7-011] Implement Search Component
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/19-ui-layout.md (lines 119)
 Dependencies: P7-002, P7-003
 Outputs:
@@ -2144,7 +2144,7 @@ Phase 3 - API Layer:      10/10 tasks complete
 Phase 4 - MCP Server:     1/1 tasks complete
 Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
-Phase 7 - Web UI:         5/13 tasks complete
+Phase 7 - Web UI:         8/13 tasks complete
 Phase 8 - CLI:            0/7 tasks complete
 Phase 9 - Testing:        0/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
