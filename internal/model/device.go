@@ -5,6 +5,7 @@ import "time"
 type Device struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
+	Hostname     string    `json:"hostname,omitempty"`
 	Description  string    `json:"description"`
 	MakeModel    string    `json:"make_model"`
 	OS           string    `json:"os"`

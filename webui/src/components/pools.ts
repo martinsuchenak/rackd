@@ -74,9 +74,9 @@ export function poolDetail(): PoolDetailData {
     async loadHeatmap(): Promise<void> {
       if (!this.pool) return;
       try {
-        this.heatmap = await api.getPoolHeatmap(this.pool.id);
+        this.heatmap = (await api.getPoolHeatmap(this.pool.id)) || [];
       } catch {
-        // Non-critical
+        this.heatmap = [];
       }
     },
 

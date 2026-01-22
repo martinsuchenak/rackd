@@ -13,6 +13,7 @@ export interface Address {
 export interface Device {
   id: string;
   name: string;
+  hostname?: string;
   description: string;
   make_model: string;
   os: string;

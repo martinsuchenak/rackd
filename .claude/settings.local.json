@@ -6,7 +6,8 @@
       "Bash(go get:*)",
       "Bash(go test:*)",
       "Bash(go vet:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(make ui-build:*)"
     ]
   }
 }

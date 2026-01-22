@@ -1,6 +1,6 @@
 // Device Components for Rackd Web UI
 
-import type { Datacenter, Device, DeviceFilter, DeviceRelationship } from '../core/types';
+import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool } from '../core/types';
 import { RackdAPI, RackdAPIError } from '../core/api';
 import { debounce, formatDate } from '../core/utils';
 
@@ -36,6 +36,9 @@ export function deviceList() {
   return {
     devices: [] as Device[],
     datacenters: [] as Datacenter[],
+    networks: [] as Network[],
+    pools: [] as NetworkPool[],
+    poolsCache: new Map<string, NetworkPool[]>(),
     loading: true,
     error: '',
     search: '',
@@ -45,9 +48,24 @@ export function deviceList() {
     showDeleteModal: false,
     deleteTarget: null as Device | null,
     deleting: false,
-    // Add modal
-    showAddModal: false,
-    newDevice: { name: '', make_model: '', description: '', datacenter_id: '', os: '' } as Partial<Device>,
+    // Device modal (unified for add/edit)
+    showDeviceModal: false,
+    isEditMode: false,
+    editDevice: {
+      name: '',
+      hostname: '',
+      make_model: '',
+      description: '',
+      os: '',
+      datacenter_id: '',
+      username: '',
+      location: '',
+      tags: [] as string[],
+      addresses: [] as Address[],
+      domains: [] as string[],
+    } as Partial<Device>,
+    tagInput: '',
+    newAddress: { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' } as Address,
     saving: false,
 
     get totalPages(): number {
@@ -60,14 +78,76 @@ export function deviceList() {
     },
 
     async init(): Promise<void> {
-      await Promise.all([this.loadDevices(), this.loadDatacenters()]);
+      await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
     },
 
     async loadDatacenters(): Promise<void> {
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
       } catch {
-        // Non-critical
+        this.datacenters = [];
+      }
+    },
+
+    async loadNetworks(): Promise<void> {
+      try {
+        this.networks = (await api.listNetworks()) || [];
+      } catch {
+        this.networks = [];
+      }
+    },
+
+    async loadPoolsForNetwork(networkId: string): Promise<void> {
+      if (!networkId) {
+        this.pools = [];
+        return;
+      }
+      // Check cache first
+      if (this.poolsCache.has(networkId)) {
+        this.pools = this.poolsCache.get(networkId) || [];
+        return;
+      }
+      try {
+        const pools = (await api.listNetworkPools(networkId)) || [];
+        this.poolsCache.set(networkId, pools);
+        this.pools = pools;
+      } catch {
+        this.pools = [];
+      }
+    },
+
+    getPoolsForNetwork(networkId: string): NetworkPool[] {
+      if (!networkId) return [];
+      // Load pools async if not cached
+      if (!this.poolsCache.has(networkId)) {
+        this.loadPoolsForNetwork(networkId);
+        return [];
+      }
+      return this.poolsCache.get(networkId) || [];
+    },
+
+    async fetchNextIPForAddress(index: number): Promise<void> {
+      const addr = this.editDevice.addresses?.[index];
+      if (!addr?.pool_id) return;
+      try {
+        const result = await api.getNextIP(addr.pool_id);
+        if (result?.ip && this.editDevice.addresses?.[index]) {
+          this.editDevice.addresses[index].ip = result.ip;
+        }
+      } catch {
+        // Silently fail
+      }
+    },
+
+    async fetchNextIPForNewAddress(): Promise<void> {
+      if (!this.newAddress.pool_id) return;
+      try {
+        const result = await api.getNextIP(this.newAddress.pool_id);
+        if (result?.ip) {
+          this.newAddress.ip = result.ip;
+        }
+      } catch {
+        // Silently fail
       }
     },
 
@@ -76,12 +156,13 @@ export function deviceList() {
       this.error = '';
       try {
         if (this.search) {
-          this.devices = await api.searchDevices(this.search);
+          this.devices = (await api.searchDevices(this.search)) || [];
         } else {
-          this.devices = await api.listDevices(this.filter);
+          this.devices = (await api.listDevices(this.filter)) || [];
         }
         this.page = 1;
       } catch (e) {
+        this.devices = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load devices';
       } finally {
         this.loading = false;
@@ -140,16 +221,100 @@ export function deviceList() {
       }
     },
 
-    async saveNew(): Promise<void> {
+    openAddModal(): void {
+      this.isEditMode = false;
+      this.editDevice = {
+        name: '',
+        hostname: '',
+        make_model: '',
+        description: '',
+        os: '',
+        datacenter_id: '',
+        username: '',
+        location: '',
+        tags: [],
+        addresses: [],
+        domains: [],
+      };
+      this.tagInput = '';
+      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.pools = [];
+      this.showDeviceModal = true;
+    },
+
+    openEditModal(device: Device): void {
+      this.isEditMode = true;
+      this.editDevice = {
+        id: device.id,
+        name: device.name,
+        hostname: device.hostname || '',
+        make_model: device.make_model,
+        description: device.description,
+        os: device.os,
+        datacenter_id: device.datacenter_id || '',
+        username: device.username || '',
+        location: device.location || '',
+        tags: [...(device.tags || [])],
+        addresses: (device.addresses || []).map((a) => ({ ...a })),
+        domains: [...(device.domains || [])],
+      };
+      this.tagInput = '';
+      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.pools = [];
+      this.showDeviceModal = true;
+    },
+
+    closeModal(): void {
+      this.showDeviceModal = false;
+    },
+
+    addTag(): void {
+      const tag = this.tagInput.trim();
+      if (tag && !this.editDevice.tags?.includes(tag)) {
+        this.editDevice.tags = [...(this.editDevice.tags ?? []), tag];
+      }
+      this.tagInput = '';
+    },
+
+    removeTag(tag: string): void {
+      this.editDevice.tags = this.editDevice.tags?.filter((t) => t !== tag) ?? [];
+    },
+
+    addAddress(): void {
+      if (this.newAddress.ip.trim()) {
+        this.editDevice.addresses = [...(this.editDevice.addresses ?? []), { ...this.newAddress }];
+        // Reset individual properties to maintain Alpine.js reactivity
+        this.newAddress.ip = '';
+        this.newAddress.port = 0;
+        this.newAddress.type = 'ipv4';
+        this.newAddress.label = '';
+        this.newAddress.network_id = '';
+        this.newAddress.switch_port = '';
+        this.newAddress.pool_id = '';
+      }
+    },
+
+    removeAddress(index: number): void {
+      this.editDevice.addresses = this.editDevice.addresses?.filter((_, i) => i !== index) ?? [];
+    },
+
+    async saveDevice(): Promise<void> {
       this.saving = true;
       this.error = '';
       try {
-        await api.createDevice(this.newDevice);
-        this.showAddModal = false;
-        this.newDevice = { name: '', make_model: '', description: '', datacenter_id: '', os: '' };
+        if (this.isEditMode && this.editDevice.id) {
+          await api.updateDevice(this.editDevice.id, this.editDevice);
+        } else {
+          await api.createDevice(this.editDevice);
+        }
+        this.showDeviceModal = false;
         await this.loadDevices();
       } catch (e) {
-        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create device';
+        this.error = e instanceof RackdAPIError
+          ? e.message
+          : this.isEditMode
+            ? 'Failed to update device'
+            : 'Failed to create device';
       } finally {
         this.saving = false;
       }
@@ -178,17 +343,26 @@ interface DeviceDetailData {
   doDelete(): Promise<void>;
 }
 
-export function deviceDetail(): DeviceDetailData {
+export function deviceDetail() {
   return {
-    device: null,
-    datacenters: [],
-    relationships: [],
-    relatedDevices: new Map(),
+    device: null as Device | null,
+    datacenters: [] as Datacenter[],
+    networks: [] as Network[],
+    pools: [] as NetworkPool[],
+    poolsCache: new Map<string, NetworkPool[]>(),
+    relationships: [] as DeviceRelationship[],
+    relatedDevices: new Map() as Map<string, Device>,
     loading: true,
     error: '',
-    activeTab: 'details',
+    activeTab: 'details' as 'details' | 'addresses' | 'relationships',
     showDeleteModal: false,
     deleting: false,
+    // Edit modal
+    showEditModal: false,
+    editDevice: {} as Partial<Device>,
+    tagInput: '',
+    newAddress: { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' } as Address,
+    saving: false,
 
     async init(): Promise<void> {
       const id = new URLSearchParams(window.location.search).get('id');
@@ -197,14 +371,76 @@ export function deviceDetail(): DeviceDetailData {
         this.loading = false;
         return;
       }
-      await Promise.all([this.loadDevice(), this.loadDatacenters()]);
+      await Promise.all([this.loadDevice(), this.loadDatacenters(), this.loadNetworks()]);
     },
 
     async loadDatacenters(): Promise<void> {
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
       } catch {
-        // Non-critical
+        this.datacenters = [];
+      }
+    },
+
+    async loadNetworks(): Promise<void> {
+      try {
+        this.networks = (await api.listNetworks()) || [];
+      } catch {
+        this.networks = [];
+      }
+    },
+
+    async loadPoolsForNetwork(networkId: string): Promise<void> {
+      if (!networkId) {
+        this.pools = [];
+        return;
+      }
+      // Check cache first
+      if (this.poolsCache.has(networkId)) {
+        this.pools = this.poolsCache.get(networkId) || [];
+        return;
+      }
+      try {
+        const pools = (await api.listNetworkPools(networkId)) || [];
+        this.poolsCache.set(networkId, pools);
+        this.pools = pools;
+      } catch {
+        this.pools = [];
+      }
+    },
+
+    getPoolsForNetwork(networkId: string): NetworkPool[] {
+      if (!networkId) return [];
+      // Load pools async if not cached
+      if (!this.poolsCache.has(networkId)) {
+        this.loadPoolsForNetwork(networkId);
+        return [];
+      }
+      return this.poolsCache.get(networkId) || [];
+    },
+
+    async fetchNextIPForAddress(index: number): Promise<void> {
+      const addr = this.editDevice.addresses?.[index];
+      if (!addr?.pool_id) return;
+      try {
+        const result = await api.getNextIP(addr.pool_id);
+        if (result?.ip && this.editDevice.addresses?.[index]) {
+          this.editDevice.addresses[index].ip = result.ip;
+        }
+      } catch {
+        // Silently fail
+      }
+    },
+
+    async fetchNextIPForNewAddress(): Promise<void> {
+      if (!this.newAddress.pool_id) return;
+      try {
+        const result = await api.getNextIP(this.newAddress.pool_id);
+        if (result?.ip) {
+          this.newAddress.ip = result.ip;
+        }
+      } catch {
+        // Silently fail
       }
     },
 
@@ -225,7 +461,7 @@ export function deviceDetail(): DeviceDetailData {
     async loadRelationships(): Promise<void> {
       if (!this.device) return;
       try {
-        this.relationships = await api.getRelationships(this.device.id);
+        this.relationships = (await api.getRelationships(this.device.id)) || [];
         for (const rel of this.relationships) {
           const otherId = rel.parent_id === this.device.id ? rel.child_id : rel.parent_id;
           if (!this.relatedDevices.has(otherId)) {
@@ -234,7 +470,7 @@ export function deviceDetail(): DeviceDetailData {
           }
         }
       } catch {
-        // Non-critical
+        this.relationships = [];
       }
     },
 
@@ -264,6 +500,77 @@ export function deviceDetail(): DeviceDetailData {
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete device';
         this.deleting = false;
+      }
+    },
+
+    openEditModal(): void {
+      if (!this.device) return;
+      this.editDevice = {
+        id: this.device.id,
+        name: this.device.name,
+        hostname: this.device.hostname || '',
+        make_model: this.device.make_model,
+        description: this.device.description,
+        os: this.device.os,
+        datacenter_id: this.device.datacenter_id || '',
+        username: this.device.username || '',
+        location: this.device.location || '',
+        tags: [...(this.device.tags || [])],
+        addresses: (this.device.addresses || []).map((a) => ({ ...a })),
+        domains: [...(this.device.domains || [])],
+      };
+      this.tagInput = '';
+      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.pools = [];
+      this.showEditModal = true;
+    },
+
+    closeEditModal(): void {
+      this.showEditModal = false;
+    },
+
+    addTag(): void {
+      const tag = this.tagInput.trim();
+      if (tag && !this.editDevice.tags?.includes(tag)) {
+        this.editDevice.tags = [...(this.editDevice.tags ?? []), tag];
+      }
+      this.tagInput = '';
+    },
+
+    removeTag(tag: string): void {
+      this.editDevice.tags = this.editDevice.tags?.filter((t) => t !== tag) ?? [];
+    },
+
+    addAddress(): void {
+      if (this.newAddress.ip.trim()) {
+        this.editDevice.addresses = [...(this.editDevice.addresses ?? []), { ...this.newAddress }];
+        // Reset individual properties to maintain Alpine.js reactivity
+        this.newAddress.ip = '';
+        this.newAddress.port = 0;
+        this.newAddress.type = 'ipv4';
+        this.newAddress.label = '';
+        this.newAddress.network_id = '';
+        this.newAddress.switch_port = '';
+        this.newAddress.pool_id = '';
+      }
+    },
+
+    removeAddress(index: number): void {
+      this.editDevice.addresses = this.editDevice.addresses?.filter((_, i) => i !== index) ?? [];
+    },
+
+    async saveDevice(): Promise<void> {
+      if (!this.editDevice.id) return;
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.updateDevice(this.editDevice.id, this.editDevice);
+        this.showEditModal = false;
+        await this.loadDevice();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to update device';
+      } finally {
+        this.saving = false;
       }
     },
   };
@@ -300,11 +607,12 @@ export function deviceForm(): DeviceFormData {
       const id = new URLSearchParams(window.location.search).get('id');
       this.isEdit = !!id;
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
         if (id) {
           this.device = await api.getDevice(id);
         }
       } catch (e) {
+        this.datacenters = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load data';
       } finally {
         this.loading = false;

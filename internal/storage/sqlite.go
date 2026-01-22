@@ -96,10 +96,10 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 	device := &model.Device{}
 	var datacenterID sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, name, description, make_model, os, datacenter_id, username, location, created_at, updated_at
+		SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at
 		FROM devices WHERE id = ?
 	`, id).Scan(
-		&device.ID, &device.Name, &device.Description, &device.MakeModel,
+		&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 		&device.OS, &datacenterID, &device.Username, &device.Location,
 		&device.CreatedAt, &device.UpdatedAt,
 	)
@@ -252,9 +252,9 @@ func (s *SQLiteStorage) CreateDevice(device *model.Device) error {
 
 	// Insert device
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO devices (id, name, description, make_model, os, datacenter_id, username, location, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, device.ID, device.Name, device.Description, device.MakeModel,
+		INSERT INTO devices (id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, device.ID, device.Name, device.Hostname, device.Description, device.MakeModel,
 		device.OS, nullString(device.DatacenterID), device.Username, device.Location,
 		device.CreatedAt, device.UpdatedAt)
 	if err != nil {
@@ -353,10 +353,10 @@ func (s *SQLiteStorage) UpdateDevice(device *model.Device) error {
 	// Update device
 	_, err = tx.ExecContext(ctx, `
 		UPDATE devices SET
-			name = ?, description = ?, make_model = ?, os = ?, datacenter_id = ?,
+			name = ?, hostname = ?, description = ?, make_model = ?, os = ?, datacenter_id = ?,
 			username = ?, location = ?, updated_at = ?
 		WHERE id = ?
-	`, device.Name, device.Description, device.MakeModel, device.OS,
+	`, device.Name, device.Hostname, device.Description, device.MakeModel, device.OS,
 		nullString(device.DatacenterID), device.Username, device.Location,
 		device.UpdatedAt, device.ID)
 	if err != nil {
@@ -426,7 +426,7 @@ func (s *SQLiteStorage) DeleteDevice(id string) error {
 func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device, error) {
 	ctx := context.Background()
 
-	query := `SELECT id, name, description, make_model, os, datacenter_id, username, location, created_at, updated_at FROM devices`
+	query := `SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at FROM devices`
 	var args []interface{}
 	var conditions []string
 
@@ -470,7 +470,7 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 		var device model.Device
 		var datacenterID sql.NullString
 		if err := rows.Scan(
-			&device.ID, &device.Name, &device.Description, &device.MakeModel,
+			&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 			&device.OS, &datacenterID, &device.Username, &device.Location,
 			&device.CreatedAt, &device.UpdatedAt,
 		); err != nil {
@@ -524,15 +524,15 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	searchPattern := "%" + query + "%"
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT DISTINCT d.id, d.name, d.description, d.make_model, d.os, d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
 		FROM devices d
 		LEFT JOIN addresses a ON d.id = a.device_id
 		LEFT JOIN tags t ON d.id = t.device_id
 		LEFT JOIN domains dm ON d.id = dm.device_id
-		WHERE d.name LIKE ? OR d.description LIKE ? OR d.make_model LIKE ? OR d.os LIKE ?
+		WHERE d.name LIKE ? OR d.hostname LIKE ? OR d.description LIKE ? OR d.make_model LIKE ? OR d.os LIKE ?
 		   OR d.location LIKE ? OR a.ip LIKE ? OR t.tag LIKE ? OR dm.domain LIKE ?
 		ORDER BY d.name
-	`, searchPattern, searchPattern, searchPattern, searchPattern,
+	`, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
 		searchPattern, searchPattern, searchPattern, searchPattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search devices: %w", err)
@@ -544,7 +544,7 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 		var device model.Device
 		var datacenterID sql.NullString
 		if err := rows.Scan(
-			&device.ID, &device.Name, &device.Description, &device.MakeModel,
+			&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 			&device.OS, &datacenterID, &device.Username, &device.Location,
 			&device.CreatedAt, &device.UpdatedAt,
 		); err != nil {

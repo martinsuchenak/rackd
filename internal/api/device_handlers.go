@@ -75,6 +75,9 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	if name, ok := updates["name"].(string); ok {
 		device.Name = name
 	}
+	if hostname, ok := updates["hostname"].(string); ok {
+		device.Hostname = hostname
+	}
 	if description, ok := updates["description"].(string); ok {
 		device.Description = description
 	}

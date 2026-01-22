@@ -52,8 +52,9 @@ export function discoveryList() {
 
     async loadNetworks(): Promise<void> {
       try {
-        this.networks = await api.listNetworks();
+        this.networks = (await api.listNetworks()) || [];
       } catch (e) {
+        this.networks = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load networks';
       } finally {
         this.loading = false;
@@ -62,17 +63,17 @@ export function discoveryList() {
 
     async loadScans(): Promise<void> {
       try {
-        this.scans = await api.listScans(this.selectedNetworkId || undefined);
+        this.scans = (await api.listScans(this.selectedNetworkId || undefined)) || [];
       } catch {
-        // Non-critical
+        this.scans = [];
       }
     },
 
     async loadDiscoveredDevices(): Promise<void> {
       try {
-        this.discoveredDevices = await api.listDiscoveredDevices(this.selectedNetworkId || undefined);
+        this.discoveredDevices = (await api.listDiscoveredDevices(this.selectedNetworkId || undefined)) || [];
       } catch {
-        // Non-critical
+        this.discoveredDevices = [];
       }
     },
 
@@ -295,7 +296,7 @@ export function promoteForm(): PromoteFormData {
         return;
       }
       try {
-        const devices = await api.listDiscoveredDevices();
+        const devices = (await api.listDiscoveredDevices()) || [];
         this.device = devices.find((d) => d.id === id) || null;
         if (this.device) {
           this.name = this.device.hostname || this.device.ip;

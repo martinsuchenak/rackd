@@ -45,9 +45,9 @@ export function networkList() {
 
     async loadDatacenters(): Promise<void> {
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
       } catch {
-        // Non-critical
+        this.datacenters = [];
       }
     },
 
@@ -55,8 +55,9 @@ export function networkList() {
       this.loading = true;
       this.error = '';
       try {
-        this.networks = await api.listNetworks(this.filter.datacenter_id);
+        this.networks = (await api.listNetworks(this.filter.datacenter_id)) || [];
       } catch (e) {
+        this.networks = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load networks';
       } finally {
         this.loading = false;
@@ -145,6 +146,18 @@ export function networkDetail(): NetworkDetailData {
     error: '',
     showDeleteModal: false,
     deleting: false,
+    // Edit network modal
+    showEditModal: false,
+    editNetwork: {} as Partial<Network>,
+    saving: false,
+    // Pool modal
+    showPoolModal: false,
+    editPool: {} as Partial<NetworkPool>,
+    isEditPool: false,
+    savingPool: false,
+    showDeletePoolModal: false,
+    deletePoolTarget: null as NetworkPool | null,
+    deletingPool: false,
 
     async init(): Promise<void> {
       const id = new URLSearchParams(window.location.search).get('id');
@@ -158,9 +171,9 @@ export function networkDetail(): NetworkDetailData {
 
     async loadDatacenters(): Promise<void> {
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
       } catch {
-        // Non-critical
+        this.datacenters = [];
       }
     },
 
@@ -181,9 +194,9 @@ export function networkDetail(): NetworkDetailData {
     async loadPools(): Promise<void> {
       if (!this.network) return;
       try {
-        this.pools = await api.listNetworkPools(this.network.id);
+        this.pools = (await api.listNetworkPools(this.network.id)) || [];
       } catch {
-        // Non-critical
+        this.pools = [];
       }
     },
 
@@ -252,11 +265,12 @@ export function networkForm(): NetworkFormData {
       const id = new URLSearchParams(window.location.search).get('id');
       this.isEdit = !!id;
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
         if (id) {
           this.network = await api.getNetwork(id);
         }
       } catch (e) {
+        this.datacenters = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load data';
       } finally {
         this.loading = false;

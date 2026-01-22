@@ -107,12 +107,12 @@
         <div x-show="route === '/'" x-cloak>
           <div x-data="{ stats: { devices: '-', networks: '-', datacenters: '-', discovered: '-' }, async init() {
             const [d, n, dc, disc] = await Promise.all([
-              window.rackdAPI?.listDevices().catch(() => []) || [],
-              window.rackdAPI?.listNetworks().catch(() => []) || [],
-              window.rackdAPI?.listDatacenters().catch(() => []) || [],
-              window.rackdAPI?.listDiscoveredDevices().catch(() => []) || []
+              window.rackdAPI?.listDevices().catch(() => []),
+              window.rackdAPI?.listNetworks().catch(() => []),
+              window.rackdAPI?.listDatacenters().catch(() => []),
+              window.rackdAPI?.listDiscoveredDevices().catch(() => [])
             ]);
-            this.stats = { devices: d.length, networks: n.length, datacenters: dc.length, discovered: disc.length };
+            this.stats = { devices: (d || []).length, networks: (n || []).length, datacenters: (dc || []).length, discovered: (disc || []).length };
           } }">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Dashboard</h1>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -141,7 +141,7 @@
           <div x-data="deviceList" x-init="init()">
             <div class="flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
-              <button @click="showAddModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 Add Device
               </button>
             </div>
@@ -186,7 +186,8 @@
                               :class="d.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'"
                               x-text="d.status || 'unknown'"></span>
                       </td>
-                      <td class="px-6 py-4 text-right">
+                      <td class="px-6 py-4 text-right space-x-3">
+                        <button @click="openEditModal(d)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">Edit</button>
                         <button @click="confirmDelete(d)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
                       </td>
                     </tr>
@@ -216,44 +217,144 @@
                 </div>
               </div>
             </div>
-            <!-- Add Modal -->
-            <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div class="fixed inset-0 bg-black/50" @click="showAddModal = false"></div>
-              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add Device</h3>
-                <form @submit.prevent="saveNew()">
+            <!-- Device Modal (Add/Edit) -->
+            <div x-show="showDeviceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="closeModal()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" x-text="isEditMode ? 'Edit Device' : 'Add Device'"></h3>
+                <form @submit.prevent="saveDevice()">
                   <div class="space-y-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
-                      <input type="text" x-model="newDevice.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Basic Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                        <input type="text" x-model="editDevice.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hostname</label>
+                        <input type="text" x-model="editDevice.hostname" placeholder="e.g., server01.example.com" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make/Model</label>
-                      <input type="text" x-model="newDevice.make_model" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make/Model</label>
+                        <input type="text" x-model="editDevice.make_model" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OS</label>
+                        <input type="text" x-model="editDevice.os" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                      <textarea x-model="newDevice.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                      <textarea x-model="editDevice.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OS</label>
-                      <input type="text" x-model="newDevice.os" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
+                        <select x-model="editDevice.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">None</option>
+                          <template x-for="dc in datacenters" :key="dc.id">
+                            <option :value="dc.id" x-text="dc.name"></option>
+                          </template>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                        <input type="text" x-model="editDevice.location" placeholder="e.g., Rack 5, Unit 12" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
                     </div>
+                    <!-- Tags Section -->
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
-                      <select x-model="newDevice.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">None</option>
-                        <template x-for="dc in datacenters" :key="dc.id">
-                          <option :value="dc.id" x-text="dc.name"></option>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
+                      <div class="flex gap-2 mb-2">
+                        <input type="text" x-model="tagInput" @keydown.enter.prevent="addTag()" placeholder="Add tag..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" @click="addTag()" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
+                      </div>
+                      <div class="flex flex-wrap gap-2" x-show="editDevice.tags?.length > 0">
+                        <template x-for="tag in editDevice.tags || []" :key="tag">
+                          <span class="inline-flex items-center px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">
+                            <span x-text="tag"></span>
+                            <button type="button" @click="removeTag(tag)" class="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">&times;</button>
+                          </span>
                         </template>
-                      </select>
+                      </div>
+                    </div>
+                    <!-- Addresses Section -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">IP Addresses</label>
+                      <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md mb-2 space-y-2">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          <input type="text" x-model="newAddress.ip" placeholder="IP Address *" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <input type="number" x-model.number="newAddress.port" placeholder="Port" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <select x-model="newAddress.type" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ipv4">IPv4</option>
+                            <option value="ipv6">IPv6</option>
+                          </select>
+                          <input type="text" x-model="newAddress.label" placeholder="Label" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          <select x-model="newAddress.network_id" @change="newAddress.pool_id = ''; loadPoolsForNetwork(newAddress.network_id)" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">No Network</option>
+                            <template x-for="net in networks" :key="net.id">
+                              <option :value="net.id" x-text="net.name"></option>
+                            </template>
+                          </select>
+                          <select x-model="newAddress.pool_id" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">No Pool</option>
+                            <template x-for="pool in pools" :key="pool.id">
+                              <option :value="pool.id" x-text="pool.name"></option>
+                            </template>
+                          </select>
+                          <input type="text" x-model="newAddress.switch_port" placeholder="Switch Port" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <button type="button" @click="fetchNextIPForNewAddress()" x-show="newAddress.pool_id" class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">Next IP</button>
+                          <button type="button" @click="addAddress()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Add</button>
+                        </div>
+                      </div>
+                      <!-- Existing addresses as editable inputs -->
+                      <div class="space-y-3" x-show="editDevice.addresses?.length > 0">
+                        <template x-for="(addr, index) in editDevice.addresses || []" :key="index">
+                          <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md border border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Address #<span x-text="index + 1"></span></span>
+                              <button type="button" @click="removeAddress(index)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 text-sm">Remove</button>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              <input type="text" x-model="addr.ip" placeholder="IP Address *" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <input type="number" x-model.number="addr.port" placeholder="Port" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <select x-model="addr.type" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="ipv4">IPv4</option>
+                                <option value="ipv6">IPv6</option>
+                              </select>
+                              <input type="text" x-model="addr.label" placeholder="Label" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 mt-2">
+                              <select x-model="addr.network_id" @change="addr.pool_id = ''; loadPoolsForNetwork(addr.network_id)" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">No Network</option>
+                                <template x-for="net in networks" :key="net.id">
+                                  <option :value="net.id" x-text="net.name"></option>
+                                </template>
+                              </select>
+                              <select x-model="addr.pool_id" @focus="loadPoolsForNetwork(addr.network_id)" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">No Pool</option>
+                                <template x-for="pool in getPoolsForNetwork(addr.network_id)" :key="pool.id">
+                                  <option :value="pool.id" x-text="pool.name"></option>
+                                </template>
+                              </select>
+                              <input type="text" x-model="addr.switch_port" placeholder="Switch Port" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <button type="button" @click="fetchNextIPForAddress(index)" x-show="addr.pool_id" class="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">Next IP</button>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
                     </div>
                   </div>
+                  <!-- Modal Footer -->
                   <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
                     <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                      <span x-show="!saving">Create Device</span>
-                      <span x-show="saving">Creating...</span>
+                      <span x-show="!saving" x-text="isEditMode ? 'Save Changes' : 'Create Device'"></span>
+                      <span x-show="saving" x-text="isEditMode ? 'Saving...' : 'Creating...'"></span>
                     </button>
                   </div>
                 </form>
@@ -273,15 +374,19 @@
                   <button @click="$dispatch('nav', '/devices')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
                   <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="device?.name"></h1>
                 </div>
-                <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+                <div class="flex gap-2">
+                  <button @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">Edit</button>
+                  <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+                </div>
               </div>
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Status</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.status || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Hostname</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.hostname || '-'"></dd></div>
                   <div><dt class="text-sm text-gray-500 dark:text-gray-400">Make/Model</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.make_model || '-'"></dd></div>
-                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Serial Number</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.serial_number || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">OS</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.os || '-'"></dd></div>
                   <div><dt class="text-sm text-gray-500 dark:text-gray-400">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(device?.datacenter_id)"></dd></div>
-                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">OS</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.os_name || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.location || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.description || '-'"></dd></div>
                 </dl>
                 <div class="mt-6" x-show="device?.tags?.length">
                   <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</h3>
@@ -311,6 +416,149 @@
                   <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
                   <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
                 </div>
+              </div>
+            </div>
+            <!-- Edit Modal -->
+            <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="closeEditModal()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Device</h3>
+                <form @submit.prevent="saveDevice()">
+                  <div class="space-y-4">
+                    <!-- Basic Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                        <input type="text" x-model="editDevice.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hostname</label>
+                        <input type="text" x-model="editDevice.hostname" placeholder="e.g., server01.example.com" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make/Model</label>
+                        <input type="text" x-model="editDevice.make_model" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OS</label>
+                        <input type="text" x-model="editDevice.os" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea x-model="editDevice.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
+                        <select x-model="editDevice.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">None</option>
+                          <template x-for="dc in datacenters" :key="dc.id">
+                            <option :value="dc.id" x-text="dc.name"></option>
+                          </template>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                        <input type="text" x-model="editDevice.location" placeholder="e.g., Rack 5, Unit 12" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      </div>
+                    </div>
+                    <!-- Tags Section -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
+                      <div class="flex gap-2 mb-2">
+                        <input type="text" x-model="tagInput" @keydown.enter.prevent="addTag()" placeholder="Add tag..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" @click="addTag()" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
+                      </div>
+                      <div class="flex flex-wrap gap-2" x-show="editDevice.tags?.length > 0">
+                        <template x-for="tag in editDevice.tags || []" :key="tag">
+                          <span class="inline-flex items-center px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">
+                            <span x-text="tag"></span>
+                            <button type="button" @click="removeTag(tag)" class="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">&times;</button>
+                          </span>
+                        </template>
+                      </div>
+                    </div>
+                    <!-- Addresses Section -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">IP Addresses</label>
+                      <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md mb-2 space-y-2">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          <input type="text" x-model="newAddress.ip" placeholder="IP Address *" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <input type="number" x-model.number="newAddress.port" placeholder="Port" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <select x-model="newAddress.type" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ipv4">IPv4</option>
+                            <option value="ipv6">IPv6</option>
+                          </select>
+                          <input type="text" x-model="newAddress.label" placeholder="Label" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          <select x-model="newAddress.network_id" @change="newAddress.pool_id = ''; loadPoolsForNetwork(newAddress.network_id)" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">No Network</option>
+                            <template x-for="net in networks" :key="net.id">
+                              <option :value="net.id" x-text="net.name"></option>
+                            </template>
+                          </select>
+                          <select x-model="newAddress.pool_id" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">No Pool</option>
+                            <template x-for="pool in pools" :key="pool.id">
+                              <option :value="pool.id" x-text="pool.name"></option>
+                            </template>
+                          </select>
+                          <input type="text" x-model="newAddress.switch_port" placeholder="Switch Port" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <button type="button" @click="fetchNextIPForNewAddress()" x-show="newAddress.pool_id" class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">Next IP</button>
+                          <button type="button" @click="addAddress()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Add</button>
+                        </div>
+                      </div>
+                      <!-- Existing addresses as editable inputs -->
+                      <div class="space-y-3" x-show="editDevice.addresses?.length > 0">
+                        <template x-for="(addr, index) in editDevice.addresses || []" :key="index">
+                          <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md border border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-between mb-2">
+                              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Address #<span x-text="index + 1"></span></span>
+                              <button type="button" @click="removeAddress(index)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 text-sm">Remove</button>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              <input type="text" x-model="addr.ip" placeholder="IP Address *" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <input type="number" x-model.number="addr.port" placeholder="Port" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <select x-model="addr.type" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="ipv4">IPv4</option>
+                                <option value="ipv6">IPv6</option>
+                              </select>
+                              <input type="text" x-model="addr.label" placeholder="Label" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 mt-2">
+                              <select x-model="addr.network_id" @change="addr.pool_id = ''; loadPoolsForNetwork(addr.network_id)" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">No Network</option>
+                                <template x-for="net in networks" :key="net.id">
+                                  <option :value="net.id" x-text="net.name"></option>
+                                </template>
+                              </select>
+                              <select x-model="addr.pool_id" @focus="loadPoolsForNetwork(addr.network_id)" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">No Pool</option>
+                                <template x-for="pool in getPoolsForNetwork(addr.network_id)" :key="pool.id">
+                                  <option :value="pool.id" x-text="pool.name"></option>
+                                </template>
+                              </select>
+                              <input type="text" x-model="addr.switch_port" placeholder="Switch Port" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <button type="button" @click="fetchNextIPForAddress(index)" x-show="addr.pool_id" class="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">Next IP</button>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Modal Footer -->
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!saving">Save Changes</span>
+                      <span x-show="saving">Saving...</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

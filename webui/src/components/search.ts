@@ -42,7 +42,7 @@ export function globalSearch(): SearchData {
       this.loading = true;
       this.error = '';
       try {
-        this.results = await api.searchDevices(this.query.trim());
+        this.results = (await api.searchDevices(this.query.trim())) || [];
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Search failed';
         this.results = [];

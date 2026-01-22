@@ -40,8 +40,9 @@ export function datacenterList() {
       this.loading = true;
       this.error = '';
       try {
-        this.datacenters = await api.listDatacenters();
+        this.datacenters = (await api.listDatacenters()) || [];
       } catch (e) {
+        this.datacenters = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load datacenters';
       } finally {
         this.loading = false;
@@ -141,9 +142,9 @@ export function datacenterDetail(): DatacenterDetailData {
     async loadDevices(): Promise<void> {
       if (!this.datacenter) return;
       try {
-        this.devices = await api.getDatacenterDevices(this.datacenter.id);
+        this.devices = (await api.getDatacenterDevices(this.datacenter.id)) || [];
       } catch {
-        // Non-critical
+        this.devices = [];
       }
     },
 
