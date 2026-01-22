@@ -1909,7 +1909,7 @@ Notes: Skip with -short flag. Tests include:
 
 ### [P9-002] API Integration Tests
 ```
-Status: TODO
+Status: DONE
 Specs: docs/specs/15-testing.md (lines 150-161)
 Dependencies: P3-010
 Outputs:
@@ -1920,7 +1920,14 @@ Acceptance:
 Validation:
   Build: REQUIRED
   Tests: REQUIRED (integration tests must pass)
-Notes: Use real storage (in-memory)
+Notes: Uses real httptest.Server with in-memory storage. Tests include:
+  - TestFullDeviceWorkflow: Complete CRUD with datacenter, network, device, addresses
+  - TestAuthMiddlewareIntegration: Auth token validation (missing, wrong, correct)
+  - TestSecurityHeadersIntegration: Verifies all security headers present
+  - TestDiscoveryWorkflow: Rules, scans, discovered devices
+  - TestRelationshipWorkflow: Parent-child device relationships
+  - TestNetworkPoolWorkflow: Pool creation, next-IP, heatmap, utilization
+  - TestUIConfigEndpoint: Config endpoint returns OSS edition
 ```
 
 ### [P9-003] CLI Tests
@@ -2158,11 +2165,11 @@ Phase 5 - Discovery:      3/3 tasks complete
 Phase 6 - Server:         2/3 tasks complete (1 skipped)
 Phase 7 - Web UI:         13/13 tasks complete
 Phase 8 - CLI:            6/7 tasks complete
-Phase 9 - Testing:        1/3 tasks complete
+Phase 9 - Testing:        2/3 tasks complete
 Phase 10 - Deployment:    0/4 tasks complete
 Phase 11 - Documentation: 0/3 tasks complete
 
-OSS Total: 54/68 tasks complete (79%)
+OSS Total: 55/68 tasks complete (81%)
 
 # Enterprise Edition Tasks
 Enterprise Phase 1 - Repo Setup:       3/3 tasks complete
@@ -2171,7 +2178,7 @@ Enterprise Phase 6 - Enterprise Server: 3/3 tasks complete
 
 Enterprise Total: 13/13 tasks complete (100%)
 
-# Combined Total: 67/81 tasks complete (83%)
+# Combined Total: 68/81 tasks complete (84%)
 ```
 ```
 
