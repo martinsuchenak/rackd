@@ -5,135 +5,723 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rackd - IPAM &amp; Device Inventory</title>
   <link rel="stylesheet" href="/output.css">
+  <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
-  <div x-data="nav" x-init="init()">
-    <!-- Skip link for accessibility -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50">
-      Skip to main content
-    </a>
+  <!-- Skip link for accessibility -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50">
+    Skip to main content
+  </a>
 
-    <!-- Navigation -->
-    <nav class="bg-white dark:bg-gray-800 shadow" role="navigation" aria-label="Main navigation">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <!-- Logo -->
-          <div class="flex items-center">
-            <a href="/" class="text-xl font-bold text-gray-900 dark:text-white">Rackd</a>
-            <span x-show="isEnterprise" class="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-              Enterprise
-            </span>
-          </div>
+  <div x-data="router" x-init="init()">
+    <!-- Sidebar -->
+    <aside class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transform transition-transform md:translate-x-0"
+           :class="{ '-translate-x-full': !sidebarOpen }"
+           role="navigation" aria-label="Main navigation">
+      <div class="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-700">
+        <a href="/" @click.prevent="navigate('/')" class="text-xl font-bold text-gray-900 dark:text-white">Rackd</a>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="/" @click.prevent="navigate('/')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+           :class="route === '/' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+          Dashboard
+        </a>
+        <a href="/devices" @click.prevent="navigate('/devices')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+           :class="route.startsWith('/devices') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+          Devices
+        </a>
+        <a href="/networks" @click.prevent="navigate('/networks')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+           :class="route.startsWith('/networks') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+          Networks
+        </a>
+        <a href="/datacenters" @click.prevent="navigate('/datacenters')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+           :class="route.startsWith('/datacenters') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+          Datacenters
+        </a>
+        <a href="/discovery" @click.prevent="navigate('/discovery')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+           :class="route.startsWith('/discovery') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+          Discovery
+        </a>
+      </nav>
+    </aside>
 
-          <!-- Desktop Nav Items -->
-          <div class="hidden md:flex items-center space-x-4">
-            <template x-for="item in items" :key="item.id">
-              <a :href="item.path"
-                 class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 x-text="item.label">
+    <!-- Mobile sidebar overlay -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak></div>
+
+    <!-- Main content area -->
+    <div class="md:ml-64 min-h-screen flex flex-col">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 gap-4">
+        <button @click="sidebarOpen = !sidebarOpen"
+                class="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                aria-label="Toggle sidebar">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+
+        <!-- Global Search -->
+        <div x-data="globalSearch" x-init="init()" class="relative flex-1 max-w-md hidden sm:block">
+          <label for="global-search" class="sr-only">Search devices</label>
+          <input id="global-search" type="search" x-model="query" @input="onInput()" @focus="onFocus()" @blur="onBlur()"
+                 placeholder="Search devices..."
+                 class="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <div x-show="showResults && (results.length > 0 || loading)" x-cloak
+               class="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+               role="listbox">
+            <div x-show="loading" class="p-3 text-sm text-gray-500">Searching...</div>
+            <template x-for="device in results" :key="device.id">
+              <a :href="'/devices/detail?id=' + device.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)"
+                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="option">
+                <div class="font-medium" x-text="device.name"></div>
+                <div class="text-xs text-gray-500" x-text="device.make_model || 'No model'"></div>
               </a>
             </template>
           </div>
+        </div>
 
-          <!-- Right side: Search, Theme, User -->
-          <div class="flex items-center space-x-4">
-            <!-- Global Search -->
-            <div x-data="globalSearch" x-init="init()" class="relative hidden sm:block">
-              <label for="global-search" class="sr-only">Search devices</label>
-              <input id="global-search"
-                     type="search"
-                     x-model="query"
-                     @input="onInput()"
-                     @focus="onFocus()"
-                     @blur="onBlur()"
-                     placeholder="Search devices..."
-                     class="w-48 lg:w-64 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     aria-describedby="search-results-status">
-              <span id="search-results-status" class="sr-only" x-text="loading ? 'Searching...' : results.length + ' results found'"></span>
-              <!-- Search Results Dropdown -->
-              <div x-show="showResults && (results.length > 0 || loading)"
-                   x-cloak
-                   class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50"
-                   role="listbox">
-                <div x-show="loading" class="p-3 text-sm text-gray-500 dark:text-gray-400">Searching...</div>
-                <template x-for="device in results" :key="device.id">
-                  <a :href="'/devices/detail?id=' + device.id"
-                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                     role="option">
-                    <div class="font-medium" x-text="device.name"></div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="device.make_model || 'No model'"></div>
-                  </a>
-                </template>
-              </div>
+        <div class="flex-1"></div>
+
+        <!-- Theme Toggle -->
+        <div x-data="themeToggle" x-init="init()">
+          <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
+                  class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  :aria-label="'Theme: ' + theme">
+            <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+            </svg>
+            <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page content -->
+      <main id="main-content" class="flex-1 p-6" role="main" @nav.window="navigate($event.detail)">
+
+        <!-- Dashboard -->
+        <div x-show="route === '/'" x-cloak>
+          <div x-data="{ stats: { devices: '-', networks: '-', datacenters: '-', discovered: '-' }, async init() {
+            const [d, n, dc, disc] = await Promise.all([
+              window.rackdAPI?.listDevices().catch(() => []) || [],
+              window.rackdAPI?.listNetworks().catch(() => []) || [],
+              window.rackdAPI?.listDatacenters().catch(() => []) || [],
+              window.rackdAPI?.listDiscoveredDevices().catch(() => []) || []
+            ]);
+            this.stats = { devices: d.length, networks: n.length, datacenters: dc.length, discovered: disc.length };
+          } }">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Dashboard</h1>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <a href="/devices" @click.prevent="$dispatch('nav', '/devices')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Devices</div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.devices"></div>
+              </a>
+              <a href="/networks" @click.prevent="$dispatch('nav', '/networks')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Networks</div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.networks"></div>
+              </a>
+              <a href="/datacenters" @click.prevent="$dispatch('nav', '/datacenters')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Datacenters</div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.datacenters"></div>
+              </a>
+              <a href="/discovery" @click.prevent="$dispatch('nav', '/discovery')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Discovered</div>
+                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.discovered"></div>
+              </a>
             </div>
-
-            <!-- Theme Toggle -->
-            <div x-data="themeToggle" x-init="init()" class="relative">
-              <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
-                      class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      :aria-label="'Current theme: ' + theme + '. Click to change.'">
-                <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
-                <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                </svg>
-                <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- User Menu (Enterprise SSO) -->
-            <template x-if="hasFeature('sso')">
-              <div x-data="sso" class="flex items-center">
-                <template x-if="isLoggedIn">
-                  <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-700 dark:text-gray-300" x-text="user?.username"></span>
-                    <button @click="logout" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Logout</button>
-                  </div>
-                </template>
-                <template x-if="!isLoggedIn">
-                  <button @click="login" class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Login</button>
-                </template>
-              </div>
-            </template>
-
-            <!-- Mobile menu button -->
-            <button @click="$refs.mobileMenu.classList.toggle('hidden')"
-                    class="md:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-expanded="false"
-                    aria-controls="mobile-menu"
-                    aria-label="Toggle navigation menu">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-              </svg>
-            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Mobile menu -->
-      <div id="mobile-menu" x-ref="mobileMenu" class="hidden md:hidden border-t border-gray-200 dark:border-gray-700">
-        <div class="px-2 pt-2 pb-3 space-y-1">
-          <template x-for="item in items" :key="item.id">
-            <a :href="item.path"
-               class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-               x-text="item.label">
-            </a>
-          </template>
+        <!-- Devices List -->
+        <div x-show="route === '/devices'" x-cloak>
+          <div x-data="deviceList" x-init="init()">
+            <div class="flex justify-between items-center mb-6">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
+              <button @click="showAddModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Add Device
+              </button>
+            </div>
+            <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+                <input type="text" x-model="search" @input="applySearch()" placeholder="Search..."
+                       class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select @change="setFilter('datacenter_id', $event.target.value)"
+                        class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">All Datacenters</option>
+                  <template x-for="dc in datacenters" :key="dc.id">
+                    <option :value="dc.id" x-text="dc.name"></option>
+                  </template>
+                </select>
+                <button @click="clearFilters()" class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  Clear filters
+                </button>
+              </div>
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Model</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+                  <tr x-show="!loading && pagedDevices.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-500">No devices found</td></tr>
+                  <template x-for="d in pagedDevices" :key="d.id">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td class="px-6 py-4">
+                        <a :href="'/devices/detail?id=' + d.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + d.id)" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" x-text="d.name"></a>
+                      </td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="d.addresses?.[0]?.ip || '-'"></td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="d.make_model || '-'"></td>
+                      <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full"
+                              :class="d.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'"
+                              x-text="d.status || 'unknown'"></span>
+                      </td>
+                      <td class="px-6 py-4 text-right">
+                        <button @click="confirmDelete(d)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <div x-show="totalPages > 1" class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span class="text-sm text-gray-500 dark:text-gray-400">Page <span x-text="page"></span> of <span x-text="totalPages"></span></span>
+                <div class="space-x-2">
+                  <button @click="goToPage(page - 1)" :disabled="page === 1" class="px-3 py-1 text-sm border rounded disabled:opacity-50">Previous</button>
+                  <button @click="goToPage(page + 1)" :disabled="page === totalPages" class="px-3 py-1 text-sm border rounded disabled:opacity-50">Next</button>
+                </div>
+              </div>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Device</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="deleteTarget?.name"></strong>? This action cannot be undone.</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">
+                    <span x-show="!deleting">Delete</span>
+                    <span x-show="deleting">Deleting...</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Add Modal -->
+            <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="showAddModal = false"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add Device</h3>
+                <form @submit.prevent="saveNew()">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                      <input type="text" x-model="newDevice.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make/Model</label>
+                      <input type="text" x-model="newDevice.make_model" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea x-model="newDevice.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OS</label>
+                      <input type="text" x-model="newDevice.os" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
+                      <select x-model="newDevice.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">None</option>
+                        <template x-for="dc in datacenters" :key="dc.id">
+                          <option :value="dc.id" x-text="dc.name"></option>
+                        </template>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!saving">Create Device</span>
+                      <span x-show="saving">Creating...</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main id="main-content" class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8" role="main">
-      <!-- Content rendered by Alpine components based on route -->
-      <div class="text-gray-900 dark:text-white">
-        <h1 class="text-2xl font-bold mb-4">Welcome to Rackd</h1>
-        <p class="text-gray-600 dark:text-gray-400">Select a section from the navigation to get started.</p>
-      </div>
-    </main>
+        <!-- Device Detail -->
+        <div x-show="route.startsWith('/devices/detail')" x-cloak>
+          <div x-data="deviceDetail" x-init="init()">
+            <div x-show="loading" class="text-gray-500">Loading...</div>
+            <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div x-show="!loading && device">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                  <button @click="$dispatch('nav', '/devices')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+                  <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="device?.name"></h1>
+                </div>
+                <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Status</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.status || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Make/Model</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.make_model || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Serial Number</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.serial_number || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(device?.datacenter_id)"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">OS</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.os_name || '-'"></dd></div>
+                </dl>
+                <div class="mt-6" x-show="device?.tags?.length">
+                  <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</h3>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="tag in device?.tags || []" :key="tag">
+                      <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded" x-text="tag"></span>
+                    </template>
+                  </div>
+                </div>
+                <div class="mt-6" x-show="device?.addresses?.length">
+                  <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">IP Addresses</h3>
+                  <ul class="space-y-1">
+                    <template x-for="addr in device?.addresses || []" :key="addr.ip">
+                      <li class="text-gray-900 dark:text-white" x-text="addr.ip + (addr.label ? ' (' + addr.label + ')' : '')"></li>
+                    </template>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Device</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="device?.name"></strong>?</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Networks List -->
+        <div x-show="route === '/networks'" x-cloak>
+          <div x-data="networkList" x-init="init()">
+            <div class="flex justify-between items-center mb-6">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Networks</h1>
+              <button @click="showAddModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Add Network
+              </button>
+            </div>
+            <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                <select @change="setFilter($event.target.value)"
+                        class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">All Datacenters</option>
+                  <template x-for="dc in datacenters" :key="dc.id">
+                    <option :value="dc.id" x-text="dc.name"></option>
+                  </template>
+                </select>
+              </div>
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subnet</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">VLAN</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Datacenter</th>
+                    <th class="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+                  <tr x-show="!loading && networks.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-500">No networks found</td></tr>
+                  <template x-for="n in networks" :key="n.id">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td class="px-6 py-4">
+                        <a :href="'/networks/detail?id=' + n.id" @click.prevent="$dispatch('nav', '/networks/detail?id=' + n.id)" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" x-text="n.name"></a>
+                      </td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="n.subnet"></td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="n.vlan_id || '-'"></td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="getDatacenterName(n.datacenter_id)"></td>
+                      <td class="px-6 py-4 text-right">
+                        <button @click="confirmDelete(n)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Network</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="deleteTarget?.name"></strong>?</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
+                </div>
+              </div>
+            </div>
+            <!-- Add Modal -->
+            <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="showAddModal = false"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add Network</h3>
+                <form @submit.prevent="saveNew()">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                      <input type="text" x-model="newNetwork.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subnet (CIDR) *</label>
+                      <input type="text" x-model="newNetwork.subnet" required placeholder="e.g. 10.0.0.0/24" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">VLAN ID</label>
+                      <input type="number" x-model.number="newNetwork.vlan_id" min="0" max="4094" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea x-model="newNetwork.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
+                      <select x-model="newNetwork.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">None</option>
+                        <template x-for="dc in datacenters" :key="dc.id">
+                          <option :value="dc.id" x-text="dc.name"></option>
+                        </template>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!saving">Create Network</span>
+                      <span x-show="saving">Creating...</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Network Detail -->
+        <div x-show="route.startsWith('/networks/detail')" x-cloak>
+          <div x-data="networkDetail" x-init="init()">
+            <div x-show="loading" class="text-gray-500">Loading...</div>
+            <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div x-show="!loading && network">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                  <button @click="$dispatch('nav', '/networks')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+                  <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="network?.name"></h1>
+                </div>
+                <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Subnet</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.subnet"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">VLAN ID</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.vlan_id || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(network?.datacenter_id)"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.description || '-'"></dd></div>
+                </dl>
+                <div x-show="utilization" class="mt-6">
+                  <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">Utilization</h3>
+                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                    <div class="bg-blue-600 h-4 rounded-full" :style="'width: ' + utilizationPercent() + '%'"></div>
+                  </div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1"><span x-text="utilizationPercent()"></span>% used</p>
+                </div>
+              </div>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Network</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="network?.name"></strong>?</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datacenters List -->
+        <div x-show="route === '/datacenters'" x-cloak>
+          <div x-data="datacenterList" x-init="init()">
+            <div class="flex justify-between items-center mb-6">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Datacenters</h1>
+              <button @click="showAddModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Add Datacenter
+              </button>
+            </div>
+            <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+                    <th class="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr x-show="loading"><td colspan="3" class="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+                  <tr x-show="!loading && datacenters.length === 0"><td colspan="3" class="px-6 py-8 text-center text-gray-500">No datacenters found</td></tr>
+                  <template x-for="dc in datacenters" :key="dc.id">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td class="px-6 py-4">
+                        <a :href="'/datacenters/detail?id=' + dc.id" @click.prevent="$dispatch('nav', '/datacenters/detail?id=' + dc.id)" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" x-text="dc.name"></a>
+                      </td>
+                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="dc.location || '-'"></td>
+                      <td class="px-6 py-4 text-right">
+                        <button @click="confirmDelete(dc)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Datacenter</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="deleteTarget?.name"></strong>?</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
+                </div>
+              </div>
+            </div>
+            <!-- Add Modal -->
+            <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="showAddModal = false"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add Datacenter</h3>
+                <form @submit.prevent="saveNew()">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                      <input type="text" x-model="newDatacenter.name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                      <input type="text" x-model="newDatacenter.location" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea x-model="newDatacenter.description" rows="3" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!saving">Create Datacenter</span>
+                      <span x-show="saving">Creating...</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datacenter Detail -->
+        <div x-show="route.startsWith('/datacenters/detail')" x-cloak>
+          <div x-data="datacenterDetail" x-init="init()">
+            <div x-show="loading" class="text-gray-500">Loading...</div>
+            <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div x-show="!loading && datacenter">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                  <button @click="$dispatch('nav', '/datacenters')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+                  <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="datacenter?.name"></h1>
+                </div>
+                <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="datacenter?.location || '-'"></dd></div>
+                  <div><dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="datacenter?.description || '-'"></dd></div>
+                </dl>
+                <div class="mt-6" x-show="devices.length > 0">
+                  <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">Devices (<span x-text="devices.length"></span>)</h3>
+                  <ul class="space-y-1">
+                    <template x-for="d in devices.slice(0, 10)" :key="d.id">
+                      <li><a :href="'/devices/detail?id=' + d.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + d.id)" class="text-blue-600 dark:text-blue-400 hover:underline" x-text="d.name"></a></li>
+                    </template>
+                    <li x-show="devices.length > 10" class="text-gray-500">...and <span x-text="devices.length - 10"></span> more</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- Delete Modal -->
+            <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Datacenter</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong x-text="datacenter?.name"></strong>?</p>
+                <div class="flex justify-end gap-3">
+                  <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                  <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discovery -->
+        <div x-show="route === '/discovery'" x-cloak>
+          <div x-data="discoveryList" x-init="init()" @beforeunload.window="destroy()">
+            <div class="flex justify-between items-center mb-6">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Discovery</h1>
+              <button @click="showScanModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                New Scan
+              </button>
+            </div>
+            <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+            <div class="mb-4">
+              <select @change="selectNetwork($event.target.value)"
+                      class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All Networks</option>
+                <template x-for="n in networks" :key="n.id">
+                  <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
+                </template>
+              </select>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Recent Scans</div>
+                <div class="p-4">
+                  <p x-show="loading" class="text-gray-500">Loading...</p>
+                  <p x-show="!loading && scans.length === 0" class="text-gray-500">No scans found</p>
+                  <div class="space-y-2">
+                    <template x-for="s in scans.slice(0, 10)" :key="s.id">
+                      <div class="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+                        <div class="flex justify-between items-center">
+                          <span class="text-gray-900 dark:text-white" x-text="s.network_id"></span>
+                          <span class="px-2 py-0.5 text-xs rounded-full"
+                                :class="{
+                                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': s.status === 'pending',
+                                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': s.status === 'running',
+                                  'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': s.status === 'completed',
+                                  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': s.status === 'failed'
+                                }"
+                                x-text="s.status"></span>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="s.scan_type + ' scan'"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Discovered Devices</div>
+                <div class="p-4">
+                  <p x-show="loading" class="text-gray-500">Loading...</p>
+                  <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-500">No discovered devices</p>
+                  <div class="space-y-2">
+                    <template x-for="d in discoveredDevices.slice(0, 10)" :key="d.id">
+                      <div class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+                        <div>
+                          <div class="text-gray-900 dark:text-white" x-text="d.ip"></div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400" x-text="d.hostname || 'Unknown hostname'"></div>
+                        </div>
+                        <button @click="promoteDevice = d; showPromoteModal = true" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Promote</button>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Scan Modal -->
+            <div x-show="showScanModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="showScanModal = false"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Discovery Scan</h3>
+                <form @submit.prevent="startScan()">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network *</label>
+                      <select x-model="scanNetworkId" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select a network</option>
+                        <template x-for="n in networks" :key="n.id">
+                          <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
+                        </template>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Type</label>
+                      <select x-model="scanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="quick">Quick (ICMP ping)</option>
+                        <option value="full">Full (TCP port scan)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showScanModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="scanning" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!scanning">Start Scan</span>
+                      <span x-show="scanning">Starting...</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <!-- Promote Modal -->
+            <div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false"></div>
+              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Promote to Device</h3>
+                <form @submit.prevent="doPromote()">
+                  <div class="space-y-4">
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                      <div class="text-sm text-gray-500 dark:text-gray-400">IP Address</div>
+                      <div class="font-medium text-gray-900 dark:text-white" x-text="promoteDevice?.ip"></div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400 mt-2" x-show="promoteDevice?.hostname">Hostname: <span x-text="promoteDevice?.hostname"></span></div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device Name *</label>
+                      <input type="text" x-model="promoteName" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                      <span x-show="!promoting">Promote</span>
+                      <span x-show="promoting">Promoting...</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
   </div>
 
   <script type="module" src="/app.js"></script>

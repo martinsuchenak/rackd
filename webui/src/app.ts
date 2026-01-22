@@ -16,9 +16,32 @@ import { discoveryList, scanForm, scanDetail, promoteForm } from './components/d
 declare global {
   interface Window {
     Alpine: typeof Alpine;
+    rackdAPI: RackdAPI;
     rackdConfig: UIConfig | null;
     rackdEnterprise?: { init(): void };
   }
+}
+
+// Router component for SPA navigation
+function router() {
+  return {
+    route: window.location.pathname + window.location.search,
+    sidebarOpen: false,
+
+    init() {
+      window.addEventListener('popstate', () => {
+        this.route = window.location.pathname + window.location.search;
+      });
+    },
+
+    navigate(path: string) {
+      if (path !== this.route) {
+        history.pushState({}, '', path);
+        this.route = path;
+        this.sidebarOpen = false;
+      }
+    },
+  };
 }
 
 // Theme management
@@ -53,7 +76,8 @@ function themeToggle() {
 // Initialize application
 async function init(): Promise<void> {
   const api = new RackdAPI();
-  
+  window.rackdAPI = api;
+
   // Fetch config
   try {
     window.rackdConfig = await api.getConfig();
@@ -62,6 +86,7 @@ async function init(): Promise<void> {
   }
 
   // Register Alpine components
+  Alpine.data('router', router);
   Alpine.data('nav', nav);
   Alpine.data('globalSearch', globalSearch);
   Alpine.data('themeToggle', themeToggle);

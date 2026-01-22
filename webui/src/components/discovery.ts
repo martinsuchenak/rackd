@@ -24,15 +24,25 @@ interface DiscoveryListData {
   destroy(): void;
 }
 
-export function discoveryList(): DiscoveryListData {
+export function discoveryList() {
   return {
-    networks: [],
-    scans: [],
-    discoveredDevices: [],
+    networks: [] as Network[],
+    scans: [] as DiscoveryScan[],
+    discoveredDevices: [] as DiscoveredDevice[],
     selectedNetworkId: '',
     loading: true,
     error: '',
-    pollInterval: null,
+    pollInterval: null as ReturnType<typeof setInterval> | null,
+    // Scan modal
+    showScanModal: false,
+    scanNetworkId: '',
+    scanType: 'quick' as DiscoveryScan['scan_type'],
+    scanning: false,
+    // Promote modal
+    showPromoteModal: false,
+    promoteDevice: null as DiscoveredDevice | null,
+    promoteName: '',
+    promoting: false,
 
     async init(): Promise<void> {
       await this.loadNetworks();
@@ -94,6 +104,46 @@ export function discoveryList(): DiscoveryListData {
 
     destroy(): void {
       this.stopPolling();
+    },
+
+    async startScan(): Promise<void> {
+      if (!this.scanNetworkId) {
+        this.error = 'Please select a network';
+        return;
+      }
+      this.scanning = true;
+      this.error = '';
+      try {
+        await api.startScan(this.scanNetworkId, this.scanType);
+        this.showScanModal = false;
+        this.scanNetworkId = '';
+        await this.loadScans();
+        if (this.hasActiveScan()) this.startPolling();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to start scan';
+      } finally {
+        this.scanning = false;
+      }
+    },
+
+    async doPromote(): Promise<void> {
+      if (!this.promoteDevice || !this.promoteName.trim()) {
+        this.error = 'Name is required';
+        return;
+      }
+      this.promoting = true;
+      this.error = '';
+      try {
+        await api.promoteDevice(this.promoteDevice.id, this.promoteName.trim());
+        this.showPromoteModal = false;
+        this.promoteDevice = null;
+        this.promoteName = '';
+        await this.loadDiscoveredDevices();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to promote device';
+      } finally {
+        this.promoting = false;
+      }
     },
   };
 }

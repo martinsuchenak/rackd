@@ -19,14 +19,18 @@ interface DatacenterListData {
   doDelete(): Promise<void>;
 }
 
-export function datacenterList(): DatacenterListData {
+export function datacenterList() {
   return {
-    datacenters: [],
+    datacenters: [] as Datacenter[],
     loading: true,
     error: '',
     showDeleteModal: false,
-    deleteTarget: null,
+    deleteTarget: null as Datacenter | null,
     deleting: false,
+    // Add modal
+    showAddModal: false,
+    newDatacenter: { name: '', location: '', description: '' } as Partial<Datacenter>,
+    saving: false,
 
     async init(): Promise<void> {
       await this.loadDatacenters();
@@ -66,6 +70,21 @@ export function datacenterList(): DatacenterListData {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete datacenter';
       } finally {
         this.deleting = false;
+      }
+    },
+
+    async saveNew(): Promise<void> {
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.createDatacenter(this.newDatacenter);
+        this.showAddModal = false;
+        this.newDatacenter = { name: '', location: '', description: '' };
+        await this.loadDatacenters();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create datacenter';
+      } finally {
+        this.saving = false;
       }
     },
   };

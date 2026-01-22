@@ -24,16 +24,20 @@ interface NetworkListData {
   doDelete(): Promise<void>;
 }
 
-export function networkList(): NetworkListData {
+export function networkList() {
   return {
-    networks: [],
-    datacenters: [],
+    networks: [] as Network[],
+    datacenters: [] as Datacenter[],
     loading: true,
     error: '',
-    filter: {},
+    filter: {} as { datacenter_id?: string },
     showDeleteModal: false,
-    deleteTarget: null,
+    deleteTarget: null as Network | null,
     deleting: false,
+    // Add modal
+    showAddModal: false,
+    newNetwork: { name: '', subnet: '', vlan_id: 0, datacenter_id: '', description: '' } as Partial<Network>,
+    saving: false,
 
     async init(): Promise<void> {
       await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
@@ -90,6 +94,21 @@ export function networkList(): NetworkListData {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete network';
       } finally {
         this.deleting = false;
+      }
+    },
+
+    async saveNew(): Promise<void> {
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.createNetwork(this.newNetwork);
+        this.showAddModal = false;
+        this.newNetwork = { name: '', subnet: '', vlan_id: 0, datacenter_id: '', description: '' };
+        await this.loadNetworks();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create network';
+      } finally {
+        this.saving = false;
       }
     },
   };

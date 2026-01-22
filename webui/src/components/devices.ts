@@ -32,19 +32,23 @@ interface DeviceListData {
   doDelete(): Promise<void>;
 }
 
-export function deviceList(): DeviceListData {
+export function deviceList() {
   return {
-    devices: [],
-    datacenters: [],
+    devices: [] as Device[],
+    datacenters: [] as Datacenter[],
     loading: true,
     error: '',
     search: '',
-    filter: {},
+    filter: {} as DeviceFilter,
     page: 1,
     pageSize: 10,
     showDeleteModal: false,
-    deleteTarget: null,
+    deleteTarget: null as Device | null,
     deleting: false,
+    // Add modal
+    showAddModal: false,
+    newDevice: { name: '', make_model: '', description: '', datacenter_id: '', os: '' } as Partial<Device>,
+    saving: false,
 
     get totalPages(): number {
       return Math.ceil(this.devices.length / this.pageSize) || 1;
@@ -133,6 +137,21 @@ export function deviceList(): DeviceListData {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete device';
       } finally {
         this.deleting = false;
+      }
+    },
+
+    async saveNew(): Promise<void> {
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.createDevice(this.newDevice);
+        this.showAddModal = false;
+        this.newDevice = { name: '', make_model: '', description: '', datacenter_id: '', os: '' };
+        await this.loadDevices();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create device';
+      } finally {
+        this.saving = false;
       }
     },
   };
