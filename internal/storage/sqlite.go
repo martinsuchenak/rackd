@@ -59,6 +59,12 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	// Create default datacenter if none exists
+	if err := s.ensureDefaultDatacenter(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
+	}
+
 	return s, nil
 }
 
@@ -614,6 +620,29 @@ func nullIntPtr(i *int) sql.NullInt64 {
 }
 
 // Datacenter operations
+
+// ensureDefaultDatacenter creates a default datacenter if none exists
+func (s *SQLiteStorage) ensureDefaultDatacenter(ctx context.Context) error {
+	var count int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM datacenters`).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check datacenter count: %w", err)
+	}
+
+	if count == 0 {
+		defaultDC := &model.Datacenter{
+			ID:          newUUID(),
+			Name:        "Default",
+			Location:    "",
+			Description: "Default datacenter",
+		}
+		if err := s.CreateDatacenter(defaultDC); err != nil {
+			return fmt.Errorf("failed to create default datacenter: %w", err)
+		}
+	}
+
+	return nil
+}
 
 // ListDatacenters retrieves all datacenters matching the filter criteria
 func (s *SQLiteStorage) ListDatacenters(filter *model.DatacenterFilter) ([]model.Datacenter, error) {

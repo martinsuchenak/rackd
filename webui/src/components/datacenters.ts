@@ -98,12 +98,18 @@ interface DatacenterDetailData {
   error: string;
   showDeleteModal: boolean;
   deleting: boolean;
+  showEditModal: boolean;
+  editDatacenter: Partial<Datacenter>;
+  saving: boolean;
   init(): Promise<void>;
   loadDatacenter(): Promise<void>;
   loadDevices(): Promise<void>;
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  openEditModal(): void;
+  closeEditModal(): void;
+  saveEdit(): Promise<void>;
 }
 
 export function datacenterDetail(): DatacenterDetailData {
@@ -114,6 +120,9 @@ export function datacenterDetail(): DatacenterDetailData {
     error: '',
     showDeleteModal: false,
     deleting: false,
+    showEditModal: false,
+    editDatacenter: {},
+    saving: false,
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation
@@ -167,6 +176,37 @@ export function datacenterDetail(): DatacenterDetailData {
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete datacenter';
         this.deleting = false;
+      }
+    },
+
+    openEditModal(): void {
+      if (!this.datacenter) return;
+      this.editDatacenter = {
+        id: this.datacenter.id,
+        name: this.datacenter.name,
+        location: this.datacenter.location || '',
+        description: this.datacenter.description || '',
+      };
+      this.showEditModal = true;
+    },
+
+    closeEditModal(): void {
+      this.showEditModal = false;
+      this.editDatacenter = {};
+    },
+
+    async saveEdit(): Promise<void> {
+      if (!this.datacenter || !this.editDatacenter.id) return;
+      this.saving = true;
+      try {
+        await api.updateDatacenter(this.editDatacenter.id, this.editDatacenter);
+        this.showEditModal = false;
+        this.editDatacenter = {};
+        await this.loadDatacenter();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to update datacenter';
+      } finally {
+        this.saving = false;
       }
     },
   };

@@ -14,6 +14,7 @@ interface NetworkListData {
   showDeleteModal: boolean;
   deleteTarget: Network | null;
   deleting: boolean;
+  hasMultipleDatacenters: boolean;
   init(): Promise<void>;
   loadNetworks(): Promise<void>;
   loadDatacenters(): Promise<void>;
@@ -22,6 +23,8 @@ interface NetworkListData {
   confirmDelete(network: Network): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  openAddModal(): void;
+  saveNew(): Promise<void>;
 }
 
 export function networkList() {
@@ -38,6 +41,10 @@ export function networkList() {
     showAddModal: false,
     newNetwork: { name: '', subnet: '', vlan_id: 0, datacenter_id: '', description: '' } as Partial<Network>,
     saving: false,
+
+    get hasMultipleDatacenters(): boolean {
+      return this.datacenters.length > 1;
+    },
 
     async init(): Promise<void> {
       await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
@@ -98,6 +105,17 @@ export function networkList() {
       }
     },
 
+    openAddModal(): void {
+      this.showAddModal = true;
+      this.newNetwork = {
+        name: '',
+        subnet: '',
+        vlan_id: 0,
+        datacenter_id: this.datacenters.length === 1 ? this.datacenters[0].id : '',
+        description: '',
+      };
+    },
+
     async saveNew(): Promise<void> {
       this.saving = true;
       this.error = '';
@@ -124,6 +142,7 @@ interface NetworkDetailData {
   error: string;
   showDeleteModal: boolean;
   deleting: boolean;
+  hasMultipleDatacenters: boolean;
   // Edit network
   showEditModal: boolean;
   editNetwork: Partial<Network>;
@@ -182,6 +201,10 @@ export function networkDetail(): NetworkDetailData {
     showDeletePoolModal: false,
     deletePoolTarget: null as NetworkPool | null,
     deletingPool: false,
+
+    get hasMultipleDatacenters(): boolean {
+      return this.datacenters.length > 1;
+    },
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation
@@ -267,7 +290,10 @@ export function networkDetail(): NetworkDetailData {
     // Network edit methods
     openEditModal(): void {
       if (!this.network) return;
-      this.editNetwork = { ...this.network };
+      this.editNetwork = {
+        ...this.network,
+        datacenter_id: this.datacenters.length === 1 && this.network.datacenter_id ? this.datacenters[0].id : this.network.datacenter_id || '',
+      };
       this.showEditModal = true;
     },
 

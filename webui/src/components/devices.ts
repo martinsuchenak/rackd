@@ -77,6 +77,14 @@ export function deviceList() {
       return this.devices.slice(start, start + this.pageSize);
     },
 
+    get hasMultipleDatacenters(): boolean {
+      return this.datacenters.length > 1;
+    },
+
+    get singleDatacenterId(): string {
+      return this.datacenters.length === 1 ? this.datacenters[0].id : '';
+    },
+
     async init(): Promise<void> {
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
     },
@@ -217,7 +225,7 @@ export function deviceList() {
         make_model: '',
         description: '',
         os: '',
-        datacenter_id: '',
+        datacenter_id: this.datacenters.length === 1 ? this.datacenters[0].id : '',
         username: '',
         location: '',
         tags: [],
