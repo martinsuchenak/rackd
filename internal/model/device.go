@@ -21,7 +21,7 @@ type Device struct {
 
 type Address struct {
 	IP         string `json:"ip"`
-	Port       int    `json:"port"`
+	Port       *int   `json:"port,omitempty"`
 	Type       string `json:"type"`
 	Label      string `json:"label"`
 	NetworkID  string `json:"network_id,omitempty"`

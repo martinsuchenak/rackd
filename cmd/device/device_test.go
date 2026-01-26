@@ -13,6 +13,8 @@ import (
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
+func intPtr(i int) *int { return &i }
+
 func TestParseDeviceFlags(t *testing.T) {
 	// Test parseAddresses function
 	tests := []struct {
@@ -31,22 +33,22 @@ func TestParseDeviceFlags(t *testing.T) {
 			name:  "IP with port",
 			input: "192.168.1.1:22",
 			expected: []model.Address{
-				{IP: "192.168.1.1", Port: 22, Type: "ipv4"},
+				{IP: "192.168.1.1", Port: intPtr(22), Type: "ipv4"},
 			},
 		},
 		{
 			name:  "IP with port and type",
 			input: "192.168.1.1:22:ipv4",
 			expected: []model.Address{
-				{IP: "192.168.1.1", Port: 22, Type: "ipv4"},
+				{IP: "192.168.1.1", Port: intPtr(22), Type: "ipv4"},
 			},
 		},
 		{
 			name:  "multiple addresses",
 			input: "192.168.1.1:22:ipv4,10.0.0.1:80:ipv4",
 			expected: []model.Address{
-				{IP: "192.168.1.1", Port: 22, Type: "ipv4"},
-				{IP: "10.0.0.1", Port: 80, Type: "ipv4"},
+				{IP: "192.168.1.1", Port: intPtr(22), Type: "ipv4"},
+				{IP: "10.0.0.1", Port: intPtr(80), Type: "ipv4"},
 			},
 		},
 		{
@@ -67,8 +69,11 @@ func TestParseDeviceFlags(t *testing.T) {
 				if addr.IP != tt.expected[i].IP {
 					t.Errorf("address %d: expected IP %s, got %s", i, tt.expected[i].IP, addr.IP)
 				}
-				if addr.Port != tt.expected[i].Port {
-					t.Errorf("address %d: expected Port %d, got %d", i, tt.expected[i].Port, addr.Port)
+				expectedPort := tt.expected[i].Port
+				if (addr.Port == nil) != (expectedPort == nil) {
+					t.Errorf("address %d: expected Port nil=%v, got nil=%v", i, expectedPort == nil, addr.Port == nil)
+				} else if addr.Port != nil && *addr.Port != *expectedPort {
+					t.Errorf("address %d: expected Port %d, got %d", i, *expectedPort, *addr.Port)
 				}
 				if addr.Type != tt.expected[i].Type {
 					t.Errorf("address %d: expected Type %s, got %s", i, tt.expected[i].Type, addr.Type)

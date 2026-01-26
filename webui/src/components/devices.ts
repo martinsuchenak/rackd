@@ -38,7 +38,7 @@ export function deviceList() {
     datacenters: [] as Datacenter[],
     networks: [] as Network[],
     pools: [] as NetworkPool[],
-    poolsCache: new Map<string, NetworkPool[]>(),
+    poolsCache: {} as Record<string, NetworkPool[]>,
     loading: true,
     error: '',
     search: '',
@@ -65,7 +65,7 @@ export function deviceList() {
       domains: [] as string[],
     } as Partial<Device>,
     tagInput: '',
-    newAddress: { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' } as Address,
+    domainInput: '',
     saving: false,
 
     get totalPages(): number {
@@ -103,13 +103,13 @@ export function deviceList() {
         return;
       }
       // Check cache first
-      if (this.poolsCache.has(networkId)) {
-        this.pools = this.poolsCache.get(networkId) || [];
+      if (this.poolsCache[networkId]) {
+        this.pools = this.poolsCache[networkId];
         return;
       }
       try {
         const pools = (await api.listNetworkPools(networkId)) || [];
-        this.poolsCache.set(networkId, pools);
+        this.poolsCache[networkId] = pools;
         this.pools = pools;
       } catch {
         this.pools = [];
@@ -119,11 +119,11 @@ export function deviceList() {
     getPoolsForNetwork(networkId: string): NetworkPool[] {
       if (!networkId) return [];
       // Load pools async if not cached
-      if (!this.poolsCache.has(networkId)) {
+      if (!this.poolsCache[networkId]) {
         this.loadPoolsForNetwork(networkId);
         return [];
       }
-      return this.poolsCache.get(networkId) || [];
+      return this.poolsCache[networkId];
     },
 
     async fetchNextIPForAddress(index: number): Promise<void> {
@@ -133,18 +133,6 @@ export function deviceList() {
         const result = await api.getNextIP(addr.pool_id);
         if (result?.ip && this.editDevice.addresses?.[index]) {
           this.editDevice.addresses[index].ip = result.ip;
-        }
-      } catch {
-        // Silently fail
-      }
-    },
-
-    async fetchNextIPForNewAddress(): Promise<void> {
-      if (!this.newAddress.pool_id) return;
-      try {
-        const result = await api.getNextIP(this.newAddress.pool_id);
-        if (result?.ip) {
-          this.newAddress.ip = result.ip;
         }
       } catch {
         // Silently fail
@@ -237,12 +225,12 @@ export function deviceList() {
         domains: [],
       };
       this.tagInput = '';
-      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.domainInput = '';
       this.pools = [];
       this.showDeviceModal = true;
     },
 
-    openEditModal(device: Device): void {
+    async openEditModal(device: Device): Promise<void> {
       this.isEditMode = true;
       this.editDevice = {
         id: device.id,
@@ -259,8 +247,13 @@ export function deviceList() {
         domains: [...(device.domains || [])],
       };
       this.tagInput = '';
-      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.domainInput = '';
       this.pools = [];
+      // Preload pools for networks used in existing addresses before showing modal
+      const networkIds = [...new Set(
+        (device.addresses || []).map((a) => a.network_id).filter((id): id is string => !!id)
+      )];
+      await Promise.all(networkIds.map((networkId) => this.loadPoolsForNetwork(networkId)));
       this.showDeviceModal = true;
     },
 
@@ -280,18 +273,23 @@ export function deviceList() {
       this.editDevice.tags = this.editDevice.tags?.filter((t) => t !== tag) ?? [];
     },
 
-    addAddress(): void {
-      if (this.newAddress.ip.trim()) {
-        this.editDevice.addresses = [...(this.editDevice.addresses ?? []), { ...this.newAddress }];
-        // Reset individual properties to maintain Alpine.js reactivity
-        this.newAddress.ip = '';
-        this.newAddress.port = 0;
-        this.newAddress.type = 'ipv4';
-        this.newAddress.label = '';
-        this.newAddress.network_id = '';
-        this.newAddress.switch_port = '';
-        this.newAddress.pool_id = '';
+    addDomain(): void {
+      const domain = this.domainInput.trim();
+      if (domain && !this.editDevice.domains?.includes(domain)) {
+        this.editDevice.domains = [...(this.editDevice.domains ?? []), domain];
       }
+      this.domainInput = '';
+    },
+
+    removeDomain(domain: string): void {
+      this.editDevice.domains = this.editDevice.domains?.filter((d) => d !== domain) ?? [];
+    },
+
+    addAddress(): void {
+      this.editDevice.addresses = [
+        ...(this.editDevice.addresses ?? []),
+        { ip: '', type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' },
+      ];
     },
 
     removeAddress(index: number): void {
@@ -349,7 +347,7 @@ export function deviceDetail() {
     datacenters: [] as Datacenter[],
     networks: [] as Network[],
     pools: [] as NetworkPool[],
-    poolsCache: new Map<string, NetworkPool[]>(),
+    poolsCache: {} as Record<string, NetworkPool[]>,
     relationships: [] as DeviceRelationship[],
     relatedDevices: new Map() as Map<string, Device>,
     loading: true,
@@ -361,10 +359,12 @@ export function deviceDetail() {
     showEditModal: false,
     editDevice: {} as Partial<Device>,
     tagInput: '',
-    newAddress: { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' } as Address,
+    domainInput: '',
     saving: false,
 
     async init(): Promise<void> {
+      // Wait for next tick to ensure URL is updated after SPA navigation
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) {
         this.error = 'No device ID provided';
@@ -396,13 +396,13 @@ export function deviceDetail() {
         return;
       }
       // Check cache first
-      if (this.poolsCache.has(networkId)) {
-        this.pools = this.poolsCache.get(networkId) || [];
+      if (this.poolsCache[networkId]) {
+        this.pools = this.poolsCache[networkId];
         return;
       }
       try {
         const pools = (await api.listNetworkPools(networkId)) || [];
-        this.poolsCache.set(networkId, pools);
+        this.poolsCache[networkId] = pools;
         this.pools = pools;
       } catch {
         this.pools = [];
@@ -412,11 +412,11 @@ export function deviceDetail() {
     getPoolsForNetwork(networkId: string): NetworkPool[] {
       if (!networkId) return [];
       // Load pools async if not cached
-      if (!this.poolsCache.has(networkId)) {
+      if (!this.poolsCache[networkId]) {
         this.loadPoolsForNetwork(networkId);
         return [];
       }
-      return this.poolsCache.get(networkId) || [];
+      return this.poolsCache[networkId];
     },
 
     async fetchNextIPForAddress(index: number): Promise<void> {
@@ -426,18 +426,6 @@ export function deviceDetail() {
         const result = await api.getNextIP(addr.pool_id);
         if (result?.ip && this.editDevice.addresses?.[index]) {
           this.editDevice.addresses[index].ip = result.ip;
-        }
-      } catch {
-        // Silently fail
-      }
-    },
-
-    async fetchNextIPForNewAddress(): Promise<void> {
-      if (!this.newAddress.pool_id) return;
-      try {
-        const result = await api.getNextIP(this.newAddress.pool_id);
-        if (result?.ip) {
-          this.newAddress.ip = result.ip;
         }
       } catch {
         // Silently fail
@@ -503,7 +491,7 @@ export function deviceDetail() {
       }
     },
 
-    openEditModal(): void {
+    async openEditModal(): Promise<void> {
       if (!this.device) return;
       this.editDevice = {
         id: this.device.id,
@@ -520,8 +508,13 @@ export function deviceDetail() {
         domains: [...(this.device.domains || [])],
       };
       this.tagInput = '';
-      this.newAddress = { ip: '', port: 0, type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' };
+      this.domainInput = '';
       this.pools = [];
+      // Preload pools for networks used in existing addresses before showing modal
+      const networkIds = [...new Set(
+        (this.device.addresses || []).map((a) => a.network_id).filter((id): id is string => !!id)
+      )];
+      await Promise.all(networkIds.map((networkId) => this.loadPoolsForNetwork(networkId)));
       this.showEditModal = true;
     },
 
@@ -541,18 +534,23 @@ export function deviceDetail() {
       this.editDevice.tags = this.editDevice.tags?.filter((t) => t !== tag) ?? [];
     },
 
-    addAddress(): void {
-      if (this.newAddress.ip.trim()) {
-        this.editDevice.addresses = [...(this.editDevice.addresses ?? []), { ...this.newAddress }];
-        // Reset individual properties to maintain Alpine.js reactivity
-        this.newAddress.ip = '';
-        this.newAddress.port = 0;
-        this.newAddress.type = 'ipv4';
-        this.newAddress.label = '';
-        this.newAddress.network_id = '';
-        this.newAddress.switch_port = '';
-        this.newAddress.pool_id = '';
+    addDomain(): void {
+      const domain = this.domainInput.trim();
+      if (domain && !this.editDevice.domains?.includes(domain)) {
+        this.editDevice.domains = [...(this.editDevice.domains ?? []), domain];
       }
+      this.domainInput = '';
+    },
+
+    removeDomain(domain: string): void {
+      this.editDevice.domains = this.editDevice.domains?.filter((d) => d !== domain) ?? [];
+    },
+
+    addAddress(): void {
+      this.editDevice.addresses = [
+        ...(this.editDevice.addresses ?? []),
+        { ip: '', type: 'ipv4', label: '', network_id: '', switch_port: '', pool_id: '' },
+      ];
     },
 
     removeAddress(index: number): void {
@@ -634,7 +632,7 @@ export function deviceForm(): DeviceFormData {
     addAddress(): void {
       this.device.addresses = [
         ...(this.device.addresses ?? []),
-        { ip: '', port: 0, type: 'ipv4', label: '' },
+        { ip: '', type: 'ipv4', label: '' },
       ];
     },
 

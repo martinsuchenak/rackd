@@ -7,6 +7,8 @@ import (
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
+func intPtr(i int) *int { return &i }
+
 func TestNewSQLiteStorage(t *testing.T) {
 	// Test with in-memory database
 	storage, err := NewSQLiteStorage(":memory:")
@@ -196,7 +198,7 @@ func TestDeviceOperations_CreateAndGet(t *testing.T) {
 		Location:    "Rack 1, Unit 5",
 		Tags:        []string{"production", "web"},
 		Addresses: []model.Address{
-			{IP: "192.168.1.100", Port: 22, Type: "ipv4", Label: "primary"},
+			{IP: "192.168.1.100", Port: intPtr(22), Type: "ipv4", Label: "primary"},
 			{IP: "10.0.0.50", Type: "ipv4", Label: "management"},
 		},
 		Domains: []string{"server1.example.com", "www.example.com"},
@@ -3287,8 +3289,8 @@ func TestDeviceWithAllFields(t *testing.T) {
 		DatacenterID: dc.ID,
 		Tags:         []string{"production", "web", "critical"},
 		Addresses: []model.Address{
-			{IP: "192.168.1.100", Port: 22, Type: "ipv4", Label: "primary", NetworkID: network.ID, PoolID: pool.ID},
-			{IP: "192.168.1.101", Port: 443, Type: "ipv4", Label: "secondary", NetworkID: network.ID},
+			{IP: "192.168.1.100", Port: intPtr(22), Type: "ipv4", Label: "primary", NetworkID: network.ID, PoolID: pool.ID},
+			{IP: "192.168.1.101", Port: intPtr(443), Type: "ipv4", Label: "secondary", NetworkID: network.ID},
 			{IP: "2001:db8::1", Type: "ipv6", Label: "ipv6"},
 		},
 		Domains: []string{"server.example.com", "www.example.com", "api.example.com"},

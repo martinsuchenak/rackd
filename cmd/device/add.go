@@ -109,7 +109,9 @@ func parseAddresses(addrs string) []model.Address {
 		}
 		addr := model.Address{IP: parts[0], Type: "ipv4"}
 		if len(parts) > 1 {
-			addr.Port, _ = strconv.Atoi(parts[1])
+			if p, err := strconv.Atoi(parts[1]); err == nil && p > 0 {
+				addr.Port = &p
+			}
 		}
 		if len(parts) > 2 {
 			addr.Type = parts[2]

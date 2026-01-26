@@ -124,6 +124,18 @@ interface NetworkDetailData {
   error: string;
   showDeleteModal: boolean;
   deleting: boolean;
+  // Edit network
+  showEditModal: boolean;
+  editNetwork: Partial<Network>;
+  saving: boolean;
+  // Pool management
+  showPoolModal: boolean;
+  editPool: Partial<NetworkPool>;
+  isEditPool: boolean;
+  savingPool: boolean;
+  showDeletePoolModal: boolean;
+  deletePoolTarget: NetworkPool | null;
+  deletingPool: boolean;
   init(): Promise<void>;
   loadNetwork(): Promise<void>;
   loadDatacenters(): Promise<void>;
@@ -134,6 +146,18 @@ interface NetworkDetailData {
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  // Network edit methods
+  openEditModal(): void;
+  closeEditModal(): void;
+  saveNetwork(): Promise<void>;
+  // Pool methods
+  openAddPoolModal(): void;
+  openEditPoolModal(pool: NetworkPool): void;
+  closePoolModal(): void;
+  savePool(): Promise<void>;
+  confirmDeletePool(pool: NetworkPool): void;
+  cancelDeletePool(): void;
+  doDeletePool(): Promise<void>;
 }
 
 export function networkDetail(): NetworkDetailData {
@@ -160,6 +184,8 @@ export function networkDetail(): NetworkDetailData {
     deletingPool: false,
 
     async init(): Promise<void> {
+      // Wait for next tick to ensure URL is updated after SPA navigation
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) {
         this.error = 'No network ID provided';
@@ -235,6 +261,97 @@ export function networkDetail(): NetworkDetailData {
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete network';
         this.deleting = false;
+      }
+    },
+
+    // Network edit methods
+    openEditModal(): void {
+      if (!this.network) return;
+      this.editNetwork = { ...this.network };
+      this.showEditModal = true;
+    },
+
+    closeEditModal(): void {
+      this.showEditModal = false;
+      this.editNetwork = {};
+    },
+
+    async saveNetwork(): Promise<void> {
+      if (!this.network || !this.editNetwork.id) return;
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.updateNetwork(this.editNetwork.id, this.editNetwork);
+        this.showEditModal = false;
+        await this.loadNetwork();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to update network';
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    // Pool methods
+    openAddPoolModal(): void {
+      this.editPool = { tags: [] };
+      this.isEditPool = false;
+      this.showPoolModal = true;
+    },
+
+    openEditPoolModal(pool: NetworkPool): void {
+      this.editPool = { ...pool, tags: [...(pool.tags || [])] };
+      this.isEditPool = true;
+      this.showPoolModal = true;
+    },
+
+    closePoolModal(): void {
+      this.showPoolModal = false;
+      this.editPool = {};
+      this.isEditPool = false;
+    },
+
+    async savePool(): Promise<void> {
+      if (!this.network) return;
+      this.savingPool = true;
+      this.error = '';
+      try {
+        if (this.isEditPool && this.editPool.id) {
+          await api.updateNetworkPool(this.editPool.id, this.editPool);
+        } else {
+          await api.createNetworkPool(this.network.id, this.editPool);
+        }
+        this.showPoolModal = false;
+        this.editPool = {};
+        await this.loadPools();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to save pool';
+      } finally {
+        this.savingPool = false;
+      }
+    },
+
+    confirmDeletePool(pool: NetworkPool): void {
+      this.deletePoolTarget = pool;
+      this.showDeletePoolModal = true;
+    },
+
+    cancelDeletePool(): void {
+      this.showDeletePoolModal = false;
+      this.deletePoolTarget = null;
+    },
+
+    async doDeletePool(): Promise<void> {
+      if (!this.deletePoolTarget) return;
+      this.deletingPool = true;
+      try {
+        await api.deleteNetworkPool(this.deletePoolTarget.id);
+        this.showDeletePoolModal = false;
+        this.deletePoolTarget = null;
+        await this.loadPools();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete pool';
+      } finally {
+        this.deletingPool = false;
       }
     },
   };

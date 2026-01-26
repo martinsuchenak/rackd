@@ -158,8 +158,9 @@ func toAddressSlice(arr []any) []model.Address {
 			if ip, ok := m["ip"].(string); ok {
 				addr.IP = ip
 			}
-			if port, ok := m["port"].(float64); ok {
-				addr.Port = int(port)
+			if port, ok := m["port"].(float64); ok && port > 0 {
+				p := int(port)
+				addr.Port = &p
 			}
 			if t, ok := m["type"].(string); ok {
 				addr.Type = t

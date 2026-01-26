@@ -157,7 +157,8 @@ func (s *SQLiteStorage) getDeviceAddresses(ctx context.Context, deviceID string)
 			return nil, err
 		}
 		if port.Valid {
-			addr.Port = int(port.Int64)
+			p := int(port.Int64)
+			addr.Port = &p
 		}
 		if networkID.Valid {
 			addr.NetworkID = networkID.String
@@ -285,7 +286,7 @@ func (s *SQLiteStorage) insertDeviceAddresses(ctx context.Context, tx *sql.Tx, d
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO addresses (id, device_id, ip, port, type, label, network_id, switch_port, pool_id)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, newUUID(), deviceID, addr.IP, nullInt(addr.Port), addr.Type, addr.Label,
+		`, newUUID(), deviceID, addr.IP, nullIntPtr(addr.Port), addr.Type, addr.Label,
 			nullString(addr.NetworkID), nullString(addr.SwitchPort), nullString(addr.PoolID))
 		if err != nil {
 			return err
@@ -602,6 +603,14 @@ func nullInt(i int) sql.NullInt64 {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: int64(i), Valid: true}
+}
+
+// nullIntPtr returns a sql.NullInt64 for nil pointer values
+func nullIntPtr(i *int) sql.NullInt64 {
+	if i == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(*i), Valid: true}
 }
 
 // Datacenter operations

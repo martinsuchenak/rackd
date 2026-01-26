@@ -116,6 +116,8 @@ export function datacenterDetail(): DatacenterDetailData {
     deleting: false,
 
     async init(): Promise<void> {
+      // Wait for next tick to ensure URL is updated after SPA navigation
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) {
         this.error = 'No datacenter ID provided';

@@ -2,7 +2,7 @@
 
 export interface Address {
   ip: string;
-  port: number;
+  port?: number;
   type: string;
   label: string;
   network_id?: string;
