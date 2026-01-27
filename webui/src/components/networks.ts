@@ -83,6 +83,13 @@ export function networkList() {
     confirmDelete(network: Network): void {
       this.deleteTarget = network;
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {
@@ -114,6 +121,9 @@ export function networkList() {
         datacenter_id: this.datacenters.length === 1 ? this.datacenters[0].id : '',
         description: '',
       };
+      setTimeout(() => {
+        (document.querySelector('[x-show="showAddModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     async saveNew(): Promise<void> {
@@ -322,12 +332,18 @@ export function networkDetail(): NetworkDetailData {
       this.editPool = { tags: [] };
       this.isEditPool = false;
       this.showPoolModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showPoolModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     openEditPoolModal(pool: NetworkPool): void {
       this.editPool = { ...pool, tags: [...(pool.tags || [])] };
       this.isEditPool = true;
       this.showPoolModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showPoolModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     closePoolModal(): void {
@@ -359,6 +375,13 @@ export function networkDetail(): NetworkDetailData {
     confirmDeletePool(pool: NetworkPool): void {
       this.deletePoolTarget = pool;
       this.showDeletePoolModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeletePoolModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDeletePool(): void {

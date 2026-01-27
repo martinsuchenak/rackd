@@ -106,6 +106,13 @@ export function poolDetail(): PoolDetailData {
 
     confirmDelete(): void {
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {

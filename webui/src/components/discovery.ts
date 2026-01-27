@@ -44,6 +44,22 @@ export function discoveryList() {
     promoteName: '',
     promoting: false,
 
+    openScanModal(): void {
+      this.showScanModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showScanModal"] select') as HTMLSelectElement)?.focus();
+      }, 50);
+    },
+
+    openPromoteModal(device: DiscoveredDevice): void {
+      this.promoteDevice = device;
+      this.promoteName = device.hostname || device.ip;
+      this.showPromoteModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showPromoteModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
+    },
+
     async init(): Promise<void> {
       await this.loadNetworks();
       await Promise.all([this.loadScans(), this.loadDiscoveredDevices()]);

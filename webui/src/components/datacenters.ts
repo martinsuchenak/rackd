@@ -27,10 +27,17 @@ export function datacenterList() {
     showDeleteModal: false,
     deleteTarget: null as Datacenter | null,
     deleting: false,
-    // Add modal
     showAddModal: false,
     newDatacenter: { name: '', location: '', description: '' } as Partial<Datacenter>,
     saving: false,
+
+    openAddModal(): void {
+      this.newDatacenter = { name: '', location: '', description: '' };
+      this.showAddModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showAddModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
+    },
 
     async init(): Promise<void> {
       await this.loadDatacenters();
@@ -52,6 +59,13 @@ export function datacenterList() {
     confirmDelete(dc: Datacenter): void {
       this.deleteTarget = dc;
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {
@@ -161,6 +175,13 @@ export function datacenterDetail(): DatacenterDetailData {
 
     confirmDelete(): void {
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {
@@ -188,6 +209,9 @@ export function datacenterDetail(): DatacenterDetailData {
         description: this.datacenter.description || '',
       };
       this.showEditModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showEditModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     closeEditModal(): void {

@@ -195,6 +195,13 @@ export function deviceList() {
     confirmDelete(device: Device): void {
       this.deleteTarget = device;
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {
@@ -236,6 +243,9 @@ export function deviceList() {
       this.domainInput = '';
       this.pools = [];
       this.showDeviceModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showDeviceModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     async openEditModal(device: Device): Promise<void> {
@@ -263,6 +273,9 @@ export function deviceList() {
       )];
       await Promise.all(networkIds.map((networkId) => this.loadPoolsForNetwork(networkId)));
       this.showDeviceModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showDeviceModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
     },
 
     closeModal(): void {
@@ -481,6 +494,13 @@ export function deviceDetail() {
 
     confirmDelete(): void {
       this.showDeleteModal = true;
+      setTimeout(() => {
+        const modal = document.querySelector('[x-show="showDeleteModal"]');
+        if (modal) {
+          const cancelBtn = modal.querySelector('button[type="button"]') as HTMLButtonElement;
+          cancelBtn?.focus();
+        }
+      }, 50);
     },
 
     cancelDelete(): void {
