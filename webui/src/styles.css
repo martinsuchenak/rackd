@@ -1,3 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
+
+:root {
+  /* Rackd Color Palette */
+  --deep-slate: #0F172A;
+  --core-blue: #3B82F6;
+  --accent-cyan: #06B6D4;
+  --white: #FFFFFF;
+  --light-gray: #F8FAFC;
+  
+  /* Rackd Typography Sizes */
+  --text-logo: 56px;
+  --text-main-title: 64px;
+  --text-subtitle: 24px;
+  --text-section-title: 16px;
+  --text-body: 15px;
+  --text-small: 12px;
+  
+  /* Rackd Font Weights */
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 800;
+  --font-weight-semi-bold: 600;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  
+  /* Rackd Font Families */
+  --font-primary: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  /* Standard theme variables mapped to Rackd colors */
+  --font-size: 16px;
+  --background: var(--white);
+  --foreground: var(--deep-slate);
+  --card: var(--light-gray);
+  --card-foreground: var(--deep-slate);
+  --popover: var(--white);
+  --popover-foreground: var(--deep-slate);
+  --primary: var(--core-blue);
+  --primary-foreground: var(--white);
+  --secondary: var(--accent-cyan);
+  --secondary-foreground: var(--white);
+  --muted: #E2E8F0;
+  --muted-foreground: #475569;
+  --accent: var(--accent-cyan);
+  --accent-foreground: var(--white);
+  --destructive: #EF4444;
+  --destructive-foreground: var(--white);
+  --border: #E2E8F0;
+  --input: transparent;
+  --input-background: var(--light-gray);
+  --switch-background: #CBD5E1;
+  --ring: var(--core-blue);
+  --chart-1: var(--core-blue);
+  --chart-2: var(--accent-cyan);
+  --chart-3: #8B5CF6;
+  --chart-4: #10B981;
+  --chart-5: #F59E0B;
+  --radius: 0.5rem;
+  --sidebar: var(--light-gray);
+  --sidebar-foreground: var(--deep-slate);
+  --sidebar-primary: var(--core-blue);
+  --sidebar-primary-foreground: var(--white);
+  --sidebar-accent: #E2E8F0;
+  --sidebar-accent-foreground: var(--deep-slate);
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: var(--core-blue);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: var(--ring);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+.rackd-logo-icon {
+  background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+  border: 2px solid #E2E8F0;
+}
+
+.dark .rackd-logo-icon {
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  border: none;
+}
+
+.rackd-logo-icon .rack-frame {
+  fill: #FFFFFF;
+}
+
+.dark .rackd-logo-icon .rack-frame {
+  fill: #0F172A;
+}
+
+.rackd-logo-icon .rack-unit {
+  fill: #F1F5F9;
+}
+
+.dark .rackd-logo-icon .rack-unit {
+  fill: #1E293B;
+}

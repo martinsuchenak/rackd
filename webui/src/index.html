@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rackd - IPAM &amp; Device Inventory</title>
+  <link rel="icon" type="image/png" href="/icon.png">
   <link rel="stylesheet" href="/output.css">
   <style>[x-cloak] { display: none !important; }</style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
+<body class="min-h-screen">
   <!-- Skip link for accessibility -->
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50">
     Skip to main content
@@ -15,31 +16,48 @@
 
   <div x-data="router" x-init="init()">
     <!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transform transition-transform md:translate-x-0"
+    <aside class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
            :class="{ '-translate-x-full': !sidebarOpen }"
            role="navigation" aria-label="Main navigation">
-      <div class="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-        <a href="/" @click.prevent="navigate('/')" class="text-xl font-bold text-gray-900 dark:text-white">Rackd</a>
+      <div class="flex items-center h-16 px-6 border-b border-[var(--sidebar-border)]">
+        <a href="/" @click.prevent="navigate('/')" class="flex items-center gap-2">
+          <div class="rackd-logo-icon rounded-xl flex-shrink-0" style="width: 32px; height: 32px; padding: 4px;">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+              <rect class="rack-frame" x="15" y="5" width="70" height="90" rx="8" />
+              <rect class="rack-unit" x="25" y="15" width="50" height="12" rx="2" />
+              <rect x="25" y="32" width="50" height="12" rx="2" fill="#3B82F6"/>
+              <rect class="rack-unit" x="25" y="49" width="50" height="12" rx="2" />
+              <rect x="25" y="66" width="50" height="12" rx="2" fill="#06B6D4"/>
+              <circle cx="68" cy="21" r="2" fill="#10B981"/>
+              <circle cx="68" cy="38" r="2" fill="#10B981"/>
+              <circle cx="68" cy="55" r="2" fill="#EF4444"/>
+              <circle cx="68" cy="72" r="2" fill="#10B981"/>
+            </svg>
+          </div>
+          <span class="text-xl font-bold font-mono" style="line-height: 1; letter-spacing: -0.02em;">
+            <span style="color: var(--core-blue)">Rack</span><span style="color: var(--accent-cyan)">d</span>
+          </span>
+        </a>
       </div>
       <nav class="p-4 space-y-1">
         <a href="/" @click.prevent="navigate('/')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route === '/' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+           :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Dashboard
         </a>
         <a href="/devices" @click.prevent="navigate('/devices')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/devices') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+           :class="route.startsWith('/devices') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Devices
         </a>
         <a href="/networks" @click.prevent="navigate('/networks')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/networks') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+           :class="route.startsWith('/networks') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Networks
         </a>
         <a href="/datacenters" @click.prevent="navigate('/datacenters')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/datacenters') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+           :class="route.startsWith('/datacenters') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Datacenters
         </a>
         <a href="/discovery" @click.prevent="navigate('/discovery')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/discovery') ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'">
+           :class="route.startsWith('/discovery') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Discovery
         </a>
       </nav>
@@ -51,9 +69,9 @@
     <!-- Main content area -->
     <div class="md:ml-64 min-h-screen flex flex-col">
       <!-- Top bar -->
-      <header class="sticky top-0 z-20 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 gap-4">
+      <header class="sticky top-0 z-20 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-4">
         <button @click="sidebarOpen = !sidebarOpen"
-                class="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                class="md:hidden p-2 text-[var(--muted-foreground)] hover:bg-[var(--muted)] rounded-md"
                 aria-label="Toggle sidebar">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -65,14 +83,14 @@
           <label for="global-search" class="sr-only">Search devices</label>
           <input id="global-search" type="search" x-model="query" @input="onInput()" @focus="onFocus()" @blur="onBlur()"
                  placeholder="Search devices..."
-                 class="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                 class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-md bg-[var(--input-background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]">
           <div x-show="showResults && (results.length > 0 || loading)" x-cloak
-               class="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+               class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50"
                role="listbox">
             <div x-show="loading" class="p-3 text-sm text-gray-500">Searching...</div>
             <template x-for="device in results" :key="device.id">
               <a :href="'/devices/detail?id=' + device.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)"
-                 class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" role="option">
+                 class="block px-4 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)]" role="option">
                 <div class="font-medium" x-text="device.name"></div>
                 <div class="text-xs text-gray-500" x-text="device.make_model || 'No model'"></div>
               </a>
@@ -85,7 +103,7 @@
         <!-- Theme Toggle -->
         <div x-data="themeToggle" x-init="init()">
           <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
-                  class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="p-2 rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                   :aria-label="'Theme: ' + theme">
             <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -114,23 +132,23 @@
             ]);
             this.stats = { devices: (d || []).length, networks: (n || []).length, datacenters: (dc || []).length, discovered: (disc || []).length };
           } }">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Dashboard</h1>
+            <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <a href="/devices" @click.prevent="$dispatch('nav', '/devices')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Devices</div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.devices"></div>
+              <a href="/devices" @click.prevent="$dispatch('nav', '/devices')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-[var(--muted-foreground)]">Devices</div>
+                <div class="text-3xl font-bold" x-text="stats.devices"></div>
               </a>
-              <a href="/networks" @click.prevent="$dispatch('nav', '/networks')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Networks</div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.networks"></div>
+              <a href="/networks" @click.prevent="$dispatch('nav', '/networks')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-[var(--muted-foreground)]">Networks</div>
+                <div class="text-3xl font-bold" x-text="stats.networks"></div>
               </a>
-              <a href="/datacenters" @click.prevent="$dispatch('nav', '/datacenters')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Datacenters</div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.datacenters"></div>
+              <a href="/datacenters" @click.prevent="$dispatch('nav', '/datacenters')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-[var(--muted-foreground)]">Datacenters</div>
+                <div class="text-3xl font-bold" x-text="stats.datacenters"></div>
               </a>
-              <a href="/discovery" @click.prevent="$dispatch('nav', '/discovery')" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Discovered</div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.discovered"></div>
+              <a href="/discovery" @click.prevent="$dispatch('nav', '/discovery')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                <div class="text-sm text-[var(--muted-foreground)]">Discovered</div>
+                <div class="text-3xl font-bold" x-text="stats.discovered"></div>
               </a>
             </div>
           </div>

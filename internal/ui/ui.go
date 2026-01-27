@@ -46,6 +46,14 @@ func contentType(path string) string {
 		return "application/javascript"
 	case strings.HasSuffix(path, ".css"):
 		return "text/css"
+	case strings.HasSuffix(path, ".png"):
+		return "image/png"
+	case strings.HasSuffix(path, ".jpg"), strings.HasSuffix(path, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(path, ".svg"):
+		return "image/svg+xml"
+	case strings.HasSuffix(path, ".ico"):
+		return "image/x-icon"
 	default:
 		return "application/octet-stream"
 	}

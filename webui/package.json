@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun run build --watch",
-    "build": "bun run build:css && bun run build:js",
-    "build:css": "bunx @tailwindcss/cli -i ./src/styles.css -o ./dist/output.css --minify",
+    "build": "bun run build:css && bun run build:js && bun run build:assets",
+    "build:css": "bunx @tailwindcss/cli -c ./tailwind.config.js -i ./src/styles.css -o ./dist/output.css --minify",
     "build:js": "bun build ./src/app.ts --outdir ./dist --minify",
+    "build:assets": "cp -r ./assets/* ./dist/ && cp ./src/index.html ./dist/ && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {
