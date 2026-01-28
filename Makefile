@@ -46,8 +46,6 @@ ui-build:
 	cp $(WEBUI_DIR)/src/index.html $(ASSETS_DIR)/
 	cp $(WEBUI_DIR)/dist/output.css $(ASSETS_DIR)/
 	cp $(WEBUI_DIR)/dist/app.js $(ASSETS_DIR)/
-	cp $(WEBUI_DIR)/dist/icon.png $(ASSETS_DIR)/ 2>/dev/null || true
-	cp $(WEBUI_DIR)/dist/logo.png $(ASSETS_DIR)/ 2>/dev/null || true
 
 ## test: Run all tests
 test: ui-build

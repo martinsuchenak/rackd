@@ -7,7 +7,7 @@
     "build": "bun run build:css && bun run build:js && bun run build:assets",
     "build:css": "bunx @tailwindcss/cli -c ./tailwind.config.js -i ./src/styles.css -o ./dist/output.css --minify",
     "build:js": "bun build ./src/app.ts --outdir ./dist --minify",
-    "build:assets": "cp -r ./assets/* ./dist/ && cp ./src/index.html ./dist/ && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
+    "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && cp ./src/index.html ./dist/ && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {

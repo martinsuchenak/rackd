@@ -37,8 +37,12 @@ func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature)
 
 	mux := http.NewServeMux()
 
+	scanner := discovery.NewScanner(store, cfg)
+	scheduler := worker.NewScheduler(store, scanner, cfg)
+	scheduler.Start()
+
 	// API routes
-	handler := api.NewHandler(store)
+	handler := api.NewHandler(store, scanner)
 	if cfg.APIAuthToken != "" {
 		handler.RegisterRoutes(mux, api.WithAuth(cfg.APIAuthToken))
 	} else {
@@ -48,14 +52,6 @@ func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature)
 	// MCP server
 	mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
-
-	// Discovery scheduler
-	var scheduler *worker.Scheduler
-	if cfg.DiscoveryEnabled {
-		scanner := discovery.NewScanner(store, cfg)
-		scheduler = worker.NewScheduler(store, scanner, cfg)
-		scheduler.Start()
-	}
 
 	// UI config
 	uiBuilder := api.NewUIConfigBuilder()
@@ -96,9 +92,7 @@ func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature)
 		<-sigCh
 
 		log.Info("Shutting down...")
-		if scheduler != nil {
-			scheduler.Stop()
-		}
+		scheduler.Stop()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

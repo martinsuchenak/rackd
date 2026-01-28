@@ -15,7 +15,6 @@ type Config struct {
     LogLevel     string `env:"LOG_LEVEL"      default:"info"`
 
     // Discovery
-    DiscoveryEnabled       bool          `env:"DISCOVERY_ENABLED"        default:"true"`
     DiscoveryInterval      time.Duration `env:"DISCOVERY_INTERVAL"       default:"24h"`
     DiscoveryMaxConcurrent int           `env:"DISCOVERY_MAX_CONCURRENT" default:"10"`
     DiscoveryTimeout       time.Duration `env:"DISCOVERY_TIMEOUT"        default:"5s"`
@@ -41,7 +40,6 @@ type Config struct {
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DISCOVERY_ENABLED` | `true` | Enable network discovery features |
 | `DISCOVERY_INTERVAL` | `24h` | Interval between scheduled discovery scans |
 | `DISCOVERY_MAX_CONCURRENT` | `10` | Maximum concurrent host scans |
 | `DISCOVERY_TIMEOUT` | `5s` | Timeout for individual host probes |
@@ -64,7 +62,6 @@ LOG_FORMAT=text
 LOG_LEVEL=info
 
 # Discovery
-DISCOVERY_ENABLED=true
 DISCOVERY_INTERVAL=24h
 DISCOVERY_MAX_CONCURRENT=10
 DISCOVERY_TIMEOUT=5s
@@ -86,8 +83,7 @@ Flags:
   --mcp-auth-token string    MCP authentication token
   --log-level string         Log level (trace/debug/info/warn/error) (default "info")
   --log-format string        Log format (text/json) (default "text")
-  --discovery-enabled        Enable network discovery (default true)
-  --discovery-interval       Discovery scan interval (default "24h")
+  --discovery-interval      Discovery scan interval (default "24h")
 ```
 
 ## Precedence

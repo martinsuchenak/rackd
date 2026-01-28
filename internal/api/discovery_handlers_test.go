@@ -2,16 +2,52 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
+type mockScanner struct {
+	store storage.ExtendedStorage
+}
+
+func (m *mockScanner) Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
+	scan := &model.DiscoveryScan{
+		ID:         uuid.Must(uuid.NewV7()).String(),
+		NetworkID:  network.ID,
+		Status:     model.ScanStatusRunning,
+		ScanType:   scanType,
+		TotalHosts: 256,
+	}
+	if err := m.store.CreateDiscoveryScan(scan); err != nil {
+		return nil, err
+	}
+	return scan, nil
+}
+
+func (m *mockScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
+	return m.store.GetDiscoveryScan(scanID)
+}
+
+func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorage, discovery.Scanner) {
+	t.Helper()
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("failed to create storage: %v", err)
+	}
+	scanner := &mockScanner{store: store}
+	return NewHandler(store, scanner), store, scanner
+}
+
 func TestDiscoveryHandlers(t *testing.T) {
-	h, store := setupTestHandler(t)
+	h, store, _ := setupTestHandlerWithScanner(t)
 	defer store.Close()
 
 	mux := http.NewServeMux()
@@ -160,7 +196,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 }
 
 func TestDiscoveryRuleHandlers(t *testing.T) {
-	h, store := setupTestHandler(t)
+	h, store, _ := setupTestHandlerWithScanner(t)
 	defer store.Close()
 
 	mux := http.NewServeMux()
@@ -328,7 +364,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 }
 
 func TestPromoteDevice(t *testing.T) {
-	h, store := setupTestHandler(t)
+	h, store, _ := setupTestHandlerWithScanner(t)
 	defer store.Close()
 
 	mux := http.NewServeMux()

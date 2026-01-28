@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 type Handler struct {
 	storage storage.ExtendedStorage
+	scanner discovery.Scanner
 }
 
-func NewHandler(s storage.ExtendedStorage) *Handler {
-	return &Handler{storage: s}
+func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
+	return &Handler{storage: s, scanner: scanner}
 }
 
 type HandlerOption func(*handlerConfig)
@@ -87,7 +89,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/discovery/networks/{id}/scan", wrap(h.startScan))
 	mux.HandleFunc("GET /api/discovery/scans", wrap(h.listScans))
 	mux.HandleFunc("GET /api/discovery/scans/{id}", wrap(h.getScan))
+	mux.HandleFunc("DELETE /api/discovery/scans/{id}", wrap(h.deleteDiscoveryScan))
 	mux.HandleFunc("GET /api/discovery/devices", wrap(h.listDiscoveredDevices))
+	mux.HandleFunc("DELETE /api/discovery/devices", wrap(h.deleteDiscoveredDevicesByNetwork))
+	mux.HandleFunc("DELETE /api/discovery/devices/{id}", wrap(h.deleteDiscoveredDevice))
 	mux.HandleFunc("POST /api/discovery/devices/{id}/promote", wrap(h.promoteDevice))
 	mux.HandleFunc("GET /api/discovery/rules", wrap(h.listDiscoveryRules))
 	mux.HandleFunc("POST /api/discovery/rules", wrap(h.createDiscoveryRule))

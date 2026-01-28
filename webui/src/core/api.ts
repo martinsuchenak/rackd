@@ -240,17 +240,21 @@ export class RackdAPI {
     return this.request<DiscoveryScan>('GET', `/api/discovery/scans/${id}`);
   }
 
+  async deleteScan(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/discovery/scans/${id}`);
+  }
+
   async listDiscoveredDevices(networkId?: string): Promise<DiscoveredDevice[]> {
     const query = networkId ? `?network_id=${networkId}` : '';
     return this.request<DiscoveredDevice[]>('GET', `/api/discovery/devices${query}`);
   }
 
-  async promoteDevice(discoveredId: string, name: string): Promise<Device> {
-    return this.request<Device>('POST', `/api/discovery/devices/${discoveredId}/promote`, { name });
-  }
-
   async deleteDiscoveredDevice(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/discovery/devices/${id}`);
+  }
+
+  async deleteDiscoveredDevicesByNetwork(networkId: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/discovery/devices?network_id=${networkId}`);
   }
 
   async getDiscoveryRules(networkId: string): Promise<DiscoveryRule[]> {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -16,6 +17,11 @@ type startScanRequest struct {
 }
 
 func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
+	if h.scanner == nil {
+		h.writeError(w, http.StatusInternalServerError, "SCANNER_NOT_INITIALIZED", "Discovery scanner not initialized")
+		return
+	}
+
 	networkID := r.PathValue("id")
 	var req startScanRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -28,20 +34,23 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "scan_type must be quick, full, or deep")
 		return
 	}
-	now := time.Now()
-	scan := &model.DiscoveryScan{
-		ID:        uuid.Must(uuid.NewV7()).String(),
-		NetworkID: networkID,
-		Status:    model.ScanStatusPending,
-		ScanType:  req.ScanType,
-		StartedAt: &now,
-		CreatedAt: now,
-		UpdatedAt: now,
+
+	network, err := h.storage.GetNetwork(networkID)
+	if err != nil {
+		log.Error("Network not found for scan", "network_id", networkID, "error", err)
+		h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
+		return
 	}
-	if err := h.storage.CreateDiscoveryScan(scan); err != nil {
+
+	log.Info("Scan request received", "network_id", networkID, "network_name", network.Name, "subnet", network.Subnet, "scan_type", req.ScanType)
+
+	scan, err := h.scanner.Scan(r.Context(), network, req.ScanType)
+	if err != nil {
+		log.Error("Failed to start scan", "network_id", networkID, "network_name", network.Name, "error", err)
 		h.internalError(w, err)
 		return
 	}
+	log.Info("Scan started successfully", "scan_id", scan.ID, "network_id", networkID, "status", scan.Status)
 	h.writeJSON(w, http.StatusAccepted, scan)
 }
 
@@ -123,6 +132,41 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeJSON(w, http.StatusCreated, device)
+}
+
+func (h *Handler) deleteDiscoveredDevice(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.storage.DeleteDiscoveredDevice(id); err != nil {
+		if errors.Is(err, storage.ErrDiscoveryNotFound) {
+			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovered device not found")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) deleteDiscoveryScan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.storage.DeleteDiscoveryScan(id); err != nil {
+		if errors.Is(err, storage.ErrDiscoveryNotFound) {
+			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) deleteDiscoveredDevicesByNetwork(w http.ResponseWriter, r *http.Request) {
+	networkID := r.URL.Query().Get("network_id")
+	if err := h.storage.DeleteDiscoveredDevicesByNetwork(networkID); err != nil {
+		h.internalError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) listDiscoveryRules(w http.ResponseWriter, r *http.Request) {

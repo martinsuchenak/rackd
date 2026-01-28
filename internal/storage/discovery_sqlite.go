@@ -420,6 +420,37 @@ func (s *SQLiteStorage) DeleteDiscoveryRule(id string) error {
 	return nil
 }
 
+// DeleteDiscoveryScan removes a discovery scan by ID
+func (s *SQLiteStorage) DeleteDiscoveryScan(id string) error {
+	result, err := s.db.ExecContext(context.Background(),
+		"DELETE FROM discovery_scans WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return ErrDiscoveryNotFound
+	}
+	return nil
+}
+
+// DeleteDiscoveredDevicesByNetwork removes all discovered devices for a network (or all if networkID is empty)
+func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(networkID string) error {
+	var err error
+
+	if networkID == "" {
+		// Delete ALL discovered devices
+		_, err = s.db.ExecContext(context.Background(),
+			"DELETE FROM discovered_devices")
+	} else {
+		// Delete devices for specific network
+		_, err = s.db.ExecContext(context.Background(),
+			"DELETE FROM discovered_devices WHERE network_id = ?", networkID)
+	}
+
+	return err
+}
+
 // CleanupOldDiscoveries removes discovered devices older than specified days
 func (s *SQLiteStorage) CleanupOldDiscoveries(olderThanDays int) error {
 	cutoff := time.Now().AddDate(0, 0, -olderThanDays)

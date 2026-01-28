@@ -14,14 +14,14 @@ func init() {
 }
 
 func TestNewHandler(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 	if h == nil {
 		t.Fatal("NewHandler returned nil")
 	}
 }
 
 func TestWriteJSON(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 	w := httptest.NewRecorder()
 
 	h.writeJSON(w, http.StatusOK, map[string]string{"key": "value"})
@@ -38,7 +38,7 @@ func TestWriteJSON(t *testing.T) {
 }
 
 func TestWriteError(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 	w := httptest.NewRecorder()
 
 	h.writeError(w, http.StatusBadRequest, "TEST_ERROR", "Test message")
@@ -52,7 +52,7 @@ func TestWriteError(t *testing.T) {
 }
 
 func TestInternalError(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 	w := httptest.NewRecorder()
 
 	h.internalError(w, nil)
@@ -119,7 +119,7 @@ func TestWithAuth(t *testing.T) {
 }
 
 func TestRegisterRoutes(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 
 	// Test without auth
 	mux1 := http.NewServeMux()

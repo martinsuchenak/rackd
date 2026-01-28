@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -27,9 +26,9 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   
-  /* Rackd Font Families */
-  --font-primary: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* Rackd Font Families - Use system fonts for CSP compliance */
+  --font-primary: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
   /* Standard theme variables mapped to Rackd colors */
   --font-size: 16px;
@@ -50,8 +49,8 @@
   --destructive: #EF4444;
   --destructive-foreground: var(--white);
   --border: #E2E8F0;
-  --input: transparent;
-  --input-background: var(--light-gray);
+  --input: oklch(0.269 0 0);
+  --input-background: oklch(0.30 0 0);
   --switch-background: #CBD5E1;
   --ring: var(--core-blue);
   --chart-1: var(--core-blue);
@@ -73,9 +72,9 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
+  --card: oklch(0.18 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
+  --popover: oklch(0.18 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);

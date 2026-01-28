@@ -162,6 +162,44 @@ export function discoveryList() {
         this.promoting = false;
       }
     },
+
+    async deleteDevice(deviceId: string): Promise<void> {
+      if (!confirm('Delete this discovered device?')) return;
+      this.error = '';
+      try {
+        await api.deleteDiscoveredDevice(deviceId);
+        await this.loadDiscoveredDevices();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete device';
+      }
+    },
+
+    async deleteScan(scanId: string): Promise<void> {
+      if (!confirm('Delete this scan?')) return;
+      this.error = '';
+      try {
+        await api.deleteScan(scanId);
+        await this.loadScans();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete scan';
+      }
+    },
+
+    async deleteAllDevices(): Promise<void> {
+      const message = this.selectedNetworkId
+        ? `Delete all ${this.discoveredDevices.length} discovered devices${this.selectedNetworkId ? ' in this network' : ''}?`
+        : `Delete all ${this.discoveredDevices.length} discovered devices globally?`;
+
+      if (!confirm(message)) return;
+      this.error = '';
+      try {
+        // If network selected, pass network_id. If not, no query param = delete all
+        await api.deleteDiscoveredDevicesByNetwork(this.selectedNetworkId || '');
+        await this.loadDiscoveredDevices();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete devices';
+      }
+    },
   };
 }
 

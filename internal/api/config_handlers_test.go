@@ -129,7 +129,7 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
-	h := NewHandler(nil)
+	h := NewHandler(nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()

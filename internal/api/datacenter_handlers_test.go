@@ -22,7 +22,7 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewHandler(store), store
+	return NewHandler(store, nil), store
 }
 
 func TestDatacenterHandlers(t *testing.T) {

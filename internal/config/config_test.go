@@ -31,7 +31,6 @@ func TestLoadWithEnvVars(t *testing.T) {
 	os.Setenv("LISTEN_ADDR", ":9999")
 	os.Setenv("LOG_FORMAT", "json")
 	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("DISCOVERY_ENABLED", "false")
 	os.Setenv("DISCOVERY_INTERVAL", "1h")
 	os.Setenv("DISCOVERY_MAX_CONCURRENT", "5")
 
@@ -49,9 +48,6 @@ func TestLoadWithEnvVars(t *testing.T) {
 	if cfg.LogLevel != "debug" {
 		t.Errorf("Expected LogLevel debug, got %s", cfg.LogLevel)
 	}
-	if cfg.DiscoveryEnabled != false {
-		t.Errorf("Expected DiscoveryEnabled false, got %v", cfg.DiscoveryEnabled)
-	}
 	if cfg.DiscoveryInterval != time.Hour {
 		t.Errorf("Expected DiscoveryInterval 1h, got %v", cfg.DiscoveryInterval)
 	}
@@ -63,7 +59,6 @@ func TestLoadWithEnvVars(t *testing.T) {
 	os.Unsetenv("LISTEN_ADDR")
 	os.Unsetenv("LOG_FORMAT")
 	os.Unsetenv("LOG_LEVEL")
-	os.Unsetenv("DISCOVERY_ENABLED")
 	os.Unsetenv("DISCOVERY_INTERVAL")
 	os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
 }

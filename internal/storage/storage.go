@@ -88,6 +88,7 @@ type DiscoveryStorage interface {
 	GetDiscoveredDeviceByIP(networkID, ip string) (*model.DiscoveredDevice, error)
 	ListDiscoveredDevices(networkID string) ([]model.DiscoveredDevice, error)
 	DeleteDiscoveredDevice(id string) error
+	DeleteDiscoveredDevicesByNetwork(networkID string) error
 	PromoteDiscoveredDevice(discoveredID, deviceID string) error
 
 	// Discovery scans
@@ -95,6 +96,7 @@ type DiscoveryStorage interface {
 	UpdateDiscoveryScan(scan *model.DiscoveryScan) error
 	GetDiscoveryScan(id string) (*model.DiscoveryScan, error)
 	ListDiscoveryScans(networkID string) ([]model.DiscoveryScan, error)
+	DeleteDiscoveryScan(id string) error
 
 	// Discovery rules
 	GetDiscoveryRule(id string) (*model.DiscoveryRule, error)

@@ -185,7 +185,6 @@ services:
       - LOG_FORMAT=json
       - API_AUTH_TOKEN=${API_AUTH_TOKEN:-}
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
-      - DISCOVERY_ENABLED=true
       - DISCOVERY_INTERVAL=24h
     restart: unless-stopped
     healthcheck:
@@ -299,11 +298,10 @@ job "rackd" {
       }
 
       env {
-        DATA_DIR          = "/data"
-        LISTEN_ADDR       = ":8080"
-        LOG_FORMAT        = "json"
-        LOG_LEVEL         = "info"
-        DISCOVERY_ENABLED = "true"
+        DATA_DIR    = "/data"
+        LISTEN_ADDR = ":8080"
+        LOG_FORMAT  = "json"
+        LOG_LEVEL   = "info"
       }
 
       template {

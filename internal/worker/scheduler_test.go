@@ -43,7 +43,6 @@ func newTestScheduler(t *testing.T) (*Scheduler, storage.ExtendedStorage, *mockS
 	}
 
 	cfg := &config.Config{
-		DiscoveryEnabled:       true,
 		DiscoveryInterval:      100 * time.Millisecond,
 		DiscoveryCleanupDays:   30,
 		DiscoveryScanOnStartup: false,
@@ -224,7 +223,6 @@ func TestScheduler_ScanOnStartup(t *testing.T) {
 	defer store.Close()
 
 	cfg := &config.Config{
-		DiscoveryEnabled:       true,
 		DiscoveryInterval:      1 * time.Hour, // Long interval
 		DiscoveryCleanupDays:   30,
 		DiscoveryScanOnStartup: true,
@@ -266,7 +264,6 @@ func TestScheduler_TickerTriggersScans(t *testing.T) {
 	defer store.Close()
 
 	cfg := &config.Config{
-		DiscoveryEnabled:       true,
 		DiscoveryInterval:      50 * time.Millisecond, // Short interval for testing
 		DiscoveryCleanupDays:   30,
 		DiscoveryScanOnStartup: false,

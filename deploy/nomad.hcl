@@ -31,11 +31,10 @@ job "rackd" {
       }
 
       env {
-        DATA_DIR          = "/data"
-        LISTEN_ADDR       = ":8080"
-        LOG_FORMAT        = "json"
-        LOG_LEVEL         = "info"
-        DISCOVERY_ENABLED = "true"
+        DATA_DIR    = "/data"
+        LISTEN_ADDR = ":8080"
+        LOG_FORMAT  = "json"
+        LOG_LEVEL   = "info"
       }
 
       template {

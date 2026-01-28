@@ -22,7 +22,6 @@ func Command() *cli.Command {
 			&cli.StringFlag{Name: "mcp-auth-token", Usage: "MCP authentication token"},
 			&cli.StringFlag{Name: "log-level", Usage: "Log level (trace/debug/info/warn/error)", DefaultValue: "info"},
 			&cli.StringFlag{Name: "log-format", Usage: "Log format (text/json)", DefaultValue: "text"},
-			&cli.BoolFlag{Name: "discovery-enabled", Usage: "Enable network discovery", DefaultValue: true},
 			&cli.StringFlag{Name: "discovery-interval", Usage: "Discovery scan interval", DefaultValue: "24h"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {

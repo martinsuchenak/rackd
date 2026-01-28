@@ -34,14 +34,16 @@ const MaxSubnetBits = 16
 
 var ErrSubnetTooLarge = fmt.Errorf("subnet too large: maximum /%d allowed", 32-MaxSubnetBits)
 
-func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
+func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
 	_, ipNet, err := net.ParseCIDR(network.Subnet)
 	if err != nil {
+		log.Error("Failed to parse CIDR", "subnet", network.Subnet, "error", err)
 		return nil, err
 	}
 
 	ones, bits := ipNet.Mask.Size()
 	if bits-ones > MaxSubnetBits {
+		log.Error("Subnet too large", "subnet", network.Subnet, "ones", ones, "bits", bits)
 		return nil, ErrSubnetTooLarge
 	}
 
@@ -54,6 +56,7 @@ func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanT
 	}
 
 	if err := s.storage.CreateDiscoveryScan(scan); err != nil {
+		log.Error("Failed to create scan in database", "scan_id", scan.ID, "error", err)
 		return nil, err
 	}
 
@@ -61,7 +64,37 @@ func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanT
 	s.scans[scan.ID] = scan
 	s.mu.Unlock()
 
-	go s.runScan(ctx, scan, network, ipNet, scanType)
+	log.Info("Starting discovery scan", "network", network.Name, "network_id", network.ID, "scan_id", scan.ID, "scan_type", scanType, "hosts", scan.TotalHosts)
+
+	// Use background context for scan to not be tied to HTTP request lifecycle
+	// This prevents scan from being cancelled when HTTP response is sent
+	bgCtx := context.Background()
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error("Panic in scan goroutine", "scan_id", scan.ID, "panic", r)
+				now := time.Now()
+				scan.Status = model.ScanStatusFailed
+				scan.ErrorMessage = "panic during scan initialization"
+				scan.CompletedAt = &now
+				s.storage.UpdateDiscoveryScan(scan)
+			}
+		}()
+
+		// Check if context was cancelled before starting (e.g., server shutdown)
+		select {
+		case <-scanCtx.Done():
+			log.Info("Scan cancelled before starting", "scan_id", scan.ID)
+			scan.Status = model.ScanStatusFailed
+			scan.ErrorMessage = "scan cancelled before starting"
+			s.storage.UpdateDiscoveryScan(scan)
+			return
+		default:
+		}
+
+		s.runScan(bgCtx, scan, network, ipNet, scanType)
+	}()
 
 	return scan, nil
 }
@@ -77,25 +110,38 @@ func (s *DefaultScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, err
 }
 
 func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan, network *model.Network, ipNet *net.IPNet, scanType string) {
+	log.Info("runScan started", "scan_id", scan.ID, "scan_type", scanType)
+
 	now := time.Now()
 	scan.Status = model.ScanStatusRunning
 	scan.StartedAt = &now
-	s.storage.UpdateDiscoveryScan(scan)
+	if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+		log.Error("Failed to update scan to running", "scan_id", scan.ID, "error", err)
+		return
+	}
+	log.Info("Scan status updated to running", "scan_id", scan.ID)
 
 	ips := expandCIDR(ipNet)
 	scan.TotalHosts = len(ips)
+
+	log.Info("IPs expanded", "scan_id", scan.ID, "total_hosts", scan.TotalHosts, "scan_type", scanType)
 
 	semaphore := make(chan struct{}, s.config.DiscoveryMaxConcurrent)
 	var wg sync.WaitGroup
 	var foundCount int
 	var mu sync.Mutex
 
+	log.Info("Starting host scanning loop", "scan_id", scan.ID, "max_concurrent", s.config.DiscoveryMaxConcurrent, "timeout", s.config.DiscoveryTimeout)
+
 	for i, ip := range ips {
 		select {
 		case <-ctx.Done():
+			log.Info("Scan cancelled by context", "scan_id", scan.ID)
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled"
-			s.storage.UpdateDiscoveryScan(scan)
+			if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+				log.Error("Failed to update scan to cancelled", "scan_id", scan.ID, "error", err)
+			}
 			return
 		default:
 		}
@@ -108,15 +154,20 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 			defer func() { <-semaphore }()
 
 			if s.isHostAlive(ip) {
+				log.Debug("Host is alive", "scan_id", scan.ID, "ip", ip, "index", index)
 				device := s.discoverHost(ip, network.ID, scanType)
 				if device != nil {
 					existing, _ := s.storage.GetDiscoveredDeviceByIP(network.ID, ip)
 					if existing != nil {
 						device.ID = existing.ID
 						device.FirstSeen = existing.FirstSeen
-						s.storage.UpdateDiscoveredDevice(device)
+						if err := s.storage.UpdateDiscoveredDevice(device); err != nil {
+							log.Error("Failed to update discovered device", "ip", ip, "error", err)
+						}
 					} else {
-						s.storage.CreateDiscoveredDevice(device)
+						if err := s.storage.CreateDiscoveredDevice(device); err != nil {
+							log.Error("Failed to create discovered device", "ip", ip, "error", err)
+						}
 					}
 
 					mu.Lock()
@@ -130,20 +181,25 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
 			mu.Unlock()
-			s.storage.UpdateDiscoveryScan(scan)
+			if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+				log.Error("Failed to update scan progress", "scan_id", scan.ID, "ip", ip, "scanned", scan.ScannedHosts, "error", err)
+			}
 		}(ip, i)
 	}
 
+	log.Info("Waiting for all goroutines to complete", "scan_id", scan.ID)
 	wg.Wait()
 
 	completedAt := time.Now()
 	scan.Status = model.ScanStatusCompleted
 	scan.CompletedAt = &completedAt
-	s.storage.UpdateDiscoveryScan(scan)
+	if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+		log.Error("Failed to update scan to completed", "scan_id", scan.ID, "error", err)
+	}
 
 	s.cleanupCompletedScans()
 
-	log.Info("Discovery scan completed", "network", network.Name, "found", scan.FoundHosts, "scanned", scan.ScannedHosts)
+	log.Info("Discovery scan completed", "network", network.Name, "found", scan.FoundHosts, "scanned", scan.ScannedHosts, "duration", completedAt.Sub(now).String())
 }
 
 func (s *DefaultScanner) cleanupCompletedScans() {
@@ -163,6 +219,7 @@ func (s *DefaultScanner) isHostAlive(ip string) bool {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), s.config.DiscoveryTimeout)
 		if err == nil {
 			conn.Close()
+			log.Debug("Host alive", "ip", ip, "port", port)
 			return true
 		}
 	}
@@ -182,9 +239,30 @@ func (s *DefaultScanner) discoverHost(ip string, networkID string, scanType stri
 		Services:  []model.ServiceInfo{},
 	}
 
-	names, err := net.LookupAddr(ip)
-	if err == nil && len(names) > 0 {
-		device.Hostname = names[0]
+	// DNS lookup with timeout
+	lookupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	type lookupResult struct {
+		names []string
+		err   error
+	}
+	resultCh := make(chan lookupResult, 1)
+
+	go func() {
+		names, err := net.LookupAddr(ip)
+		resultCh <- lookupResult{names: names, err: err}
+	}()
+
+	select {
+	case <-lookupCtx.Done():
+		log.Warn("DNS lookup timeout", "ip", ip)
+	case result := <-resultCh:
+		if result.err == nil && len(result.names) > 0 {
+			device.Hostname = result.names[0]
+		} else if result.err != nil {
+			log.Debug("DNS lookup failed", "ip", ip, "error", result.err)
+		}
 	}
 
 	if scanType != model.ScanTypeQuick {

@@ -16,7 +16,6 @@ type Config struct {
 	MCPAuthToken           string
 	LogFormat              string
 	LogLevel               string
-	DiscoveryEnabled       bool
 	DiscoveryInterval      time.Duration
 	DiscoveryMaxConcurrent int
 	DiscoveryTimeout       time.Duration
@@ -36,7 +35,6 @@ func Load() *Config {
 		MCPAuthToken:           getEnv("MCP_AUTH_TOKEN", ""),
 		LogFormat:              getEnv("LOG_FORMAT", "text"),
 		LogLevel:               getEnv("LOG_LEVEL", "info"),
-		DiscoveryEnabled:       getBoolEnv("DISCOVERY_ENABLED", true),
 		DiscoveryInterval:      getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
 		DiscoveryMaxConcurrent: getIntEnv("DISCOVERY_MAX_CONCURRENT", 10),
 		DiscoveryTimeout:       getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
@@ -94,14 +92,13 @@ func (c *Config) String() string {
 		mcpToken = "(empty)"
 	}
 
-	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, APIAuthToken:%s, MCPAuthToken:%s, LogFormat:%s, LogLevel:%s, DiscoveryEnabled:%v, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, APIAuthToken:%s, MCPAuthToken:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
 		c.DataDir,
 		c.ListenAddr,
 		apiToken,
 		mcpToken,
 		c.LogFormat,
 		c.LogLevel,
-		c.DiscoveryEnabled,
 		c.DiscoveryInterval,
 		c.DiscoveryMaxConcurrent,
 		c.DiscoveryTimeout,

@@ -4,30 +4,55 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
-func init() {
-	log.Init("console", "error", io.Discard)
+type mockIntegrationScanner struct {
+	store storage.ExtendedStorage
+}
+
+func (m *mockIntegrationScanner) Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
+	scan := &model.DiscoveryScan{
+		ID:         uuid.Must(uuid.NewV7()).String(),
+		NetworkID:  network.ID,
+		Status:     model.ScanStatusRunning,
+		ScanType:   scanType,
+		TotalHosts: 256,
+	}
+	if err := m.store.CreateDiscoveryScan(scan); err != nil {
+		return nil, err
+	}
+	return scan, nil
+}
+
+func (m *mockIntegrationScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
+	return m.store.GetDiscoveryScan(scanID)
 }
 
 // setupIntegrationServer creates a full server with auth middleware
-func setupIntegrationServer(t *testing.T, authToken string) (*httptest.Server, storage.ExtendedStorage) {
+func setupIntegrationServer(t *testing.T, authToken string, withScanner bool) (*httptest.Server, storage.ExtendedStorage) {
 	t.Helper()
 	store, err := storage.NewSQLiteStorage(":memory:")
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
 
-	h := NewHandler(store)
+	var scanner discovery.Scanner
+	if withScanner {
+		scanner = &mockIntegrationScanner{store: store}
+	}
+
+	h := NewHandler(store, scanner)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -61,7 +86,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", false)
 
 	// 1. Create datacenter
 	dcBody := `{"name":"Integration DC","location":"Test Location"}`
@@ -195,7 +220,7 @@ func TestAuthMiddlewareIntegration(t *testing.T) {
 	}
 
 	authToken := "test-secret-token"
-	server, _ := setupIntegrationServer(t, authToken)
+	server, _ := setupIntegrationServer(t, authToken, false)
 
 	// Request without auth should fail
 	resp, err := http.Get(server.URL + "/api/devices")
@@ -237,7 +262,7 @@ func TestSecurityHeadersIntegration(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", false)
 
 	resp, err := http.Get(server.URL + "/api/devices")
 	if err != nil {
@@ -269,7 +294,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", true)
 
 	// 1. Create network
 	netBody := `{"name":"Discovery Network","subnet":"192.168.1.0/24"}`
@@ -341,7 +366,7 @@ func TestRelationshipWorkflow(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", false)
 
 	// Create parent device
 	parentBody := `{"name":"rack-01","make_model":"42U Rack"}`
@@ -426,7 +451,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", false)
 
 	// Create network
 	netBody := `{"name":"Pool Network","subnet":"172.16.0.0/24"}`
@@ -496,7 +521,7 @@ func TestUIConfigEndpoint(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	server, _ := setupIntegrationServer(t, "")
+	server, _ := setupIntegrationServer(t, "", false)
 
 	resp, err := http.Get(server.URL + "/api/config")
 	if err != nil {

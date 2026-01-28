@@ -280,7 +280,6 @@ func TestDiscoverHost(t *testing.T) {
 	}
 }
 
-
 func TestScan_SubnetTooLarge(t *testing.T) {
 	scanner, store := newTestScanner(t)
 	defer store.Close()
