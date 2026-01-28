@@ -56,6 +56,7 @@ export interface RackdAPIOptions {
 export class RackdAPI {
   private baseURL: string;
   private token?: string;
+  private inFlightRequests: Map<string, Promise<unknown>> = new Map();
 
   constructor(options: RackdAPIOptions = {}) {
     this.baseURL = options.baseURL || '';
@@ -67,31 +68,49 @@ export class RackdAPI {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    // Only deduplicate GET requests
+    const cacheKey = method === 'GET' ? `${method}:${path}` : null;
+
+    if (cacheKey && this.inFlightRequests.has(cacheKey)) {
+      return this.inFlightRequests.get(cacheKey) as Promise<T>;
+    }
+
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(`${this.baseURL}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    const requestPromise = (async () => {
+      const response = await fetch(`${this.baseURL}${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
 
-    if (!response.ok) {
-      let error: APIError = { code: 'UNKNOWN_ERROR', message: response.statusText };
-      try {
-        error = await response.json();
-      } catch {
-        // Use default error
+      if (!response.ok) {
+        let error: APIError = { code: 'UNKNOWN_ERROR', message: response.statusText };
+        try {
+          error = await response.json();
+        } catch {
+          // Use default error
+        }
+        throw new RackdAPIError(error.code, error.message, error.details);
       }
-      throw new RackdAPIError(error.code, error.message, error.details);
+
+      if (response.status === 204) {
+        return undefined as T;
+      }
+      return response.json();
+    })();
+
+    if (cacheKey) {
+      this.inFlightRequests.set(cacheKey, requestPromise);
+      requestPromise.finally(() => {
+        this.inFlightRequests.delete(cacheKey);
+      });
     }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
-    return response.json();
+    return requestPromise;
   }
 
   // Config
@@ -265,3 +284,6 @@ export class RackdAPI {
     return this.request<DiscoveryRule>('POST', `/api/discovery/networks/${networkId}/rules`, rule);
   }
 }
+
+// Singleton instance for request deduplication across components
+export const api = new RackdAPI();

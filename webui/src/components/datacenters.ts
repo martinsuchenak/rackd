@@ -1,19 +1,23 @@
 // Datacenter Components for Rackd Web UI
 
 import type { Datacenter, Device } from '../core/types';
-import { RackdAPI, RackdAPIError } from '../core/api';
-
-const api = new RackdAPI();
+import { api, RackdAPIError } from '../core/api';
+import { debounce } from '../core/utils';
 
 interface DatacenterListData {
   datacenters: Datacenter[];
+  allDatacenters: Datacenter[];
   loading: boolean;
   error: string;
+  search: string;
   showDeleteModal: boolean;
   deleteTarget: Datacenter | null;
   deleting: boolean;
   init(): Promise<void>;
   loadDatacenters(): Promise<void>;
+  filterDatacenters(): void;
+  applySearch(): void;
+  clearFilters(): void;
   confirmDelete(dc: Datacenter): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
@@ -22,8 +26,10 @@ interface DatacenterListData {
 export function datacenterList() {
   return {
     datacenters: [] as Datacenter[],
+    allDatacenters: [] as Datacenter[],
     loading: true,
     error: '',
+    search: '',
     showDeleteModal: false,
     deleteTarget: null as Datacenter | null,
     deleting: false,
@@ -47,13 +53,36 @@ export function datacenterList() {
       this.loading = true;
       this.error = '';
       try {
-        this.datacenters = (await api.listDatacenters()) || [];
+        this.allDatacenters = (await api.listDatacenters()) || [];
+        this.filterDatacenters();
       } catch (e) {
+        this.allDatacenters = [];
         this.datacenters = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load datacenters';
       } finally {
         this.loading = false;
       }
+    },
+
+    filterDatacenters(): void {
+      if (!this.search.trim()) {
+        this.datacenters = this.allDatacenters;
+        return;
+      }
+      const q = this.search.trim().toLowerCase();
+      this.datacenters = this.allDatacenters.filter((dc) => {
+        const searchStr = [dc.name || '', dc.location || '', dc.description || ''].join(' ').toLowerCase();
+        return searchStr.includes(q);
+      });
+    },
+
+    applySearch: debounce(function (this: DatacenterListData) {
+      this.filterDatacenters();
+    }, 300),
+
+    clearFilters(): void {
+      this.search = '';
+      this.loadDatacenters();
     },
 
     confirmDelete(dc: Datacenter): void {

@@ -2,7 +2,7 @@
 
 import Alpine from 'alpinejs';
 import type { UIConfig } from './core/types';
-import { RackdAPI } from './core/api';
+import { api, RackdAPI } from './core/api';
 
 // Components
 import { nav } from './components/nav';
@@ -75,7 +75,6 @@ function themeToggle() {
 
 // Initialize application
 async function init(): Promise<void> {
-  const api = new RackdAPI();
   window.rackdAPI = api;
 
   // Fetch config

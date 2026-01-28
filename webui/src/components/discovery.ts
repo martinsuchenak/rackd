@@ -1,9 +1,7 @@
 // Discovery Components for Rackd Web UI
 
 import type { DiscoveredDevice, DiscoveryScan, Network } from '../core/types';
-import { RackdAPI, RackdAPIError } from '../core/api';
-
-const api = new RackdAPI();
+import { api, RackdAPIError } from '../core/api';
 
 interface DiscoveryListData {
   networks: Network[];

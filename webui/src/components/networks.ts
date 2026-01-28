@@ -1,15 +1,16 @@
 // Network Components for Rackd Web UI
 
 import type { Datacenter, Network, NetworkPool, NetworkUtilization } from '../core/types';
-import { RackdAPI, RackdAPIError } from '../core/api';
-
-const api = new RackdAPI();
+import { api, RackdAPIError } from '../core/api';
+import { debounce } from '../core/utils';
 
 interface NetworkListData {
   networks: Network[];
+  allNetworks: Network[];
   datacenters: Datacenter[];
   loading: boolean;
   error: string;
+  search: string;
   filter: { datacenter_id?: string };
   showDeleteModal: boolean;
   deleteTarget: Network | null;
@@ -18,7 +19,10 @@ interface NetworkListData {
   init(): Promise<void>;
   loadNetworks(): Promise<void>;
   loadDatacenters(): Promise<void>;
+  filterNetworks(): void;
+  applySearch(): void;
   setFilter(datacenterId: string): void;
+  clearFilters(): void;
   getDatacenterName(id: string): string;
   confirmDelete(network: Network): void;
   cancelDelete(): void;
@@ -30,9 +34,11 @@ interface NetworkListData {
 export function networkList() {
   return {
     networks: [] as Network[],
+    allNetworks: [] as Network[],
     datacenters: [] as Datacenter[],
     loading: true,
     error: '',
+    search: '',
     filter: {} as { datacenter_id?: string },
     showDeleteModal: false,
     deleteTarget: null as Network | null,
@@ -62,8 +68,10 @@ export function networkList() {
       this.loading = true;
       this.error = '';
       try {
-        this.networks = (await api.listNetworks(this.filter.datacenter_id)) || [];
+        this.allNetworks = (await api.listNetworks(this.filter.datacenter_id)) || [];
+        this.filterNetworks();
       } catch (e) {
+        this.allNetworks = [];
         this.networks = [];
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load networks';
       } finally {
@@ -71,8 +79,30 @@ export function networkList() {
       }
     },
 
+    filterNetworks(): void {
+      if (!this.search.trim()) {
+        this.networks = this.allNetworks;
+        return;
+      }
+      const q = this.search.trim().toLowerCase();
+      this.networks = this.allNetworks.filter((n) => {
+        const searchStr = [n.name || '', n.subnet || '', n.description || ''].join(' ').toLowerCase();
+        return searchStr.includes(q);
+      });
+    },
+
+    applySearch: debounce(function (this: NetworkListData) {
+      this.filterNetworks();
+    }, 300),
+
     setFilter(datacenterId: string): void {
       this.filter.datacenter_id = datacenterId || undefined;
+      this.loadNetworks();
+    },
+
+    clearFilters(): void {
+      this.filter = {};
+      this.search = '';
       this.loadNetworks();
     },
 

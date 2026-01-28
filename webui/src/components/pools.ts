@@ -1,9 +1,7 @@
 // Pool Components for Rackd Web UI
 
 import type { IPStatus, Network, NetworkPool } from '../core/types';
-import { RackdAPI, RackdAPIError } from '../core/api';
-
-const api = new RackdAPI();
+import { api, RackdAPIError } from '../core/api';
 
 interface PoolDetailData {
   pool: NetworkPool | null;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rackd - IPAM &amp; Device Inventory</title>
-  <link rel="icon" type="image/png" href="/icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/output.css">
   <style>[x-cloak] { display: none !important; }</style>
 </head>
@@ -14,7 +14,7 @@
     Skip to main content
   </a>
 
-  <div x-data="router" x-init="init()">
+  <div x-data="router">
     <!-- Sidebar -->
     <aside class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
            :class="{ '-translate-x-full': !sidebarOpen }"
@@ -79,29 +79,36 @@
         </button>
 
         <!-- Global Search -->
-        <div x-data="globalSearch" x-init="init()" class="relative flex-1 max-w-md hidden sm:block">
-          <label for="global-search" class="sr-only">Search devices</label>
+        <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block">
+          <label for="global-search" class="sr-only">Search</label>
           <input id="global-search" type="search" x-model="query" @input="onInput()" @focus="onFocus()" @blur="onBlur()"
-                 placeholder="Search devices..."
-                 class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-md bg-[var(--input-background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]">
+                 placeholder="Search devices, networks, datacenters..."
+                 class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-md bg-[var(--input-background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]">
           <div x-show="showResults && (results.length > 0 || loading)" x-cloak
-               class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50"
+               class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
                role="listbox">
-            <div x-show="loading" class="p-3 text-sm text-gray-500">Searching...</div>
-            <template x-for="device in results" :key="device.id">
-              <a :href="'/devices/detail?id=' + device.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)"
-                 class="block px-4 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)]" role="option">
-                <div class="font-medium" x-text="device.name"></div>
-                <div class="text-xs text-gray-500" x-text="device.make_model || 'No model'"></div>
+            <div x-show="loading" class="p-3 text-sm text-[var(--muted-foreground)]">Searching...</div>
+            <template x-for="result in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
+              <a :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
+                 @click.prevent="$dispatch('nav', result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id)"
+                 class="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)]" role="option">
+                <div class="flex items-center gap-2">
+                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">Device</span>
+                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded">Network</span>
+                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 rounded">Datacenter</span>
+                  <span class="font-medium" x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
+                </div>
+                <div class="text-xs text-[var(--muted-foreground)] ml-14" x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''"></div>
               </a>
             </template>
+            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-[var(--muted-foreground)]">No results found</div>
           </div>
         </div>
 
         <div class="flex-1"></div>
 
         <!-- Theme Toggle -->
-        <div x-data="themeToggle" x-init="init()">
+        <div x-data="themeToggle">
           <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
                   class="p-2 rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                   :aria-label="'Theme: ' + theme">
@@ -122,7 +129,7 @@
       <main id="main-content" class="flex-1 p-6" role="main" @nav.window="navigate($event.detail)">
 
         <!-- Dashboard -->
-        <div x-show="route === '/'" x-cloak>
+        <template x-if="route === '/'">
           <div x-data="{ stats: { devices: '-', networks: '-', datacenters: '-', discovered: '-' }, async init() {
             const [d, n, dc, disc] = await Promise.all([
               window.rackdAPI?.listDevices().catch(() => []),
@@ -152,11 +159,11 @@
               </a>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- Devices List -->
-        <div x-show="route === '/devices'" x-cloak>
-          <div x-data="deviceList" x-init="init()">
+        <template x-if="route === '/devices'">
+          <div x-data="deviceList">
             <div class="flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
               <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -409,11 +416,11 @@
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- Device Detail -->
         <template x-if="route.startsWith('/devices/detail')">
-          <div x-data="deviceDetail" x-init="init()">
+          <div x-data="deviceDetail">
             <div x-show="loading" class="text-gray-500">Loading...</div>
             <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div x-show="!loading && device">
@@ -639,8 +646,8 @@
         </template>
 
         <!-- Networks List -->
-        <div x-show="route === '/networks'" x-cloak>
-          <div x-data="networkList" x-init="init()">
+        <template x-if="route === '/networks'">
+          <div x-data="networkList">
             <div class="flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Networks</h1>
               <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -649,7 +656,9 @@
             </div>
             <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-              <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+                <input type="text" x-model="search" @input="applySearch()" placeholder="Search..."
+                       class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <template x-if="hasMultipleDatacenters">
                   <select @change="setFilter($event.target.value)"
                           class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -659,6 +668,9 @@
                     </template>
                   </select>
                 </template>
+                <button @click="clearFilters()" class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  Clear filters
+                </button>
               </div>
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700">
@@ -745,11 +757,11 @@
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- Network Detail -->
         <template x-if="route.startsWith('/networks/detail')">
-          <div x-data="networkDetail" x-init="init()">
+          <div x-data="networkDetail">
             <div x-show="loading" class="text-gray-500">Loading...</div>
             <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div x-show="!loading && network">
@@ -955,7 +967,7 @@
 
         <!-- Pool Detail -->
         <template x-if="route.startsWith('/pools/detail')">
-          <div x-data="poolDetail" x-init="init()">
+          <div x-data="poolDetail">
             <div x-show="loading" class="text-gray-500">Loading...</div>
             <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div x-show="!loading && pool">
@@ -1040,8 +1052,8 @@
         </template>
 
         <!-- Datacenters List -->
-        <div x-show="route === '/datacenters'" x-cloak>
-          <div x-data="datacenterList" x-init="init()">
+        <template x-if="route === '/datacenters'">
+          <div x-data="datacenterList">
             <div class="flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Datacenters</h1>
               <button @click="showAddModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1050,6 +1062,13 @@
             </div>
             <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+                <input type="text" x-model="search" @input="applySearch()" placeholder="Search..."
+                       class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button @click="clearFilters()" class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  Clear filters
+                </button>
+              </div>
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -1118,11 +1137,11 @@
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- Datacenter Detail -->
         <template x-if="route.startsWith('/datacenters/detail')">
-          <div x-data="datacenterDetail" x-init="init()">
+          <div x-data="datacenterDetail">
             <div x-show="loading" class="text-gray-500">Loading...</div>
             <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
             <div x-show="!loading && datacenter">
@@ -1198,8 +1217,8 @@
         </template>
 
         <!-- Discovery -->
-        <div x-show="route === '/discovery'" x-cloak>
-          <div x-data="discoveryList" x-init="init()" @beforeunload.window="destroy()">
+        <template x-if="route === '/discovery'">
+          <div x-data="discoveryList" @beforeunload.window="destroy()">
             <div class="flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Discovery</h1>
               <button @click="openScanModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -1323,7 +1342,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
       </main>
     </div>

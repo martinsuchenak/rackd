@@ -1,10 +1,8 @@
 // Device Components for Rackd Web UI
 
 import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool } from '../core/types';
-import { RackdAPI, RackdAPIError } from '../core/api';
+import { api, RackdAPIError } from '../core/api';
 import { debounce, formatDate } from '../core/utils';
-
-const api = new RackdAPI();
 
 interface DeviceListData {
   devices: Device[];
