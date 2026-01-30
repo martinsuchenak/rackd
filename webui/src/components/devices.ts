@@ -49,6 +49,7 @@ export function deviceList() {
     // Device modal (unified for add/edit)
     showDeviceModal: false,
     isEditMode: false,
+    modalTab: 'general' as 'general' | 'addresses' | 'tags',
     editDevice: {
       name: '',
       hostname: '',
@@ -224,6 +225,7 @@ export function deviceList() {
 
     openAddModal(): void {
       this.isEditMode = false;
+      this.modalTab = 'general';
       this.editDevice = {
         name: '',
         hostname: '',
@@ -248,6 +250,7 @@ export function deviceList() {
 
     async openEditModal(device: Device): Promise<void> {
       this.isEditMode = true;
+      this.modalTab = 'general';
       this.editDevice = {
         id: device.id,
         name: device.name,
@@ -376,6 +379,7 @@ export function deviceDetail() {
     deleting: false,
     // Edit modal
     showEditModal: false,
+    modalTab: 'general' as 'general' | 'addresses' | 'tags',
     editDevice: {} as Partial<Device>,
     tagInput: '',
     domainInput: '',
@@ -519,6 +523,7 @@ export function deviceDetail() {
 
     async openEditModal(): Promise<void> {
       if (!this.device) return;
+      this.modalTab = 'general';
       this.editDevice = {
         id: this.device.id,
         name: this.device.name,
@@ -596,6 +601,11 @@ export function deviceDetail() {
       } finally {
         this.saving = false;
       }
+    },
+
+    formatDate(dateStr?: string): string {
+      if (!dateStr) return '-';
+      return formatDate(dateStr);
     },
   };
 }
