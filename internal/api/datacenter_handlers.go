@@ -27,8 +27,8 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
 		return
 	}
-	if dc.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Name is required")
+	if errs := ValidateDatacenter(&dc); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
 		return
 	}
 	if err := h.storage.CreateDatacenter(&dc); err != nil {
@@ -78,6 +78,11 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	}
 	if description, ok := updates["description"].(string); ok {
 		dc.Description = description
+	}
+
+	if errs := ValidateDatacenter(dc); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	if err := h.storage.UpdateDatacenter(dc); err != nil {

@@ -29,12 +29,8 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
 		return
 	}
-	if network.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Name is required")
-		return
-	}
-	if network.Subnet == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Subnet is required")
+	if errs := ValidateNetwork(&network); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
 		return
 	}
 	if err := h.storage.CreateNetwork(&network); err != nil {
@@ -90,6 +86,11 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 	if description, ok := updates["description"].(string); ok {
 		network.Description = description
+	}
+
+	if errs := ValidateNetwork(network); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	if err := h.storage.UpdateNetwork(network); err != nil {
@@ -181,12 +182,8 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 	}
 	pool.NetworkID = networkID
 
-	if pool.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Name is required")
-		return
-	}
-	if pool.StartIP == "" || pool.EndIP == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "StartIP and EndIP are required")
+	if errs := ValidateNetworkPool(&pool); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
 		return
 	}
 
@@ -248,6 +245,11 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 				pool.Tags[i] = s
 			}
 		}
+	}
+
+	if errs := ValidateNetworkPool(pool); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	if err := h.storage.UpdateNetworkPool(pool); err != nil {

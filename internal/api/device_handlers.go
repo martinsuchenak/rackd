@@ -29,8 +29,8 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
 		return
 	}
-	if device.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Name is required")
+	if errs := ValidateDevice(&device); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
 		return
 	}
 	if err := h.storage.CreateDevice(&device); err != nil {
@@ -106,6 +106,11 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 		device.Addresses = toAddressSlice(addresses)
 	}
 
+	if errs := ValidateDevice(device); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
+
 	if err := h.storage.UpdateDevice(device); err != nil {
 		h.internalError(w, err)
 		return
@@ -130,6 +135,10 @@ func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter 'q' is required")
+		return
+	}
+	if len(query) > 256 {
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter must be 256 characters or less")
 		return
 	}
 	devices, err := h.storage.SearchDevices(query)

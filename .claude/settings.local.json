@@ -8,7 +8,31 @@
       "Bash(go vet:*)",
       "Bash(git checkout:*)",
       "Bash(make ui-build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(go version:*)"
+    ]
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Engaging warp drive",
+      "Scanning for life forms",
+      "Analyzing tricorder readings",
+      "Hailing frequencies open",
+      "Modulating shield harmonics",
+      "Recalibrating sensors",
+      "Consulting ship's computer",
+      "Raising shields",
+      "Charging phaser banks",
+      "Initiating transport sequence",
+      "Accessing LCARS database",
+      "Running level 3 diagnostic",
+      "Plotting course",
+      "Rerouting power to deflector",
+      "Compensating for interference",
+      "Decoding subspace transmission"
     ]
   }
 }

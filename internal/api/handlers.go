@@ -121,6 +121,16 @@ func (h *Handler) internalError(w http.ResponseWriter, err error) {
 	h.writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal Server Error")
 }
 
+func (h *Handler) writeValidationErrors(w http.ResponseWriter, errs ValidationErrors) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	json.NewEncoder(w).Encode(map[string]any{
+		"error":   errs.Error(),
+		"code":    "VALIDATION_ERROR",
+		"details": errs,
+	})
+}
+
 func parseArrayParam(r *http.Request, name string) []string {
 	values := r.URL.Query()[name]
 	if len(values) == 0 {

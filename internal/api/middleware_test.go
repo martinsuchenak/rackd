@@ -108,9 +108,9 @@ func TestSecurityHeaders_HTTP(t *testing.T) {
 	expectedHeaders := map[string]string{
 		"X-Content-Type-Options":  "nosniff",
 		"X-Frame-Options":         "DENY",
-		"X-XSS-Protection":        "1; mode=block",
 		"Referrer-Policy":         "strict-origin-when-cross-origin",
-		"Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'",
+		"Permissions-Policy":      "geolocation=(), microphone=(), camera=()",
+		"Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 	}
 
 	for header, expected := range expectedHeaders {
