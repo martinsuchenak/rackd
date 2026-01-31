@@ -1,0 +1,2045 @@
+openapi: 3.1.0
+info:
+  title: Rackd API
+  description: API for managing infrastructure devices, networks, datacenters, and discovery operations
+  version: 1.0.0
+  contact:
+    name: Rackd
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - error
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+        error:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional validation error details
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    Datacenter:
+      type: object
+      required:
+        - id
+        - name
+        - location
+        - description
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        name:
+          type: string
+          description: Datacenter name
+        location:
+          type: string
+          description: Physical location
+        description:
+          type: string
+          description: Description
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    Address:
+      type: object
+      required:
+        - ip
+        - type
+        - label
+      properties:
+        ip:
+          type: string
+          description: IP address
+        port:
+          type: integer
+          nullable: true
+          description: Port number
+        type:
+          type: string
+          enum: [ipv4, ipv6]
+          description: IP address type
+        label:
+          type: string
+          description: Address label
+        network_id:
+          type: string
+          format: uuid
+          description: Associated network ID
+        switch_port:
+          type: string
+          description: Switch port
+        pool_id:
+          type: string
+          format: uuid
+          description: Associated pool ID
+
+    Device:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - make_model
+        - os
+        - tags
+        - addresses
+        - domains
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        hostname:
+          type: string
+        description:
+          type: string
+        make_model:
+          type: string
+        os:
+          type: string
+        datacenter_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        location:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        domains:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Network:
+      type: object
+      required:
+        - id
+        - name
+        - subnet
+        - vlan_id
+        - datacenter_id
+        - description
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        subnet:
+          type: string
+          description: CIDR notation (e.g., 192.168.1.0/24)
+        vlan_id:
+          type: integer
+        datacenter_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NetworkPool:
+      type: object
+      required:
+        - id
+        - network_id
+        - name
+        - start_ip
+        - end_ip
+        - description
+        - tags
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        network_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        start_ip:
+          type: string
+          description: Start IP of pool range
+        end_ip:
+          type: string
+          description: End IP of pool range
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NetworkUtilization:
+      type: object
+      required:
+        - network_id
+        - total_ips
+        - used_ips
+        - available_ips
+        - utilization
+      properties:
+        network_id:
+          type: string
+          format: uuid
+        total_ips:
+          type: integer
+        used_ips:
+          type: integer
+        available_ips:
+          type: integer
+        utilization:
+          type: number
+          format: float
+          description: Utilization percentage (0-100)
+
+    IPStatus:
+      type: object
+      required:
+        - ip
+        - status
+      properties:
+        ip:
+          type: string
+          description: IP address
+        status:
+          type: string
+          enum: [available, used, reserved]
+        device_id:
+          type: string
+          format: uuid
+          description: Device ID if IP is in use
+
+    NextIP:
+      type: object
+      required:
+        - ip
+      properties:
+        ip:
+          type: string
+          description: Next available IP address
+
+    DeviceRelationship:
+      type: object
+      required:
+        - parent_id
+        - child_id
+        - type
+        - created_at
+      properties:
+        parent_id:
+          type: string
+          format: uuid
+        child_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [contains, connected_to, depends_on]
+        created_at:
+          type: string
+          format: date-time
+
+    ServiceInfo:
+      type: object
+      required:
+        - port
+        - protocol
+        - service
+      properties:
+        port:
+          type: integer
+        protocol:
+          type: string
+        service:
+          type: string
+        version:
+          type: string
+
+    DiscoveredDevice:
+      type: object
+      required:
+        - id
+        - ip
+        - mac_address
+        - hostname
+        - network_id
+        - status
+        - confidence
+        - os_guess
+        - vendor
+        - open_ports
+        - services
+        - first_seen
+        - last_seen
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        ip:
+          type: string
+        mac_address:
+          type: string
+        hostname:
+          type: string
+        network_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        confidence:
+          type: integer
+          minimum: 0
+          maximum: 100
+        os_guess:
+          type: string
+        vendor:
+          type: string
+        open_ports:
+          type: array
+          items:
+            type: integer
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceInfo'
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+        promoted_to_device_id:
+          type: string
+          format: uuid
+        promoted_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DiscoveryScan:
+      type: object
+      required:
+        - id
+        - network_id
+        - status
+        - scan_type
+        - total_hosts
+        - scanned_hosts
+        - found_hosts
+        - progress_percent
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        network_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        scan_type:
+          type: string
+          enum: [quick, full, deep]
+        total_hosts:
+          type: integer
+        scanned_hosts:
+          type: integer
+        found_hosts:
+          type: integer
+        progress_percent:
+          type: number
+          format: float
+        error_message:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DiscoveryRule:
+      type: object
+      required:
+        - id
+        - network_id
+        - enabled
+        - scan_type
+        - interval_hours
+        - exclude_ips
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        network_id:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        scan_type:
+          type: string
+          enum: [quick, full, deep]
+        interval_hours:
+          type: integer
+          minimum: 1
+        exclude_ips:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    StartScanRequest:
+      type: object
+      properties:
+        scan_type:
+          type: string
+          enum: [quick, full, deep]
+          default: quick
+          description: Type of scan to perform
+
+    PromoteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Device name (defaults to discovered hostname if not provided)
+        make_model:
+          type: string
+          description: Device make and model
+        datacenter_id:
+          type: string
+          format: uuid
+          description: ID of datacenter to assign device to
+
+    AddRelationshipRequest:
+      type: object
+      required:
+        - child_id
+        - type
+      properties:
+        child_id:
+          type: string
+          format: uuid
+          description: ID of child device
+        type:
+          type: string
+          enum: [contains, connected_to, depends_on]
+          description: Type of relationship
+
+paths:
+  /api/datacenters:
+    get:
+      summary: List datacenters
+      description: Retrieve all datacenters, optionally filtered by name
+      operationId: listDatacenters
+      tags:
+        - Datacenters
+      parameters:
+        - name: name
+          in: query
+          description: Filter datacenters by name (partial match)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of datacenters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Datacenter'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create datacenter
+      description: Create a new datacenter
+      operationId: createDatacenter
+      tags:
+        - Datacenters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Datacenter'
+      responses:
+        '201':
+          description: Datacenter created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    properties:
+                      details:
+                        type: object
+                        additionalProperties:
+                          $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/datacenters/{id}:
+    get:
+      summary: Get datacenter
+      description: Retrieve a specific datacenter by ID
+      operationId: getDatacenter
+      tags:
+        - Datacenters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Datacenter ID
+      responses:
+        '200':
+          description: Datacenter details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+        '404':
+          description: Datacenter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update datacenter
+      description: Update an existing datacenter
+      operationId: updateDatacenter
+      tags:
+        - Datacenters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Datacenter'
+      responses:
+        '200':
+          description: Datacenter updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Datacenter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete datacenter
+      description: Delete a datacenter
+      operationId: deleteDatacenter
+      tags:
+        - Datacenters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Datacenter deleted successfully
+        '404':
+          description: Datacenter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/datacenters/{id}/devices:
+    get:
+      summary: List datacenter devices
+      description: Retrieve all devices in a datacenter
+      operationId: getDatacenterDevices
+      tags:
+        - Datacenters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '404':
+          description: Datacenter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks:
+    get:
+      summary: List networks
+      description: Retrieve all networks, optionally filtered
+      operationId: listNetworks
+      tags:
+        - Networks
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: datacenter_id
+          in: query
+          schema:
+            type: string
+        - name: vlan_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of networks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Network'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create network
+      description: Create a new network
+      operationId: createNetwork
+      tags:
+        - Networks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Network'
+      responses:
+        '201':
+          description: Network created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks/{id}:
+    get:
+      summary: Get network
+      description: Retrieve a specific network by ID
+      operationId: getNetwork
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Network details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update network
+      description: Update an existing network
+      operationId: updateNetwork
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Network'
+      responses:
+        '200':
+          description: Network updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete network
+      description: Delete a network
+      operationId: deleteNetwork
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Network deleted successfully
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks/{id}/devices:
+    get:
+      summary: List network devices
+      description: Retrieve all devices in a network
+      operationId: getNetworkDevices
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks/{id}/utilization:
+    get:
+      summary: Get network utilization
+      description: Get IP utilization statistics for a network
+      operationId: getNetworkUtilization
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Network utilization data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkUtilization'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks/{id}/pools:
+    get:
+      summary: List network pools
+      description: Retrieve all IP pools in a network
+      operationId: listNetworkPools
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: List of pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NetworkPool'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create network pool
+      description: Create a new IP pool in a network
+      operationId: createNetworkPool
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPool'
+      responses:
+        '201':
+          description: Pool created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPool'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/pools/{id}:
+    get:
+      summary: Get pool
+      description: Retrieve a specific IP pool by ID
+      operationId: getNetworkPool
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pool details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPool'
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update pool
+      description: Update an existing IP pool
+      operationId: updateNetworkPool
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPool'
+      responses:
+        '200':
+          description: Pool updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPool'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete pool
+      description: Delete an IP pool
+      operationId: deleteNetworkPool
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Pool deleted successfully
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/pools/{id}/next-ip:
+    get:
+      summary: Get next available IP
+      description: Get the next available IP address from a pool
+      operationId: getNextIP
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Next available IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NextIP'
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: No IP addresses available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/pools/{id}/heatmap:
+    get:
+      summary: Get pool heatmap
+      description: Get status of all IPs in a pool's range
+      operationId: getPoolHeatmap
+      tags:
+        - Pools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pool heatmap
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IPStatus'
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices:
+    get:
+      summary: List devices
+      description: Retrieve all devices, optionally filtered
+      operationId: listDevices
+      tags:
+        - Devices
+      parameters:
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: datacenter_id
+          in: query
+          schema:
+            type: string
+        - name: network_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create device
+      description: Create a new device
+      operationId: createDevice
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+      responses:
+        '201':
+          description: Device created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/{id}:
+    get:
+      summary: Get device
+      description: Retrieve a specific device by ID
+      operationId: getDevice
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update device
+      description: Update an existing device
+      operationId: updateDevice
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Device updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete device
+      description: Delete a device
+      operationId: deleteDevice
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Device deleted successfully
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/search:
+    get:
+      summary: Search devices
+      description: Search devices by name, description, IP, tags, or domains
+      operationId: searchDevices
+      tags:
+        - Devices
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query (max 256 characters)
+      responses:
+        '200':
+          description: Matching devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/{id}/relationships:
+    get:
+      summary: Get device relationships
+      description: Retrieve all relationships for a device
+      operationId: getRelationships
+      tags:
+        - Relationships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device relationships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceRelationship'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Add device relationship
+      description: Add a relationship between devices
+      operationId: addRelationship
+      tags:
+        - Relationships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Parent device ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddRelationshipRequest'
+      responses:
+        '201':
+          description: Relationship created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: created
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/{id}/related:
+    get:
+      summary: Get related devices
+      description: Retrieve devices related to a device
+      operationId: getRelatedDevices
+      tags:
+        - Relationships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [contains, connected_to, depends_on]
+          description: Filter by relationship type
+      responses:
+        '200':
+          description: Related devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/{id}/relationships/{child_id}/{type}:
+    delete:
+      summary: Remove device relationship
+      description: Remove a relationship between devices
+      operationId: removeRelationship
+      tags:
+        - Relationships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Parent device ID
+        - name: child_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Child device ID
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [contains, connected_to, depends_on]
+          description: Relationship type
+      responses:
+        '204':
+          description: Relationship removed successfully
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/networks/{id}/scan:
+    post:
+      summary: Start network scan
+      description: Start a network discovery scan
+      operationId: startScan
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartScanRequest'
+      responses:
+        '202':
+          description: Scan started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryScan'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/scans:
+    get:
+      summary: List discovery scans
+      description: Retrieve all discovery scans, optionally filtered by network
+      operationId: listScans
+      tags:
+        - Discovery
+      parameters:
+        - name: network_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscoveryScan'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/scans/{id}:
+    get:
+      summary: Get discovery scan
+      description: Retrieve a specific discovery scan by ID
+      operationId: getScan
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryScan'
+        '404':
+          description: Scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/scans/{id}/cancel:
+    post:
+      summary: Cancel discovery scan
+      description: Cancel a running discovery scan
+      operationId: cancelScan
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scan cancelled successfully
+        '404':
+          description: Scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/scans/{id}:
+    delete:
+      summary: Delete discovery scan
+      description: Delete a discovery scan record
+      operationId: deleteDiscoveryScan
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scan deleted successfully
+        '404':
+          description: Scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/devices:
+    get:
+      summary: List discovered devices
+      description: Retrieve all discovered devices, optionally filtered by network
+      operationId: listDiscoveredDevices
+      tags:
+        - Discovery
+      parameters:
+        - name: network_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of discovered devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscoveredDevice'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete discovered devices by network
+      description: Delete all discovered devices for a network
+      operationId: deleteDiscoveredDevicesByNetwork
+      tags:
+        - Discovery
+      parameters:
+        - name: network_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Discovered devices deleted successfully
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/devices/{id}:
+    delete:
+      summary: Delete discovered device
+      description: Delete a specific discovered device
+      operationId: deleteDiscoveredDevice
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Discovered device deleted successfully
+        '404':
+          description: Discovered device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/devices/{id}/promote:
+    post:
+      summary: Promote discovered device
+      description: Promote a discovered device to a managed device
+      operationId: promoteDevice
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discovered device ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoteRequest'
+      responses:
+        '201':
+          description: Device promoted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Discovered device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/rules:
+    get:
+      summary: List discovery rules
+      description: Retrieve all discovery rules
+      operationId: listDiscoveryRules
+      tags:
+        - Discovery
+      responses:
+        '200':
+          description: List of discovery rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscoveryRule'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create discovery rule
+      description: Create a new discovery rule
+      operationId: createDiscoveryRule
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoveryRule'
+      responses:
+        '201':
+          description: Discovery rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryRule'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Network not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/discovery/rules/{id}:
+    get:
+      summary: Get discovery rule
+      description: Retrieve a specific discovery rule by ID
+      operationId: getDiscoveryRule
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discovery rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryRule'
+        '404':
+          description: Discovery rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update discovery rule
+      description: Update an existing discovery rule
+      operationId: updateDiscoveryRule
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoveryRule'
+      responses:
+        '200':
+          description: Discovery rule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryRule'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Discovery rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete discovery rule
+      description: Delete a discovery rule
+      operationId: deleteDiscoveryRule
+      tags:
+        - Discovery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Discovery rule deleted successfully
+        '404':
+          description: Discovery rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Datacenters
+    description: Datacenter management
+  - name: Networks
+    description: Network management
+  - name: Pools
+    description: IP pool management
+  - name: Devices
+    description: Device management
+  - name: Relationships
+    description: Device relationships
+  - name: Discovery
+    description: Network discovery and scanning
