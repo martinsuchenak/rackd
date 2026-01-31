@@ -2,14 +2,20 @@ package discovery
 
 import (
 	"context"
+	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
+
+func init() {
+	log.Init("text", "error", io.Discard)
+}
 
 func newTestScanner(t *testing.T) (*DefaultScanner, storage.ExtendedStorage) {
 	store, err := storage.NewSQLiteStorage(":memory:")

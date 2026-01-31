@@ -16,7 +16,8 @@
       "Bash(bun run build:*)",
       "Bash(bun build:*)",
       "Bash(bun run:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(make test:*)"
     ]
   },
   "spinnerVerbs": {

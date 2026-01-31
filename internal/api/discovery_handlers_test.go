@@ -36,6 +36,10 @@ func (m *mockScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error)
 	return m.store.GetDiscoveryScan(scanID)
 }
 
+func (m *mockScanner) CancelScan(scanID string) error {
+	return nil
+}
+
 func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorage, discovery.Scanner) {
 	t.Helper()
 	store, err := storage.NewSQLiteStorage(":memory:")

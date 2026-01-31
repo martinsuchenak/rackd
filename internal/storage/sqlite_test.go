@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -174,7 +175,20 @@ func TestWALModeEnabled(t *testing.T) {
 // Helper function to create a test storage
 func newTestStorage(t *testing.T) *SQLiteStorage {
 	t.Helper()
-	storage, err := NewSQLiteStorage(":memory:")
+	// Use a temp file for each test to ensure isolation
+	tmpFile, err := os.CreateTemp("", "rackd-test-*.db")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	tmpFile.Close()
+	dbPath := tmpFile.Name()
+	t.Cleanup(func() {
+		os.Remove(dbPath)
+		os.Remove(dbPath + "-wal")
+		os.Remove(dbPath + "-shm")
+	})
+
+	storage, err := NewSQLiteStorageWithPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to create test storage: %v", err)
 	}
@@ -282,9 +296,9 @@ func TestDeviceOperations_Update(t *testing.T) {
 
 	// Create device
 	device := &model.Device{
-		Name:     "original-name",
-		Tags:     []string{"tag1"},
-		Domains:  []string{"original.com"},
+		Name:      "original-name",
+		Tags:      []string{"tag1"},
+		Domains:   []string{"original.com"},
 		Addresses: []model.Address{{IP: "192.168.1.1", Type: "ipv4"}},
 	}
 	if err := storage.CreateDevice(device); err != nil {
@@ -353,9 +367,9 @@ func TestDeviceOperations_Delete(t *testing.T) {
 
 	// Create device
 	device := &model.Device{
-		Name:     "to-delete",
-		Tags:     []string{"tag1"},
-		Domains:  []string{"delete.com"},
+		Name:      "to-delete",
+		Tags:      []string{"tag1"},
+		Domains:   []string{"delete.com"},
 		Addresses: []model.Address{{IP: "192.168.1.1", Type: "ipv4"}},
 	}
 	if err := storage.CreateDevice(device); err != nil {
@@ -519,10 +533,10 @@ func TestDeviceOperations_Search(t *testing.T) {
 		query    string
 		expected int
 	}{
-		{"web", 1},       // Match name
-		{"Database", 1},  // Match description
-		{"192.168.1", 2}, // Match IP addresses
-		{"production", 2}, // Match tags
+		{"web", 1},         // Match name
+		{"Database", 1},    // Match description
+		{"192.168.1", 2},   // Match IP addresses
+		{"production", 2},  // Match tags
 		{"example.com", 1}, // Match domains
 		{"nonexistent", 0}, // No match
 	}
@@ -783,6 +797,12 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
+	// Remove default datacenter to start clean
+	defaultDCs, _ := storage.ListDatacenters(&model.DatacenterFilter{Name: "Default"})
+	for _, dc := range defaultDCs {
+		storage.DeleteDatacenter(dc.ID)
+	}
+
 	// Create multiple datacenters
 	names := []string{"DC1", "DC2", "DC3"}
 	for _, name := range names {
@@ -826,6 +846,12 @@ func TestDatacenterOperations_ListWithFilter(t *testing.T) {
 func TestDatacenterOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
+
+	// Remove default datacenter to start clean
+	defaultDCs, _ := storage.ListDatacenters(&model.DatacenterFilter{Name: "Default"})
+	for _, dc := range defaultDCs {
+		storage.DeleteDatacenter(dc.ID)
+	}
 
 	result, err := storage.ListDatacenters(nil)
 	if err != nil {
@@ -1511,13 +1537,13 @@ func TestCalculateCIDRSize(t *testing.T) {
 		expected int
 		hasError bool
 	}{
-		{"192.168.1.0/24", 254, false},   // 256 - 2 (network + broadcast)
-		{"10.0.0.0/16", 65534, false},    // 65536 - 2
-		{"192.168.1.0/30", 2, false},     // 4 - 2
-		{"192.168.1.0/31", 2, false},     // Point-to-point link
-		{"192.168.1.1/32", 1, false},     // Single host
-		{"invalid", 0, true},             // Invalid CIDR
-		{"192.168.1.0", 0, true},         // Missing prefix
+		{"192.168.1.0/24", 254, false}, // 256 - 2 (network + broadcast)
+		{"10.0.0.0/16", 65534, false},  // 65536 - 2
+		{"192.168.1.0/30", 2, false},   // 4 - 2
+		{"192.168.1.0/31", 2, false},   // Point-to-point link
+		{"192.168.1.1/32", 1, false},   // Single host
+		{"invalid", 0, true},           // Invalid CIDR
+		{"192.168.1.0", 0, true},       // Missing prefix
 	}
 
 	for _, tt := range tests {
@@ -2396,11 +2422,11 @@ func TestIPInRange(t *testing.T) {
 
 func TestIncrementIP(t *testing.T) {
 	tests := []struct {
-		name        string
-		ip          string
-		endIP       string
-		expectedIP  string
-		expectedOK  bool
+		name       string
+		ip         string
+		endIP      string
+		expectedIP string
+		expectedOK bool
 	}{
 		{"simple increment", "192.168.1.100", "192.168.1.200", "192.168.1.101", true},
 		{"octet rollover", "192.168.1.255", "192.168.2.200", "192.168.2.0", true},
@@ -3735,11 +3761,11 @@ func TestCalculateCIDRSizeEdgeCases(t *testing.T) {
 		expected int
 		hasError bool
 	}{
-		{"10.0.0.0/8", 1 << 20, false},    // Large network (capped at ~1M)
-		{"192.168.1.128/25", 126, false},  // /25 subnet
-		{"192.168.1.192/26", 62, false},   // /26 subnet
-		{"192.168.1.240/28", 14, false},   // /28 subnet
-		{"192.168.1.252/30", 2, false},    // /30 subnet
+		{"10.0.0.0/8", 1 << 20, false},   // Large network (capped at ~1M)
+		{"192.168.1.128/25", 126, false}, // /25 subnet
+		{"192.168.1.192/26", 62, false},  // /26 subnet
+		{"192.168.1.240/28", 14, false},  // /28 subnet
+		{"192.168.1.252/30", 2, false},   // /30 subnet
 	}
 
 	for _, tt := range tests {

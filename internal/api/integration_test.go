@@ -39,6 +39,10 @@ func (m *mockIntegrationScanner) GetScanStatus(scanID string) (*model.DiscoveryS
 	return m.store.GetDiscoveryScan(scanID)
 }
 
+func (m *mockIntegrationScanner) CancelScan(scanID string) error {
+	return nil
+}
+
 // setupIntegrationServer creates a full server with auth middleware
 func setupIntegrationServer(t *testing.T, authToken string, withScanner bool) (*httptest.Server, storage.ExtendedStorage) {
 	t.Helper()

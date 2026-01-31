@@ -68,6 +68,48 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 	return s, nil
 }
 
+// NewSQLiteStorageWithPath creates a new SQLite storage instance with a specific database file path
+func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
+	}
+
+	// Open database with SQLite pragma settings
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Configure connection pool
+	db.SetMaxOpenConns(1) // SQLite only supports one writer
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(time.Hour)
+
+	// Test connection
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	s := &SQLiteStorage{db: db}
+
+	// Run migrations
+	ctx := context.Background()
+	if err := RunMigrations(ctx, db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	// Create default datacenter if none exists
+	if err := s.ensureDefaultDatacenter(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
+	}
+
+	return s, nil
+}
+
 // Close closes the database connection
 func (s *SQLiteStorage) Close() error {
 	return s.db.Close()

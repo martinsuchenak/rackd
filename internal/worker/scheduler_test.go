@@ -36,6 +36,10 @@ func (m *mockScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error)
 	return &model.DiscoveryScan{ID: scanID, Status: model.ScanStatusCompleted}, nil
 }
 
+func (m *mockScanner) CancelScan(scanID string) error {
+	return nil
+}
+
 func newTestScheduler(t *testing.T) (*Scheduler, storage.ExtendedStorage, *mockScanner) {
 	store, err := storage.NewSQLiteStorage(":memory:")
 	if err != nil {
