@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -72,6 +73,36 @@ func (h *Handler) getScan(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
 			return
 		}
+		h.internalError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, scan)
+}
+
+func (h *Handler) cancelScan(w http.ResponseWriter, r *http.Request) {
+	if h.scanner == nil {
+		h.writeError(w, http.StatusInternalServerError, "SCANNER_NOT_INITIALIZED", "Discovery scanner not initialized")
+		return
+	}
+
+	id := r.PathValue("id")
+	err := h.scanner.CancelScan(id)
+	if err != nil {
+		if errors.Is(err, discovery.ErrScanNotFound) {
+			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
+			return
+		}
+		if errors.Is(err, discovery.ErrScanNotRunning) {
+			h.writeError(w, http.StatusBadRequest, "NOT_RUNNING", "Scan is not running or pending")
+			return
+		}
+		h.internalError(w, err)
+		return
+	}
+
+	// Return updated scan status
+	scan, err := h.scanner.GetScanStatus(id)
+	if err != nil {
 		h.internalError(w, err)
 		return
 	}

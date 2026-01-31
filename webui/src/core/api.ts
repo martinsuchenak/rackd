@@ -263,6 +263,10 @@ export class RackdAPI {
     return this.request<void>('DELETE', `/api/discovery/scans/${id}`);
   }
 
+  async cancelScan(id: string): Promise<DiscoveryScan> {
+    return this.request<DiscoveryScan>('POST', `/api/discovery/scans/${id}/cancel`);
+  }
+
   async listDiscoveredDevices(networkId?: string): Promise<DiscoveredDevice[]> {
     const query = networkId ? `?network_id=${networkId}` : '';
     return this.request<DiscoveredDevice[]>('GET', `/api/discovery/devices${query}`);

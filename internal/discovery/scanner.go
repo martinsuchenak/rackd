@@ -15,17 +15,19 @@ import (
 )
 
 type DefaultScanner struct {
-	storage storage.DiscoveryStorage
-	config  *config.Config
-	scans   map[string]*model.DiscoveryScan
-	mu      sync.RWMutex
+	storage     storage.DiscoveryStorage
+	config      *config.Config
+	scans       map[string]*model.DiscoveryScan
+	cancelFuncs map[string]context.CancelFunc
+	mu          sync.RWMutex
 }
 
 func NewScanner(store storage.DiscoveryStorage, cfg *config.Config) *DefaultScanner {
 	return &DefaultScanner{
-		storage: store,
-		config:  cfg,
-		scans:   make(map[string]*model.DiscoveryScan),
+		storage:     store,
+		config:      cfg,
+		scans:       make(map[string]*model.DiscoveryScan),
+		cancelFuncs: make(map[string]context.CancelFunc),
 	}
 }
 
@@ -33,6 +35,8 @@ func NewScanner(store storage.DiscoveryStorage, cfg *config.Config) *DefaultScan
 const MaxSubnetBits = 16
 
 var ErrSubnetTooLarge = fmt.Errorf("subnet too large: maximum /%d allowed", 32-MaxSubnetBits)
+var ErrScanNotFound = fmt.Errorf("scan not found")
+var ErrScanNotRunning = fmt.Errorf("scan is not running or pending")
 
 func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
 	_, ipNet, err := net.ParseCIDR(network.Subnet)
@@ -60,18 +64,23 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 		return nil, err
 	}
 
+	// Create cancellable context for the scan
+	scanCtxCancellable, cancel := context.WithCancel(context.Background())
+
 	s.mu.Lock()
 	s.scans[scan.ID] = scan
+	s.cancelFuncs[scan.ID] = cancel
 	s.mu.Unlock()
 
 	log.Info("Starting discovery scan", "network", network.Name, "network_id", network.ID, "scan_id", scan.ID, "scan_type", scanType, "hosts", scan.TotalHosts)
 
-	// Use background context for scan to not be tied to HTTP request lifecycle
-	// This prevents scan from being cancelled when HTTP response is sent
-	bgCtx := context.Background()
-
 	go func() {
 		defer func() {
+			// Clean up cancel function when scan completes
+			s.mu.Lock()
+			delete(s.cancelFuncs, scan.ID)
+			s.mu.Unlock()
+
 			if r := recover(); r != nil {
 				log.Error("Panic in scan goroutine", "scan_id", scan.ID, "panic", r)
 				now := time.Now()
@@ -93,7 +102,7 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 		default:
 		}
 
-		s.runScan(bgCtx, scan, network, ipNet, scanType)
+		s.runScan(scanCtxCancellable, scan, network, ipNet, scanType)
 	}()
 
 	return scan, nil
@@ -107,6 +116,31 @@ func (s *DefaultScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, err
 		return scan, nil
 	}
 	return s.storage.GetDiscoveryScan(scanID)
+}
+
+func (s *DefaultScanner) CancelScan(scanID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	scan, ok := s.scans[scanID]
+	if !ok {
+		return ErrScanNotFound
+	}
+
+	if scan.Status != model.ScanStatusRunning && scan.Status != model.ScanStatusPending {
+		return ErrScanNotRunning
+	}
+
+	cancel, ok := s.cancelFuncs[scanID]
+	if !ok {
+		return ErrScanNotFound
+	}
+
+	log.Info("Cancelling scan", "scan_id", scanID)
+	cancel()
+	delete(s.cancelFuncs, scanID)
+
+	return nil
 }
 
 func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan, network *model.Network, ipNet *net.IPNet, scanType string) {

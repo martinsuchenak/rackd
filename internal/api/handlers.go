@@ -89,6 +89,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/discovery/networks/{id}/scan", wrap(h.startScan))
 	mux.HandleFunc("GET /api/discovery/scans", wrap(h.listScans))
 	mux.HandleFunc("GET /api/discovery/scans/{id}", wrap(h.getScan))
+	mux.HandleFunc("POST /api/discovery/scans/{id}/cancel", wrap(h.cancelScan))
 	mux.HandleFunc("DELETE /api/discovery/scans/{id}", wrap(h.deleteDiscoveryScan))
 	mux.HandleFunc("GET /api/discovery/devices", wrap(h.listDiscoveredDevices))
 	mux.HandleFunc("DELETE /api/discovery/devices", wrap(h.deleteDiscoveredDevicesByNetwork))

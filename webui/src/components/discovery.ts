@@ -41,6 +41,8 @@ export function discoveryList() {
     promoteDevice: null as DiscoveredDevice | null,
     promoteName: '',
     promoting: false,
+    // Cancel scan state
+    cancellingScans: new Set<string>(),
 
     openScanModal(): void {
       this.showScanModal = true;
@@ -196,6 +198,24 @@ export function discoveryList() {
         await this.loadDiscoveredDevices();
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete devices';
+      }
+    },
+
+    isCancelling(scanId: string): boolean {
+      return this.cancellingScans.has(scanId);
+    },
+
+    async cancelScan(scanId: string): Promise<void> {
+      if (!confirm('Stop this scan? Progress will be lost.')) return;
+      this.error = '';
+      this.cancellingScans.add(scanId);
+      try {
+        await api.cancelScan(scanId);
+        await this.loadScans();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to stop scan';
+      } finally {
+        this.cancellingScans.delete(scanId);
       }
     },
   };

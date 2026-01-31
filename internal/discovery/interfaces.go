@@ -10,4 +10,5 @@ import (
 type Scanner interface {
 	Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error)
 	GetScanStatus(scanID string) (*model.DiscoveryScan, error)
+	CancelScan(scanID string) error
 }
