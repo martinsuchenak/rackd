@@ -276,6 +276,10 @@ export class RackdAPI {
     return this.request<void>('DELETE', `/api/discovery/devices/${id}`);
   }
 
+  async promoteDevice(id: string, name: string): Promise<Device> {
+    return this.request<Device>('POST', `/api/discovery/devices/${id}/promote`, { name });
+  }
+
   async deleteDiscoveredDevicesByNetwork(networkId: string): Promise<void> {
     return this.request<void>('DELETE', `/api/discovery/devices?network_id=${networkId}`);
   }

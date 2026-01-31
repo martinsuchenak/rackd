@@ -19,12 +19,19 @@
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Recent Scans</div>
-        <div class="p-4">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <span class="font-semibold text-gray-900 dark:text-white">Recent Scans</span>
+          <button x-show="scans.some(s => s.status === 'completed' || s.status === 'failed')"
+                  @click="deleteOldScans()"
+                  class="text-xs text-red-600 dark:text-red-400 hover:underline">
+            Delete Old
+          </button>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto">
           <p x-show="loading" class="text-gray-500">Loading...</p>
           <p x-show="!loading && scans.length === 0" class="text-gray-500">No scans found</p>
           <div class="space-y-2">
-            <template x-for="s in scans.slice(0, 10)" :key="s.id">
+            <template x-for="s in scans" :key="s.id">
               <div class="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div class="flex justify-between items-center">
                   <span class="text-gray-900 dark:text-white" x-text="s.network_id"></span>
@@ -34,6 +41,12 @@
                               :disabled="isCancelling(s.id)"
                               class="px-2 py-0.5 text-xs rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
                               x-text="isCancelling(s.id) ? 'Stopping...' : 'Stop'">
+                      </button>
+                    </template>
+                    <template x-if="s.status === 'completed' || s.status === 'failed'">
+                      <button @click="deleteScan(s.id)"
+                              class="px-2 py-0.5 text-xs rounded-md text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400">
+                        Delete
                       </button>
                     </template>
                     <span class="px-2 py-0.5 text-xs rounded-full"
@@ -53,18 +66,28 @@
         </div>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Discovered Devices</div>
-        <div class="p-4">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <span class="font-semibold text-gray-900 dark:text-white">Discovered Devices</span>
+          <button x-show="discoveredDevices.length > 0"
+                  @click="deleteAllDevices()"
+                  class="text-xs text-red-600 dark:text-red-400 hover:underline">
+            Delete All
+          </button>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto">
           <p x-show="loading" class="text-gray-500">Loading...</p>
           <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-500">No discovered devices</p>
           <div class="space-y-2">
-            <template x-for="d in discoveredDevices.slice(0, 10)" :key="d.id">
+            <template x-for="d in discoveredDevices" :key="d.id">
               <div class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div>
                   <div class="text-gray-900 dark:text-white" x-text="d.ip"></div>
                   <div class="text-xs text-gray-500 dark:text-gray-400" x-text="d.hostname || 'Unknown hostname'"></div>
                 </div>
-                <button @click="openPromoteModal(d)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Promote</button>
+                <div class="flex items-center gap-2">
+                  <button @click="openPromoteModal(d)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Promote</button>
+                  <button @click="deleteDevice(d.id)" class="text-sm text-red-600 dark:text-red-400 hover:underline">Delete</button>
+                </div>
               </div>
             </template>
           </div>

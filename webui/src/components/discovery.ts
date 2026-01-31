@@ -175,13 +175,24 @@ export function discoveryList() {
     },
 
     async deleteScan(scanId: string): Promise<void> {
-      if (!confirm('Delete this scan?')) return;
       this.error = '';
       try {
         await api.deleteScan(scanId);
         await this.loadScans();
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete scan';
+      }
+    },
+
+    async deleteOldScans(): Promise<void> {
+      const oldScans = this.scans.filter((s) => s.status === 'completed' || s.status === 'failed');
+      if (!confirm(`Delete ${oldScans.length} completed/failed scan(s)?`)) return;
+      this.error = '';
+      try {
+        await Promise.all(oldScans.map((s) => api.deleteScan(s.id)));
+        await this.loadScans();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete scans';
       }
     },
 
