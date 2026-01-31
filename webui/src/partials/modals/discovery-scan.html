@@ -1,0 +1,33 @@
+<div x-show="showScanModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/50" @click="showScanModal = false"></div>
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Discovery Scan</h3>
+    <form @submit.prevent="startScan()">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network *</label>
+          <select x-model="scanNetworkId" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Select a network</option>
+            <template x-for="n in networks" :key="n.id">
+              <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Type</label>
+          <select x-model="scanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="quick">Quick (ICMP ping)</option>
+            <option value="full">Full (TCP port scan)</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" @click="showScanModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+        <button type="submit" :disabled="scanning" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+          <span x-show="!scanning">Start Scan</span>
+          <span x-show="scanning">Starting...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

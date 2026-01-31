@@ -15,7 +15,13 @@ interface NetworkListData {
   showDeleteModal: boolean;
   deleteTarget: Network | null;
   deleting: boolean;
+  showModal: boolean;
+  isEditMode: boolean;
+  editNetwork: Partial<Network>;
+  saving: boolean;
   hasMultipleDatacenters: boolean;
+  deleteModalTitle: string;
+  deleteModalName: string;
   init(): Promise<void>;
   loadNetworks(): Promise<void>;
   loadDatacenters(): Promise<void>;
@@ -28,7 +34,9 @@ interface NetworkListData {
   cancelDelete(): void;
   doDelete(): Promise<void>;
   openAddModal(): void;
-  saveNew(): Promise<void>;
+  openEditModal(network: Network): void;
+  closeModal(): void;
+  saveNetwork(): Promise<void>;
 }
 
 export function networkList() {
@@ -43,13 +51,22 @@ export function networkList() {
     showDeleteModal: false,
     deleteTarget: null as Network | null,
     deleting: false,
-    // Add modal
-    showAddModal: false,
-    newNetwork: { name: '', subnet: '', vlan_id: 0, datacenter_id: '', description: '' } as Partial<Network>,
+    // Unified add/edit modal
+    showModal: false,
+    isEditMode: false,
+    editNetwork: {} as Partial<Network>,
     saving: false,
 
     get hasMultipleDatacenters(): boolean {
       return this.datacenters.length > 1;
+    },
+
+    get deleteModalTitle(): string {
+      return 'Delete Network';
+    },
+
+    get deleteModalName(): string {
+      return this.deleteTarget?.name || '';
     },
 
     async init(): Promise<void> {
@@ -143,29 +160,53 @@ export function networkList() {
     },
 
     openAddModal(): void {
-      this.showAddModal = true;
-      this.newNetwork = {
+      this.isEditMode = false;
+      this.editNetwork = {
         name: '',
         subnet: '',
         vlan_id: 0,
         datacenter_id: this.datacenters.length === 1 ? this.datacenters[0].id : '',
         description: '',
       };
+      this.showModal = true;
       setTimeout(() => {
-        (document.querySelector('[x-show="showAddModal"] input[type="text"]') as HTMLInputElement)?.focus();
+        (document.querySelector('[x-show="showModal"] input[type="text"]') as HTMLInputElement)?.focus();
       }, 50);
     },
 
-    async saveNew(): Promise<void> {
+    openEditModal(network: Network): void {
+      this.isEditMode = true;
+      this.editNetwork = {
+        id: network.id,
+        name: network.name,
+        subnet: network.subnet,
+        vlan_id: network.vlan_id,
+        datacenter_id: network.datacenter_id || '',
+        description: network.description || '',
+      };
+      this.showModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
+    },
+
+    closeModal(): void {
+      this.showModal = false;
+    },
+
+    async saveNetwork(): Promise<void> {
       this.saving = true;
       this.error = '';
       try {
-        await api.createNetwork(this.newNetwork);
-        this.showAddModal = false;
-        this.newNetwork = { name: '', subnet: '', vlan_id: 0, datacenter_id: '', description: '' };
+        if (this.isEditMode && this.editNetwork.id) {
+          await api.updateNetwork(this.editNetwork.id, this.editNetwork);
+        } else {
+          await api.createNetwork(this.editNetwork);
+        }
+        this.showModal = false;
         await this.loadNetworks();
       } catch (e) {
-        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create network';
+        this.error = e instanceof RackdAPIError ? e.message : (this.isEditMode ? 'Failed to update network' : 'Failed to create network');
       } finally {
         this.saving = false;
       }
@@ -183,6 +224,8 @@ interface NetworkDetailData {
   showDeleteModal: boolean;
   deleting: boolean;
   hasMultipleDatacenters: boolean;
+  deleteModalTitle: string;
+  deleteModalName: string;
   // Edit network
   showEditModal: boolean;
   editNetwork: Partial<Network>;
@@ -244,6 +287,14 @@ export function networkDetail(): NetworkDetailData {
 
     get hasMultipleDatacenters(): boolean {
       return this.datacenters.length > 1;
+    },
+
+    get deleteModalTitle(): string {
+      return 'Delete Network';
+    },
+
+    get deleteModalName(): string {
+      return this.network?.name || '';
     },
 
     async init(): Promise<void> {

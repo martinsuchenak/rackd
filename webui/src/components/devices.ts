@@ -80,6 +80,14 @@ export function deviceList() {
       return this.datacenters.length > 1;
     },
 
+    get deleteModalTitle(): string {
+      return 'Delete Device';
+    },
+
+    get deleteModalName(): string {
+      return this.deleteTarget?.name || '';
+    },
+
     get singleDatacenterId(): string {
       return this.datacenters.length === 1 ? this.datacenters[0].id : '';
     },
@@ -492,6 +500,14 @@ export function deviceDetail() {
     getDatacenterName(id?: string): string {
       if (!id) return '-';
       return this.datacenters.find((d) => d.id === id)?.name ?? id;
+    },
+
+    get deleteModalTitle(): string {
+      return 'Delete Device';
+    },
+
+    get deleteModalName(): string {
+      return this.device?.name || '';
     },
 
     confirmDelete(): void {

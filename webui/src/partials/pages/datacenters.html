@@ -1,0 +1,55 @@
+<!-- Datacenters List -->
+<template x-if="route === '/datacenters'">
+  <div x-data="datacenterList">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Datacenters</h1>
+      <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        Add Datacenter
+      </button>
+    </div>
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+        <input type="text" x-model="search" @input="applySearch()" placeholder="Search..."
+               class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button @click="clearFilters()" class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          Clear filters
+        </button>
+      </div>
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+            <th class="px-6 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tr x-show="loading"><td colspan="3" class="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+          <tr x-show="!loading && datacenters.length === 0"><td colspan="3" class="px-6 py-8 text-center text-gray-500">No datacenters found</td></tr>
+          <template x-for="dc in datacenters" :key="dc.id">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-6 py-4">
+                <a :href="'/datacenters/detail?id=' + dc.id" @click.prevent="$dispatch('nav', '/datacenters/detail?id=' + dc.id)" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" x-text="dc.name"></a>
+              </td>
+              <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="dc.location || '-'"></td>
+              <td class="px-6 py-4 text-right space-x-3">
+                <button @click="openEditModal(dc)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">Edit</button>
+                <button @click="confirmDelete(dc)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+    <!-- Delete Modal -->
+    <include src="partials/modals/delete-confirm.html"></include>
+    <!-- Datacenter Modal (Add/Edit) -->
+    <include src="partials/modals/datacenter-form.html"></include>
+  </div>
+</template>
+
+<!-- Datacenter Detail -->
+<template x-if="route.startsWith('/datacenters/detail')">
+  <include src="partials/pages/datacenter-detail.html"></include>
+</template>

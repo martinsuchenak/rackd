@@ -43,7 +43,7 @@ ui-build:
 	@mkdir -p $(ASSETS_DIR)
 	cd $(WEBUI_DIR) && bun install
 	cd $(WEBUI_DIR) && bun run build
-	cp $(WEBUI_DIR)/src/index.html $(ASSETS_DIR)/
+	cp $(WEBUI_DIR)/dist/index.html $(ASSETS_DIR)/
 	cp $(WEBUI_DIR)/dist/output.css $(ASSETS_DIR)/
 	cp $(WEBUI_DIR)/dist/app.js $(ASSETS_DIR)/
 

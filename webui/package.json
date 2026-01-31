@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "bun run build --watch",
-    "build": "bun run build:css && bun run build:js && bun run build:assets",
+    "build": "bun run build:css && bun run build:js && bun run build:html && bun run build:assets",
     "build:css": "bunx @tailwindcss/cli -c ./tailwind.config.js -i ./src/styles.css -o ./dist/output.css --minify",
     "build:js": "bun build ./src/app.ts --outdir ./dist --minify",
-    "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && cp ./src/index.html ./dist/ && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
+    "build:html": "bun run ./scripts/build-html.ts",
+    "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {
@@ -16,6 +17,8 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",
     "@types/alpinejs": "^3.13.11",
+    "posthtml": "^0.16.7",
+    "posthtml-include": "^2.0.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3"
   }

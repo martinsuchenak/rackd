@@ -11,7 +11,12 @@
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(go version:*)"
+      "Bash(go version:*)",
+      "Bash(bun add:*)",
+      "Bash(bun run build:*)",
+      "Bash(bun build:*)",
+      "Bash(bun run:*)",
+      "Bash(git stash:*)"
     ]
   },
   "spinnerVerbs": {

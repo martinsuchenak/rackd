@@ -1,0 +1,26 @@
+<!--
+  Unified Delete Confirmation Modal
+  Expects parent scope to have:
+  - showDeleteModal: boolean
+  - deleteModalTitle: string (e.g., "Delete Device")
+  - deleteModalName: string (name of item being deleted)
+  - deleting: boolean
+  - cancelDelete(): function
+  - doDelete(): function
+-->
+<div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/50" @click="cancelDelete()"></div>
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" x-text="deleteModalTitle"></h3>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">
+      Are you sure you want to delete <strong x-text="deleteModalName"></strong>? This action cannot be undone.
+    </p>
+    <div class="flex justify-end gap-3">
+      <button @click="cancelDelete()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+      <button @click="doDelete()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">
+        <span x-show="!deleting">Delete</span>
+        <span x-show="deleting">Deleting...</span>
+      </button>
+    </div>
+  </div>
+</div>

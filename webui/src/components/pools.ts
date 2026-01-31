@@ -13,6 +13,8 @@ interface PoolDetailData {
   showDeleteModal: boolean;
   deleting: boolean;
   fetchingNextIP: boolean;
+  deleteModalTitle: string;
+  deleteModalName: string;
   init(): Promise<void>;
   loadPool(): Promise<void>;
   loadNetwork(): Promise<void>;
@@ -35,6 +37,14 @@ export function poolDetail(): PoolDetailData {
     showDeleteModal: false,
     deleting: false,
     fetchingNextIP: false,
+
+    get deleteModalTitle(): string {
+      return 'Delete Pool';
+    },
+
+    get deleteModalName(): string {
+      return this.pool?.name || '';
+    },
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation

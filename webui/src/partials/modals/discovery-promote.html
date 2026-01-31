@@ -1,0 +1,26 @@
+<div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false"></div>
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Promote to Device</h3>
+    <form @submit.prevent="doPromote()">
+      <div class="space-y-4">
+        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <div class="text-sm text-gray-500 dark:text-gray-400">IP Address</div>
+          <div class="font-medium text-gray-900 dark:text-white" x-text="promoteDevice?.ip"></div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-2" x-show="promoteDevice?.hostname">Hostname: <span x-text="promoteDevice?.hostname"></span></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device Name *</label>
+          <input type="text" x-model="promoteName" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+        <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+          <span x-show="!promoting">Promote</span>
+          <span x-show="promoting">Promoting...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

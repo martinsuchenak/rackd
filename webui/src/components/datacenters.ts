@@ -13,6 +13,12 @@ interface DatacenterListData {
   showDeleteModal: boolean;
   deleteTarget: Datacenter | null;
   deleting: boolean;
+  showModal: boolean;
+  isEditMode: boolean;
+  editDatacenter: Partial<Datacenter>;
+  saving: boolean;
+  deleteModalTitle: string;
+  deleteModalName: string;
   init(): Promise<void>;
   loadDatacenters(): Promise<void>;
   filterDatacenters(): void;
@@ -21,6 +27,10 @@ interface DatacenterListData {
   confirmDelete(dc: Datacenter): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  openAddModal(): void;
+  openEditModal(dc: Datacenter): void;
+  closeModal(): void;
+  saveDatacenter(): Promise<void>;
 }
 
 export function datacenterList() {
@@ -33,16 +43,45 @@ export function datacenterList() {
     showDeleteModal: false,
     deleteTarget: null as Datacenter | null,
     deleting: false,
-    showAddModal: false,
-    newDatacenter: { name: '', location: '', description: '' } as Partial<Datacenter>,
+    // Unified add/edit modal
+    showModal: false,
+    isEditMode: false,
+    editDatacenter: {} as Partial<Datacenter>,
     saving: false,
 
+    get deleteModalTitle(): string {
+      return 'Delete Datacenter';
+    },
+
+    get deleteModalName(): string {
+      return this.deleteTarget?.name || '';
+    },
+
     openAddModal(): void {
-      this.newDatacenter = { name: '', location: '', description: '' };
-      this.showAddModal = true;
+      this.isEditMode = false;
+      this.editDatacenter = { name: '', location: '', description: '' };
+      this.showModal = true;
       setTimeout(() => {
-        (document.querySelector('[x-show="showAddModal"] input[type="text"]') as HTMLInputElement)?.focus();
+        (document.querySelector('[x-show="showModal"] input[type="text"]') as HTMLInputElement)?.focus();
       }, 50);
+    },
+
+    openEditModal(dc: Datacenter): void {
+      this.isEditMode = true;
+      this.editDatacenter = {
+        id: dc.id,
+        name: dc.name,
+        location: dc.location || '',
+        description: dc.description || '',
+      };
+      this.showModal = true;
+      setTimeout(() => {
+        (document.querySelector('[x-show="showModal"] input[type="text"]') as HTMLInputElement)?.focus();
+      }, 50);
+    },
+
+    closeModal(): void {
+      this.showModal = false;
     },
 
     async init(): Promise<void> {
@@ -117,16 +156,19 @@ export function datacenterList() {
       }
     },
 
-    async saveNew(): Promise<void> {
+    async saveDatacenter(): Promise<void> {
       this.saving = true;
       this.error = '';
       try {
-        await api.createDatacenter(this.newDatacenter);
-        this.showAddModal = false;
-        this.newDatacenter = { name: '', location: '', description: '' };
+        if (this.isEditMode && this.editDatacenter.id) {
+          await api.updateDatacenter(this.editDatacenter.id, this.editDatacenter);
+        } else {
+          await api.createDatacenter(this.editDatacenter);
+        }
+        this.showModal = false;
         await this.loadDatacenters();
       } catch (e) {
-        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create datacenter';
+        this.error = e instanceof RackdAPIError ? e.message : (this.isEditMode ? 'Failed to update datacenter' : 'Failed to create datacenter');
       } finally {
         this.saving = false;
       }
@@ -141,6 +183,8 @@ interface DatacenterDetailData {
   error: string;
   showDeleteModal: boolean;
   deleting: boolean;
+  deleteModalTitle: string;
+  deleteModalName: string;
   showEditModal: boolean;
   editDatacenter: Partial<Datacenter>;
   saving: boolean;
@@ -166,6 +210,14 @@ export function datacenterDetail(): DatacenterDetailData {
     showEditModal: false,
     editDatacenter: {},
     saving: false,
+
+    get deleteModalTitle(): string {
+      return 'Delete Datacenter';
+    },
+
+    get deleteModalName(): string {
+      return this.datacenter?.name || '';
+    },
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation

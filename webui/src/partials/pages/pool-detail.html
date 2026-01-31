@@ -1,0 +1,72 @@
+<div x-data="poolDetail">
+  <div x-show="loading" class="text-gray-500">Loading...</div>
+  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+  <div x-show="!loading && pool">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center">
+        <button @click="$dispatch('nav', network ? '/networks/detail?id=' + network.id : '/networks')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="pool?.name"></h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400" x-show="network">Network: <span x-text="network?.name"></span></p>
+        </div>
+      </div>
+      <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Pool Details -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pool Details</h2>
+        <dl class="grid grid-cols-2 gap-4">
+          <div><dt class="text-sm text-gray-500 dark:text-gray-400">Start IP</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.start_ip"></dd></div>
+          <div><dt class="text-sm text-gray-500 dark:text-gray-400">End IP</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.end_ip"></dd></div>
+          <div><dt class="text-sm text-gray-500 dark:text-gray-400">Gateway</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.gateway || '-'"></dd></div>
+          <div><dt class="text-sm text-gray-500 dark:text-gray-400">DNS Servers</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.dns_servers || '-'"></dd></div>
+        </dl>
+        <div x-show="pool?.tags?.length" class="mt-4">
+          <dt class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</dt>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="tag in (pool?.tags || [])" :key="tag">
+              <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded" x-text="tag"></span>
+            </template>
+          </div>
+        </div>
+        <div x-show="pool?.description" class="mt-4">
+          <dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.description"></dd>
+        </div>
+
+        <!-- Next IP -->
+        <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Get Next Available IP</h3>
+          <div class="flex items-center gap-3">
+            <button @click="fetchNextIP()" :disabled="fetchingNextIP" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+              <span x-show="!fetchingNextIP">Get Next IP</span>
+              <span x-show="fetchingNextIP">Fetching...</span>
+            </button>
+            <span x-show="nextIP" class="font-mono text-lg text-gray-900 dark:text-white" x-text="nextIP"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- IP Heatmap -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">IP Usage Heatmap</h2>
+        <div class="mb-4 flex items-center gap-4 text-sm">
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-green-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Available</span></div>
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-red-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Used</span></div>
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-yellow-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Reserved</span></div>
+        </div>
+        <div x-show="heatmap.length === 0" class="text-gray-500 dark:text-gray-400 text-center py-8">No IP data available</div>
+        <div x-show="heatmap.length > 0" class="grid grid-cols-16 gap-1">
+          <template x-for="ip in heatmap" :key="ip.ip">
+            <div :class="getStatusColor(ip.status)" class="w-4 h-4 rounded cursor-pointer" :title="ip.ip + ' - ' + ip.status"></div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Modal -->
+  <include src="partials/modals/delete-confirm.html"></include>
+</div>
