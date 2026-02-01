@@ -12,10 +12,10 @@ interface NavData {
 }
 
 const baseNavItems: NavItem[] = [
-  { id: 'devices', label: 'Devices', path: '/devices', icon: 'server', order: 10 },
-  { id: 'networks', label: 'Networks', path: '/networks', icon: 'network', order: 20 },
-  { id: 'datacenters', label: 'Datacenters', path: '/datacenters', icon: 'building', order: 30 },
-  { id: 'discovery', label: 'Discovery', path: '/discovery', icon: 'search', order: 40 },
+  { label: 'Devices', path: '/devices', icon: 'server', order: 10 },
+  { label: 'Networks', path: '/networks', icon: 'network', order: 20 },
+  { label: 'Datacenters', path: '/datacenters', icon: 'building', order: 30 },
+  { label: 'Discovery', path: '/discovery', icon: 'search', order: 40 },
 ];
 
 export function nav(): NavData {

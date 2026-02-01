@@ -3,10 +3,12 @@ package server
 
 import (
 	"database/sql"
+	"io"
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/internal/api"
 	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/internal/log"
 	intmcp "github.com/martinsuchenak/rackd/internal/mcp"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/server"
@@ -429,17 +431,27 @@ func convertDiscoveryScanToInternal(s *rackd.DiscoveryScan) *model.DiscoveryScan
 
 // Run starts the server with optional features
 func Run(cfg *config.Config, store *StorageAdapter, features ...rackd.Feature) error {
+	return RunWithCustomRoutes(cfg, store, nil, features...)
+}
+
+// RunWithCustomRoutes starts the server with optional features and custom route registration
+func RunWithCustomRoutes(cfg *config.Config, store *StorageAdapter, registerRoutes func(mux *http.ServeMux), features ...rackd.Feature) error {
 	// Convert public features to internal features
 	internalFeatures := make([]server.Feature, len(features))
 	for i, f := range features {
 		internalFeatures[i] = &featureAdapter{f}
 	}
-	return server.Run(cfg, store.internal, internalFeatures...)
+	return server.RunWithCustomRoutes(cfg, store.internal, registerRoutes, internalFeatures...)
 }
 
 // LoadConfig loads configuration from environment
 func LoadConfig() *config.Config {
 	return config.Load()
+}
+
+// InitLogger initializes the logging system with the specified format, level, and writer
+func InitLogger(logFormat, logLevel string, writer io.Writer) {
+	log.Init(logFormat, logLevel, writer)
 }
 
 // NewStorage creates a new storage instance

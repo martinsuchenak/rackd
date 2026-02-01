@@ -13,20 +13,62 @@ import { poolDetail, poolForm } from './components/pools';
 import { datacenterList, datacenterDetail, datacenterForm } from './components/datacenters';
 import { discoveryList, scanForm, scanDetail, promoteForm } from './components/discovery';
 
+// Page registry for extensions
+interface ExtensionPage {
+  path: string;
+  render: () => string; // Returns HTML template with x-data binding
+}
+
+const extensionPages: ExtensionPage[] = [];
+
 declare global {
   interface Window {
     Alpine: typeof Alpine;
     rackdAPI: RackdAPI;
     rackdConfig: UIConfig | null;
     rackdEnterprise?: { init(): void };
+    rackdRegisterPage: (path: string, render: () => string) => void;
+    rackdExtensionPages: ExtensionPage[];
   }
 }
+
+// Extension API - called by enterprise/plugins
+window.rackdRegisterPage = (path: string, render: () => string) => {
+  extensionPages.push({ path, render });
+};
+
+// Expose for router
+window.rackdExtensionPages = extensionPages;
 
 // Router component for SPA navigation
 function router() {
   return {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
+
+    // Nav items from config (core + enterprise)
+    get navItems() {
+      const base = [
+        { label: 'Devices', path: '/devices', order: 10 },
+        { label: 'Networks', path: '/networks', order: 20 },
+        { label: 'Datacenters', path: '/datacenters', order: 30 },
+        { label: 'Discovery', path: '/discovery', order: 40 },
+      ];
+      const dynamic = window.rackdConfig?.nav_items ?? [];
+      return [...base, ...dynamic].sort((a, b) => a.order - b.order);
+    },
+
+    // Check if current route is an extension page
+    get extensionPage() {
+      return window.rackdExtensionPages?.find(
+        (p) => this.route === p.path || this.route.startsWith(p.path + '?')
+      );
+    },
+
+    // Get rendered content for extension page
+    get extensionContent() {
+      return this.extensionPage?.render() || '';
+    },
 
     init() {
       window.addEventListener('popstate', () => {

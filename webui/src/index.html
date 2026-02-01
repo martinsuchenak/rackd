@@ -40,26 +40,21 @@
         </a>
       </div>
       <nav class="p-4 space-y-1">
-        <a href="/" @click.prevent="navigate('/')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+        <!-- Dashboard is always first (order: 0) -->
+        <a href="/" @click.prevent="navigate('/')"
+           class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
            :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
           Dashboard
         </a>
-        <a href="/devices" @click.prevent="navigate('/devices')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/devices') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
-          Devices
-        </a>
-        <a href="/networks" @click.prevent="navigate('/networks')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/networks') || route.startsWith('/pools') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
-          Networks
-        </a>
-        <a href="/datacenters" @click.prevent="navigate('/datacenters')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/datacenters') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
-          Datacenters
-        </a>
-        <a href="/discovery" @click.prevent="navigate('/discovery')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route.startsWith('/discovery') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
-          Discovery
-        </a>
+        <!-- Dynamic items from config -->
+        <template x-for="item in navItems" :key="item.path">
+          <a :href="item.path"
+             @click.prevent="navigate(item.path)"
+             class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+             :class="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
+             x-text="item.label">
+          </a>
+        </template>
       </nav>
     </aside>
 
@@ -133,6 +128,22 @@
         <include src="partials/pages/networks.html"></include>
         <include src="partials/pages/datacenters.html"></include>
         <include src="partials/pages/discovery.html"></include>
+
+        <!-- Extension pages slot -->
+        <template x-if="extensionPage">
+          <div x-data="{
+            content: '',
+            init() {
+              this.$watch('$store.router.extensionContent', (val) => {
+                this.content = val;
+                this.$nextTick(() => Alpine.initTree(this.$el));
+              });
+              this.content = extensionContent;
+              this.$nextTick(() => Alpine.initTree(this.$el));
+            }
+          }" x-html="content">
+          </div>
+        </template>
 
       </main>
     </div>

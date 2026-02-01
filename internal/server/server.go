@@ -28,6 +28,11 @@ type Feature interface {
 
 // Run starts the server with optional features
 func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature) error {
+	return RunWithCustomRoutes(cfg, store, nil, features...)
+}
+
+// RunWithCustomRoutes starts the server with optional features and custom route registration
+func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, registerRoutes func(mux *http.ServeMux), features ...Feature) error {
 	if cfg.APIAuthToken == "" {
 		log.Warn("API_AUTH_TOKEN not set - API is unauthenticated")
 	}
@@ -36,6 +41,11 @@ func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature)
 	}
 
 	mux := http.NewServeMux()
+
+	// Register custom routes if provided
+	if registerRoutes != nil {
+		registerRoutes(mux)
+	}
 
 	scanner := discovery.NewScanner(store, cfg)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
