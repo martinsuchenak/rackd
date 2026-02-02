@@ -2,15 +2,16 @@
 <template x-if="route === '/discovery'">
   <div x-data="discoveryList" @beforeunload.window="destroy()">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Discovery</h1>
-      <button @click="openScanModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Discovery</h1>
+      <button @click="openScanModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
         New Scan
       </button>
     </div>
-    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md" role="alert" x-text="error"></div>
     <div class="mb-4">
-      <select @change="selectNetwork($event.target.value)"
-              class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <label for="discovery-network-filter" class="sr-only">Filter by network</label>
+      <select id="discovery-network-filter" @change="selectNetwork($event.target.value)"
+              class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
         <option value="">All Networks</option>
         <template x-for="n in networks" :key="n.id">
           <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
@@ -18,81 +19,84 @@
       </select>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <section class="bg-white dark:bg-gray-800 rounded-lg shadow" aria-labelledby="recent-scans-heading">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <span class="font-semibold text-gray-900 dark:text-white">Recent Scans</span>
+          <h2 id="recent-scans-heading" class="font-semibold text-gray-900 dark:text-gray-50">Recent Scans</h2>
           <button x-show="scans.some(s => s.status === 'completed' || s.status === 'failed')"
                   @click="deleteOldScans()"
-                  class="text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors">
+                  class="px-3 py-2 text-xs text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]">
             Delete Old
           </button>
         </div>
         <div class="p-4 max-h-96 overflow-y-auto">
-          <p x-show="loading" class="text-gray-700 dark:text-gray-300">Loading...</p>
-          <p x-show="!loading && scans.length === 0" class="text-gray-700 dark:text-gray-300">No scans found</p>
-          <div class="space-y-2">
+          <p x-show="loading" class="text-gray-800 dark:text-gray-200" role="status">Loading...</p>
+          <p x-show="!loading && scans.length === 0" class="text-gray-800 dark:text-gray-200">No scans found</p>
+          <ul class="space-y-2" role="list">
             <template x-for="s in scans" :key="s.id">
-              <div class="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+              <li class="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div class="flex justify-between items-center">
-                  <span class="text-gray-900 dark:text-white" x-text="s.network_id"></span>
+                  <span class="text-gray-900 dark:text-gray-50" x-text="s.network_id"></span>
                   <div class="flex items-center gap-2">
                     <template x-if="s.status === 'running' || s.status === 'pending'">
                       <button @click="cancelScan(s.id)"
                               :disabled="isCancelling(s.id)"
-                              class="px-2 py-0.5 text-xs rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              class="px-3 py-2 text-xs rounded-md bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-red-500 min-h-[44px]"
+                              :aria-label="'Stop scan ' + s.id"
                               x-text="isCancelling(s.id) ? 'Stopping...' : 'Stop'">
                       </button>
                     </template>
                     <template x-if="s.status === 'completed' || s.status === 'failed'">
                       <button @click="deleteScan(s.id)"
-                              class="px-2 py-0.5 text-xs rounded-md text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400">
+                              class="px-3 py-2 text-xs rounded-md text-gray-600 hover:text-red-700 dark:text-gray-300 dark:hover:text-red-300 focus:outline-none focus:ring-[3px] focus:ring-red-500 min-h-[44px]"
+                              :aria-label="'Delete scan ' + s.id">
                         Delete
                       </button>
                     </template>
-                    <span class="px-2 py-0.5 text-xs rounded-full"
+                    <span class="px-2 py-1 text-xs font-medium rounded-full"
                           :class="{
-                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': s.status === 'pending',
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': s.status === 'running',
-                            'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': s.status === 'completed',
-                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': s.status === 'failed'
+                            'bg-yellow-100 text-yellow-900 dark:bg-yellow-900/30 dark:text-yellow-200': s.status === 'pending',
+                            'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-200': s.status === 'running',
+                            'bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-200': s.status === 'completed',
+                            'bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200': s.status === 'failed'
                           }"
+                          role="status"
                           x-text="s.status"></span>
                   </div>
                 </div>
-                <div class="text-xs text-gray-700 dark:text-gray-300 mt-1" x-text="s.scan_type + ' scan'"></div>
-              </div>
+                <div class="text-xs text-gray-800 dark:text-gray-200 mt-1" x-text="s.scan_type + ' scan'"></div>
+              </li>
             </template>
-          </div>
+          </ul>
         </div>
-      </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      </section>
+      <section class="bg-white dark:bg-gray-800 rounded-lg shadow" aria-labelledby="discovered-devices-heading">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <span class="font-semibold text-gray-900 dark:text-white">Discovered Devices</span>
+          <h2 id="discovered-devices-heading" class="font-semibold text-gray-900 dark:text-gray-50">Discovered Devices</h2>
           <button x-show="discoveredDevices.length > 0"
                   @click="deleteAllDevices()"
-                  class="text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors">
+                  class="px-3 py-2 text-xs text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]">
             Delete All
           </button>
         </div>
         <div class="p-4 max-h-96 overflow-y-auto">
-          <p x-show="loading" class="text-gray-700 dark:text-gray-300">Loading...</p>
-          <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-700 dark:text-gray-300">No discovered devices</p>
-          <div class="space-y-2">
+          <p x-show="loading" class="text-gray-800 dark:text-gray-200" role="status">Loading...</p>
+          <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-800 dark:text-gray-200">No discovered devices</p>
+          <ul class="space-y-2" role="list">
             <template x-for="d in discoveredDevices" :key="d.id">
-              <div class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+              <li class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div>
-                  <div class="text-gray-900 dark:text-white" x-text="d.ip"></div>
-                  <div class="text-xs text-gray-700 dark:text-gray-300" x-text="d.hostname || 'Unknown hostname'"></div>
+                  <div class="text-gray-900 dark:text-gray-50" x-text="d.ip"></div>
+                  <div class="text-xs text-gray-800 dark:text-gray-200" x-text="d.hostname || 'Unknown hostname'"></div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button @click="openPromoteModal(d)" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Promote device ' + d.ip">Promote</button>
-                  <button @click="deleteDevice(d.id)" class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Delete device ' + d.ip">Delete</button>
+                <div class="flex items-center gap-1">
+                  <button @click="openPromoteModal(d)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]" :aria-label="'Promote device ' + d.ip">Promote</button>
+                  <button @click="deleteDevice(d.id)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]" :aria-label="'Delete device ' + d.ip">Delete</button>
                 </div>
-              </div>
+              </li>
             </template>
-          </div>
+          </ul>
         </div>
-      </div>
+      </section>
     </div>
     <!-- Scan Modal -->
     <include src="partials/modals/discovery-scan.html"></include>

@@ -9,23 +9,23 @@
     ]);
     this.stats = { devices: (d || []).length, networks: (n || []).length, datacenters: (dc || []).length, discovered: (disc || []).length };
   } }">
-    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Dashboard</h1>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <a href="/devices" @click.prevent="$dispatch('nav', '/devices')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="View all devices">
-        <div class="text-sm text-[var(--muted-foreground)]">Devices</div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.devices"></div>
+    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-50">Dashboard</h1>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" role="list" aria-label="Statistics overview">
+      <a href="/devices" @click.prevent="$dispatch('nav', '/devices')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" role="listitem" aria-label="View all devices">
+        <div class="text-sm text-gray-800 dark:text-gray-200">Devices</div>
+        <div class="text-3xl font-bold text-gray-900 dark:text-gray-50" x-text="stats.devices" aria-live="polite"></div>
       </a>
-      <a href="/networks" @click.prevent="$dispatch('nav', '/networks')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="View all networks">
-        <div class="text-sm text-[var(--muted-foreground)]">Networks</div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.networks"></div>
+      <a href="/networks" @click.prevent="$dispatch('nav', '/networks')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" role="listitem" aria-label="View all networks">
+        <div class="text-sm text-gray-800 dark:text-gray-200">Networks</div>
+        <div class="text-3xl font-bold text-gray-900 dark:text-gray-50" x-text="stats.networks" aria-live="polite"></div>
       </a>
-      <a href="/datacenters" @click.prevent="$dispatch('nav', '/datacenters')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="View all datacenters">
-        <div class="text-sm text-[var(--muted-foreground)]">Datacenters</div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.datacenters"></div>
+      <a href="/datacenters" @click.prevent="$dispatch('nav', '/datacenters')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" role="listitem" aria-label="View all datacenters">
+        <div class="text-sm text-gray-800 dark:text-gray-200">Datacenters</div>
+        <div class="text-3xl font-bold text-gray-900 dark:text-gray-50" x-text="stats.datacenters" aria-live="polite"></div>
       </a>
-      <a href="/discovery" @click.prevent="$dispatch('nav', '/discovery')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900" aria-label="View discovered devices">
-        <div class="text-sm text-[var(--muted-foreground)]">Discovered</div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.discovered"></div>
+      <a href="/discovery" @click.prevent="$dispatch('nav', '/discovery')" class="bg-[var(--card)] rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" role="listitem" aria-label="View discovered devices">
+        <div class="text-sm text-gray-800 dark:text-gray-200">Discovered</div>
+        <div class="text-3xl font-bold text-gray-900 dark:text-gray-50" x-text="stats.discovered" aria-live="polite"></div>
       </a>
     </div>
   </div>

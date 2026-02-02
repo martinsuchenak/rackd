@@ -1,15 +1,15 @@
 <div x-show="showScanModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="scan-modal-title" @keydown.escape.window="showScanModal = false">
   <div class="fixed inset-0 bg-black/50" @click="showScanModal = false" aria-hidden="true"></div>
   <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-    <button @click="showScanModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+    <button @click="showScanModal = false" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
-    <h2 id="scan-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Discovery Scan</h2>
+    <h2 id="scan-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">New Discovery Scan</h2>
     <form @submit.prevent="startScan()">
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network *</label>
-          <select x-model="scanNetworkId" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <label for="scan-network" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+          <select id="scan-network" x-model="scanNetworkId" required aria-required="true" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <option value="">Select a network</option>
             <template x-for="n in networks" :key="n.id">
               <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
@@ -17,8 +17,8 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Type</label>
-          <select x-model="scanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <label for="scan-type" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Scan Type</label>
+          <select id="scan-type" x-model="scanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <template x-for="type in scanTypes" :key="type.value">
               <option :value="type.value" x-text="type.label + (type.description ? ' (' + type.description + ')' : '')"></option>
             </template>
@@ -26,8 +26,8 @@
         </div>
       </div>
       <div class="flex justify-end gap-3 mt-6">
-        <button type="button" @click="showScanModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
-        <button type="submit" :disabled="scanning" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
+        <button type="button" @click="showScanModal = false" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+        <button type="submit" :disabled="scanning" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
           <span x-show="!scanning">Start Scan</span>
           <span x-show="scanning">Starting...</span>
         </button>

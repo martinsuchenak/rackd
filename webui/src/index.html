@@ -10,7 +10,7 @@
 </head>
 <body class="min-h-screen">
   <!-- Skip link for accessibility -->
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50">
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50 focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center">
     Skip to main content
   </a>
 
@@ -20,9 +20,9 @@
            :class="{ '-translate-x-full': !sidebarOpen }"
            role="navigation" aria-label="Main navigation">
       <div class="flex items-center h-16 px-6 border-b border-[var(--sidebar-border)]">
-        <a href="/" @click.prevent="navigate('/')" class="flex items-center gap-2">
+        <a href="/" @click.prevent="navigate('/')" class="flex items-center gap-2 focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] rounded-lg p-1">
           <div class="rackd-logo-icon rounded-xl flex-shrink-0" style="width: 32px; height: 32px; padding: 4px;">
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;" aria-hidden="true">
               <rect class="rack-frame" x="15" y="5" width="70" height="90" rx="8" />
               <rect class="rack-unit" x="25" y="15" width="50" height="12" rx="2" />
               <rect x="25" y="32" width="50" height="12" rx="2" fill="#3B82F6"/>
@@ -39,10 +39,10 @@
           </span>
         </a>
       </div>
-      <nav class="p-4 space-y-1">
+      <nav class="p-4 space-y-1" aria-label="Primary">
         <!-- Dashboard is always first (order: 0) -->
         <a href="/" @click.prevent="navigate('/')"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sidebar-ring)] transition-colors"
+           class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
            :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
            :aria-current="route === '/' ? 'page' : null">
           Dashboard
@@ -51,7 +51,7 @@
         <template x-for="item in navItems" :key="item.path">
           <a :href="item.path"
              @click.prevent="navigate(item.path)"
-             class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sidebar-ring)] transition-colors"
+             class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
              :class="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
              :aria-current="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'page' : null"
              x-text="item.label">
@@ -61,44 +61,50 @@
     </aside>
 
     <!-- Mobile sidebar overlay -->
-    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak></div>
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak aria-hidden="true"></div>
 
     <!-- Main content area -->
     <div class="md:ml-64 min-h-screen flex flex-col">
       <!-- Top bar -->
       <header class="sticky top-0 z-20 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-4">
         <button @click="sidebarOpen = !sidebarOpen"
-                class="md:hidden p-2 text-[var(--muted-foreground)] hover:bg-[var(--muted)] rounded-md"
-                aria-label="Toggle sidebar">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="md:hidden p-2 text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] rounded-md focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Toggle sidebar"
+                :aria-expanded="sidebarOpen">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
         </button>
 
         <!-- Global Search -->
-        <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block">
-          <label for="global-search" class="sr-only">Search</label>
+        <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block" role="search">
+          <label for="global-search" class="sr-only">Search devices, networks, datacenters</label>
           <input id="global-search" type="search" x-model="query" @input="onInput()" @focus="onFocus()" @blur="onBlur()"
                  placeholder="Search devices, networks, datacenters..."
-                 class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-md bg-[var(--input-background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]">
+                 aria-describedby="search-instructions"
+                 aria-controls="search-results"
+                 :aria-expanded="showResults && (results.length > 0 || loading)"
+                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-[var(--input-background)] text-gray-900 dark:text-gray-50 placeholder:text-gray-600 dark:placeholder:text-gray-400 focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px]">
+          <span id="search-instructions" class="sr-only">Type to search. Results will appear below.</span>
           <div x-show="showResults && (results.length > 0 || loading)" x-cloak
+               id="search-results"
                class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
                role="listbox" aria-label="Search results">
-            <div x-show="loading" class="p-3 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite">Searching...</div>
+            <div x-show="loading" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">Searching...</div>
             <template x-for="result in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
               <a :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
                  @click.prevent="$dispatch('nav', result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id)"
-                 class="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)]" role="option">
+                 class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]" role="option">
                 <div class="flex items-center gap-2">
-                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded font-medium">Device</span>
-                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded font-medium">Network</span>
-                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded font-medium">Datacenter</span>
+                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100 rounded font-medium">Device</span>
+                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded font-medium">Network</span>
+                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100 rounded font-medium">Datacenter</span>
                   <span class="font-medium" x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
                 </div>
-                <div class="text-xs text-[var(--muted-foreground)] ml-14" x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''"></div>
+                <div class="text-xs text-gray-800 dark:text-gray-200 ml-14" x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''"></div>
               </a>
             </template>
-            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite">No results found</div>
+            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">No results found</div>
           </div>
         </div>
 
@@ -107,15 +113,15 @@
         <!-- Theme Toggle -->
         <div x-data="themeToggle">
           <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
-                  class="p-2 rounded-md text-[var(--muted-foreground)] hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  :aria-label="'Theme: ' + theme">
-            <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="p-2 rounded-md text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  :aria-label="'Current theme: ' + theme + '. Click to change.'">
+            <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
             </svg>
-            <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
             </svg>
-            <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
             </svg>
           </button>
