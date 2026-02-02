@@ -42,6 +42,7 @@ func main() {
 	}
 
 	if err := app.Execute(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

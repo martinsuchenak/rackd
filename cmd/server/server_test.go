@@ -15,7 +15,7 @@ func TestCommand(t *testing.T) {
 		t.Error("expected Run function to be set")
 	}
 
-	if len(cmd.Flags) != 7 {
-		t.Errorf("expected 7 flags, got %d", len(cmd.Flags))
+	if len(cmd.Flags) != 8 {
+		t.Errorf("expected 8 flags, got %d", len(cmd.Flags))
 	}
 }

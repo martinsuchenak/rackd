@@ -1,30 +1,30 @@
 <div x-data="networkDetail">
-  <div x-show="loading" class="text-gray-500">Loading...</div>
-  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+  <div x-show="loading" class="text-gray-700 dark:text-gray-300" role="status" aria-live="polite">Loading...</div>
+  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error" role="alert"></div>
   <div x-show="!loading && network">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center">
-        <button @click="$dispatch('nav', '/networks')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+        <button @click="$dispatch('nav', '/networks')" class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mr-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 transition-colors" aria-label="Back to networks list">&larr;</button>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="network?.name"></h1>
       </div>
       <div class="flex gap-2">
-        <button @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">Edit</button>
-        <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+        <button @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Edit</button>
+        <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Delete</button>
       </div>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><dt class="text-sm text-gray-500 dark:text-gray-400">Subnet</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.subnet"></dd></div>
-        <div><dt class="text-sm text-gray-500 dark:text-gray-400">VLAN ID</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.vlan_id || '-'"></dd></div>
-        <div><dt class="text-sm text-gray-500 dark:text-gray-400">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(network?.datacenter_id)"></dd></div>
-        <div><dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.description || '-'"></dd></div>
+        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Subnet</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.subnet"></dd></div>
+        <div><dt class="text-sm text-gray-700 dark:text-gray-300">VLAN ID</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.vlan_id || '-'"></dd></div>
+        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(network?.datacenter_id)"></dd></div>
+        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="network?.description || '-'"></dd></div>
       </dl>
       <div x-show="utilization" class="mt-6">
-        <h3 class="text-sm text-gray-500 dark:text-gray-400 mb-2">Utilization</h3>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+        <h3 class="text-sm text-gray-700 dark:text-gray-300 mb-2">Utilization</h3>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4" role="progressbar" :aria-valuenow="utilizationPercent()" aria-valuemin="0" aria-valuemax="100" :aria-label="'Network utilization: ' + utilizationPercent() + ' percent'">
           <div class="bg-blue-600 h-4 rounded-full" :style="'width: ' + utilizationPercent() + '%'"></div>
         </div>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1"><span x-text="utilizationPercent()"></span>% used</p>
+        <p class="text-sm text-gray-700 dark:text-gray-300 mt-1"><span x-text="utilizationPercent()"></span>% used</p>
       </div>
     </div>
 
@@ -32,36 +32,36 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">IP Pools</h2>
-        <button @click="openAddPoolModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Pool</button>
+        <button @click="openAddPoolModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Add Pool</button>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Range</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tags</th>
-              <th class="px-6 py-3"></th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Range</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Tags</th>
+              <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr x-show="pools.length === 0"><td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No pools defined</td></tr>
+            <tr x-show="pools.length === 0"><td colspan="4" class="px-6 py-8 text-center text-gray-700 dark:text-gray-300">No pools defined</td></tr>
             <template x-for="pool in pools" :key="pool.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <a :href="'/pools/detail?id=' + pool.id" @click.prevent="$dispatch('nav', '/pools/detail?id=' + pool.id)" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" x-text="pool.name"></a>
+                  <a :href="'/pools/detail?id=' + pool.id" @click.prevent="$dispatch('nav', '/pools/detail?id=' + pool.id)" class="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" x-text="pool.name"></a>
                 </td>
-                <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="pool.start_ip + ' - ' + pool.end_ip"></td>
+                <td class="px-6 py-4 text-gray-700 dark:text-gray-300" x-text="pool.start_ip + ' - ' + pool.end_ip"></td>
                 <td class="px-6 py-4">
                   <div class="flex flex-wrap gap-1">
                     <template x-for="tag in (pool.tags || [])" :key="tag">
-                      <span class="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded" x-text="tag"></span>
+                      <span class="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded" x-text="tag"></span>
                     </template>
                   </div>
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <button @click="openEditPoolModal(pool)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-3">Edit</button>
-                  <button @click="confirmDeletePool(pool)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+                  <button @click="openEditPoolModal(pool)" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline mr-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Edit pool ' + pool.name">Edit</button>
+                  <button @click="confirmDeletePool(pool)" class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Delete pool ' + pool.name">Delete</button>
                 </td>
               </tr>
             </template>
@@ -74,10 +74,13 @@
   <include src="partials/modals/delete-confirm.html"></include>
 
   <!-- Edit Network Modal -->
-  <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-black/50" @click="closeEditModal()"></div>
+  <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-network-modal-title" @keydown.escape.window="closeEditModal()">
+    <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Network</h3>
+      <button @click="closeEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 id="edit-network-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Network</h3>
       <form @submit.prevent="saveNetwork()">
         <div class="space-y-4">
           <div>
@@ -107,8 +110,8 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-6">
-          <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
-          <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+          <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
+          <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
             <span x-show="!saving">Save Changes</span>
             <span x-show="saving">Saving...</span>
           </button>

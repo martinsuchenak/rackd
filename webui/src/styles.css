@@ -43,7 +43,7 @@
   --secondary: var(--accent-cyan);
   --secondary-foreground: var(--white);
   --muted: #E2E8F0;
-  --muted-foreground: #475569;
+  --muted-foreground: #334155;
   --accent: var(--accent-cyan);
   --accent-foreground: var(--white);
   --destructive: #EF4444;

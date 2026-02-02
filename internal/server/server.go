@@ -10,6 +10,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/api"
 	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/mcp"
@@ -29,6 +30,110 @@ type Feature interface {
 // Run starts the server with optional features
 func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature) error {
 	return RunWithCustomRoutes(cfg, store, nil, features...)
+}
+
+// RunWithAdvancedFeatures starts the server with credentials, profiles, and scheduled scans features
+func RunWithAdvancedFeatures(
+	cfg *config.Config,
+	store storage.ExtendedStorage,
+	credStore credentials.Storage,
+	profileStore storage.ProfileStorage,
+	scheduledStore storage.ScheduledScanStorage,
+	features ...Feature,
+) error {
+	if cfg.APIAuthToken == "" {
+		log.Warn("API_AUTH_TOKEN not set - API is unauthenticated")
+	}
+	if cfg.MCPAuthToken == "" {
+		log.Warn("MCP_AUTH_TOKEN not set - MCP endpoint is unauthenticated")
+	}
+
+	mux := http.NewServeMux()
+
+	scanner := discovery.NewScanner(store, cfg)
+	scheduler := worker.NewScheduler(store, scanner, cfg)
+	scheduler.Start()
+
+	// Initialize advanced discovery service
+	advancedDiscovery := discovery.NewAdvancedDiscoveryService(store, store, credStore, 30*time.Second)
+
+	// Initialize scheduled scan worker
+	scheduledWorker := worker.NewScheduledScanWorker(scheduledStore, profileStore, advancedDiscovery)
+	if err := scheduledWorker.Start(); err != nil {
+		log.Error("Failed to start scheduled scan worker", "error", err)
+	}
+
+	// API routes
+	handler := api.NewHandler(store, scanner)
+	handler.SetCredentialsStorage(credStore)
+	handler.SetProfileStorage(profileStore)
+	handler.SetScheduledScanStorage(scheduledStore)
+
+	if cfg.APIAuthToken != "" {
+		handler.RegisterRoutes(mux, api.WithAuth(cfg.APIAuthToken))
+	} else {
+		handler.RegisterRoutes(mux)
+	}
+
+	// MCP server
+	mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
+	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
+
+	// UI config with nav items for new features
+	uiBuilder := api.NewUIConfigBuilder()
+	uiBuilder.AddNavItem(api.NavItem{Label: "Credentials", Path: "/credentials", Icon: "key", Order: 50})
+	uiBuilder.AddNavItem(api.NavItem{Label: "Scan Profiles", Path: "/scan-profiles", Icon: "cog", Order: 51})
+	uiBuilder.AddNavItem(api.NavItem{Label: "Scheduled Scans", Path: "/scheduled-scans", Icon: "clock", Order: 52})
+
+	// Register features
+	for _, f := range features {
+		log.Info("Registering feature", "name", f.Name())
+		f.RegisterRoutes(mux)
+		f.RegisterMCPTools(mcpServer)
+		f.ConfigureUI(uiBuilder)
+	}
+
+	// UI config endpoint
+	mux.HandleFunc("GET /api/config", uiBuilder.Handler())
+
+	// Static UI
+	ui.RegisterRoutes(mux)
+
+	// Health check
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	server := &http.Server{
+		Addr:         cfg.ListenAddr,
+		Handler:      api.SecurityHeaders(mux),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Graceful shutdown
+	errCh := make(chan error, 1)
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+
+		log.Info("Shutting down...")
+		scheduler.Stop()
+		scheduledWorker.Stop()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		errCh <- server.Shutdown(ctx)
+	}()
+
+	log.Info("Starting server", "addr", cfg.ListenAddr)
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+	return <-errCh
 }
 
 // RunWithCustomRoutes starts the server with optional features and custom route registration

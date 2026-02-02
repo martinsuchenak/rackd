@@ -1,7 +1,10 @@
-<div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false"></div>
+<div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="promote-modal-title" @keydown.escape.window="showPromoteModal = false">
+  <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false" aria-hidden="true"></div>
   <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Promote to Device</h3>
+    <button @click="showPromoteModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h2 id="promote-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Promote to Device</h2>
     <form @submit.prevent="doPromote()">
       <div class="space-y-4">
         <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
@@ -15,8 +18,8 @@
         </div>
       </div>
       <div class="flex justify-end gap-3 mt-6">
-        <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
+        <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
           <span x-show="!promoting">Promote</span>
           <span x-show="promoting">Promoting...</span>
         </button>

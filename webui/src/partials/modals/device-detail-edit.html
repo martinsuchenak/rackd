@@ -1,9 +1,13 @@
-<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="fixed inset-0 bg-black/50" @click="closeEditModal()"></div>
+<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="device-edit-modal-title" @keydown.escape.window="closeEditModal()">
+  <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
   <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col" style="max-height: 85vh;">
+    <!-- Close button -->
+    <button @click="closeEditModal()" class="absolute top-4 right-4 z-10 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
     <!-- Modal Header -->
     <div class="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Edit Device</h3>
+      <h2 id="device-edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">Edit Device</h2>
       <!-- Tabs -->
       <div class="flex gap-1 mt-4 -mb-4">
         <button type="button" @click="modalTab = 'general'" :class="modalTab === 'general' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">General</button>
@@ -171,8 +175,8 @@
       </div>
       <!-- Modal Footer -->
       <div class="flex-shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-        <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
+        <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
           <span x-show="!saving">Save Changes</span>
           <span x-show="saving">Saving...</span>
         </button>

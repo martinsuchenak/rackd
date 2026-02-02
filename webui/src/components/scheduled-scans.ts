@@ -1,0 +1,337 @@
+// Scheduled Scans Management Components
+
+export interface ScheduledScan {
+  id: string;
+  network_id: string;
+  profile_id: string;
+  name: string;
+  enabled: boolean;
+  cron_expression: string;
+  description?: string;
+  last_run_at?: string;
+  next_run_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Network {
+  id: string;
+  name: string;
+  subnet: string;
+}
+
+interface Profile {
+  id: string;
+  name: string;
+}
+
+interface ScheduledScanFormData {
+  id: string;
+  network_id: string;
+  profile_id: string;
+  name: string;
+  enabled: boolean;
+  cron_expression: string;
+  description: string;
+}
+
+export function scheduledScansList() {
+  return {
+    scans: [] as ScheduledScan[],
+    networks: [] as Network[],
+    profiles: [] as Profile[],
+    loading: true,
+    error: '',
+    showModal: false,
+    showDeleteModal: false,
+    deleteTarget: null as ScheduledScan | null,
+    form: resetForm(),
+
+    async init() {
+      await this.load();
+    },
+
+    async load() {
+      this.loading = true;
+      this.error = '';
+      try {
+        const [scansRes, networksRes, profilesRes] = await Promise.all([
+          fetch('/api/scheduled-scans'),
+          fetch('/api/networks'),
+          fetch('/api/scan-profiles'),
+        ]);
+
+        if (scansRes.ok) this.scans = (await scansRes.json()) || [];
+        if (networksRes.ok) this.networks = (await networksRes.json()) || [];
+        if (profilesRes.ok) this.profiles = (await profilesRes.json()) || [];
+      } catch {
+        this.error = 'Network error';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    openAddModal() {
+      this.form = resetForm();
+      this.showModal = true;
+    },
+
+    openEditModal(scan: ScheduledScan) {
+      this.form = {
+        id: scan.id,
+        network_id: scan.network_id,
+        profile_id: scan.profile_id,
+        name: scan.name,
+        enabled: scan.enabled,
+        cron_expression: scan.cron_expression,
+        description: scan.description || '',
+      };
+      this.showModal = true;
+    },
+
+    closeModal() {
+      this.showModal = false;
+      this.form = resetForm();
+      this.error = '';
+    },
+
+    async save() {
+      this.error = '';
+      try {
+        const isEdit = !!this.form.id;
+        const url = isEdit ? `/api/scheduled-scans/${this.form.id}` : '/api/scheduled-scans';
+        const response = await fetch(url, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.form),
+        });
+
+        if (response.ok) {
+          this.closeModal();
+          await this.load();
+        } else {
+          const data = await response.json();
+          this.error = data.error || 'Failed to save scheduled scan';
+        }
+      } catch {
+        this.error = 'Network error';
+      }
+    },
+
+    async toggleEnabled(scan: ScheduledScan) {
+      try {
+        const updated = { ...scan, enabled: !scan.enabled };
+        const response = await fetch(`/api/scheduled-scans/${scan.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        });
+
+        if (response.ok) {
+          scan.enabled = !scan.enabled;
+        } else {
+          this.error = 'Failed to update scan';
+        }
+      } catch {
+        this.error = 'Network error';
+      }
+    },
+
+    confirmDelete(scan: ScheduledScan) {
+      this.deleteTarget = scan;
+      this.showDeleteModal = true;
+    },
+
+    async deleteConfirmed() {
+      if (!this.deleteTarget) return;
+      try {
+        const response = await fetch(`/api/scheduled-scans/${this.deleteTarget.id}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          this.showDeleteModal = false;
+          this.deleteTarget = null;
+          await this.load();
+        } else {
+          this.error = 'Failed to delete scheduled scan';
+        }
+      } catch {
+        this.error = 'Network error';
+      }
+    },
+
+    cancelDelete() {
+      this.showDeleteModal = false;
+      this.deleteTarget = null;
+    },
+
+    getNetworkName(id: string): string {
+      const net = this.networks.find((n: Network) => n.id === id);
+      return net ? `${net.name} (${net.subnet})` : id;
+    },
+
+    getProfileName(id: string): string {
+      const profile = this.profiles.find((p: Profile) => p.id === id);
+      return profile ? profile.name : id;
+    },
+
+    formatDate(dateStr: string | undefined): string {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString();
+    },
+  };
+}
+
+function resetForm(): ScheduledScanFormData {
+  return {
+    id: '',
+    network_id: '',
+    profile_id: '',
+    name: '',
+    enabled: true,
+    cron_expression: '0 2 * * *',
+    description: '',
+  };
+}
+
+// Keep for backwards compatibility
+export function scheduledScanForm() {
+  return {};
+}
+
+// Page template for SPA
+export function scheduledScansPageTemplate(): string {
+  return `
+    <div x-data="scheduledScansList">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Scheduled Scans</h1>
+        <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer transition-colors" aria-label="Add new scheduled scan">
+          Add Schedule
+        </button>
+      </div>
+
+      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" role="table" aria-label="Scheduled scans list">
+          <thead class="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Network</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Profile</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Schedule</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Next Run</th>
+              <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
+            <tr x-show="!loading && scans.length === 0"><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No scheduled scans found</td></tr>
+            <template x-for="scan in scans" :key="scan.id">
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-6 py-4">
+                  <button @click="openEditModal(scan)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="scan.name" :aria-label="'Edit schedule: ' + scan.name"></button>
+                  <div class="text-sm text-gray-500 dark:text-gray-400" x-text="scan.description || ''"></div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="getNetworkName(scan.network_id)"></td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="getProfileName(scan.profile_id)"></td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono" x-text="scan.cron_expression"></td>
+                <td class="px-6 py-4">
+                  <button @click="toggleEnabled(scan)"
+                          class="px-2 py-1 text-xs font-medium rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                          :class="scan.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'"
+                          :aria-label="(scan.enabled ? 'Disable' : 'Enable') + ' schedule: ' + scan.name"
+                          :aria-pressed="scan.enabled">
+                    <span x-text="scan.enabled ? 'Enabled' : 'Disabled'"></span>
+                  </button>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(scan.next_run_at)"></td>
+                <td class="px-6 py-4 text-right space-x-3">
+                  <button @click="openEditModal(scan)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + scan.name">Edit</button>
+                  <button @click="confirmDelete(scan)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + scan.name">Delete</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Schedule Form Modal -->
+      <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title">
+        <div class="flex items-center justify-center min-h-screen px-4">
+          <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
+          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full" role="document" @keydown.escape.window="closeModal()">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 id="schedule-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white" x-text="form.id ? 'Edit Schedule' : 'Add Schedule'"></h2>
+              <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div>
+                <label for="schedule-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name <span class="text-red-500" aria-hidden="true">*</span></label>
+                <input type="text" id="schedule-name" x-model="form.name" required aria-required="true" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors">
+              </div>
+              <div>
+                <label for="schedule-network" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Network <span class="text-red-500" aria-hidden="true">*</span></label>
+                <select id="schedule-network" x-model="form.network_id" required aria-required="true" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
+                  <option value="">Select network</option>
+                  <template x-for="net in networks" :key="net.id">
+                    <option :value="net.id" x-text="net.name + ' (' + net.subnet + ')'"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label for="schedule-profile" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Profile <span class="text-red-500" aria-hidden="true">*</span></label>
+                <select id="schedule-profile" x-model="form.profile_id" required aria-required="true" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">
+                  <option value="">Select profile</option>
+                  <template x-for="profile in profiles" :key="profile.id">
+                    <option :value="profile.id" x-text="profile.name"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label for="schedule-cron" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cron Expression <span class="text-red-500" aria-hidden="true">*</span></label>
+                <input type="text" id="schedule-cron" x-model="form.cron_expression" placeholder="0 2 * * *" required aria-required="true" aria-describedby="cron-hint" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 font-mono transition-colors">
+                <p id="cron-hint" class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: minute hour day month weekday. Examples: 0 2 * * * (daily at 2am), 0 */4 * * * (every 4 hours), 0 0 * * 0 (weekly on Sunday)</p>
+              </div>
+              <div>
+                <label for="schedule-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <textarea id="schedule-description" x-model="form.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"></textarea>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="schedule-enabled" x-model="form.enabled" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer">
+                  <span class="text-sm text-gray-700 dark:text-gray-300">Enabled</span>
+                </label>
+              </div>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button @click="closeModal()" type="button" class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
+              <button @click="save()" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="alertdialog" aria-modal="true" aria-labelledby="delete-schedule-title" aria-describedby="delete-schedule-desc">
+        <div class="flex items-center justify-center min-h-screen px-4">
+          <div class="fixed inset-0 bg-black/50" @click="cancelDelete()" aria-hidden="true"></div>
+          <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full p-6" role="document" @keydown.escape.window="cancelDelete()">
+            <button @click="cancelDelete()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors" aria-label="Close dialog">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h2 id="delete-schedule-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Schedule</h2>
+            <p id="delete-schedule-desc" class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete "<span x-text="deleteTarget?.name"></span>"? This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+              <button @click="cancelDelete()" type="button" class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Cancel</button>
+              <button @click="deleteConfirmed()" type="button" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}

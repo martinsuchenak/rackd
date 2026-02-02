@@ -18,7 +18,13 @@
       "Bash(bun run:*)",
       "Bash(git stash:*)",
       "Bash(make test:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(make run-server)",
+      "Bash(go run:*)",
+      "Bash(/tmp/rackd server:*)",
+      "Bash(echo:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout:*)"
     ]
   },
   "spinnerVerbs": {

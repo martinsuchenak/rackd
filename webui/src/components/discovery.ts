@@ -36,6 +36,13 @@ export function discoveryList() {
     scanNetworkId: '',
     scanType: 'quick' as DiscoveryScan['scan_type'],
     scanning: false,
+    // Get scan types from global registry
+    get scanTypes() {
+      return window.rackdScanTypes || [
+        { value: 'quick', label: 'Quick', description: 'ICMP ping' },
+        { value: 'full', label: 'Full', description: 'TCP port scan' },
+      ];
+    },
     // Promote modal
     showPromoteModal: false,
     promoteDevice: null as DiscoveredDevice | null,

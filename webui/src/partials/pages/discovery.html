@@ -23,13 +23,13 @@
           <span class="font-semibold text-gray-900 dark:text-white">Recent Scans</span>
           <button x-show="scans.some(s => s.status === 'completed' || s.status === 'failed')"
                   @click="deleteOldScans()"
-                  class="text-xs text-red-600 dark:text-red-400 hover:underline">
+                  class="text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors">
             Delete Old
           </button>
         </div>
         <div class="p-4 max-h-96 overflow-y-auto">
-          <p x-show="loading" class="text-gray-500">Loading...</p>
-          <p x-show="!loading && scans.length === 0" class="text-gray-500">No scans found</p>
+          <p x-show="loading" class="text-gray-700 dark:text-gray-300">Loading...</p>
+          <p x-show="!loading && scans.length === 0" class="text-gray-700 dark:text-gray-300">No scans found</p>
           <div class="space-y-2">
             <template x-for="s in scans" :key="s.id">
               <div class="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
@@ -59,7 +59,7 @@
                           x-text="s.status"></span>
                   </div>
                 </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="s.scan_type + ' scan'"></div>
+                <div class="text-xs text-gray-700 dark:text-gray-300 mt-1" x-text="s.scan_type + ' scan'"></div>
               </div>
             </template>
           </div>
@@ -70,23 +70,23 @@
           <span class="font-semibold text-gray-900 dark:text-white">Discovered Devices</span>
           <button x-show="discoveredDevices.length > 0"
                   @click="deleteAllDevices()"
-                  class="text-xs text-red-600 dark:text-red-400 hover:underline">
+                  class="text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors">
             Delete All
           </button>
         </div>
         <div class="p-4 max-h-96 overflow-y-auto">
-          <p x-show="loading" class="text-gray-500">Loading...</p>
-          <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-500">No discovered devices</p>
+          <p x-show="loading" class="text-gray-700 dark:text-gray-300">Loading...</p>
+          <p x-show="!loading && discoveredDevices.length === 0" class="text-gray-700 dark:text-gray-300">No discovered devices</p>
           <div class="space-y-2">
             <template x-for="d in discoveredDevices" :key="d.id">
               <div class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div>
                   <div class="text-gray-900 dark:text-white" x-text="d.ip"></div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400" x-text="d.hostname || 'Unknown hostname'"></div>
+                  <div class="text-xs text-gray-700 dark:text-gray-300" x-text="d.hostname || 'Unknown hostname'"></div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button @click="openPromoteModal(d)" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Promote</button>
-                  <button @click="deleteDevice(d.id)" class="text-sm text-red-600 dark:text-red-400 hover:underline">Delete</button>
+                  <button @click="openPromoteModal(d)" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Promote device ' + d.ip">Promote</button>
+                  <button @click="deleteDevice(d.id)" class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Delete device ' + d.ip">Delete</button>
                 </div>
               </div>
             </template>

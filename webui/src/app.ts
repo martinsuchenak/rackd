@@ -12,6 +12,9 @@ import { networkList, networkDetail, networkForm } from './components/networks';
 import { poolDetail, poolForm } from './components/pools';
 import { datacenterList, datacenterDetail, datacenterForm } from './components/datacenters';
 import { discoveryList, scanForm, scanDetail, promoteForm } from './components/discovery';
+import { credentialsList, credentialForm, credentialsPageTemplate } from './components/credentials';
+import { profileList, profileForm, profilesPageTemplate } from './components/profiles';
+import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } from './components/scheduled-scans';
 
 // Page registry for extensions
 interface ExtensionPage {
@@ -21,6 +24,20 @@ interface ExtensionPage {
 
 const extensionPages: ExtensionPage[] = [];
 
+// Scan type registry for extensions
+interface ScanType {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+const baseScanTypes: ScanType[] = [
+  { value: 'quick', label: 'Quick', description: 'ICMP ping' },
+  { value: 'full', label: 'Full', description: 'TCP port scan' },
+];
+
+const extensionScanTypes: ScanType[] = [];
+
 declare global {
   interface Window {
     Alpine: typeof Alpine;
@@ -29,6 +46,8 @@ declare global {
     rackdEnterprise?: { init(): void };
     rackdRegisterPage: (path: string, render: () => string) => void;
     rackdExtensionPages: ExtensionPage[];
+    rackdRegisterScanType: (type: ScanType) => void;
+    rackdScanTypes: ScanType[];
   }
 }
 
@@ -37,8 +56,15 @@ window.rackdRegisterPage = (path: string, render: () => string) => {
   extensionPages.push({ path, render });
 };
 
-// Expose for router
+window.rackdRegisterScanType = (type: ScanType) => {
+  extensionScanTypes.push(type);
+  // Update the exposed array
+  window.rackdScanTypes = [...baseScanTypes, ...extensionScanTypes];
+};
+
+// Expose for components
 window.rackdExtensionPages = extensionPages;
+window.rackdScanTypes = [...baseScanTypes];
 
 // Router component for SPA navigation
 function router() {
@@ -85,6 +111,7 @@ function router() {
     },
   };
 }
+
 
 // Theme management
 type Theme = 'light' | 'dark' | 'system';
@@ -147,11 +174,31 @@ async function init(): Promise<void> {
   Alpine.data('scanDetail', scanDetail);
   Alpine.data('promoteForm', promoteForm);
 
-  // Enterprise extension hook
-  window.rackdEnterprise?.init();
+  // Credentials, Profiles, Scheduled Scans components
+  Alpine.data('credentialsList', credentialsList);
+  Alpine.data('credentialForm', credentialForm);
+  Alpine.data('profileList', profileList);
+  Alpine.data('profileForm', profileForm);
+  Alpine.data('scheduledScansList', scheduledScansList);
+  Alpine.data('scheduledScanForm', scheduledScanForm);
 
-  // Expose Alpine globally
+  // Register pages for credentials, profiles, scheduled scans
+  window.rackdRegisterPage('/credentials', credentialsPageTemplate);
+  window.rackdRegisterPage('/scan-profiles', profilesPageTemplate);
+  window.rackdRegisterPage('/scheduled-scans', scheduledScansPageTemplate);
+
+  // Register deep scan type
+  window.rackdRegisterScanType({
+    value: 'deep',
+    label: 'Deep',
+    description: 'Comprehensive scan with SNMP/SSH',
+  });
+
+  // Expose Alpine globally (before enterprise init)
   window.Alpine = Alpine;
+
+  // Enterprise extension hook (preserved for future extensibility)
+  window.rackdEnterprise?.init();
 
   // Start Alpine
   Alpine.start();

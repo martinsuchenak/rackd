@@ -5,18 +5,34 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 type Handler struct {
-	storage storage.ExtendedStorage
-	scanner discovery.Scanner
+	storage        storage.ExtendedStorage
+	scanner        discovery.Scanner
+	credStore      credentials.Storage
+	profileStore   storage.ProfileStorage
+	scheduledStore storage.ScheduledScanStorage
 }
 
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
 	return &Handler{storage: s, scanner: scanner}
+}
+
+func (h *Handler) SetCredentialsStorage(cs credentials.Storage) {
+	h.credStore = cs
+}
+
+func (h *Handler) SetProfileStorage(ps storage.ProfileStorage) {
+	h.profileStore = ps
+}
+
+func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
+	h.scheduledStore = ss
 }
 
 type HandlerOption func(*handlerConfig)
@@ -100,6 +116,33 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/discovery/rules/{id}", wrap(h.getDiscoveryRule))
 	mux.HandleFunc("PUT /api/discovery/rules/{id}", wrap(h.updateDiscoveryRule))
 	mux.HandleFunc("DELETE /api/discovery/rules/{id}", wrap(h.deleteDiscoveryRule))
+
+	// Credentials routes (if storage is configured)
+	if h.credStore != nil {
+		mux.HandleFunc("GET /api/credentials", wrap(h.listCredentials))
+		mux.HandleFunc("POST /api/credentials", wrap(h.createCredential))
+		mux.HandleFunc("GET /api/credentials/{id}", wrap(h.getCredential))
+		mux.HandleFunc("PUT /api/credentials/{id}", wrap(h.updateCredential))
+		mux.HandleFunc("DELETE /api/credentials/{id}", wrap(h.deleteCredential))
+	}
+
+	// Scan Profiles routes (if storage is configured)
+	if h.profileStore != nil {
+		mux.HandleFunc("GET /api/scan-profiles", wrap(h.listProfiles))
+		mux.HandleFunc("POST /api/scan-profiles", wrap(h.createProfile))
+		mux.HandleFunc("GET /api/scan-profiles/{id}", wrap(h.getProfile))
+		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrap(h.updateProfile))
+		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrap(h.deleteProfile))
+	}
+
+	// Scheduled Scans routes (if storage is configured)
+	if h.scheduledStore != nil {
+		mux.HandleFunc("GET /api/scheduled-scans", wrap(h.listScheduledScans))
+		mux.HandleFunc("POST /api/scheduled-scans", wrap(h.createScheduledScan))
+		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrap(h.getScheduledScan))
+		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
+		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
+	}
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

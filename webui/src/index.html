@@ -42,16 +42,18 @@
       <nav class="p-4 space-y-1">
         <!-- Dashboard is always first (order: 0) -->
         <a href="/" @click.prevent="navigate('/')"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
-           :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'">
+           class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sidebar-ring)] transition-colors"
+           :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
+           :aria-current="route === '/' ? 'page' : null">
           Dashboard
         </a>
         <!-- Dynamic items from config -->
         <template x-for="item in navItems" :key="item.path">
           <a :href="item.path"
              @click.prevent="navigate(item.path)"
-             class="flex items-center px-3 py-2 text-sm font-medium rounded-md"
+             class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--sidebar-ring)] transition-colors"
              :class="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
+             :aria-current="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'page' : null"
              x-text="item.label">
           </a>
         </template>
@@ -81,22 +83,22 @@
                  class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-md bg-[var(--input-background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]">
           <div x-show="showResults && (results.length > 0 || loading)" x-cloak
                class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
-               role="listbox">
-            <div x-show="loading" class="p-3 text-sm text-[var(--muted-foreground)]">Searching...</div>
+               role="listbox" aria-label="Search results">
+            <div x-show="loading" class="p-3 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite">Searching...</div>
             <template x-for="result in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
               <a :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
                  @click.prevent="$dispatch('nav', result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id)"
-                 class="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)]" role="option">
+                 class="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)]" role="option">
                 <div class="flex items-center gap-2">
-                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">Device</span>
-                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded">Network</span>
-                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 rounded">Datacenter</span>
+                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded font-medium">Device</span>
+                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded font-medium">Network</span>
+                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded font-medium">Datacenter</span>
                   <span class="font-medium" x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
                 </div>
                 <div class="text-xs text-[var(--muted-foreground)] ml-14" x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''"></div>
               </a>
             </template>
-            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-[var(--muted-foreground)]">No results found</div>
+            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-[var(--muted-foreground)]" role="status" aria-live="polite">No results found</div>
           </div>
         </div>
 
@@ -130,19 +132,8 @@
         <include src="partials/pages/discovery.html"></include>
 
         <!-- Extension pages slot -->
-        <template x-if="extensionPage">
-          <div x-data="{
-            content: '',
-            init() {
-              this.$watch('$store.router.extensionContent', (val) => {
-                this.content = val;
-                this.$nextTick(() => Alpine.initTree(this.$el));
-              });
-              this.content = extensionContent;
-              this.$nextTick(() => Alpine.initTree(this.$el));
-            }
-          }" x-html="content">
-          </div>
+        <template x-for="page in (extensionPage ? [extensionPage] : [])" :key="page.path">
+          <div x-html="page.render()" x-init="$nextTick(() => Alpine.initTree($el))"></div>
         </template>
 
       </main>
