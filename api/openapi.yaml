@@ -515,6 +515,299 @@ components:
           type: string
           enum: [contains, connected_to, depends_on]
           description: Type of relationship
+        notes:
+          type: string
+          description: Optional notes about the relationship
+
+    UpdateRelationshipNotesRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          description: Notes about the relationship
+
+    Credential:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [snmp_v2c, snmp_v3, ssh_key, ssh_password]
+        ssh_username:
+          type: string
+        datacenter_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CredentialInput:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [snmp_v2c, snmp_v3, ssh_key, ssh_password]
+        snmp_community:
+          type: string
+          description: Required for snmp_v2c
+        snmp_v3_user:
+          type: string
+          description: Required for snmp_v3
+        snmp_v3_auth:
+          type: string
+          description: Required for snmp_v3
+        snmp_v3_priv:
+          type: string
+          description: Required for snmp_v3
+        ssh_username:
+          type: string
+          description: Required for ssh_key and ssh_password
+        ssh_key_id:
+          type: string
+          description: Required for ssh_key and ssh_password
+        datacenter_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+
+    ScanProfile:
+      type: object
+      required:
+        - id
+        - name
+        - scan_type
+        - timeout_sec
+        - max_workers
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scan_type:
+          type: string
+          enum: [quick, full, deep, custom]
+        ports:
+          type: array
+          items:
+            type: integer
+        enable_snmp:
+          type: boolean
+        enable_ssh:
+          type: boolean
+        timeout_sec:
+          type: integer
+        max_workers:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ScheduledScan:
+      type: object
+      required:
+        - id
+        - network_id
+        - profile_id
+        - name
+        - cron_expression
+        - enabled
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        network_id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cron_expression:
+          type: string
+          description: Cron expression (5 or 6 parts)
+        enabled:
+          type: boolean
+        description:
+          type: string
+        last_run_at:
+          type: string
+          format: date-time
+        next_run_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    APIKey:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    APIKeyWithSecret:
+      allOf:
+        - $ref: '#/components/schemas/APIKey'
+        - type: object
+          required:
+            - key
+          properties:
+            key:
+              type: string
+              description: API key secret (only returned on creation)
+
+    AuditLog:
+      type: object
+      required:
+        - id
+        - timestamp
+        - action
+        - resource
+        - resource_id
+        - user_id
+        - username
+        - ip_address
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        action:
+          type: string
+          description: Action performed (create, update, delete, login, etc.)
+        resource:
+          type: string
+          description: Resource type (device, network, datacenter, etc.)
+        resource_id:
+          type: string
+          description: ID of affected resource
+        user_id:
+          type: string
+          description: API key ID or user ID
+        username:
+          type: string
+          description: API key name or username
+        ip_address:
+          type: string
+          description: Client IP address
+        changes:
+          type: string
+          description: JSON of changes (before/after)
+        status:
+          type: string
+          enum: [success, failure]
+        error:
+          type: string
+          description: Error message if failed
+
+    BulkResult:
+      type: object
+      required:
+        - total
+        - success
+        - failed
+      properties:
+        total:
+          type: integer
+          description: Total number of operations attempted
+        success:
+          type: integer
+          description: Number of successful operations
+        failed:
+          type: integer
+          description: Number of failed operations
+        errors:
+          type: array
+          items:
+            type: string
+          description: Error messages for failed operations
+
+    BulkDeleteRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of resources to delete
+
+    BulkTagsRequest:
+      type: object
+      required:
+        - device_ids
+        - tags
+      properties:
+        device_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        tags:
+          type: array
+          items:
+            type: string
 
 paths:
   /api/datacenters:
@@ -1394,13 +1687,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /api/devices/search:
+  /api/search:
     get:
-      summary: Search devices
-      description: Search devices by name, description, IP, tags, or domains
-      operationId: searchDevices
+      summary: Global search
+      description: Search across devices, networks, and datacenters
+      operationId: search
       tags:
-        - Devices
+        - Search
       parameters:
         - name: q
           in: query
@@ -1408,15 +1701,32 @@ paths:
           schema:
             type: string
           description: Search query (max 256 characters)
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [devices, networks, datacenters]
+          description: Filter by resource type
       responses:
         '200':
-          description: Matching devices
+          description: Search results
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Device'
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  networks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Network'
+                  datacenters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Datacenter'
         '400':
           description: Invalid query
           content:
@@ -1543,6 +1853,53 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /api/devices/{id}/relationships/{child_id}/{type}:
+    patch:
+      summary: Update relationship notes
+      description: Update notes for a device relationship
+      operationId: updateRelationshipNotes
+      tags:
+        - Relationships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Parent device ID
+        - name: child_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Child device ID
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [contains, connected_to, depends_on]
+          description: Relationship type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRelationshipNotesRequest'
+      responses:
+        '204':
+          description: Relationship notes updated successfully
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       summary: Remove device relationship
       description: Remove a relationship between devices
@@ -1572,6 +1929,29 @@ paths:
       responses:
         '204':
           description: Relationship removed successfully
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/relationships:
+    get:
+      summary: List all relationships
+      description: Retrieve all device relationships
+      operationId: listAllRelationships
+      tags:
+        - Relationships
+      responses:
+        '200':
+          description: List of all relationships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceRelationship'
         '500':
           description: Internal server error
           content:
@@ -2030,6 +2410,1096 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/credentials:
+    get:
+      summary: List credentials
+      description: Retrieve all credentials, optionally filtered by datacenter
+      operationId: listCredentials
+      tags:
+        - Credentials
+      parameters:
+        - name: datacenter_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of credentials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Credential'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create credential
+      description: Create a new credential
+      operationId: createCredential
+      tags:
+        - Credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialInput'
+      responses:
+        '201':
+          description: Credential created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/credentials/{id}:
+    get:
+      summary: Get credential
+      description: Retrieve a specific credential by ID
+      operationId: getCredential
+      tags:
+        - Credentials
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credential details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '404':
+          description: Credential not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update credential
+      description: Update an existing credential
+      operationId: updateCredential
+      tags:
+        - Credentials
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialInput'
+      responses:
+        '200':
+          description: Credential updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Credential'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Credential not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete credential
+      description: Delete a credential
+      operationId: deleteCredential
+      tags:
+        - Credentials
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Credential deleted successfully
+        '404':
+          description: Credential not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/scan-profiles:
+    get:
+      summary: List scan profiles
+      description: Retrieve all scan profiles
+      operationId: listProfiles
+      tags:
+        - Scan Profiles
+      responses:
+        '200':
+          description: List of scan profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScanProfile'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create scan profile
+      description: Create a new scan profile
+      operationId: createProfile
+      tags:
+        - Scan Profiles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanProfile'
+      responses:
+        '201':
+          description: Scan profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanProfile'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/scan-profiles/{id}:
+    get:
+      summary: Get scan profile
+      description: Retrieve a specific scan profile by ID
+      operationId: getProfile
+      tags:
+        - Scan Profiles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scan profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanProfile'
+        '404':
+          description: Scan profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update scan profile
+      description: Update an existing scan profile
+      operationId: updateProfile
+      tags:
+        - Scan Profiles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanProfile'
+      responses:
+        '200':
+          description: Scan profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanProfile'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Scan profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete scan profile
+      description: Delete a scan profile
+      operationId: deleteProfile
+      tags:
+        - Scan Profiles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scan profile deleted successfully
+        '404':
+          description: Scan profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/scheduled-scans:
+    get:
+      summary: List scheduled scans
+      description: Retrieve all scheduled scans, optionally filtered by network
+      operationId: listScheduledScans
+      tags:
+        - Scheduled Scans
+      parameters:
+        - name: network_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scheduled scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledScan'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create scheduled scan
+      description: Create a new scheduled scan
+      operationId: createScheduledScan
+      tags:
+        - Scheduled Scans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduledScan'
+      responses:
+        '201':
+          description: Scheduled scan created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledScan'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/scheduled-scans/{id}:
+    get:
+      summary: Get scheduled scan
+      description: Retrieve a specific scheduled scan by ID
+      operationId: getScheduledScan
+      tags:
+        - Scheduled Scans
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scheduled scan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledScan'
+        '404':
+          description: Scheduled scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update scheduled scan
+      description: Update an existing scheduled scan
+      operationId: updateScheduledScan
+      tags:
+        - Scheduled Scans
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduledScan'
+      responses:
+        '200':
+          description: Scheduled scan updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledScan'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Scheduled scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete scheduled scan
+      description: Delete a scheduled scan
+      operationId: deleteScheduledScan
+      tags:
+        - Scheduled Scans
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scheduled scan deleted successfully
+        '404':
+          description: Scheduled scan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/keys:
+    get:
+      summary: List API keys
+      description: Retrieve all API keys, optionally filtered by name
+      operationId: listAPIKeys
+      tags:
+        - API Keys
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIKey'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create API key
+      description: Create a new API key
+      operationId: createAPIKey
+      tags:
+        - API Keys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKeyWithSecret'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/keys/{id}:
+    get:
+      summary: Get API key
+      description: Retrieve a specific API key by ID
+      operationId: getAPIKey
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKey'
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete API key
+      description: Delete an API key
+      operationId: deleteAPIKey
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: API key deleted successfully
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/bulk:
+    post:
+      summary: Bulk create devices
+      description: Create multiple devices in a single transaction
+      operationId: bulkCreateDevices
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Bulk update devices
+      description: Update multiple devices in a single transaction
+      operationId: bulkUpdateDevices
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Bulk delete devices
+      description: Delete multiple devices in a single transaction
+      operationId: bulkDeleteDevices
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteRequest'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/devices/bulk/tags:
+    post:
+      summary: Bulk add tags
+      description: Add tags to multiple devices
+      operationId: bulkAddTags
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTagsRequest'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Bulk remove tags
+      description: Remove tags from multiple devices
+      operationId: bulkRemoveTags
+      tags:
+        - Devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTagsRequest'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/networks/bulk:
+    post:
+      summary: Bulk create networks
+      description: Create multiple networks in a single transaction
+      operationId: bulkCreateNetworks
+      tags:
+        - Networks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Network'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Bulk delete networks
+      description: Delete multiple networks in a single transaction
+      operationId: bulkDeleteNetworks
+      tags:
+        - Networks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteRequest'
+      responses:
+        '200':
+          description: Bulk operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/audit:
+    get:
+      summary: List audit logs
+      description: Retrieve audit logs with optional filtering
+      operationId: listAuditLogs
+      tags:
+        - Audit
+      parameters:
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Filter by resource type
+        - name: resource_id
+          in: query
+          schema:
+            type: string
+          description: Filter by resource ID
+        - name: user_id
+          in: query
+          schema:
+            type: string
+          description: Filter by user ID
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by start time (RFC3339)
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by end time (RFC3339)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Maximum number of results
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+      responses:
+        '200':
+          description: List of audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLog'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/audit/{id}:
+    get:
+      summary: Get audit log
+      description: Retrieve a specific audit log by ID
+      operationId: getAuditLog
+      tags:
+        - Audit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit log details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLog'
+        '404':
+          description: Audit log not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/audit/export:
+    get:
+      summary: Export audit logs
+      description: Export audit logs in JSON or CSV format
+      operationId: exportAuditLogs
+      tags:
+        - Audit
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: Export format
+        - name: resource
+          in: query
+          schema:
+            type: string
+          description: Filter by resource type
+        - name: resource_id
+          in: query
+          schema:
+            type: string
+          description: Filter by resource ID
+        - name: user_id
+          in: query
+          schema:
+            type: string
+          description: Filter by user ID
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by start time (RFC3339)
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by end time (RFC3339)
+      responses:
+        '200':
+          description: Exported audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLog'
+            text/csv:
+              schema:
+                type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /healthz:
+    get:
+      summary: Health check
+      description: Basic health check endpoint
+      operationId: healthz
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /readyz:
+    get:
+      summary: Readiness check
+      description: Readiness check endpoint with database connectivity
+      operationId: readyz
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: ok
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  database:
+                    type: string
+                    example: error
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Prometheus-compatible metrics endpoint
+      operationId: metrics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/config:
+    get:
+      summary: Get UI configuration
+      description: Get configuration for the web UI
+      operationId: getConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: UI configuration
+          content:
+            application/json:
+              schema:
+                type: object
+
 tags:
   - name: Datacenters
     description: Datacenter management
@@ -2043,3 +3513,21 @@ tags:
     description: Device relationships
   - name: Discovery
     description: Network discovery and scanning
+  - name: Search
+    description: Global search across resources
+  - name: Credentials
+    description: Credential management for SNMP and SSH
+  - name: Scan Profiles
+    description: Scan profile management
+  - name: Scheduled Scans
+    description: Scheduled scan management
+  - name: API Keys
+    description: API key management
+  - name: Audit
+    description: Audit log access
+  - name: Health
+    description: Health and readiness checks
+  - name: Monitoring
+    description: Metrics and monitoring
+  - name: Configuration
+    description: Configuration endpoints
