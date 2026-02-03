@@ -27,7 +27,7 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	var results []SearchResult
 
 	// Search devices
-	devices, err := h.storage.SearchDevices(query)
+	devices, err := h.store.SearchDevices(query)
 	if err == nil {
 		for i := range devices {
 			results = append(results, SearchResult{
@@ -38,7 +38,7 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search networks
-	networks, err := h.storage.SearchNetworks(query)
+	networks, err := h.store.SearchNetworks(query)
 	if err == nil {
 		for i := range networks {
 			results = append(results, SearchResult{
@@ -49,7 +49,7 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search datacenters
-	datacenters, err := h.storage.SearchDatacenters(query)
+	datacenters, err := h.store.SearchDatacenters(query)
 	if err == nil {
 		for i := range datacenters {
 			results = append(results, SearchResult{

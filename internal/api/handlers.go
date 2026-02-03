@@ -12,7 +12,7 @@ import (
 )
 
 type Handler struct {
-	storage        storage.ExtendedStorage
+	store          storage.ExtendedStorage
 	scanner        discovery.Scanner
 	credStore      credentials.Storage
 	profileStore   storage.ProfileStorage
@@ -20,7 +20,7 @@ type Handler struct {
 }
 
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
-	return &Handler{storage: s, scanner: scanner}
+	return &Handler{store: s, scanner: scanner}
 }
 
 func (h *Handler) SetCredentialsStorage(cs credentials.Storage) {
@@ -146,6 +146,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
 		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
 	}
+
+	// Health check routes (no auth required)
+	mux.HandleFunc("GET /healthz", h.healthz)
+	mux.HandleFunc("GET /readyz", h.readyz)
+
+	// Metrics route (no auth required)
+	mux.HandleFunc("GET /metrics", h.metricsHandler)
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

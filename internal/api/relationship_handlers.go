@@ -30,7 +30,7 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be contains, connected_to, or depends_on")
 		return
 	}
-	if err := h.storage.AddRelationship(parentID, req.ChildID, req.Type, req.Notes); err != nil {
+	if err := h.store.AddRelationship(parentID, req.ChildID, req.Type, req.Notes); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Device not found")
 			return
@@ -43,7 +43,7 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
 	deviceID := r.PathValue("id")
-	rels, err := h.storage.GetRelationships(deviceID)
+	rels, err := h.store.GetRelationships(deviceID)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -54,7 +54,7 @@ func (h *Handler) getRelationships(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getRelatedDevices(w http.ResponseWriter, r *http.Request) {
 	deviceID := r.PathValue("id")
 	relType := r.URL.Query().Get("type")
-	devices, err := h.storage.GetRelatedDevices(deviceID, relType)
+	devices, err := h.store.GetRelatedDevices(deviceID, relType)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -66,7 +66,7 @@ func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
 	parentID := r.PathValue("id")
 	childID := r.PathValue("child_id")
 	relType := r.PathValue("type")
-	if err := h.storage.RemoveRelationship(parentID, childID, relType); err != nil {
+	if err := h.store.RemoveRelationship(parentID, childID, relType); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -88,7 +88,7 @@ func (h *Handler) updateRelationshipNotes(w http.ResponseWriter, r *http.Request
 		return
 	}
 	
-	if err := h.storage.UpdateRelationshipNotes(parentID, childID, relType, req.Notes); err != nil {
+	if err := h.store.UpdateRelationshipNotes(parentID, childID, relType, req.Notes); err != nil {
 		h.internalError(w, err)
 		return
 	}

@@ -99,11 +99,6 @@ func RunWithAdvancedFeatures(
 	// Static UI
 	ui.RegisterRoutes(mux)
 
-	// Health check
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
@@ -185,11 +180,6 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	// Static UI
 	ui.RegisterRoutes(mux)
 
-	// Health check
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,

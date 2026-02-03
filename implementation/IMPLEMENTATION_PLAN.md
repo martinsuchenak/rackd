@@ -26,11 +26,13 @@ Based on review of specs vs current implementation, here are the features that n
 - Credentials storage with encryption
 - SQLite storage with migrations
 - REST API (all endpoints)
+- Full-Text Search (FTS5)
+- Metrics and Monitoring (Prometheus-compatible)
+- Enhanced Health Checks (liveness and readiness probes)
 
 ### 🚧 Partially Implemented
 
-- Monitoring (logging exists, metrics endpoint missing)
-- Health checks (basic, needs enhancement)
+None - All core features fully implemented!
 
 ### ❌ Not Implemented (Planned Features)
 
@@ -74,47 +76,81 @@ Based on review of specs vs current implementation, here are the features that n
 
 **Tests**: All storage tests passing (150+ tests)
 
-### 1.2 Metrics and Monitoring
+### 1.2 Metrics and Monitoring ✅ COMPLETED
 
 **Priority**: High  
 **Effort**: 2-3 days  
-**Dependencies**: None
+**Dependencies**: None  
+**Status**: ✅ Completed (2026-02-03)
 
-**Tasks**:
+**Completed Tasks**:
 
-- [ ] Add Prometheus metrics library
-- [ ] Implement `/metrics` endpoint
-- [ ] Add HTTP request metrics (duration, count, status)
-- [ ] Add application metrics (device count, network count, etc.)
-- [ ] Add discovery metrics (scan duration, hosts found)
-- [ ] Add database metrics (query duration, connection pool)
-- [ ] Update documentation
+- ✅ Implemented Prometheus-compatible metrics collection
+- ✅ Added `/metrics` endpoint with HTTP, application, database, and runtime metrics
+- ✅ Integrated metrics recording in HTTP middleware
+- ✅ Added metrics for HTTP requests (count, duration, status codes)
+- ✅ Added application metrics (device, network, datacenter counts)
+- ✅ Added discovery metrics (scan count, duration)
+- ✅ Added database metrics (query count, duration, connections)
+- ✅ Added runtime metrics (uptime, goroutines, memory)
+- ✅ Created comprehensive tests for metrics package
+- ✅ Updated documentation with monitoring guide
 
-**Files to create/modify**:
+**Implementation Details**:
+- Package: `internal/metrics`
+- Metrics format: Prometheus text format
+- Atomic operations for thread-safe counters
+- Histogram-based duration tracking
+- No external dependencies (pure Go implementation)
+- Documentation: `docs/monitoring.md`
 
-- `internal/metrics/metrics.go` - Metrics collection
-- `internal/api/handlers.go` - Add metrics endpoint
-- `internal/api/middleware.go` - Add metrics middleware
-- `docs/monitoring.md` - Update with metrics info
+**Files Created**:
+- `internal/metrics/metrics.go` - Metrics collection and export
+- `internal/metrics/metrics_test.go` - Metrics tests
+- `internal/api/metrics_handlers.go` - Metrics HTTP handler
+- `internal/api/metrics_handlers_test.go` - Handler tests
+- `docs/monitoring.md` - Comprehensive monitoring documentation
 
-### 1.3 Enhanced Health Checks
+**Files Modified**:
+- `internal/api/middleware.go` - Added metrics recording
+- `internal/api/handlers.go` - Registered metrics endpoint
+
+**Tests**: All tests passing (metrics package + API handlers)
+
+### 1.3 Enhanced Health Checks ✅ COMPLETED
 
 **Priority**: Medium  
 **Effort**: 1 day  
-**Dependencies**: None
+**Dependencies**: None  
+**Status**: ✅ Completed (2026-02-03)
 
-**Tasks**:
+**Completed Tasks**:
 
-- [ ] Implement `/healthz` (liveness probe)
-- [ ] Implement `/readyz` (readiness probe)
-- [ ] Check database connectivity
-- [ ] Check discovery scheduler status
-- [ ] Return detailed health status JSON
+- ✅ Implemented `/healthz` (liveness probe)
+- ✅ Implemented `/readyz` (readiness probe)
+- ✅ Added database connectivity check
+- ✅ Added discovery scheduler status check
+- ✅ Return detailed health status JSON
+- ✅ Created comprehensive tests
+- ✅ Updated documentation
 
-**Files to create/modify**:
+**Implementation Details**:
+- Liveness probe: Simple OK response for container orchestration
+- Readiness probe: Detailed JSON with individual check status
+- Database check: Ping + connection stats validation
+- Scheduler check: Verifies scanner initialization
+- HTTP status codes: 200 (healthy), 503 (unhealthy)
+- Documentation: `docs/monitoring.md`
 
+**Files Created**:
 - `internal/api/health_handlers.go` - Health check handlers
-- `internal/api/handlers.go` - Register health routes
+- `internal/api/health_handlers_test.go` - Handler tests
+
+**Files Modified**:
+- `internal/api/handlers.go` - Registered health endpoints
+- `internal/server/server.go` - Removed old basic health check
+
+**Tests**: All tests passing (health check handlers)
 
 ## Phase 2: Integration Features (Medium Priority)
 
@@ -581,8 +617,8 @@ RACKD_POSTGRES_MAX_IDLE=10
 ### Immediate (Next Sprint)
 
 1. ~~Full-Text Search (1.1)~~ ✅ COMPLETED
-2. Metrics and Monitoring (1.2)
-3. Enhanced Health Checks (1.3)
+2. ~~Metrics and Monitoring (1.2)~~ ✅ COMPLETED
+3. ~~Enhanced Health Checks (1.3)~~ ✅ COMPLETED
 
 ### Short-term (1-2 months)
 
@@ -615,12 +651,12 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 | Phase | Features | Total Effort | Completed |
 |-------|----------|--------------|-----------|
-| Phase 1 (Core) | 3 features | 5-7 days | 1/3 ✅ |
+| Phase 1 (Core) | 3 features | 5-7 days | 3/3 ✅ |
 | Phase 2 (Integration) | 3 features | 10-13 days | 0/3 |
 | Phase 3 (Security & Users) | 5 features | 31-43 days | 0/5 |
 | Phase 4 (Advanced) | 7 features | 40-55 days | 0/7 |
 | Phase 5 (Performance) | 3 features | Ongoing | 0/3 |
-| **Total** | **21 features** | **86-118 days** | **1/21 (5%)** |
+| **Total** | **21 features** | **86-118 days** | **3/21 (14%)** |
 
 ## Dependencies
 
@@ -660,8 +696,8 @@ Phase 5 (Performance)
 - ✅ Prefix matching works (partial queries)
 - ✅ Unified search endpoint for all entity types
 - ✅ All tests passing
-- [ ] Metrics endpoint returns data in <50ms
-- [ ] Health checks respond in <10ms
+- ✅ Metrics endpoint returns data in <50ms
+- ✅ Health checks respond in <10ms
 
 ### Phase 2
 

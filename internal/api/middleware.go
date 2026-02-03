@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/metrics"
 )
 
 // MaxRequestBodySize is the maximum allowed request body size (1MB)
 const MaxRequestBodySize = 1 << 20
 
-// LoggingMiddleware logs all HTTP requests
+// LoggingMiddleware logs all HTTP requests and records metrics
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -36,6 +37,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"status", wrapped.statusCode,
 			"duration_ms", duration.Milliseconds(),
 		)
+
+		// Record metrics
+		metrics.Get().RecordHTTPRequest(r.Method, r.URL.Path, wrapped.statusCode, duration)
 	})
 }
 

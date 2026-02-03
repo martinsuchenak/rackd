@@ -15,7 +15,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		NetworkID:    r.URL.Query().Get("network_id"),
 	}
-	devices, err := h.storage.ListDevices(filter)
+	devices, err := h.store.ListDevices(filter)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -33,7 +33,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.storage.CreateDevice(&device); err != nil {
+	if err := h.store.CreateDevice(&device); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -42,7 +42,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	device, err := h.storage.GetDevice(id)
+	device, err := h.store.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
@@ -56,7 +56,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	device, err := h.storage.GetDevice(id)
+	device, err := h.store.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
@@ -111,7 +111,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateDevice(device); err != nil {
+	if err := h.store.UpdateDevice(device); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -120,7 +120,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteDevice(id); err != nil {
+	if err := h.store.DeleteDevice(id); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
 			return
@@ -141,7 +141,7 @@ func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter must be 256 characters or less")
 		return
 	}
-	devices, err := h.storage.SearchDevices(query)
+	devices, err := h.store.SearchDevices(query)
 	if err != nil {
 		h.internalError(w, err)
 		return

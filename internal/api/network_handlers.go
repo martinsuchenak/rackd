@@ -15,7 +15,7 @@ func (h *Handler) listNetworks(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		VLANID:       parseIntParam(r, "vlan_id", 0),
 	}
-	networks, err := h.storage.ListNetworks(filter)
+	networks, err := h.store.ListNetworks(filter)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -33,7 +33,7 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.storage.CreateNetwork(&network); err != nil {
+	if err := h.store.CreateNetwork(&network); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -42,7 +42,7 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	network, err := h.storage.GetNetwork(id)
+	network, err := h.store.GetNetwork(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
@@ -56,7 +56,7 @@ func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	network, err := h.storage.GetNetwork(id)
+	network, err := h.store.GetNetwork(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
@@ -93,7 +93,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateNetwork(network); err != nil {
+	if err := h.store.UpdateNetwork(network); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -102,7 +102,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteNetwork(id); err != nil {
+	if err := h.store.DeleteNetwork(id); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
 			return
@@ -115,7 +115,7 @@ func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, err := h.storage.GetNetwork(id); err != nil {
+	if _, err := h.store.GetNetwork(id); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
 			return
@@ -123,7 +123,7 @@ func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 		h.internalError(w, err)
 		return
 	}
-	devices, err := h.storage.GetNetworkDevices(id)
+	devices, err := h.store.GetNetworkDevices(id)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -133,7 +133,7 @@ func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	utilization, err := h.storage.GetNetworkUtilization(id)
+	utilization, err := h.store.GetNetworkUtilization(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
@@ -147,7 +147,7 @@ func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) 
 
 func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, err := h.storage.GetNetwork(id); err != nil {
+	if _, err := h.store.GetNetwork(id); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
 			return
@@ -156,7 +156,7 @@ func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := &model.NetworkPoolFilter{NetworkID: id}
-	pools, err := h.storage.ListNetworkPools(filter)
+	pools, err := h.store.ListNetworkPools(filter)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -166,7 +166,7 @@ func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 	networkID := r.PathValue("id")
-	if _, err := h.storage.GetNetwork(networkID); err != nil {
+	if _, err := h.store.GetNetwork(networkID); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
 			return
@@ -187,7 +187,7 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.CreateNetworkPool(&pool); err != nil {
+	if err := h.store.CreateNetworkPool(&pool); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -196,7 +196,7 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	pool, err := h.storage.GetNetworkPool(id)
+	pool, err := h.store.GetNetworkPool(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
@@ -210,7 +210,7 @@ func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	pool, err := h.storage.GetNetworkPool(id)
+	pool, err := h.store.GetNetworkPool(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
@@ -252,7 +252,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateNetworkPool(pool); err != nil {
+	if err := h.store.UpdateNetworkPool(pool); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -261,7 +261,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteNetworkPool(id); err != nil {
+	if err := h.store.DeleteNetworkPool(id); err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
 			return
@@ -274,7 +274,7 @@ func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	ip, err := h.storage.GetNextAvailableIP(id)
+	ip, err := h.store.GetNextAvailableIP(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
@@ -292,7 +292,7 @@ func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	heatmap, err := h.storage.GetPoolHeatmap(id)
+	heatmap, err := h.store.GetPoolHeatmap(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
@@ -311,7 +311,7 @@ func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	networks, err := h.storage.SearchNetworks(query)
+	networks, err := h.store.SearchNetworks(query)
 	if err != nil {
 		h.internalError(w, err)
 		return

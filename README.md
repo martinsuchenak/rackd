@@ -11,6 +11,8 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 - **Network Discovery**: Automated network scanning and device discovery
 - **Datacenter Management**: Organize devices by physical location
 - **Device Relationships**: Track dependencies and connections between devices
+- **Full-Text Search**: Fast FTS5-powered search across devices, networks, and datacenters
+- **Monitoring & Metrics**: Prometheus-compatible metrics and health checks
 - **Web UI**: Modern, responsive interface built with Alpine.js and TailwindCSS
 - **CLI Tool**: Full-featured command-line interface for automation
 - **MCP Server**: Model Context Protocol integration for AI/automation tools
@@ -66,6 +68,7 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 ### Operations
 
 - [Deployment](docs/deployment.md) - Docker, Nomad, and production deployment
+- [Monitoring](docs/monitoring.md) - Metrics, health checks, and observability
 - [Backup & Restore](docs/backup.md) - Data backup strategies
 - [Security](docs/security.md) - Security best practices
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions

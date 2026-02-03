@@ -36,7 +36,7 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	network, err := h.storage.GetNetwork(networkID)
+	network, err := h.store.GetNetwork(networkID)
 	if err != nil {
 		log.Error("Network not found for scan", "network_id", networkID, "error", err)
 		h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
@@ -57,7 +57,7 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listScans(w http.ResponseWriter, r *http.Request) {
 	networkID := r.URL.Query().Get("network_id")
-	scans, err := h.storage.ListDiscoveryScans(networkID)
+	scans, err := h.store.ListDiscoveryScans(networkID)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -67,7 +67,7 @@ func (h *Handler) listScans(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getScan(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	scan, err := h.storage.GetDiscoveryScan(id)
+	scan, err := h.store.GetDiscoveryScan(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrScanNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
@@ -111,7 +111,7 @@ func (h *Handler) cancelScan(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listDiscoveredDevices(w http.ResponseWriter, r *http.Request) {
 	networkID := r.URL.Query().Get("network_id")
-	devices, err := h.storage.ListDiscoveredDevices(networkID)
+	devices, err := h.store.ListDiscoveredDevices(networkID)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -132,7 +132,7 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
-	discovered, err := h.storage.GetDiscoveredDevice(discoveredID)
+	discovered, err := h.store.GetDiscoveredDevice(discoveredID)
 	if err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovered device not found")
@@ -154,11 +154,11 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 	if device.Name == "" {
 		device.Name = discovered.Hostname
 	}
-	if err := h.storage.CreateDevice(device); err != nil {
+	if err := h.store.CreateDevice(device); err != nil {
 		h.internalError(w, err)
 		return
 	}
-	if err := h.storage.PromoteDiscoveredDevice(discoveredID, device.ID); err != nil {
+	if err := h.store.PromoteDiscoveredDevice(discoveredID, device.ID); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -167,7 +167,7 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveredDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteDiscoveredDevice(id); err != nil {
+	if err := h.store.DeleteDiscoveredDevice(id); err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovered device not found")
 			return
@@ -180,7 +180,7 @@ func (h *Handler) deleteDiscoveredDevice(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) deleteDiscoveryScan(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteDiscoveryScan(id); err != nil {
+	if err := h.store.DeleteDiscoveryScan(id); err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
 			return
@@ -193,7 +193,7 @@ func (h *Handler) deleteDiscoveryScan(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveredDevicesByNetwork(w http.ResponseWriter, r *http.Request) {
 	networkID := r.URL.Query().Get("network_id")
-	if err := h.storage.DeleteDiscoveredDevicesByNetwork(networkID); err != nil {
+	if err := h.store.DeleteDiscoveredDevicesByNetwork(networkID); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -201,7 +201,7 @@ func (h *Handler) deleteDiscoveredDevicesByNetwork(w http.ResponseWriter, r *htt
 }
 
 func (h *Handler) listDiscoveryRules(w http.ResponseWriter, r *http.Request) {
-	rules, err := h.storage.ListDiscoveryRules()
+	rules, err := h.store.ListDiscoveryRules()
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -244,7 +244,7 @@ func (h *Handler) createDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	if rule.IntervalHours == 0 {
 		rule.IntervalHours = 24
 	}
-	if err := h.storage.SaveDiscoveryRule(rule); err != nil {
+	if err := h.store.SaveDiscoveryRule(rule); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -253,7 +253,7 @@ func (h *Handler) createDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	rule, err := h.storage.GetDiscoveryRule(id)
+	rule, err := h.store.GetDiscoveryRule(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrRuleNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovery rule not found")
@@ -267,7 +267,7 @@ func (h *Handler) getDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	existing, err := h.storage.GetDiscoveryRule(id)
+	existing, err := h.store.GetDiscoveryRule(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrRuleNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovery rule not found")
@@ -290,7 +290,7 @@ func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	}
 	existing.ExcludeIPs = req.ExcludeIPs
 	existing.UpdatedAt = time.Now()
-	if err := h.storage.SaveDiscoveryRule(existing); err != nil {
+	if err := h.store.SaveDiscoveryRule(existing); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -299,7 +299,7 @@ func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteDiscoveryRule(id); err != nil {
+	if err := h.store.DeleteDiscoveryRule(id); err != nil {
 		if errors.Is(err, storage.ErrRuleNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovery rule not found")
 			return

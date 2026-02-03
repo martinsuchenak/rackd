@@ -13,7 +13,7 @@ func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DatacenterFilter{
 		Name: r.URL.Query().Get("name"),
 	}
-	datacenters, err := h.storage.ListDatacenters(filter)
+	datacenters, err := h.store.ListDatacenters(filter)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -31,7 +31,7 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.storage.CreateDatacenter(&dc); err != nil {
+	if err := h.store.CreateDatacenter(&dc); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -40,7 +40,7 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	dc, err := h.storage.GetDatacenter(id)
+	dc, err := h.store.GetDatacenter(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
@@ -54,7 +54,7 @@ func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	dc, err := h.storage.GetDatacenter(id)
+	dc, err := h.store.GetDatacenter(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
@@ -85,7 +85,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateDatacenter(dc); err != nil {
+	if err := h.store.UpdateDatacenter(dc); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -94,7 +94,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.storage.DeleteDatacenter(id); err != nil {
+	if err := h.store.DeleteDatacenter(id); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
 			return
@@ -107,7 +107,7 @@ func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, err := h.storage.GetDatacenter(id); err != nil {
+	if _, err := h.store.GetDatacenter(id); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
 			return
@@ -115,7 +115,7 @@ func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 		h.internalError(w, err)
 		return
 	}
-	devices, err := h.storage.GetDatacenterDevices(id)
+	devices, err := h.store.GetDatacenterDevices(id)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -130,7 +130,7 @@ func (h *Handler) searchDatacenters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	datacenters, err := h.storage.SearchDatacenters(query)
+	datacenters, err := h.store.SearchDatacenters(query)
 	if err != nil {
 		h.internalError(w, err)
 		return
