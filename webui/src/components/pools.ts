@@ -32,6 +32,8 @@ export function poolDetail(): PoolDetailData {
     network: null,
     heatmap: [],
     nextIP: '',
+    poolDevices: [] as Device[],
+    loadingDevices: false,
     loading: true,
     error: '',
     showDeleteModal: false,
@@ -56,6 +58,24 @@ export function poolDetail(): PoolDetailData {
         return;
       }
       await this.loadPool();
+      await this.loadPoolDevices();
+    },
+
+    async loadPoolDevices(): Promise<void> {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) return;
+      this.loadingDevices = true;
+      try {
+        // Get all devices and filter by pool_id
+        const allDevices = await api.listDevices({});
+        this.poolDevices = allDevices.filter(d => 
+          d.addresses?.some(a => a.pool_id === id)
+        );
+      } catch {
+        this.poolDevices = [];
+      } finally {
+        this.loadingDevices = false;
+      }
     },
 
     async loadPool(): Promise<void> {

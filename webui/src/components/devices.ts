@@ -37,6 +37,9 @@ export function deviceList() {
     networks: [] as Network[],
     pools: [] as NetworkPool[],
     poolsCache: {} as Record<string, NetworkPool[]>,
+    allPools: [] as NetworkPool[],
+    networkFilter: '',
+    poolFilter: '',
     loading: true,
     error: '',
     search: '',
@@ -96,7 +99,17 @@ export function deviceList() {
     },
 
     async init(): Promise<void> {
+      // Read URL parameters for pre-filtering
+      const params = new URLSearchParams(window.location.search);
+      const networkParam = params.get('network');
+      const poolParam = params.get('pool');
+      
+      if (networkParam) this.networkFilter = networkParam;
+      if (poolParam) this.poolFilter = poolParam;
+      
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
+      await this.loadAllPools();
+      
       // Watch for modal open/close to manage focus trap
       this.$watch('showDeviceModal', (show: boolean) => {
         if (show) {
@@ -173,11 +186,28 @@ export function deviceList() {
       this.loading = true;
       this.error = '';
       try {
+        let devices: Device[] = [];
         if (this.search) {
-          this.devices = (await api.searchDevices(this.search)) || [];
+          devices = (await api.searchDevices(this.search)) || [];
         } else {
-          this.devices = (await api.listDevices(this.filter)) || [];
+          devices = (await api.listDevices(this.filter)) || [];
         }
+        
+        // Apply network filter
+        if (this.networkFilter) {
+          devices = devices.filter(d => 
+            d.addresses?.some(a => a.network_id === this.networkFilter)
+          );
+        }
+        
+        // Apply pool filter
+        if (this.poolFilter) {
+          devices = devices.filter(d => 
+            d.addresses?.some(a => a.pool_id === this.poolFilter)
+          );
+        }
+        
+        this.devices = devices;
         this.page = 1;
       } catch (e) {
         this.devices = [];
@@ -207,7 +237,41 @@ export function deviceList() {
     clearFilters(): void {
       this.filter = {};
       this.search = '';
+      this.networkFilter = '';
+      this.poolFilter = '';
+      // Update URL to remove query parameters
+      if (window.location.search) {
+        window.history.pushState({}, '', '/devices');
+      }
       this.loadDevices();
+    },
+
+    applyFilters(): void {
+      this.page = 1;
+      this.loadDevices();
+    },
+
+    getNetworkName(networkId: string): string {
+      const network = this.networks.find(n => n.id === networkId);
+      return network?.name || networkId;
+    },
+
+    getPoolName(poolId: string): string {
+      const pool = this.allPools.find(p => p.id === poolId);
+      return pool?.name || poolId;
+    },
+
+    async loadAllPools(): Promise<void> {
+      try {
+        const pools: NetworkPool[] = [];
+        for (const network of this.networks) {
+          const networkPools = await api.listNetworkPools(network.id);
+          pools.push(...networkPools);
+        }
+        this.allPools = pools;
+      } catch {
+        this.allPools = [];
+      }
     },
 
     goToPage(p: number): void {

@@ -226,6 +226,10 @@ export class RackdAPI {
     return this.request<NetworkUtilization>('GET', `/api/networks/${id}/utilization`);
   }
 
+  async getNetworkDevices(id: string): Promise<Device[]> {
+    return this.request<Device[]>('GET', `/api/networks/${id}/devices`);
+  }
+
   // Network Pools
   async listNetworkPools(networkId: string): Promise<NetworkPool[]> {
     return this.request<NetworkPool[]>('GET', `/api/networks/${networkId}/pools`);

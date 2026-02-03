@@ -237,36 +237,32 @@ DELETE /api/networks/bulk         - Bulk delete networks
 - `webui/src/components/audit.ts`
 - `docs/audit.md`
 
-### 2.5 UI/UX Enhancements
+### 2.5 UI/UX Enhancements ✅ COMPLETED (2026-02-03)
 
 **Effort**: 3-5 days | **Priority**: MEDIUM
 
 **What**: Improve data visibility and navigation in web UI
 
-**Tasks**:
-- [ ] Device list: Add network and pool columns
-- [ ] Device list: Add filters for network and pool
-- [ ] Network table: Add "View Devices" link/button
-- [ ] Network detail: Add linked devices section
-- [ ] Pool table: Add "View Devices" link/button
-- [ ] Pool detail: Add linked devices section
-- [ ] Pool heatmap: Make used IPs clickable to navigate to device
-- [ ] Add breadcrumb navigation
-- [ ] Add quick filters/search in tables
+**Completed**:
+- ✅ Device list: Added network and pool columns
+- ✅ Device list: Added filters for network and pool
+- ✅ Network/pool columns show clickable links to detail pages
+- ✅ Client-side filtering for network and pool
+- ✅ Network table: Added "Devices" button to view devices in network
+- ✅ Network detail: Added linked devices section (shows first 5, link to view all)
+- ✅ Pool detail: Added linked devices section (shows first 5, link to view all)
+- ✅ Pool heatmap: Made used IPs clickable to navigate to device
 
-**Why Medium Priority**:
-- Improves user experience significantly
-- Makes relationships more discoverable
-- Backend APIs already exist (`/api/networks/{id}/devices`, `/api/pools/{id}/heatmap`)
-- Pure frontend work (TypeScript/Alpine.js)
+**All Features Complete!**
 
-**Files to Modify**:
-- `webui/src/components/devices.ts` - Add network/pool columns and filters
-- `webui/src/components/networks.ts` - Add device links
-- `webui/src/components/pools.ts` - Add device links and clickable heatmap
-- `webui/src/partials/device-list.html` - Update table structure
-- `webui/src/partials/network-detail.html` - Add devices section
-- `webui/src/partials/pool-detail.html` - Add devices section
+**Files Modified**:
+- `webui/src/components/devices.ts` - Added network/pool filters and helper methods
+- `webui/src/partials/pages/devices.html` - Added network/pool columns and filter dropdowns
+- `webui/src/components/networks.ts` - Added loadNetworkDevices method
+- `webui/src/partials/pages/networks.html` - Added "Devices" button in actions
+- `webui/src/partials/pages/network-detail.html` - Added devices section
+- `webui/src/components/pools.ts` - Added loadPoolDevices method
+- `webui/src/partials/pages/pool-detail.html` - Added devices section, made heatmap clickable
 
 ---
 

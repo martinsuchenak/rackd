@@ -302,6 +302,8 @@ export function networkDetail(): NetworkDetailData {
     datacenters: [],
     pools: [],
     utilization: null,
+    networkDevices: [] as Device[],
+    loadingDevices: false,
     loading: true,
     error: '',
     showDeleteModal: false,
@@ -340,7 +342,20 @@ export function networkDetail(): NetworkDetailData {
         this.loading = false;
         return;
       }
-      await Promise.all([this.loadNetwork(), this.loadDatacenters()]);
+      await Promise.all([this.loadNetwork(), this.loadDatacenters(), this.loadNetworkDevices()]);
+    },
+
+    async loadNetworkDevices(): Promise<void> {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) return;
+      this.loadingDevices = true;
+      try {
+        this.networkDevices = (await api.getNetworkDevices(id)) || [];
+      } catch {
+        this.networkDevices = [];
+      } finally {
+        this.loadingDevices = false;
+      }
     },
 
     async loadDatacenters(): Promise<void> {
