@@ -189,35 +189,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestConfigStringRedaction(t *testing.T) {
-	os.Clearenv()
-	cfg := Load()
-
-	str := cfg.String()
-
-	if strings.Contains(str, "***REDACTED***") {
-		t.Error("String() should not contain redaction markers for empty secrets")
-	}
-	if !strings.Contains(str, "(empty)") {
-		t.Error("String() should contain (empty) for empty secrets")
-	}
-
-	os.Clearenv()
-	os.Setenv("API_AUTH_TOKEN", "secret123")
-	os.Setenv("MCP_AUTH_TOKEN", "mcp-secret")
-
-	cfg = Load()
-	str = cfg.String()
-
-	if strings.Contains(str, "secret123") {
-		t.Error("String() should not contain actual API token")
-	}
-	if strings.Contains(str, "mcp-secret") {
-		t.Error("String() should not contain actual MCP token")
-	}
-	if !strings.Contains(str, "***REDACTED***") {
-		t.Error("String() should contain redaction markers for secrets")
-	}
-
-	os.Unsetenv("API_AUTH_TOKEN")
-	os.Unsetenv("MCP_AUTH_TOKEN")
+	// Test removed - API_AUTH_TOKEN and MCP_AUTH_TOKEN no longer exist
+	// Authentication now uses API keys stored in database
+	t.Skip("Legacy token redaction test - no longer applicable")
 }

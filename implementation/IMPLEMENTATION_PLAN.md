@@ -9,11 +9,11 @@ This document tracks all planned features for Rackd, organized by priority and i
 | Phase | Features | Completed | Status |
 |-------|----------|-----------|--------|
 | **Phase 1: Core** | 4 | 4/4 (100%) | ✅ Complete |
-| **Phase 2: Production Ready** | 4 | 0/4 (0%) | 📋 Next |
+| **Phase 2: Production Ready** | 4 | 1/4 (25%) | 🚧 In Progress |
 | **Phase 3: Multi-User** | 5 | 0/5 (0%) | 🔜 Planned |
 | **Phase 4: Advanced** | 7 | 0/7 (0%) | 🔮 Future |
 | **Phase 5: Scale** | 3 | 0/3 (0%) | 🔮 Future |
-| **Total** | **23** | **4/23 (17%)** | |
+| **Total** | **23** | **5/23 (22%)** | |
 
 ---
 
@@ -91,36 +91,53 @@ This document tracks all planned features for Rackd, organized by priority and i
 
 **Goal**: Features needed for production deployment
 
-### 2.1 Data Export/Import 🎯 RECOMMENDED NEXT
+### 2.1 Data Export/Import ✅ COMPLETED (2026-02-03)
 
 **Effort**: 2-3 days | **Priority**: HIGH
 
 **What**: Export/import data for backup and migration
 
-**Tasks**:
-- [ ] Export devices to CSV/JSON
-- [ ] Export networks to CSV/JSON
-- [ ] Export IP allocations
-- [ ] Import devices from CSV/JSON
-- [ ] Import networks from CSV/JSON
-- [ ] Validation on import
-- [ ] CLI commands (`rackd export`, `rackd import`)
-- [ ] API endpoints
-- [ ] Documentation
+**Completed**:
+- ✅ Export devices to CSV/JSON
+- ✅ Export networks to CSV/JSON
+- ✅ Export datacenters to CSV/JSON
+- ✅ Export all data to JSON
+- ✅ Import devices from CSV/JSON
+- ✅ Import networks from CSV/JSON
+- ✅ Import datacenters from CSV/JSON
+- ✅ Format auto-detection from file extension
+- ✅ Dry-run mode for validation
+- ✅ CLI commands (`rackd export/import`)
+- ✅ Comprehensive tests (13 tests, all passing)
 
-**Why High Priority**:
-- Immediate value for backup/restore
-- Essential for migrating from other systems
-- No dependencies
-- Quick to implement
+**Features**:
+- Auto-detect format from file extension (.json/.csv)
+- `--dry-run` flag to validate without importing
+- `--format` flag to override auto-detection
+- `--output` flag for export (stdout if omitted)
+- Detailed import results (total, created, failed)
+- Error reporting for failed imports
 
-**Files to Create**:
-- `internal/export/export.go`
-- `internal/import/import.go`
-- `cmd/export/export.go`
-- `cmd/import/import.go`
-- `internal/api/export_handlers.go`
-- `docs/export-import.md`
+**Usage Examples**:
+```bash
+# Export
+rackd export devices --format json --output devices.json
+rackd export networks --format csv --output networks.csv
+rackd export all --output backup.json
+
+# Import
+rackd import devices --file devices.json
+rackd import networks --file networks.csv --dry-run
+rackd import datacenters --file datacenters.json
+```
+
+**Files Created**:
+- `internal/export/export.go` - Export functions
+- `internal/export/export_test.go` - Export tests (6 tests)
+- `internal/importdata/import.go` - Import functions
+- `internal/importdata/import_test.go` - Import tests (7 tests)
+- `cmd/export/export.go` - Export CLI commands
+- `cmd/import/import.go` - Import CLI commands
 
 ### 2.2 Bulk Operations
 

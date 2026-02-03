@@ -9,6 +9,8 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
 	"github.com/martinsuchenak/rackd/cmd/discovery"
+	"github.com/martinsuchenak/rackd/cmd/export"
+	importcmd "github.com/martinsuchenak/rackd/cmd/import"
 	"github.com/martinsuchenak/rackd/cmd/network"
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/paularlott/cli"
@@ -32,6 +34,8 @@ func main() {
 			datacenter.Command(),
 			discovery.Command(),
 			apikey.Command(),
+			export.Command(),
+			importcmd.Command(),
 			{
 				Name:  "version",
 				Usage: "Show version information",

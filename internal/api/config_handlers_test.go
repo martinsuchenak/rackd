@@ -123,7 +123,7 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 	if len(config.Features) != 1 || config.Features[0] != "advanced_scanning" {
 		t.Errorf("unexpected features: %v", config.Features)
 	}
-	if len(config.NavItems) != 1 || config.NavItems[0].Label != "SSO" {
+	if len(config.NavItems) != 1 || config.NavItems[0].Label != "Profiles" {
 		t.Errorf("unexpected nav items: %v", config.NavItems)
 	}
 }

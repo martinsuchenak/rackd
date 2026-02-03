@@ -171,7 +171,7 @@ func TestDeviceHandlers(t *testing.T) {
 	})
 
 	t.Run("SearchDevices", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/search?q=server", nil)
+		req := httptest.NewRequest("GET", "/api/search?q=server&type=devices", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -181,7 +181,7 @@ func TestDeviceHandlers(t *testing.T) {
 	})
 
 	t.Run("SearchDevices_MissingQuery", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/search", nil)
+		req := httptest.NewRequest("GET", "/api/search", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

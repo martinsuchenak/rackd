@@ -3,12 +3,20 @@ package mcp
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
+
+func init() {
+	// Initialize logger for tests
+	log.Init("console", "error", io.Discard)
+}
 
 func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	t.Helper()
@@ -16,16 +24,16 @@ func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(store, ""), store
+	return NewServer(store, false), store
 }
 
-func newTestServerWithAuth(t *testing.T, token string) (*Server, storage.ExtendedStorage) {
+func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 	t.Helper()
 	store, err := storage.NewSQLiteStorage(":memory:")
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(store, token), store
+	return NewServer(store, true), store
 }
 
 func TestNewServer(t *testing.T) {
@@ -58,13 +66,22 @@ func TestHandleRequest_NoAuth(t *testing.T) {
 }
 
 func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
-	srv, store := newTestServerWithAuth(t, "test-token")
+	srv, store := newTestServerWithAuth(t)
 	defer store.Close()
+
+	// Create an API key
+	key := &model.APIKey{
+		Name: "test-key",
+		Key:  "test-token-12345",
+	}
+	if err := store.CreateAPIKey(key); err != nil {
+		t.Fatalf("failed to create API key: %v", err)
+	}
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token")
+	req.Header.Set("Authorization", "Bearer "+key.Key)
 	w := httptest.NewRecorder()
 
 	srv.HandleRequest(w, req)
@@ -75,7 +92,7 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 }
 
 func TestHandleRequest_WithAuth_InvalidToken(t *testing.T) {
-	srv, store := newTestServerWithAuth(t, "test-token")
+	srv, store := newTestServerWithAuth(t)
 	defer store.Close()
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
@@ -92,7 +109,7 @@ func TestHandleRequest_WithAuth_InvalidToken(t *testing.T) {
 }
 
 func TestHandleRequest_WithAuth_MissingToken(t *testing.T) {
-	srv, store := newTestServerWithAuth(t, "test-token")
+	srv, store := newTestServerWithAuth(t)
 	defer store.Close()
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
@@ -108,13 +125,22 @@ func TestHandleRequest_WithAuth_MissingToken(t *testing.T) {
 }
 
 func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
-	srv, store := newTestServerWithAuth(t, "test-token")
+	srv, store := newTestServerWithAuth(t)
 	defer store.Close()
+
+	// Create an API key
+	key := &model.APIKey{
+		Name: "test-key",
+		Key:  "test-token-12345",
+	}
+	if err := store.CreateAPIKey(key); err != nil {
+		t.Fatalf("failed to create API key: %v", err)
+	}
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "test-token")
+	req.Header.Set("Authorization", key.Key)
 	w := httptest.NewRecorder()
 
 	srv.HandleRequest(w, req)
