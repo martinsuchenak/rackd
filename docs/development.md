@@ -321,6 +321,159 @@ golangci-lint run ./...
 - Use TailwindCSS for styling
 - Keep components small and focused
 - Use meaningful CSS class names
+- **Maintain WCAG 2.2 Level AAA compliance** (see Accessibility Guidelines below)
+
+### Accessibility Guidelines
+
+**All UI changes must comply with WCAG 2.2 Level AAA standards.**
+
+#### Required Standards
+
+1. **Color Contrast (1.4.6 AAA)**
+   - Normal text: 7:1 contrast ratio minimum
+   - Large text (18pt+): 4.5:1 contrast ratio minimum
+   - Use contrast checker before committing color changes
+
+2. **Target Size (2.5.5 AAA)**
+   - All interactive elements: 44×44 CSS pixels minimum
+   - Includes buttons, links, form controls, and custom controls
+   - Ensure adequate spacing between adjacent targets (8px minimum)
+
+3. **Focus Indicators (2.4.7 AAA)**
+   - All interactive elements must have visible focus indicators
+   - Use `focus:outline-none focus:ring-[3px] focus:ring-blue-500` pattern
+   - Icon-only buttons need extra prominent focus (4px outline)
+   - Test with keyboard-only navigation
+
+4. **Keyboard Navigation (2.1.3 AAA)**
+   - All functionality must be keyboard accessible
+   - Implement focus traps in modals using `createFocusTrap()` utility
+   - Support arrow key navigation where appropriate (e.g., search results)
+   - No keyboard traps - users must be able to navigate away
+
+5. **Form Validation (3.3.1 A, 3.3.3 AA)**
+   - Link errors to specific fields with `aria-invalid` and `aria-describedby`
+   - Display field-specific error messages
+   - Use red borders to indicate invalid fields visually
+   - Validate before submission and block if invalid
+
+6. **ARIA Attributes (4.1.2 A)**
+   - Use semantic HTML first (button, nav, main, etc.)
+   - Add ARIA labels to icon-only buttons
+   - Use `role="alert"` for error messages
+   - Use `aria-live="polite"` for status updates
+   - Add `role="status"` to loading indicators
+
+7. **Help Text (3.3.5 AAA)**
+   - Provide context-sensitive help for complex fields
+   - Use "?" help buttons with `aria-expanded` state
+   - Link help text to inputs with `aria-describedby`
+   - Keep help text concise and actionable
+
+8. **Reduced Motion (2.3.3 AAA)**
+   - Respect `prefers-reduced-motion` media query
+   - All animations/transitions must be disableable
+   - Already implemented in `styles.css`
+
+9. **Page Titles (2.4.2 A)**
+   - Update document title on route changes
+   - Format: "Page Name - Rackd"
+   - Already implemented in router
+
+10. **Table Accessibility (1.3.1 A)**
+    - Add `<caption>` to all data tables (can be `sr-only`)
+    - Use `<th scope="col">` for column headers
+    - Use `<th scope="row">` for row headers where appropriate
+
+#### Implementation Checklist
+
+Before submitting UI changes, verify:
+
+- [ ] All interactive elements are 44×44px minimum
+- [ ] Color contrast meets 7:1 ratio (use contrast checker)
+- [ ] Focus indicators visible on all interactive elements
+- [ ] Keyboard navigation works (test without mouse)
+- [ ] Form validation shows field-specific errors
+- [ ] ARIA attributes present where needed
+- [ ] Help text provided for complex fields
+- [ ] Modals trap focus properly
+- [ ] Tables have captions and proper headers
+- [ ] Page title updates on navigation
+
+#### Testing Tools
+
+**Automated Testing:**
+```bash
+# Run accessibility tests (if configured)
+cd webui
+bun test:a11y
+```
+
+**Manual Testing:**
+- **axe DevTools**: Browser extension for automated scanning
+- **WAVE**: Web accessibility evaluation tool
+- **Lighthouse**: Chrome DevTools accessibility audit
+- **Keyboard only**: Unplug mouse and navigate with Tab/Enter/Arrows
+- **Screen reader**: Test with NVDA (Windows), JAWS (Windows), or VoiceOver (macOS)
+
+**Contrast Checkers:**
+- WebAIM Contrast Checker: https://webaim.org/resources/contrastchecker/
+- Coolors Contrast Checker: https://coolors.co/contrast-checker
+
+#### Common Patterns
+
+**Button with Icon:**
+```html
+<button class="p-2 min-w-[44px] min-h-[44px] focus:outline-none focus:ring-[3px] focus:ring-blue-500"
+        aria-label="Close dialog">
+  <svg class="w-5 h-5" aria-hidden="true">...</svg>
+</button>
+```
+
+**Form Field with Validation:**
+```html
+<label for="field-name">Name <span class="sr-only">(required)</span></label>
+<input id="field-name"
+       :aria-invalid="!!errors.name"
+       :aria-describedby="errors.name ? 'field-name-error' : undefined"
+       :class="errors.name ? 'border-red-600' : 'border-gray-300'">
+<p x-show="errors.name" id="field-name-error" role="alert" x-text="errors.name"></p>
+```
+
+**Help Text:**
+```html
+<label for="field">
+  Field Name
+  <button type="button" @click="showHelp = !showHelp"
+          :aria-expanded="showHelp"
+          aria-label="Help for field name">?</button>
+</label>
+<input id="field" aria-describedby="field-help">
+<p x-show="showHelp" id="field-help">Helpful explanation here.</p>
+```
+
+**Modal with Focus Trap:**
+```typescript
+// In component init
+this.$watch('showModal', (show: boolean) => {
+  if (show) {
+    setTimeout(() => {
+      const modal = document.querySelector('[role="dialog"]') as HTMLElement;
+      if (modal) this.focusTrapCleanup = createFocusTrap(modal);
+    }, 50);
+  } else {
+    this.focusTrapCleanup?.();
+    this.focusTrapCleanup = null;
+  }
+});
+```
+
+#### Resources
+
+- **WCAG 2.2 Guidelines**: https://www.w3.org/WAI/WCAG22/quickref/
+- **ARIA Authoring Practices**: https://www.w3.org/WAI/ARIA/apg/
+- **Accessibility Audit**: See `ACCESSIBILITY_AUDIT.md`
+- **Implementation Guides**: See `docs/accessibility-*.md`
 
 ### Documentation Style
 
