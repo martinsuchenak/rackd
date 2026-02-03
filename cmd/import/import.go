@@ -1,7 +1,6 @@
 package importcmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -91,8 +90,7 @@ func DevicesCommand() *cli.Command {
 			}
 
 			// Use bulk create endpoint
-			body, _ := json.Marshal(devicePtrs)
-			resp, err := c.DoRequest("POST", "/api/devices/bulk", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/devices/bulk", devicePtrs)
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
@@ -193,8 +191,7 @@ func NetworksCommand() *cli.Command {
 			}
 
 			// Use bulk create endpoint
-			body, _ := json.Marshal(networkPtrs)
-			resp, err := c.DoRequest("POST", "/api/networks/bulk", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/networks/bulk", networkPtrs)
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
@@ -290,8 +287,7 @@ func DatacentersCommand() *cli.Command {
 			result := importdata.ImportResult{Total: len(datacenters)}
 
 			for _, datacenter := range datacenters {
-				body, _ := json.Marshal(datacenter)
-				resp, err := c.DoRequest("POST", "/api/datacenters", bytes.NewReader(body))
+				resp, err := c.DoRequest("POST", "/api/datacenters", datacenter)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", datacenter.Name, err))

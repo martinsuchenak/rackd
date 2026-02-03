@@ -9,11 +9,11 @@ This document tracks all planned features for Rackd, organized by priority and i
 | Phase | Features | Completed | Status |
 |-------|----------|-----------|--------|
 | **Phase 1: Core** | 4 | 4/4 (100%) | ✅ Complete |
-| **Phase 2: Production Ready** | 4 | 1/4 (25%) | 🚧 In Progress |
+| **Phase 2: Production Ready** | 5 | 2/5 (40%) | 🚧 In Progress |
 | **Phase 3: Multi-User** | 5 | 0/5 (0%) | 🔜 Planned |
 | **Phase 4: Advanced** | 7 | 0/7 (0%) | 🔮 Future |
 | **Phase 5: Scale** | 3 | 0/3 (0%) | 🔮 Future |
-| **Total** | **23** | **5/23 (22%)** | |
+| **Total** | **24** | **6/24 (25%)** | |
 
 ---
 
@@ -236,6 +236,37 @@ DELETE /api/networks/bulk         - Bulk delete networks
 - `internal/api/audit_handlers.go`
 - `webui/src/components/audit.ts`
 - `docs/audit.md`
+
+### 2.5 UI/UX Enhancements
+
+**Effort**: 3-5 days | **Priority**: MEDIUM
+
+**What**: Improve data visibility and navigation in web UI
+
+**Tasks**:
+- [ ] Device list: Add network and pool columns
+- [ ] Device list: Add filters for network and pool
+- [ ] Network table: Add "View Devices" link/button
+- [ ] Network detail: Add linked devices section
+- [ ] Pool table: Add "View Devices" link/button
+- [ ] Pool detail: Add linked devices section
+- [ ] Pool heatmap: Make used IPs clickable to navigate to device
+- [ ] Add breadcrumb navigation
+- [ ] Add quick filters/search in tables
+
+**Why Medium Priority**:
+- Improves user experience significantly
+- Makes relationships more discoverable
+- Backend APIs already exist (`/api/networks/{id}/devices`, `/api/pools/{id}/heatmap`)
+- Pure frontend work (TypeScript/Alpine.js)
+
+**Files to Modify**:
+- `webui/src/components/devices.ts` - Add network/pool columns and filters
+- `webui/src/components/networks.ts` - Add device links
+- `webui/src/components/pools.ts` - Add device links and clickable heatmap
+- `webui/src/partials/device-list.html` - Update table structure
+- `webui/src/partials/network-detail.html` - Add devices section
+- `webui/src/partials/pool-detail.html` - Add devices section
 
 ---
 

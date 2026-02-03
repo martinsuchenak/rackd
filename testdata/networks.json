@@ -1,0 +1,74 @@
+[
+  {
+    "id": "net-us-prod",
+    "name": "US-East-Prod",
+    "subnet": "10.10.0.0/16",
+    "vlan_id": 100,
+    "datacenter_id": "dc-us-east-1",
+    "description": "US East production network"
+  },
+  {
+    "id": "net-us-dmz",
+    "name": "US-East-DMZ",
+    "subnet": "10.10.100.0/24",
+    "vlan_id": 101,
+    "datacenter_id": "dc-us-east-1",
+    "description": "US East DMZ network"
+  },
+  {
+    "id": "net-us-mgmt",
+    "name": "US-East-Mgmt",
+    "subnet": "10.10.200.0/24",
+    "vlan_id": 102,
+    "datacenter_id": "dc-us-east-1",
+    "description": "US East management network"
+  },
+  {
+    "id": "net-eu-prod",
+    "name": "EU-West-Prod",
+    "subnet": "10.20.0.0/16",
+    "vlan_id": 200,
+    "datacenter_id": "dc-eu-west-1",
+    "description": "EU West production network"
+  },
+  {
+    "id": "net-eu-dmz",
+    "name": "EU-West-DMZ",
+    "subnet": "10.20.100.0/24",
+    "vlan_id": 201,
+    "datacenter_id": "dc-eu-west-1",
+    "description": "EU West DMZ network"
+  },
+  {
+    "id": "net-eu-mgmt",
+    "name": "EU-West-Mgmt",
+    "subnet": "10.20.200.0/24",
+    "vlan_id": 202,
+    "datacenter_id": "dc-eu-west-1",
+    "description": "EU West management network"
+  },
+  {
+    "id": "net-apac-prod",
+    "name": "APAC-SG-Prod",
+    "subnet": "10.30.0.0/16",
+    "vlan_id": 300,
+    "datacenter_id": "dc-apac-sg-1",
+    "description": "APAC Singapore production network"
+  },
+  {
+    "id": "net-apac-dmz",
+    "name": "APAC-SG-DMZ",
+    "subnet": "10.30.100.0/24",
+    "vlan_id": 301,
+    "datacenter_id": "dc-apac-sg-1",
+    "description": "APAC Singapore DMZ network"
+  },
+  {
+    "id": "net-apac-mgmt",
+    "name": "APAC-SG-Mgmt",
+    "subnet": "10.30.200.0/24",
+    "vlan_id": 302,
+    "datacenter_id": "dc-apac-sg-1",
+    "description": "APAC Singapore management network"
+  }
+]

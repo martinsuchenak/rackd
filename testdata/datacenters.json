@@ -1,0 +1,20 @@
+[
+  {
+    "id": "dc-us-east-1",
+    "name": "US-East-DC1",
+    "location": "Virginia, USA",
+    "description": "Primary datacenter - US East Coast"
+  },
+  {
+    "id": "dc-eu-west-1",
+    "name": "EU-West-DC1",
+    "location": "Dublin, Ireland",
+    "description": "European datacenter - GDPR compliant"
+  },
+  {
+    "id": "dc-apac-sg-1",
+    "name": "APAC-SG-DC1",
+    "location": "Singapore",
+    "description": "Asia-Pacific datacenter"
+  }
+]

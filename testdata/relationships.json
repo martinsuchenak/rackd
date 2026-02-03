@@ -1,0 +1,122 @@
+[
+  {
+    "parent_id": "us-lb-01",
+    "child_id": "us-web-01",
+    "type": "depends_on",
+    "notes": "Load balancer routes traffic to web server"
+  },
+  {
+    "parent_id": "us-lb-01",
+    "child_id": "us-web-02",
+    "type": "depends_on",
+    "notes": "Load balancer routes traffic to web server"
+  },
+  {
+    "parent_id": "us-web-01",
+    "child_id": "us-app-01",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "us-web-01",
+    "child_id": "us-app-02",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "us-web-02",
+    "child_id": "us-app-01",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "us-web-02",
+    "child_id": "us-app-02",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "us-app-01",
+    "child_id": "us-db-01",
+    "type": "depends_on",
+    "notes": "App server connects to database"
+  },
+  {
+    "parent_id": "us-app-02",
+    "child_id": "us-db-01",
+    "type": "depends_on",
+    "notes": "App server connects to database"
+  },
+  {
+    "parent_id": "us-app-01",
+    "child_id": "us-cache-01",
+    "type": "depends_on",
+    "notes": "App server uses Redis cache"
+  },
+  {
+    "parent_id": "us-app-02",
+    "child_id": "us-cache-01",
+    "type": "depends_on",
+    "notes": "App server uses Redis cache"
+  },
+  {
+    "parent_id": "us-db-01",
+    "child_id": "us-db-02",
+    "type": "replicates_to",
+    "notes": "Primary database replicates to replica"
+  },
+  {
+    "parent_id": "us-fw-01",
+    "child_id": "us-fw-02",
+    "type": "ha_pair",
+    "notes": "High availability firewall pair"
+  },
+  {
+    "parent_id": "eu-lb-01",
+    "child_id": "eu-web-01",
+    "type": "depends_on",
+    "notes": "Load balancer routes traffic to web server"
+  },
+  {
+    "parent_id": "eu-lb-01",
+    "child_id": "eu-web-02",
+    "type": "depends_on",
+    "notes": "Load balancer routes traffic to web server"
+  },
+  {
+    "parent_id": "eu-web-01",
+    "child_id": "eu-app-01",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "eu-web-02",
+    "child_id": "eu-app-01",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "eu-app-01",
+    "child_id": "eu-db-01",
+    "type": "depends_on",
+    "notes": "App server connects to database"
+  },
+  {
+    "parent_id": "apac-lb-01",
+    "child_id": "apac-web-01",
+    "type": "depends_on",
+    "notes": "Load balancer routes traffic to web server"
+  },
+  {
+    "parent_id": "apac-web-01",
+    "child_id": "apac-app-01",
+    "type": "depends_on",
+    "notes": "Web server connects to app server"
+  },
+  {
+    "parent_id": "apac-app-01",
+    "child_id": "apac-db-01",
+    "type": "depends_on",
+    "notes": "App server connects to database"
+  }
+]

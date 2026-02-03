@@ -1,0 +1,50 @@
+[
+  {
+    "id": "pool-us-web",
+    "network_id": "net-us-prod",
+    "name": "US-East-Web-Pool",
+    "start_ip": "10.10.1.10",
+    "end_ip": "10.10.1.254",
+    "description": "Web server IP pool"
+  },
+  {
+    "id": "pool-us-app",
+    "network_id": "net-us-prod",
+    "name": "US-East-App-Pool",
+    "start_ip": "10.10.2.10",
+    "end_ip": "10.10.2.254",
+    "description": "Application server IP pool"
+  },
+  {
+    "id": "pool-us-db",
+    "network_id": "net-us-prod",
+    "name": "US-East-DB-Pool",
+    "start_ip": "10.10.3.10",
+    "end_ip": "10.10.3.254",
+    "description": "Database server IP pool"
+  },
+  {
+    "id": "pool-eu-web",
+    "network_id": "net-eu-prod",
+    "name": "EU-West-Web-Pool",
+    "start_ip": "10.20.1.10",
+    "end_ip": "10.20.1.254",
+    "description": "Web server IP pool"
+  },
+  {
+    "id": "pool-eu-app",
+    "network_id": "net-eu-prod",
+    "name": "EU-West-App-Pool",
+    "start_ip": "10.20.2.10",
+    "end_ip": "10.20.2.254",
+    "description": "Application server IP pool"
+  },
+  {
+    "id": "pool-apac-web",
+    "network_id": "net-apac-prod",
+    "name": "APAC-SG-Web-Pool",
+    "start_ip": "10.30.1.10",
+    "end_ip": "10.30.1.254",
+    "description": "Web server IP pool"
+  }
+]

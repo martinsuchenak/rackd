@@ -1,0 +1,632 @@
+[
+  {
+    "name": "us-fw-01",
+    "hostname": "us-fw-01.example.com",
+    "description": "US East firewall - primary",
+    "make_model": "Palo Alto PA-5220",
+    "os": "PAN-OS 11.0",
+    "location": "Rack A1",
+    "tags": [
+      "firewall",
+      "security",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.100.1",
+        "type": "management",
+        "network_id": "net-us-dmz"
+      },
+      {
+        "ip": "10.10.0.1",
+        "type": "primary",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-fw-01"
+  },
+  {
+    "name": "us-fw-02",
+    "hostname": "us-fw-02.example.com",
+    "description": "US East firewall - secondary",
+    "make_model": "Palo Alto PA-5220",
+    "os": "PAN-OS 11.0",
+    "location": "Rack A2",
+    "tags": [
+      "firewall",
+      "security",
+      "production",
+      "us-east",
+      "ha"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.100.2",
+        "type": "management",
+        "network_id": "net-us-dmz"
+      },
+      {
+        "ip": "10.10.0.2",
+        "type": "primary",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-fw-02"
+  },
+  {
+    "name": "us-core-sw-01",
+    "hostname": "us-core-sw-01.example.com",
+    "description": "US East core switch",
+    "make_model": "Cisco Nexus 9300",
+    "os": "NX-OS 10.2",
+    "location": "Rack A1",
+    "tags": [
+      "switch",
+      "core",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.200.10",
+        "type": "management",
+        "network_id": "net-us-mgmt"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-core-sw-01"
+  },
+  {
+    "name": "us-lb-01",
+    "hostname": "us-lb-01.example.com",
+    "description": "US East load balancer",
+    "make_model": "F5 BIG-IP 4200v",
+    "os": "TMOS 17.0",
+    "location": "Rack A3",
+    "tags": [
+      "load-balancer",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.100.10",
+        "type": "management",
+        "network_id": "net-us-dmz"
+      },
+      {
+        "ip": "10.10.0.10",
+        "type": "vip",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-lb-01"
+  },
+  {
+    "name": "us-web-01",
+    "hostname": "us-web-01.example.com",
+    "description": "US East web server 1",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B1",
+    "username": "admin",
+    "tags": [
+      "web",
+      "nginx",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.1.10",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-web"
+      }
+    ],
+    "domains": [
+      "www.example.com",
+      "api.example.com"
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-web-01"
+  },
+  {
+    "name": "us-web-02",
+    "hostname": "us-web-02.example.com",
+    "description": "US East web server 2",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B2",
+    "username": "admin",
+    "tags": [
+      "web",
+      "nginx",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.1.11",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-web"
+      }
+    ],
+    "domains": [
+      "www.example.com",
+      "api.example.com"
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-web-02"
+  },
+  {
+    "name": "us-app-01",
+    "hostname": "us-app-01.example.com",
+    "description": "US East application server 1",
+    "make_model": "Dell PowerEdge R740",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B3",
+    "username": "admin",
+    "tags": [
+      "app",
+      "nodejs",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.2.10",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-app"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-app-01"
+  },
+  {
+    "name": "us-app-02",
+    "hostname": "us-app-02.example.com",
+    "description": "US East application server 2",
+    "make_model": "Dell PowerEdge R740",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B4",
+    "username": "admin",
+    "tags": [
+      "app",
+      "nodejs",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.2.11",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-app"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-app-02"
+  },
+  {
+    "name": "us-db-01",
+    "hostname": "us-db-01.example.com",
+    "description": "US East database primary",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C1",
+    "username": "dbadmin",
+    "tags": [
+      "database",
+      "postgresql",
+      "production",
+      "us-east",
+      "primary"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.3.10",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-db"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-db-01"
+  },
+  {
+    "name": "us-db-02",
+    "hostname": "us-db-02.example.com",
+    "description": "US East database replica",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C2",
+    "username": "dbadmin",
+    "tags": [
+      "database",
+      "postgresql",
+      "production",
+      "us-east",
+      "replica"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.3.11",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-db"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-db-02"
+  },
+  {
+    "name": "us-cache-01",
+    "hostname": "us-cache-01.example.com",
+    "description": "US East Redis cache",
+    "make_model": "Dell PowerEdge R440",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C3",
+    "username": "admin",
+    "tags": [
+      "cache",
+      "redis",
+      "production",
+      "us-east"
+    ],
+    "addresses": [
+      {
+        "ip": "10.10.4.10",
+        "type": "primary",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1",
+    "id": "us-cache-01"
+  },
+  {
+    "name": "eu-fw-01",
+    "hostname": "eu-fw-01.example.com",
+    "description": "EU West firewall - primary",
+    "make_model": "Palo Alto PA-5220",
+    "os": "PAN-OS 11.0",
+    "location": "Rack A1",
+    "tags": [
+      "firewall",
+      "security",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.100.1",
+        "type": "management",
+        "network_id": "net-eu-dmz"
+      },
+      {
+        "ip": "10.20.0.1",
+        "type": "primary",
+        "network_id": "net-eu-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-fw-01"
+  },
+  {
+    "name": "eu-core-sw-01",
+    "hostname": "eu-core-sw-01.example.com",
+    "description": "EU West core switch",
+    "make_model": "Cisco Nexus 9300",
+    "os": "NX-OS 10.2",
+    "location": "Rack A1",
+    "tags": [
+      "switch",
+      "core",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.200.10",
+        "type": "management",
+        "network_id": "net-eu-mgmt"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-core-sw-01"
+  },
+  {
+    "name": "eu-lb-01",
+    "hostname": "eu-lb-01.example.com",
+    "description": "EU West load balancer",
+    "make_model": "F5 BIG-IP 4200v",
+    "os": "TMOS 17.0",
+    "location": "Rack A2",
+    "tags": [
+      "load-balancer",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.100.10",
+        "type": "management",
+        "network_id": "net-eu-dmz"
+      },
+      {
+        "ip": "10.20.0.10",
+        "type": "vip",
+        "network_id": "net-eu-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-lb-01"
+  },
+  {
+    "name": "eu-web-01",
+    "hostname": "eu-web-01.example.com",
+    "description": "EU West web server 1",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B1",
+    "username": "admin",
+    "tags": [
+      "web",
+      "nginx",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.1.10",
+        "type": "primary",
+        "network_id": "net-eu-prod",
+        "pool_id": "pool-eu-web"
+      }
+    ],
+    "domains": [
+      "eu.example.com"
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-web-01"
+  },
+  {
+    "name": "eu-web-02",
+    "hostname": "eu-web-02.example.com",
+    "description": "EU West web server 2",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B2",
+    "username": "admin",
+    "tags": [
+      "web",
+      "nginx",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.1.11",
+        "type": "primary",
+        "network_id": "net-eu-prod",
+        "pool_id": "pool-eu-web"
+      }
+    ],
+    "domains": [
+      "eu.example.com"
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-web-02"
+  },
+  {
+    "name": "eu-app-01",
+    "hostname": "eu-app-01.example.com",
+    "description": "EU West application server",
+    "make_model": "Dell PowerEdge R740",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B3",
+    "username": "admin",
+    "tags": [
+      "app",
+      "nodejs",
+      "production",
+      "eu-west"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.2.10",
+        "type": "primary",
+        "network_id": "net-eu-prod",
+        "pool_id": "pool-eu-app"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-app-01"
+  },
+  {
+    "name": "eu-db-01",
+    "hostname": "eu-db-01.example.com",
+    "description": "EU West database primary",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C1",
+    "username": "dbadmin",
+    "tags": [
+      "database",
+      "postgresql",
+      "production",
+      "eu-west",
+      "primary"
+    ],
+    "addresses": [
+      {
+        "ip": "10.20.3.10",
+        "type": "primary",
+        "network_id": "net-eu-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "eu-db-01"
+  },
+  {
+    "name": "apac-fw-01",
+    "hostname": "apac-fw-01.example.com",
+    "description": "APAC Singapore firewall",
+    "make_model": "Palo Alto PA-3220",
+    "os": "PAN-OS 11.0",
+    "location": "Rack A1",
+    "tags": [
+      "firewall",
+      "security",
+      "production",
+      "apac"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.100.1",
+        "type": "management",
+        "network_id": "net-apac-dmz"
+      },
+      {
+        "ip": "10.30.0.1",
+        "type": "primary",
+        "network_id": "net-apac-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1",
+    "id": "apac-fw-01"
+  },
+  {
+    "name": "apac-core-sw-01",
+    "hostname": "apac-core-sw-01.example.com",
+    "description": "APAC Singapore core switch",
+    "make_model": "Cisco Nexus 9300",
+    "os": "NX-OS 10.2",
+    "location": "Rack A1",
+    "tags": [
+      "switch",
+      "core",
+      "production",
+      "apac"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.200.10",
+        "type": "management",
+        "network_id": "net-apac-mgmt"
+      }
+    ],
+    "datacenter_id": "dc-apac-sg-1",
+    "id": "apac-core-sw-01"
+  },
+  {
+    "name": "apac-lb-01",
+    "hostname": "apac-lb-01.example.com",
+    "description": "APAC Singapore load balancer",
+    "make_model": "F5 BIG-IP 2200s",
+    "os": "TMOS 17.0",
+    "location": "Rack A2",
+    "tags": [
+      "load-balancer",
+      "production",
+      "apac"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.100.10",
+        "type": "management",
+        "network_id": "net-apac-dmz"
+      },
+      {
+        "ip": "10.30.0.10",
+        "type": "vip",
+        "network_id": "net-apac-prod"
+      }
+    ],
+    "datacenter_id": "dc-apac-sg-1",
+    "id": "apac-lb-01"
+  },
+  {
+    "name": "apac-web-01",
+    "hostname": "apac-web-01.example.com",
+    "description": "APAC Singapore web server",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B1",
+    "username": "admin",
+    "tags": [
+      "web",
+      "nginx",
+      "production",
+      "apac"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.1.10",
+        "type": "primary",
+        "network_id": "net-apac-prod",
+        "pool_id": "pool-apac-web"
+      }
+    ],
+    "domains": [
+      "apac.example.com"
+    ],
+    "datacenter_id": "dc-apac-sg-1",
+    "id": "apac-web-01"
+  },
+  {
+    "name": "apac-app-01",
+    "hostname": "apac-app-01.example.com",
+    "description": "APAC Singapore application server",
+    "make_model": "Dell PowerEdge R740",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B2",
+    "username": "admin",
+    "tags": [
+      "app",
+      "nodejs",
+      "production",
+      "apac"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.2.10",
+        "type": "primary",
+        "network_id": "net-apac-prod"
+      }
+    ],
+    "datacenter_id": "dc-apac-sg-1",
+    "id": "apac-app-01"
+  },
+  {
+    "name": "apac-db-01",
+    "hostname": "apac-db-01.example.com",
+    "description": "APAC Singapore database",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C1",
+    "username": "dbadmin",
+    "tags": [
+      "database",
+      "postgresql",
+      "production",
+      "apac",
+      "primary"
+    ],
+    "addresses": [
+      {
+        "ip": "10.30.3.10",
+        "type": "primary",
+        "network_id": "net-apac-prod"
+      }
+    ],
+    "datacenter_id": "dc-apac-sg-1",
+    "id": "apac-db-01"
+  }
+]
