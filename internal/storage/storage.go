@@ -78,6 +78,7 @@ type RelationshipStorage interface {
 	AddRelationship(parentID, childID, relationshipType, notes string) error
 	RemoveRelationship(parentID, childID, relationshipType string) error
 	GetRelationships(deviceID string) ([]model.DeviceRelationship, error)
+	ListAllRelationships() ([]model.DeviceRelationship, error)
 	GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error)
 	UpdateRelationshipNotes(parentID, childID, relationshipType, notes string) error
 }

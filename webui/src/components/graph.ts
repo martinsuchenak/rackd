@@ -32,20 +32,15 @@ export function deviceGraph(): GraphData {
     async loadData(): Promise<void> {
       this.loading = true;
       try {
-        this.devices = await api.listDevices();
+        const [devices, relationships] = await Promise.all([
+          api.listDevices({}),
+          api.getAllRelationships()
+        ]);
         
-        // Fetch relationships for all devices
-        const relPromises = this.devices.map(d => api.getRelationships(d.id));
-        const allRels = await Promise.all(relPromises);
-        
-        // Deduplicate relationships
-        const relMap = new Map<string, DeviceRelationship>();
-        allRels.flat().forEach(rel => {
-          const key = `${rel.parent_id}-${rel.child_id}-${rel.type}`;
-          relMap.set(key, rel);
-        });
-        this.relationships = Array.from(relMap.values());
+        this.devices = devices;
+        this.relationships = relationships || [];
       } catch (e) {
+        console.error('Graph load error:', e);
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load data';
       } finally {
         this.loading = false;

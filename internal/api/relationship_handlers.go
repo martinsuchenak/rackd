@@ -15,6 +15,15 @@ type addRelationshipRequest struct {
 	Notes   string `json:"notes"`
 }
 
+func (h *Handler) listAllRelationships(w http.ResponseWriter, r *http.Request) {
+	rels, err := h.store.ListAllRelationships()
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, rels)
+}
+
 func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 	parentID := r.PathValue("id")
 	var req addRelationshipRequest

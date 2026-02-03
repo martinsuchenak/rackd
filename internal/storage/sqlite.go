@@ -1960,6 +1960,28 @@ func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelatio
 	return rels, rows.Err()
 }
 
+func (s *SQLiteStorage) ListAllRelationships() ([]model.DeviceRelationship, error) {
+	ctx := context.Background()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT parent_id, child_id, type, notes, created_at
+		FROM device_relationships
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rels []model.DeviceRelationship
+	for rows.Next() {
+		var r model.DeviceRelationship
+		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.Type, &r.Notes, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		rels = append(rels, r)
+	}
+	return rels, rows.Err()
+}
+
 func (s *SQLiteStorage) GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error) {
 	ctx := context.Background()
 	rows, err := s.db.QueryContext(ctx, `

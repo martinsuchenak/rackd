@@ -163,6 +163,10 @@ export class RackdAPI {
     return this.request<DeviceRelationship[]>('GET', `/api/devices/${deviceId}/relationships`);
   }
 
+  async getAllRelationships(): Promise<DeviceRelationship[]> {
+    return this.request<DeviceRelationship[]>('GET', '/api/relationships');
+  }
+
   async getRelatedDevices(deviceId: string, type: DeviceRelationship['type']): Promise<Device[]> {
     return this.request<Device[]>('GET', `/api/devices/${deviceId}/related?type=${type}`);
   }
