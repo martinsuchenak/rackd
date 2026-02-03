@@ -38,7 +38,7 @@ var ErrSubnetTooLarge = fmt.Errorf("subnet too large: maximum /%d allowed", 32-M
 var ErrScanNotFound = fmt.Errorf("scan not found")
 var ErrScanNotRunning = fmt.Errorf("scan is not running or pending")
 
-func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
+func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
 	_, ipNet, err := net.ParseCIDR(network.Subnet)
 	if err != nil {
 		log.Error("Failed to parse CIDR", "subnet", network.Subnet, "error", err)
@@ -65,7 +65,7 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 	}
 
 	// Create cancellable context for the scan
-	scanCtxCancellable, cancel := context.WithCancel(context.Background())
+	ctxCancellable, cancel := context.WithCancel(context.Background())
 
 	s.mu.Lock()
 	s.scans[scan.ID] = scan
@@ -93,7 +93,7 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 
 		// Check if context was cancelled before starting (e.g., server shutdown)
 		select {
-		case <-scanCtx.Done():
+		case <-ctx.Done():
 			log.Info("Scan cancelled before starting", "scan_id", scan.ID)
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled before starting"
@@ -102,7 +102,7 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 		default:
 		}
 
-		s.runScan(scanCtxCancellable, scan, network, ipNet, scanType)
+		s.runScan(ctxCancellable, scan, network, ipNet, scanType)
 	}()
 
 	return scan, nil
