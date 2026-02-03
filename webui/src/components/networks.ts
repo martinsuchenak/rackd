@@ -58,6 +58,7 @@ export function networkList() {
     saving: false,
     validationErrors: {} as Record<string, string>,
     focusTrapCleanup: null as (() => void) | null,
+    showVlanHelp: false,
 
     get hasMultipleDatacenters(): boolean {
       return this.datacenters.length > 1;

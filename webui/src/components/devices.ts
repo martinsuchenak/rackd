@@ -68,6 +68,7 @@ export function deviceList() {
     saving: false,
     focusTrapCleanup: null as (() => void) | null,
     validationErrors: {} as Record<string, string>,
+    showHostnameHelp: false,
 
     get totalPages(): number {
       return Math.ceil(this.devices.length / this.pageSize) || 1;
@@ -264,6 +265,7 @@ export function deviceList() {
       this.tagInput = '';
       this.domainInput = '';
       this.pools = [];
+      this.showHostnameHelp = false;
       this.showDeviceModal = true;
       setTimeout(() => {
         (document.querySelector('[x-show="showDeviceModal"] input[type="text"]') as HTMLInputElement)?.focus();
