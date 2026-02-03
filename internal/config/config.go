@@ -22,6 +22,8 @@ type Config struct {
 	RateLimitEnabled       bool
 	RateLimitRequests      int
 	RateLimitWindow        time.Duration
+	AuditEnabled           bool
+	AuditRetentionDays     int
 }
 
 var cfg Config
@@ -42,6 +44,8 @@ func Load() *Config {
 		RateLimitEnabled:       getBoolEnv("RATE_LIMIT_ENABLED", false),
 		RateLimitRequests:      getIntEnv("RATE_LIMIT_REQUESTS", 100),
 		RateLimitWindow:        getDurationEnv("RATE_LIMIT_WINDOW", 1*time.Minute),
+		AuditEnabled:           getBoolEnv("AUDIT_ENABLED", false),
+		AuditRetentionDays:     getIntEnv("AUDIT_RETENTION_DAYS", 90),
 	}
 
 	return &cfg
@@ -87,6 +91,10 @@ func (c *Config) Validate() error {
 		if c.RateLimitWindow <= 0 {
 			return fmt.Errorf("RATE_LIMIT_WINDOW must be positive, got %v", c.RateLimitWindow)
 		}
+	}
+
+	if c.AuditEnabled && c.AuditRetentionDays <= 0 {
+		return fmt.Errorf("AUDIT_RETENTION_DAYS must be positive, got %d", c.AuditRetentionDays)
 	}
 
 	return nil

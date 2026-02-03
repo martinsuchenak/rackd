@@ -28,6 +28,15 @@ Rackd can be configured through environment variables. All configuration options
 
 See [Rate Limiting](ratelimit.md) for detailed documentation.
 
+### Audit Logging Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AUDIT_ENABLED` | `false` | Enable audit logging for all API changes |
+| `AUDIT_RETENTION_DAYS` | `90` | Days to keep audit logs before automatic cleanup |
+
+See [Audit Trail](audit.md) for detailed documentation.
+
 ### Logging Options
 
 | Variable | Default | Description |
@@ -61,7 +70,7 @@ export LOG_LEVEL="debug"
 ### Production Setup
 
 ```bash
-# Production configuration with authentication and rate limiting
+# Production configuration with authentication, rate limiting, and audit logging
 export DATA_DIR="/var/lib/rackd"
 export LISTEN_ADDR=":8080"
 export API_AUTH_TOKEN="your-secure-api-token"
@@ -73,6 +82,8 @@ export DISCOVERY_MAX_CONCURRENT="20"
 export RATE_LIMIT_ENABLED="true"
 export RATE_LIMIT_REQUESTS="100"
 export RATE_LIMIT_WINDOW="1m"
+export AUDIT_ENABLED="true"
+export AUDIT_RETENTION_DAYS="90"
 
 ./rackd server
 ```

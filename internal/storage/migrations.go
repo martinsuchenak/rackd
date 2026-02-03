@@ -66,6 +66,12 @@ var migrations = []*Migration{
 		Up:      migrateAddAPIKeysUp,
 		Down:    migrateAddAPIKeysDown,
 	},
+	{
+		Version: "20260203160000",
+		Name:    "add_audit_logs",
+		Up:      migrateAddAuditLogsUp,
+		Down:    migrateAddAuditLogsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -703,6 +709,52 @@ func migrateAddAPIKeysUp(ctx context.Context, tx *sql.Tx) error {
 func migrateAddAPIKeysDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS api_keys`); err != nil {
 		return fmt.Errorf("failed to drop api_keys table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddAuditLogsUp creates the audit_logs table
+func migrateAddAuditLogsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS audit_logs (
+			id TEXT PRIMARY KEY,
+			timestamp DATETIME NOT NULL,
+			action TEXT NOT NULL,
+			resource TEXT NOT NULL,
+			resource_id TEXT,
+			user_id TEXT,
+			username TEXT,
+			ip_address TEXT,
+			changes TEXT,
+			status TEXT NOT NULL,
+			error TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create audit_logs table: %w", err)
+	}
+
+	// Create indexes for common queries
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource, resource_id)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create audit_logs index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddAuditLogsDown drops the audit_logs table
+func migrateAddAuditLogsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS audit_logs`); err != nil {
+		return fmt.Errorf("failed to drop audit_logs table: %w", err)
 	}
 	return nil
 }

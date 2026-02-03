@@ -165,6 +165,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/networks/bulk", wrap(h.bulkCreateNetworks))
 	mux.HandleFunc("DELETE /api/networks/bulk", wrap(h.bulkDeleteNetworks))
 
+	// Audit log routes
+	mux.HandleFunc("GET /api/audit", wrap(h.listAuditLogs))
+	mux.HandleFunc("GET /api/audit/export", wrap(h.exportAuditLogs))
+	mux.HandleFunc("GET /api/audit/{id}", wrap(h.getAuditLog))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

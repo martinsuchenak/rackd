@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/martinsuchenak/rackd/cmd/apikey"
+	"github.com/martinsuchenak/rackd/cmd/audit"
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
 	"github.com/martinsuchenak/rackd/cmd/discovery"
@@ -34,6 +35,7 @@ func main() {
 			datacenter.Command(),
 			discovery.Command(),
 			apikey.Command(),
+			audit.Command(),
 			export.Command(),
 			importcmd.Command(),
 			{

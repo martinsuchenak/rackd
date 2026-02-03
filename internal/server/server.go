@@ -95,6 +95,10 @@ func RunWithAdvancedFeatures(
 		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	if cfg.AuditEnabled {
+		log.Info("Audit logging enabled", "retention_days", cfg.AuditRetentionDays)
+		httpHandler = api.AuditMiddleware(store)(httpHandler)
+	}
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
@@ -173,6 +177,10 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	if cfg.AuditEnabled {
+		log.Info("Audit logging enabled", "retention_days", cfg.AuditRetentionDays)
+		httpHandler = api.AuditMiddleware(store)(httpHandler)
+	}
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,

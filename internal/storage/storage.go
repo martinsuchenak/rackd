@@ -19,6 +19,7 @@ var (
 	ErrRuleNotFound       = errors.New("discovery rule not found")
 	ErrIPNotAvailable     = errors.New("no IP addresses available")
 	ErrIPConflict         = errors.New("IP address already in use")
+	ErrAuditLogNotFound   = errors.New("audit log not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -124,6 +125,14 @@ type BulkOperations interface {
 	BulkDeleteNetworks(ids []string) (*BulkResult, error)
 }
 
+// AuditStorage defines audit log persistence operations
+type AuditStorage interface {
+	CreateAuditLog(log *model.AuditLog) error
+	ListAuditLogs(filter *model.AuditFilter) ([]model.AuditLog, error)
+	GetAuditLog(id string) (*model.AuditLog, error)
+	DeleteOldAuditLogs(olderThanDays int) error
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -139,6 +148,7 @@ type ExtendedStorage interface {
 	DiscoveryStorage
 	APIKeyStorage
 	BulkOperations
+	AuditStorage
 	Close() error
 	DB() *sql.DB
 }
