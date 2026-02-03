@@ -51,3 +51,68 @@ func TestCommandStructure(t *testing.T) {
 		}
 	}
 }
+
+func TestListCommand(t *testing.T) {
+	cmd := ListCommand()
+	if cmd == nil {
+		t.Fatal("ListCommand() returned nil")
+	}
+	if cmd.Name != "list" {
+		t.Errorf("Name = %v, want list", cmd.Name)
+	}
+	if cmd.Run == nil {
+		t.Error("Run function should not be nil")
+	}
+}
+
+func TestGetCommand(t *testing.T) {
+	cmd := GetCommand()
+	if cmd == nil {
+		t.Fatal("GetCommand() returned nil")
+	}
+	if cmd.Name != "get" {
+		t.Errorf("Name = %v, want get", cmd.Name)
+	}
+	if cmd.Run == nil {
+		t.Error("Run function should not be nil")
+	}
+}
+
+func TestAddCommand(t *testing.T) {
+	cmd := AddCommand()
+	if cmd == nil {
+		t.Fatal("AddCommand() returned nil")
+	}
+	if cmd.Name != "add" {
+		t.Errorf("Name = %v, want add", cmd.Name)
+	}
+	if cmd.Run == nil {
+		t.Error("Run function should not be nil")
+	}
+}
+
+func TestUpdateCommand(t *testing.T) {
+	cmd := UpdateCommand()
+	if cmd == nil {
+		t.Fatal("UpdateCommand() returned nil")
+	}
+	if cmd.Name != "update" {
+		t.Errorf("Name = %v, want update", cmd.Name)
+	}
+	if cmd.Run == nil {
+		t.Error("Run function should not be nil")
+	}
+}
+
+func TestDeleteCommand(t *testing.T) {
+	cmd := DeleteCommand()
+	if cmd == nil {
+		t.Fatal("DeleteCommand() returned nil")
+	}
+	if cmd.Name != "delete" {
+		t.Errorf("Name = %v, want delete", cmd.Name)
+	}
+	if cmd.Run == nil {
+		t.Error("Run function should not be nil")
+	}
+}
