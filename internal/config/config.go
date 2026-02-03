@@ -19,6 +19,9 @@ type Config struct {
 	DiscoveryTimeout       time.Duration
 	DiscoveryCleanupDays   int
 	DiscoveryScanOnStartup bool
+	RateLimitEnabled       bool
+	RateLimitRequests      int
+	RateLimitWindow        time.Duration
 }
 
 var cfg Config
@@ -36,6 +39,9 @@ func Load() *Config {
 		DiscoveryTimeout:       getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
 		DiscoveryCleanupDays:   getIntEnv("DISCOVERY_CLEANUP_DAYS", 30),
 		DiscoveryScanOnStartup: getBoolEnv("DISCOVERY_SCAN_ON_STARTUP", false),
+		RateLimitEnabled:       getBoolEnv("RATE_LIMIT_ENABLED", false),
+		RateLimitRequests:      getIntEnv("RATE_LIMIT_REQUESTS", 100),
+		RateLimitWindow:        getDurationEnv("RATE_LIMIT_WINDOW", 1*time.Minute),
 	}
 
 	return &cfg
@@ -74,11 +80,20 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("DISCOVERY_CLEANUP_DAYS must be positive, got %d", c.DiscoveryCleanupDays)
 	}
 
+	if c.RateLimitEnabled {
+		if c.RateLimitRequests <= 0 {
+			return fmt.Errorf("RATE_LIMIT_REQUESTS must be positive, got %d", c.RateLimitRequests)
+		}
+		if c.RateLimitWindow <= 0 {
+			return fmt.Errorf("RATE_LIMIT_WINDOW must be positive, got %v", c.RateLimitWindow)
+		}
+	}
+
 	return nil
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v, RateLimitEnabled:%v, RateLimitRequests:%d, RateLimitWindow:%v}",
 		c.DataDir,
 		c.ListenAddr,
 		c.LogFormat,
@@ -88,6 +103,9 @@ func (c *Config) String() string {
 		c.DiscoveryTimeout,
 		c.DiscoveryCleanupDays,
 		c.DiscoveryScanOnStartup,
+		c.RateLimitEnabled,
+		c.RateLimitRequests,
+		c.RateLimitWindow,
 	)
 }
 

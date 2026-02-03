@@ -18,6 +18,16 @@ Rackd can be configured through environment variables. All configuration options
 | `API_AUTH_TOKEN` | _(empty)_ | Bearer token for API authentication. If empty, API is unauthenticated |
 | `MCP_AUTH_TOKEN` | _(empty)_ | Bearer token for MCP server authentication. If empty, MCP is unauthenticated |
 
+### Rate Limiting Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RATE_LIMIT_ENABLED` | `false` | Enable API rate limiting |
+| `RATE_LIMIT_REQUESTS` | `100` | Maximum requests per window |
+| `RATE_LIMIT_WINDOW` | `1m` | Time window for rate limiting (Go duration format) |
+
+See [Rate Limiting](ratelimit.md) for detailed documentation.
+
 ### Logging Options
 
 | Variable | Default | Description |
@@ -51,7 +61,7 @@ export LOG_LEVEL="debug"
 ### Production Setup
 
 ```bash
-# Production configuration with authentication
+# Production configuration with authentication and rate limiting
 export DATA_DIR="/var/lib/rackd"
 export LISTEN_ADDR=":8080"
 export API_AUTH_TOKEN="your-secure-api-token"
@@ -60,6 +70,9 @@ export LOG_FORMAT="json"
 export LOG_LEVEL="info"
 export DISCOVERY_INTERVAL="12h"
 export DISCOVERY_MAX_CONCURRENT="20"
+export RATE_LIMIT_ENABLED="true"
+export RATE_LIMIT_REQUESTS="100"
+export RATE_LIMIT_WINDOW="1m"
 
 ./rackd server
 ```

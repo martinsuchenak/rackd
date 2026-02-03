@@ -87,10 +87,18 @@ func RunWithAdvancedFeatures(
 	// Static UI
 	ui.RegisterRoutes(mux)
 
+	// Apply middleware chain
+	var httpHandler http.Handler = mux
+	if cfg.RateLimitEnabled {
+		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
+		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
+		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
+	}
+	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      api.LoggingMiddleware(api.SecurityHeaders(mux)),
+		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -157,10 +165,18 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	// Static UI
 	ui.RegisterRoutes(mux)
 
+	// Apply middleware chain
+	var httpHandler http.Handler = mux
+	if cfg.RateLimitEnabled {
+		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
+		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
+		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
+	}
+	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      api.LoggingMiddleware(api.SecurityHeaders(mux)),
+		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

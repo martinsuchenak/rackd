@@ -9,11 +9,11 @@ This document tracks all planned features for Rackd, organized by priority and i
 | Phase | Features | Completed | Status |
 |-------|----------|-----------|--------|
 | **Phase 1: Core** | 4 | 4/4 (100%) | ✅ Complete |
-| **Phase 2: Production Ready** | 5 | 2/5 (40%) | 🚧 In Progress |
+| **Phase 2: Production Ready** | 5 | 3/5 (60%) | 🚧 In Progress |
 | **Phase 3: Multi-User** | 5 | 0/5 (0%) | 🔜 Planned |
 | **Phase 4: Advanced** | 7 | 0/7 (0%) | 🔮 Future |
 | **Phase 5: Scale** | 3 | 0/3 (0%) | 🔮 Future |
-| **Total** | **24** | **6/24 (25%)** | |
+| **Total** | **24** | **7/24 (29%)** | |
 
 ---
 
@@ -183,29 +183,45 @@ DELETE /api/networks/bulk         - Bulk delete networks
 - `internal/api/network_handlers.go` - Added bulk network handlers
 - `cmd/import/import.go` - Updated to use bulk endpoints for better performance
 
-### 2.3 API Rate Limiting
+### 2.3 API Rate Limiting ✅ COMPLETED (2026-02-03)
 
 **Effort**: 2 days | **Priority**: MEDIUM
 
 **What**: Prevent API abuse
 
-**Tasks**:
-- [ ] Rate limiting middleware
-- [ ] Per-IP rate limits
-- [ ] Per-API-key rate limits
-- [ ] Rate limit headers (X-RateLimit-*)
-- [ ] Configuration (limits, windows)
-- [ ] Bypass for localhost
-- [ ] Documentation
+**Completed**:
+- ✅ Rate limiting middleware with token bucket algorithm
+- ✅ Per-IP rate limits
+- ✅ Per-API-key rate limits
+- ✅ Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+- ✅ Configuration via environment variables (RATE_LIMIT_ENABLED, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW)
+- ✅ Localhost bypass (127.0.0.1, ::1 always allowed)
+- ✅ Comprehensive tests (8 tests, all passing)
+- ✅ Documentation (docs/ratelimit.md)
 
-**Why Medium Priority**:
-- Important for public-facing deployments
-- Quick to implement
-- Production hardening
+**Features**:
+- Disabled by default (opt-in via RATE_LIMIT_ENABLED=true)
+- Token bucket algorithm with configurable window
+- Client identification by API key (preferred) or IP address
+- X-Forwarded-For and X-Real-IP header support
+- Automatic cleanup of inactive clients
+- HTTP 429 responses with Retry-After header
 
-**Files to Create**:
-- `internal/api/ratelimit.go`
-- `internal/config/config.go` (add rate limit config)
+**Configuration**:
+```bash
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=1m
+```
+
+**Files Created**:
+- `internal/api/ratelimit.go` - Rate limiter implementation
+- `internal/api/ratelimit_test.go` - Rate limiter tests (8 tests)
+- `docs/ratelimit.md` - Comprehensive documentation
+
+**Files Modified**:
+- `internal/config/config.go` - Added rate limit configuration
+- `internal/server/server.go` - Integrated rate limit middleware
 
 ### 2.4 Change History/Audit Trail
 
