@@ -1,322 +1,234 @@
-# Implementation Plan - Missing Features
+# Rackd Implementation Plan
 
-Based on review of specs vs current implementation, here are the features that need to be implemented.
+**Last Updated**: 2026-02-03
 
-## Status Overview
+This document tracks all planned features for Rackd, organized by priority and implementation status.
 
-### ✅ Fully Implemented (Core OSS)
+## Quick Status
 
-- Device CRUD with addresses, tags, domains
-- Datacenter CRUD
-- Network/IPAM with CIDR, VLANs
-- Network Pools with IP allocation
-- Device Relationships (contains, connected_to, depends_on)
-  - **Enhanced**: Relationship metadata (notes field)
-  - **Enhanced**: Filtering by relationship type
-  - **Enhanced**: Sorting by type, date, or device name
-  - **Enhanced**: Interactive graph visualization (Cytoscape.js)
-  - **Enhanced**: Inline notes editing
-  - **Enhanced**: Color-coded relationship types
-- CLI Tool (all commands)
-- Web UI (all core pages)
-- MCP Server (all tools)
-- Basic Discovery (ping scans)
-- Advanced Discovery (SSH, SNMP)
-- Scheduled Scans with profiles
-- Credentials storage with encryption
-- SQLite storage with migrations
-- REST API (all endpoints)
-- Full-Text Search (FTS5)
-- Metrics and Monitoring (Prometheus-compatible)
-- Enhanced Health Checks (liveness and readiness probes)
-- API Key Authentication (optional, foundation for user management)
+| Phase | Features | Completed | Status |
+|-------|----------|-----------|--------|
+| **Phase 1: Core** | 4 | 4/4 (100%) | ✅ Complete |
+| **Phase 2: Production Ready** | 4 | 0/4 (0%) | 📋 Next |
+| **Phase 3: Multi-User** | 5 | 0/5 (0%) | 🔜 Planned |
+| **Phase 4: Advanced** | 7 | 0/7 (0%) | 🔮 Future |
+| **Phase 5: Scale** | 3 | 0/3 (0%) | 🔮 Future |
+| **Total** | **23** | **4/23 (17%)** | |
 
-### 🚧 Partially Implemented
+---
 
-None - All core features fully implemented!
+## Phase 1: Core Features ✅ COMPLETE
 
-### ❌ Not Implemented (Planned Features)
+**Goal**: Essential features for basic IPAM functionality
 
-## Phase 1: Core Enhancements (High Priority)
+### 1.1 Full-Text Search ✅ COMPLETED (2026-02-03)
 
-### 1.1 Full-Text Search ✅ COMPLETED
+**Effort**: 2-3 days | **Priority**: High
 
-**Priority**: High  
-**Effort**: 2-3 days  
-**Status**: ✅ Completed (2026-02-03)
+**What**: Fast FTS5-powered search across devices, networks, and datacenters
 
-**Completed Tasks**:
-
-- ✅ Added FTS5 virtual tables to SQLite schema
-- ✅ Created search index for devices (name, hostname, description, make_model, os, location)
-- ✅ Created search index for networks (name, subnet, description)
-- ✅ Created search index for datacenters (name, location, description)
-- ✅ Implemented unified search API endpoint (`/api/search`)
-- ✅ Added prefix matching support (searches for "de" match "Default")
-- ✅ Hybrid search strategy (FTS5 for main fields, LIKE for tags/domains/addresses)
-- ✅ Updated Web UI with unified search endpoint
+**Completed**:
+- ✅ FTS5 virtual tables for devices, networks, datacenters
+- ✅ Prefix matching (search "de" matches "Default")
+- ✅ Unified `/api/search` endpoint
 - ✅ Automatic index maintenance via triggers
-- ✅ Query escaping for special characters
+- ✅ Web UI integration
 
-**Implementation Details**:
-- Migration: `20260203110000_add_fts_search`
-- Standalone FTS5 tables (not external content)
-- UNION queries for comprehensive device search
-- Server-side filtering reduces network traffic
-- Documentation: `docs/fts.md`
+**Files**: `internal/storage/migrations.go`, `internal/api/search_handlers.go`, `docs/fts.md`
 
-**Files Modified**:
-- `internal/storage/migrations.go` - Added FTS5 migration
-- `internal/storage/sqlite.go` - Implemented search queries with FTS5
-- `internal/storage/storage.go` - Added search methods to interfaces
-- `internal/api/search_handlers.go` - Unified search endpoint
-- `internal/api/handlers.go` - Registered search route
-- `webui/src/core/api.ts` - Added search() method
-- `webui/src/core/types.ts` - Added SearchResult type
-- `webui/src/components/search.ts` - Updated to use unified endpoint
+### 1.2 Metrics & Monitoring ✅ COMPLETED (2026-02-03)
 
-**Tests**: All storage tests passing (150+ tests)
+**Effort**: 2-3 days | **Priority**: High
 
-**Priority**: High  
-**Effort**: 2-3 days  
-**Dependencies**: None  
-**Status**: ✅ Completed (2026-02-03)
+**What**: Prometheus-compatible metrics for observability
 
-**Completed Tasks**:
+**Completed**:
+- ✅ `/metrics` endpoint (Prometheus text format)
+- ✅ HTTP metrics (requests, duration, status codes)
+- ✅ Application metrics (device/network/datacenter counts)
+- ✅ Discovery metrics (scan count, duration)
+- ✅ Database metrics (queries, connections)
+- ✅ Runtime metrics (uptime, goroutines, memory)
 
-- ✅ Implemented Prometheus-compatible metrics collection
-- ✅ Added `/metrics` endpoint with HTTP, application, database, and runtime metrics
-- ✅ Integrated metrics recording in HTTP middleware
-- ✅ Added metrics for HTTP requests (count, duration, status codes)
-- ✅ Added application metrics (device, network, datacenter counts)
-- ✅ Added discovery metrics (scan count, duration)
-- ✅ Added database metrics (query count, duration, connections)
-- ✅ Added runtime metrics (uptime, goroutines, memory)
-- ✅ Created comprehensive tests for metrics package
-- ✅ Updated documentation with monitoring guide
+**Files**: `internal/metrics/`, `internal/api/metrics_handlers.go`, `docs/monitoring.md`
 
-**Implementation Details**:
-- Package: `internal/metrics`
-- Metrics format: Prometheus text format
-- Atomic operations for thread-safe counters
-- Histogram-based duration tracking
-- No external dependencies (pure Go implementation)
-- Documentation: `docs/monitoring.md`
+### 1.3 Enhanced Health Checks ✅ COMPLETED (2026-02-03)
 
-**Files Created**:
-- `internal/metrics/metrics.go` - Metrics collection and export
-- `internal/metrics/metrics_test.go` - Metrics tests
-- `internal/api/metrics_handlers.go` - Metrics HTTP handler
-- `internal/api/metrics_handlers_test.go` - Handler tests
-- `docs/monitoring.md` - Comprehensive monitoring documentation
+**Effort**: 1 day | **Priority**: High
 
-**Files Modified**:
-- `internal/api/middleware.go` - Added metrics recording
-- `internal/api/handlers.go` - Registered metrics endpoint
+**What**: Kubernetes-ready health endpoints
 
-**Tests**: All tests passing (metrics package + API handlers)
+**Completed**:
+- ✅ `/healthz` - Liveness probe
+- ✅ `/readyz` - Readiness probe with detailed checks
+- ✅ Database connectivity check
+- ✅ Scheduler status check
+- ✅ JSON status responses
 
-### 1.3 Enhanced Health Checks ✅ COMPLETED
+**Files**: `internal/api/health_handlers.go`
 
-**Priority**: Medium  
-**Effort**: 1 day  
-**Dependencies**: None  
-**Status**: ✅ Completed (2026-02-03)
+### 1.4 API Key Authentication ✅ COMPLETED (2026-02-03)
 
-**Completed Tasks**:
+**Effort**: 2-3 days | **Priority**: High
 
-- ✅ Implemented `/healthz` (liveness probe)
-- ✅ Implemented `/readyz` (readiness probe)
-- ✅ Added database connectivity check
-- ✅ Added discovery scheduler status check
-- ✅ Return detailed health status JSON
-- ✅ Created comprehensive tests
-- ✅ Updated documentation
+**What**: Secure API key management (foundation for user management)
 
-**Implementation Details**:
-- Liveness probe: Simple OK response for container orchestration
-- Readiness probe: Detailed JSON with individual check status
-- Database check: Ping + connection stats validation
-- Scheduler check: Verifies scanner initialization
-- HTTP status codes: 200 (healthy), 503 (unhealthy)
-- Documentation: `docs/monitoring.md`
+**Completed**:
+- ✅ API key CRUD (create, list, get, delete)
+- ✅ Secure 256-bit random key generation
+- ✅ Expiration support
+- ✅ Last-used tracking
+- ✅ CLI commands (`rackd apikey`)
+- ✅ REST API endpoints (`/api/keys`)
+- ✅ MCP server integration
+- ✅ Optional by default (no auth required)
 
-**Files Created**:
-- `internal/api/health_handlers.go` - Health check handlers
-- `internal/api/health_handlers_test.go` - Handler tests
+**Files**: `internal/auth/`, `internal/storage/apikey_sqlite.go`, `cmd/apikey/`, `docs/authentication.md`
 
-**Files Modified**:
-- `internal/api/handlers.go` - Registered health endpoints
-- `internal/server/server.go` - Removed old basic health check
+---
 
-**Tests**: All tests passing (health check handlers)
+## Phase 2: Production Ready 📋 NEXT
 
-### 1.4 API Key Authentication ✅ COMPLETED
+**Goal**: Features needed for production deployment
 
-**Priority**: High  
-**Effort**: 2-3 days  
-**Dependencies**: None  
-**Status**: ✅ Completed (2026-02-03)
+### 2.1 Data Export/Import 🎯 RECOMMENDED NEXT
 
-**Completed Tasks**:
+**Effort**: 2-3 days | **Priority**: HIGH
 
-- ✅ Created API key model and storage (SQLite)
-- ✅ Implemented API key CRUD operations
-- ✅ Added secure key generation (256-bit random, base64-encoded)
-- ✅ Implemented timing-safe authentication
-- ✅ Added expiration support for API keys
-- ✅ Automatic last-used timestamp tracking
-- ✅ Enhanced middleware to support API keys
-- ✅ Updated MCP server authentication
-- ✅ Created API key management endpoints
-- ✅ Created CLI commands for key management
-- ✅ Backward compatible with legacy tokens
-- ✅ Created comprehensive documentation
-
-**Implementation Details**:
-- Migration: `20260203120000_add_api_keys`
-- Authentication is **optional by default** (no keys required)
-- Supports both REST API and MCP server
-- Keys are only shown once on creation
-- Async last-used updates (non-blocking)
-- Documentation: `docs/authentication.md`
-
-**Files Created**:
-- `internal/auth/apikey.go` - API key authenticator
-- `internal/auth/apikey_test.go` - Auth tests
-- `internal/model/apikey.go` - API key model
-- `internal/storage/apikey_sqlite.go` - Storage implementation
-- `internal/storage/apikey_test.go` - Storage tests
-- `internal/api/apikey_handlers.go` - API handlers
-- `cmd/apikey/apikey.go` - CLI commands
-- `docs/authentication.md` - Comprehensive auth documentation
-
-**Files Modified**:
-- `internal/storage/migrations.go` - Added API keys migration
-- `internal/storage/storage.go` - Added APIKeyStorage interface
-- `internal/api/middleware.go` - Enhanced auth middleware
-- `internal/api/handlers.go` - Registered API key routes
-- `internal/mcp/server.go` - Added API key auth support
-- `main.go` - Registered apikey command
-- `README.md` - Added authentication link
-
-**CLI Commands**:
-- `rackd apikey list` - List all API keys
-- `rackd apikey create` - Create new API key
-- `rackd apikey delete` - Delete API key
-- `rackd apikey generate` - Generate random key offline
-
-**API Endpoints**:
-- `GET /api/keys` - List API keys
-- `POST /api/keys` - Create API key
-- `GET /api/keys/{id}` - Get API key details
-- `DELETE /api/keys/{id}` - Delete API key
-
-**Tests**: All tests passing (6 new tests)
-
-**Future**: Will become required when full user management is implemented
-
-## Phase 2: Integration Features (Medium Priority)
-
-### 2.1 Webhook System
-
-**Priority**: Medium  
-**Effort**: 5-7 days  
-**Dependencies**: None
+**What**: Export/import data for backup and migration
 
 **Tasks**:
+- [ ] Export devices to CSV/JSON
+- [ ] Export networks to CSV/JSON
+- [ ] Export IP allocations
+- [ ] Import devices from CSV/JSON
+- [ ] Import networks from CSV/JSON
+- [ ] Validation on import
+- [ ] CLI commands (`rackd export`, `rackd import`)
+- [ ] API endpoints
+- [ ] Documentation
 
-- [ ] Create webhook model and storage
-- [ ] Implement webhook CRUD API
-- [ ] Create event dispatcher
-- [ ] Implement webhook delivery with retries
-- [ ] Add HMAC signature verification
-- [ ] Create webhook UI page
-- [ ] Add webhook CLI commands
-- [ ] Add webhook MCP tools
+**Why High Priority**:
+- Immediate value for backup/restore
+- Essential for migrating from other systems
+- No dependencies
+- Quick to implement
 
-**Files to create**:
-
-- `internal/model/webhook.go`
-- `internal/storage/webhook_sqlite.go`
-- `internal/webhook/dispatcher.go`
-- `internal/webhook/delivery.go`
-- `internal/api/webhook_handlers.go`
-- `webui/src/components/webhooks.ts`
-- `cmd/webhook/webhook.go`
-
-**Events to support**:
-
-- `device.created`, `device.updated`, `device.deleted`
-- `network.created`, `network.updated`, `network.deleted`
-- `discovery.scan.started`, `discovery.scan.completed`
-- `device.promoted`
+**Files to Create**:
+- `internal/export/export.go`
+- `internal/import/import.go`
+- `cmd/export/export.go`
+- `cmd/import/import.go`
+- `internal/api/export_handlers.go`
+- `docs/export-import.md`
 
 ### 2.2 Bulk Operations
 
-**Priority**: Medium  
-**Effort**: 3-4 days  
-**Dependencies**: None
+**Effort**: 3-4 days | **Priority**: HIGH
+
+**What**: Manage large numbers of devices/networks efficiently
 
 **Tasks**:
+- [ ] Bulk device create/update/delete
+- [ ] Bulk tag add/remove
+- [ ] Bulk network operations
+- [ ] Transaction support (all-or-nothing)
+- [ ] Progress reporting for large operations
+- [ ] CLI commands
+- [ ] API endpoints
+- [ ] Web UI bulk import page
 
-- [ ] Implement bulk device import (CSV/JSON)
-- [ ] Implement bulk device update
-- [ ] Implement bulk device delete
-- [ ] Implement bulk tag operations
-- [ ] Add bulk operations to API
-- [ ] Add bulk operations to CLI
-- [ ] Add bulk import to Web UI
+**Why High Priority**:
+- Makes large-scale management practical
+- Works well with export/import
+- Common user request
 
-**Files to create/modify**:
-
+**Files to Create**:
 - `internal/api/bulk_handlers.go`
 - `internal/storage/bulk_operations.go`
 - `cmd/device/bulk.go`
-- `webui/src/components/devices.ts` - Add import UI
+- `webui/src/components/bulk-import.ts`
 
 ### 2.3 API Rate Limiting
 
-**Priority**: Medium  
-**Effort**: 2 days  
-**Dependencies**: None
+**Effort**: 2 days | **Priority**: MEDIUM
+
+**What**: Prevent API abuse
 
 **Tasks**:
+- [ ] Rate limiting middleware
+- [ ] Per-IP rate limits
+- [ ] Per-API-key rate limits
+- [ ] Rate limit headers (X-RateLimit-*)
+- [ ] Configuration (limits, windows)
+- [ ] Bypass for localhost
+- [ ] Documentation
 
-- [ ] Implement rate limiting middleware
-- [ ] Add per-IP rate limits
-- [ ] Add per-token rate limits
-- [ ] Add rate limit headers (X-RateLimit-*)
-- [ ] Add rate limit configuration
-- [ ] Update API documentation
+**Why Medium Priority**:
+- Important for public-facing deployments
+- Quick to implement
+- Production hardening
 
-**Files to create/modify**:
-
+**Files to Create**:
 - `internal/api/ratelimit.go`
-- `internal/api/middleware.go`
-- `internal/config/config.go`
+- `internal/config/config.go` (add rate limit config)
 
-## Phase 3: User Management & Security (High Priority)
+### 2.4 Change History/Audit Trail
 
-### 3.1 User Management & Authentication
+**Effort**: 4-5 days | **Priority**: HIGH
 
-**Priority**: High  
-**Effort**: 7-10 days  
-**Dependencies**: None
+**What**: Track all changes for compliance and troubleshooting
 
 **Tasks**:
+- [ ] Audit log model and storage
+- [ ] Audit middleware (capture all changes)
+- [ ] Log CRUD operations with context
+- [ ] Log authentication events
+- [ ] API endpoints for querying audit log
+- [ ] Web UI audit log page
+- [ ] Export audit log (CSV/JSON)
+- [ ] Retention policy configuration
 
-- [ ] Create user model and storage
-- [ ] Implement user CRUD API
-- [ ] Add password hashing (bcrypt)
-- [ ] Implement session management
-- [ ] Add login/logout endpoints
-- [ ] Create user management UI
-- [ ] Add user CLI commands
-- [ ] Update API to support user context
+**Why High Priority**:
+- Essential for compliance (SOC2, ISO27001)
+- Critical for troubleshooting
+- Foundation for multi-user environments
+- Should be implemented BEFORE full user management
 
-**Files to create**:
+**Files to Create**:
+- `internal/model/audit.go`
+- `internal/storage/audit_sqlite.go`
+- `internal/api/audit_middleware.go`
+- `internal/api/audit_handlers.go`
+- `webui/src/components/audit.ts`
+- `docs/audit.md`
 
+---
+
+## Phase 3: Multi-User Support 🔜 PLANNED
+
+**Goal**: Full user management and access control
+
+### 3.1 User Management
+
+**Effort**: 7-10 days | **Priority**: HIGH
+
+**What**: User accounts with passwords
+
+**Tasks**:
+- [ ] User model and storage
+- [ ] User CRUD API
+- [ ] Password hashing (bcrypt)
+- [ ] Session management
+- [ ] Login/logout endpoints
+- [ ] User management UI
+- [ ] User CLI commands
+- [ ] Make API keys REQUIRED (breaking change)
+- [ ] Web UI login page
+
+**Dependencies**: Audit trail (should be in place first)
+
+**Files to Create**:
 - `internal/model/user.go`
 - `internal/storage/user_sqlite.go`
 - `internal/auth/session.go`
@@ -329,22 +241,27 @@ None - All core features fully implemented!
 
 ### 3.2 Role-Based Access Control (RBAC)
 
-**Priority**: High  
-**Effort**: 5-7 days  
-**Dependencies**: User Management (3.1)
+**Effort**: 5-7 days | **Priority**: HIGH
+
+**What**: Permissions and roles
 
 **Tasks**:
+- [ ] Role and permission models
+- [ ] RBAC storage
+- [ ] RBAC middleware
+- [ ] Default roles (admin, operator, viewer)
+- [ ] Permission checks on all endpoints
+- [ ] Role management UI
+- [ ] RBAC CLI commands
 
-- [ ] Create role and permission models
-- [ ] Implement RBAC storage
-- [ ] Add RBAC middleware
-- [ ] Define default roles (admin, operator, viewer)
-- [ ] Add permission checks to all endpoints
-- [ ] Create role management UI
-- [ ] Add RBAC CLI commands
+**Dependencies**: User Management
 
-**Files to create**:
+**Default Roles**:
+- `admin` - Full access
+- `operator` - Read/write devices, networks, discovery
+- `viewer` - Read-only access
 
+**Files to Create**:
 - `internal/model/role.go`
 - `internal/storage/rbac_sqlite.go`
 - `internal/auth/rbac.go`
@@ -353,456 +270,314 @@ None - All core features fully implemented!
 - `webui/src/components/roles.ts`
 - `cmd/role/role.go`
 
-**Default Roles**:
+### 3.3 SSO/OIDC Integration
 
-- `admin` - Full access
-- `operator` - Read/write devices, networks, discovery
-- `viewer` - Read-only access
+**Effort**: 5-7 days | **Priority**: MEDIUM
 
-### 3.3 Audit Logging
-
-**Priority**: High  
-**Effort**: 4-5 days  
-**Dependencies**: User Management (3.1)
+**What**: Enterprise authentication
 
 **Tasks**:
-
-- [ ] Create audit log model and storage
-- [ ] Implement audit middleware
-- [ ] Log all CRUD operations with user context
-- [ ] Log authentication events
-- [ ] Add audit log API endpoints
-- [ ] Add audit log UI page
-- [ ] Add audit log export (CSV, JSON)
-- [ ] Add audit log retention policy
-
-**Files to create**:
-
-- `internal/model/audit.go`
-- `internal/storage/audit_sqlite.go`
-- `internal/api/audit_middleware.go`
-- `internal/api/audit_handlers.go`
-- `webui/src/components/audit.ts`
-
-**Audit Events**:
-
-- User login/logout
-- All CRUD operations (create, update, delete)
-- Permission changes
-- Configuration changes
-
-### 3.4 SSO/OIDC Integration
-
-**Priority**: Medium  
-**Effort**: 5-7 days  
-**Dependencies**: User Management (3.1)
-
-**Tasks**:
-
-- [ ] Implement OIDC client
-- [ ] Add SSO configuration
-- [ ] Implement OAuth2 flow
-- [ ] Add SSO login UI
+- [ ] OIDC client implementation
+- [ ] OAuth2 flow
+- [ ] SSO configuration
+- [ ] SSO login UI
 - [ ] Support multiple providers (Google, Okta, Azure AD)
-- [ ] Add user provisioning from SSO
-- [ ] Add SSO CLI configuration
+- [ ] User provisioning from SSO
+- [ ] SSO CLI configuration
 
-**Files to create**:
+**Dependencies**: User Management, RBAC
 
+**Files to Create**:
 - `internal/auth/oidc.go`
 - `internal/auth/oauth2.go`
 - `internal/api/sso_handlers.go`
 - `webui/src/components/sso-login.ts`
 
-### 3.5 PostgreSQL Storage Backend
+### 3.4 PostgreSQL Storage Backend
 
-**Priority**: Medium  
-**Effort**: 10-14 days  
-**Dependencies**: None
+**Effort**: 10-14 days | **Priority**: MEDIUM
+
+**What**: Scale beyond SQLite
 
 **Tasks**:
-
-- [ ] Implement PostgreSQL storage adapter
-- [ ] Add connection pooling
-- [ ] Implement all storage interfaces for PostgreSQL
-- [ ] Add migration support for PostgreSQL
-- [ ] Add database selection (SQLite vs PostgreSQL)
-- [ ] Add PostgreSQL configuration
-- [ ] Update documentation
-
-**Files to create**:
-
-- `internal/storage/postgres.go`
-- `internal/storage/postgres_migrations.go`
-- `internal/storage/postgres_device.go`
-- `internal/storage/postgres_network.go`
-- `internal/storage/postgres_discovery.go`
+- [ ] PostgreSQL storage adapter
+- [ ] Connection pooling
+- [ ] Implement all storage interfaces
+- [ ] PostgreSQL migrations
+- [ ] Database selection config
+- [ ] Migration tool (SQLite → PostgreSQL)
+- [ ] Documentation
 
 **Configuration**:
-
 ```bash
 RACKD_DATABASE_TYPE=postgres  # or sqlite
 RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
-RACKD_POSTGRES_MAX_CONNS=50
-RACKD_POSTGRES_MAX_IDLE=10
 ```
 
-## Phase 4: Advanced Features (Medium Priority)
+**Files to Create**:
+- `internal/storage/postgres.go`
+- `internal/storage/postgres_migrations.go`
+- `internal/storage/postgres_*.go` (per entity)
 
-### 4.1 Relationship Enhancements
+### 3.5 Webhook System
 
-**Priority**: Medium  
-**Effort**: 5-7 days  
-**Dependencies**: Device relationships (implemented)
+**Effort**: 5-7 days | **Priority**: LOW (Optional)
 
-**Tasks**:
-
-- [ ] Bulk relationship operations (add/remove multiple at once)
-- [ ] Import relationships from CSV/JSON
-- [ ] Relationship validation (prevent circular dependencies)
-- [ ] Relationship suggestions based on network topology
-- [ ] Relationship history/audit trail
-- [ ] Export relationships to CSV/JSON
-- [ ] Advanced graph features:
-  - [ ] Multiple layout algorithms (hierarchical, circular, grid)
-  - [ ] Zoom and pan controls
-  - [ ] Subgraph selection (show only connected devices)
-  - [ ] Path finding between devices
-  - [ ] Save custom layouts
-  - [ ] Export graph as PNG/SVG
-  - [ ] Real-time updates via WebSocket
-- [ ] Relationship impact analysis (what breaks if device X fails)
-
-**Files to create/modify**:
-
-- `internal/api/relationship_handlers.go` - Add bulk operations
-- `internal/storage/sqlite.go` - Add validation queries
-- `webui/src/components/graph.ts` - Add advanced graph features
-- `webui/src/components/devices.ts` - Add bulk operations UI
-
-**Current Status**: ✅ Core features implemented (metadata, filtering, sorting, basic visualization)
-
-### 4.2 Network Topology Visualization
-
-### 4.2 Network Topology Visualization
-
-**Priority**: Medium  
-**Effort**: 7-10 days  
-**Dependencies**: Device relationships
+**What**: Event notifications for automation
 
 **Tasks**:
+- [ ] Webhook model and storage
+- [ ] Webhook CRUD API
+- [ ] Event dispatcher
+- [ ] Webhook delivery with retries
+- [ ] HMAC signature verification
+- [ ] Webhook UI page
+- [ ] Webhook CLI commands
+- [ ] Webhook MCP tools
 
-- [ ] Design topology data structure
-- [ ] Implement topology API endpoint
-- [ ] Add graph layout algorithm
-- [ ] Create topology visualization component (use cytoscape.js or d3.js)
-- [ ] Add interactive features (zoom, pan, filter)
-- [ ] Add topology export (PNG, SVG, JSON)
-- [ ] Add real-time updates via WebSocket
+**Events**:
+- `device.created`, `device.updated`, `device.deleted`
+- `network.created`, `network.updated`, `network.deleted`
+- `discovery.scan.started`, `discovery.scan.completed`
+- `device.promoted`
 
-**Files to create**:
+**Note**: Can be skipped if not doing heavy automation
 
-- `internal/api/topology_handlers.go`
-- `internal/topology/graph.go`
-- `webui/src/components/topology.ts`
-- Add graph library dependency
+**Files to Create**:
+- `internal/model/webhook.go`
+- `internal/storage/webhook_sqlite.go`
+- `internal/webhook/dispatcher.go`
+- `internal/webhook/delivery.go`
+- `internal/api/webhook_handlers.go`
+- `webui/src/components/webhooks.ts`
+- `cmd/webhook/webhook.go`
 
-**Note**: Basic relationship graph visualization already implemented at `/devices/graph`
+---
 
-### 4.3 DNS Integration
+## Phase 4: Advanced Features 🔮 FUTURE
 
-### 4.3 DNS Integration
+**Goal**: Advanced IPAM and integration features
 
-**Priority**: Medium  
-**Effort**: 5-7 days  
-**Dependencies**: None
+### 4.1 Network Topology Visualization
+
+**Effort**: 7-10 days
+
+**What**: Visual network topology based on relationships
 
 **Tasks**:
+- [ ] Topology data structure
+- [ ] Topology API endpoint
+- [ ] Graph layout algorithm
+- [ ] Interactive visualization (Cytoscape.js or D3.js)
+- [ ] Zoom, pan, filter
+- [ ] Export (PNG, SVG, JSON)
+- [ ] Real-time updates via WebSocket
 
-- [ ] Define DNS provider interface
-- [ ] Implement DNS provider for BIND (via nsupdate)
-- [ ] Implement DNS provider for PowerDNS (via API)
-- [ ] Add DNS record CRUD operations
+**Note**: Basic relationship graph already exists at `/devices/graph`
+
+### 4.2 DNS Integration
+
+**Effort**: 5-7 days
+
+**What**: Automatic DNS record management
+
+**Tasks**:
+- [ ] DNS provider interface
+- [ ] BIND support (via nsupdate)
+- [ ] PowerDNS support (via API)
+- [ ] DNS record CRUD
 - [ ] Auto-create DNS records on device creation
-- [ ] Add DNS sync functionality
-- [ ] Add DNS configuration UI
-- [ ] Add DNS CLI commands
+- [ ] DNS sync functionality
+- [ ] DNS configuration UI
+- [ ] DNS CLI commands
 
-**Files to create**:
+### 4.3 DHCP Integration
 
-- `internal/dns/interface.go`
-- `internal/dns/bind.go`
-- `internal/dns/powerdns.go`
-- `internal/api/dns_handlers.go`
-- `webui/src/components/dns.ts`
-- `cmd/dns/dns.go`
+**Effort**: 5-7 days
 
-### 4.4 DHCP Integration
-
-**Priority**: Medium  
-**Effort**: 5-7 days  
-**Dependencies**: None
+**What**: DHCP server integration
 
 **Tasks**:
-
-- [ ] Define DHCP provider interface
-- [ ] Implement DHCP provider for ISC DHCP (via omapi)
-- [ ] Implement DHCP provider for Kea (via API)
-- [ ] Add DHCP lease management
+- [ ] DHCP provider interface
+- [ ] ISC DHCP support (via omapi)
+- [ ] Kea support (via API)
+- [ ] DHCP lease management
 - [ ] Auto-reserve IPs in pools
-- [ ] Add DHCP configuration UI
-- [ ] Add DHCP CLI commands
+- [ ] DHCP configuration UI
+- [ ] DHCP CLI commands
 
-**Files to create**:
+### 4.4 Circuit Management
 
-- `internal/dhcp/interface.go`
-- `internal/dhcp/isc.go`
-- `internal/dhcp/kea.go`
-- `internal/api/dhcp_handlers.go`
-- `webui/src/components/dhcp.ts`
-- `cmd/dhcp/dhcp.go`
+**Effort**: 4-5 days
 
-### 4.5 Circuit Management
-
-**Priority**: Medium  
-**Effort**: 4-5 days  
-**Dependencies**: None
+**What**: Track network circuits
 
 **Tasks**:
-
-- [ ] Create circuit model (provider, circuit ID, capacity, endpoints)
-- [ ] Implement circuit storage
-- [ ] Add circuit CRUD API
-- [ ] Add circuit UI page
+- [ ] Circuit model (provider, circuit ID, capacity, endpoints)
+- [ ] Circuit storage
+- [ ] Circuit CRUD API
+- [ ] Circuit UI page
 - [ ] Link circuits to devices
-- [ ] Add circuit status tracking
-- [ ] Add circuit CLI commands
+- [ ] Circuit status tracking
+- [ ] Circuit CLI commands
 
-**Files to create**:
+### 4.5 NAT Tracking
 
-- `internal/model/circuit.go`
-- `internal/storage/circuit_sqlite.go`
-- `internal/api/circuit_handlers.go`
-- `webui/src/components/circuits.ts`
-- `cmd/circuit/circuit.go`
+**Effort**: 3-4 days
 
-### 4.6 NAT Tracking
-
-**Priority**: Medium  
-**Effort**: 3-4 days  
-**Dependencies**: None
+**What**: Track NAT mappings
 
 **Tasks**:
-
-- [ ] Create NAT mapping model (external IP/port, internal IP/port)
-- [ ] Implement NAT storage
-- [ ] Add NAT CRUD API
-- [ ] Add NAT UI page
+- [ ] NAT mapping model (external IP/port, internal IP/port)
+- [ ] NAT storage
+- [ ] NAT CRUD API
+- [ ] NAT UI page
 - [ ] Link NAT to devices
-- [ ] Add NAT validation
-- [ ] Add NAT CLI commands
+- [ ] NAT validation
+- [ ] NAT CLI commands
 
-**Files to create**:
+### 4.6 IP Conflict Detection
 
-- `internal/model/nat.go`
-- `internal/storage/nat_sqlite.go`
-- `internal/api/nat_handlers.go`
-- `webui/src/components/nat.ts`
-- `cmd/nat/nat.go`
+**Effort**: 2-3 days
 
-### 4.7 Advanced Monitoring & Dashboards
-
-### 4.7 Advanced Monitoring & Dashboards
-
-**Priority**: Medium  
-**Effort**: 7-10 days  
-**Dependencies**: Metrics (1.2)
+**What**: Detect and warn about IP conflicts
 
 **Tasks**:
+- [ ] Duplicate IP detection
+- [ ] Overlapping subnet detection
+- [ ] Conflict resolution UI
+- [ ] Conflict API endpoints
+- [ ] Automatic conflict checking on IP assignment
 
-- [ ] Create dashboard data aggregation
-- [ ] Add time-series metrics storage
-- [ ] Implement dashboard API
-- [ ] Create dashboard UI with charts
-- [ ] Add customizable widgets
-- [ ] Add alerting rules
-- [ ] Add alert notifications (email, webhook)
+### 4.7 Custom Fields/Metadata
 
-**Files to create**:
+**Effort**: 4-5 days
 
-- `internal/monitoring/dashboard.go`
-- `internal/monitoring/alerts.go`
-- `internal/api/dashboard_handlers.go`
-- `webui/src/components/dashboard.ts`
+**What**: User-defined fields for devices/networks
 
-## Phase 5: Performance & Scale (Ongoing)
+**Tasks**:
+- [ ] Custom field model
+- [ ] Custom field storage (JSON or key-value)
+- [ ] Custom field CRUD API
+- [ ] Custom field UI
+- [ ] Custom field validation
+- [ ] Search/filter by custom fields
+
+---
+
+## Phase 5: Scale & Performance 🔮 FUTURE
+
+**Goal**: Optimize for large deployments
 
 ### 5.1 Query Optimization
 
-**Priority**: Medium  
-**Effort**: Ongoing  
-**Dependencies**: Metrics
+**Effort**: Ongoing
 
 **Tasks**:
-
-- [ ] Add query performance logging
+- [ ] Query performance logging
 - [ ] Identify slow queries
 - [ ] Add missing indexes
 - [ ] Optimize N+1 queries
-- [ ] Add query result caching
+- [ ] Query result caching
 
-### 5.2 Pagination Enhancement
+### 5.2 Enhanced Pagination
 
-**Priority**: Medium  
-**Effort**: 2-3 days  
-**Dependencies**: None
+**Effort**: 2-3 days
 
 **Tasks**:
-
-- [ ] Implement cursor-based pagination
-- [ ] Add pagination to all list endpoints
-- [ ] Update CLI to support pagination
-- [ ] Update UI to support pagination
+- [ ] Cursor-based pagination
+- [ ] Pagination on all list endpoints
+- [ ] CLI pagination support
+- [ ] UI pagination support
 
 ### 5.3 Caching Layer
 
-**Priority**: Low  
-**Effort**: 3-4 days  
-**Dependencies**: None
+**Effort**: 3-4 days
 
 **Tasks**:
-- [ ] Implement in-memory cache
+- [ ] In-memory cache implementation
 - [ ] Cache frequently accessed data
-- [ ] Add cache invalidation
-- [ ] Add cache metrics
+- [ ] Cache invalidation strategy
+- [ ] Cache metrics
+- [ ] Cache configuration
 
-## Implementation Priority
+---
 
-### Immediate (Next Sprint)
+## Implementation Priorities
 
-1. ~~Full-Text Search (1.1)~~ ✅ COMPLETED
-2. ~~Metrics and Monitoring (1.2)~~ ✅ COMPLETED
-3. ~~Enhanced Health Checks (1.3)~~ ✅ COMPLETED
-4. ~~API Key Authentication (NEW)~~ ✅ COMPLETED
+### Immediate (Next 2 weeks)
 
-### Short-term (1-2 months)
+1. **Data Export/Import** (2-3 days) - Start here!
+2. **Bulk Operations** (3-4 days)
+3. **API Rate Limiting** (2 days)
 
-4. Webhook System (2.1)
-5. Bulk Operations (2.2)
-6. API Rate Limiting (2.3)
-7. User Management & Authentication (3.1)
-8. RBAC (3.2)
-9. Audit Logging (3.3)
+### Short-term (Next 1-2 months)
+
+4. **Change History/Audit Trail** (4-5 days)
+5. **User Management** (7-10 days)
+6. **RBAC** (5-7 days)
 
 ### Medium-term (3-6 months)
 
-10. SSO/OIDC Integration (3.4)
-11. PostgreSQL Storage (3.5)
-12. Relationship Enhancements (4.1)
-13. Network Topology (4.2)
-14. DNS Integration (4.3)
-15. DHCP Integration (4.4)
-16. Circuit Management (4.5)
-17. NAT Tracking (4.6)
-18. Advanced Monitoring (4.7)
+7. **SSO/OIDC** (5-7 days)
+8. **PostgreSQL Backend** (10-14 days)
+9. **Network Topology** (7-10 days)
+10. **DNS Integration** (5-7 days)
+11. **DHCP Integration** (5-7 days)
 
 ### Long-term (6+ months)
 
-19. Query Optimization (5.1)
-20. Enhanced Pagination (5.2)
-21. Caching Layer (5.3)
+12. **Circuit Management** (4-5 days)
+13. **NAT Tracking** (3-4 days)
+14. **Performance Optimizations** (Ongoing)
 
-## Effort Summary
-
-| Phase | Features | Total Effort | Completed |
-|-------|----------|--------------|-----------|
-| Phase 1 (Core) | 4 features | 8-11 days | 4/4 ✅ |
-| Phase 2 (Integration) | 3 features | 10-13 days | 0/3 |
-| Phase 3 (Security & Users) | 5 features | 31-43 days | 0/5 |
-| Phase 4 (Advanced) | 7 features | 40-55 days | 0/7 |
-| Phase 5 (Performance) | 3 features | Ongoing | 0/3 |
-| **Total** | **22 features** | **89-122 days** | **4/22 (18%)** |
-
-## Dependencies
-
-```
-Phase 1 (Core Enhancements)
-  ├─ No dependencies
-  └─ Enables: Better monitoring, search
-
-Phase 2 (Integration)
-  ├─ Depends on: Phase 1 (metrics for rate limiting)
-  └─ Enables: External integrations, automation
-
-Phase 3 (Security & Users)
-  ├─ Depends on: Phase 1, Phase 2
-  ├─ User Management → RBAC → Audit Logging
-  ├─ User Management → SSO/OIDC
-  └─ Enables: Multi-user support, compliance, security
-
-Phase 4 (Advanced Features)
-  ├─ Depends on: Phase 1, Phase 2, Phase 3
-  ├─ Relationship Enhancements depend on: Device relationships (implemented)
-  ├─ Topology depends on: Device relationships (implemented)
-  ├─ Monitoring depends on: Metrics (Phase 1)
-  └─ Enables: Advanced IPAM, visualization, integrations
-
-Phase 5 (Performance)
-  ├─ Depends on: Phase 1 (metrics)
-  ├─ PostgreSQL enables: Better scalability
-  └─ Enables: Production-scale deployments
-```
+---
 
 ## Success Criteria
 
-### Phase 1
-
-- ✅ Search returns relevant results in <100ms
-- ✅ Prefix matching works (partial queries)
-- ✅ Unified search endpoint for all entity types
-- ✅ All tests passing
-- ✅ Metrics endpoint returns data in <50ms
+### Phase 1 ✅
+- ✅ Search returns results in <100ms
+- ✅ Metrics endpoint responds in <50ms
 - ✅ Health checks respond in <10ms
-- ✅ API key authentication working
-- ✅ Keys can be created, listed, and deleted via CLI and API
+- ✅ API keys can be created and used
 
 ### Phase 2
-
-- [ ] Webhooks deliver within 5 seconds
-- [ ] Bulk import handles 1000+ devices
+- [ ] Can import 1000+ devices from CSV
+- [ ] Can export all data to JSON
 - [ ] Rate limiting prevents abuse
-- [ ] All tests passing
+- [ ] All changes are audited
 
-### Phase 3 (Security & Users)
-
-- [ ] User authentication works reliably
-- [ ] RBAC enforces permissions correctly
-- [ ] Audit log captures all changes
-- [ ] SSO integration works with major providers
+### Phase 3
+- [ ] Users can log in with password
+- [ ] RBAC enforces permissions
+- [ ] SSO works with major providers
 - [ ] PostgreSQL supports 10,000+ devices
-- [ ] All tests passing
 
-### Phase 4 (Advanced)
-
-- [ ] Relationship enhancements complete
+### Phase 4
 - [ ] Topology renders 500+ devices smoothly
 - [ ] DNS/DHCP sync works reliably
 - [ ] Circuit/NAT tracking accurate
-- [ ] Monitoring dashboards responsive
-- [ ] All tests passing
 
-### Phase 5 (Performance)
-
+### Phase 5
 - [ ] API p95 latency <200ms
 - [ ] Database queries <50ms
 - [ ] Support 50,000+ devices (with PostgreSQL)
 - [ ] Cache hit rate >80%
-- [ ] All tests passing
+
+---
 
 ## Notes
 
-- All features should include tests
-- All features should include documentation
-- All features should include CLI, API, and UI (where applicable)
-- All features should include MCP tools (where applicable)
+- All features include tests, documentation, CLI, API, and UI (where applicable)
+- All features include MCP tools (where applicable)
 - PostgreSQL is optional (SQLite remains default)
+- Webhook system is optional (can be skipped)
+- Focus on production-ready features before advanced features
+
+---
+
+## Change Log
+
+- **2026-02-03**: Merged FEATURE_STATUS.md, reorganized by priority, completed Phase 1
+- **2026-02-03**: Added API Key Authentication (1.4)
+- **2026-02-03**: Completed Full-Text Search (1.1), Metrics (1.2), Health Checks (1.3)
