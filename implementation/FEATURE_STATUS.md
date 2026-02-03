@@ -5,6 +5,7 @@ Current status of all planned features for Rackd.
 ## ✅ Completed Features (Core OSS)
 
 ### Device Management
+
 - [x] Device CRUD operations
 - [x] Multiple IP addresses per device
 - [x] Device tags
@@ -17,6 +18,7 @@ Current status of all planned features for Rackd.
 - [x] MCP tools
 
 ### Network Management (IPAM)
+
 - [x] Network CRUD with CIDR notation
 - [x] VLAN support (0-4094)
 - [x] Network pools with IP ranges
@@ -30,6 +32,7 @@ Current status of all planned features for Rackd.
 - [x] MCP tools
 
 ### Datacenter Management
+
 - [x] Datacenter CRUD
 - [x] Device-datacenter associations
 - [x] CLI commands
@@ -38,6 +41,7 @@ Current status of all planned features for Rackd.
 - [x] MCP tools
 
 ### Discovery
+
 - [x] Basic network scanning (ping)
 - [x] Advanced scanning (SSH, SNMP)
 - [x] Scan profiles (quick, full, deep)
@@ -51,6 +55,7 @@ Current status of all planned features for Rackd.
 - [x] MCP tools
 
 ### Infrastructure
+
 - [x] SQLite storage with WAL mode
 - [x] Database migrations
 - [x] REST API with pattern-based routing
@@ -66,12 +71,14 @@ Current status of all planned features for Rackd.
 ## 🚧 Partially Implemented
 
 ### Search
+
 - [x] Basic filtering by tags, datacenter, network
 - [ ] Full-text search with FTS5
 - [ ] Search ranking
 - [ ] Advanced search syntax
 
 ### Monitoring
+
 - [x] Structured logging
 - [x] Log levels (trace, debug, info, warn, error)
 - [ ] Prometheus metrics endpoint
@@ -80,6 +87,7 @@ Current status of all planned features for Rackd.
 - [ ] Discovery metrics
 
 ### Health Checks
+
 - [x] Basic server health
 - [ ] Liveness probe (/healthz)
 - [ ] Readiness probe (/readyz)
@@ -89,6 +97,7 @@ Current status of all planned features for Rackd.
 ## ❌ Not Yet Implemented
 
 ### Integration Features
+
 - [ ] Webhook system
   - [ ] Webhook CRUD
   - [ ] Event dispatcher
@@ -104,7 +113,8 @@ Current status of all planned features for Rackd.
   - [ ] Per-token limits
   - [ ] Rate limit headers
 
-### User Management & Security (Former Enterprise - Now OSS)
+### User Management & Security
+
 - [ ] User management
   - [ ] User CRUD
   - [ ] Password hashing
@@ -136,7 +146,8 @@ Current status of all planned features for Rackd.
   - [ ] PostgreSQL migrations
   - [ ] Database selection config
 
-### Advanced Features (Former Enterprise - Now OSS)
+### Advanced Features
+
 - [ ] Network topology visualization
   - [ ] Topology data structure
   - [ ] Graph layout algorithm
@@ -174,6 +185,7 @@ Current status of all planned features for Rackd.
   - [ ] Alert notifications
 
 ### Performance Features
+
 - [ ] Query optimization
   - [ ] Query performance logging
   - [ ] Additional indexes
@@ -186,24 +198,6 @@ Current status of all planned features for Rackd.
   - [ ] Cache invalidation
   - [ ] Cache metrics
 
-## 🚫 No Longer Applicable
-
-**Enterprise edition has been cancelled. All features are now part of OSS.**
-
-Previously planned as enterprise-only, now included in OSS:
-- ✅ Advanced discovery (SSH, SNMP) - **Implemented**
-- ✅ Scan profiles - **Implemented**
-- ✅ Scheduled scans - **Implemented**
-- ✅ Credential management - **Implemented**
-- 🚧 User management - **Planned**
-- 🚧 RBAC - **Planned**
-- 🚧 Audit logging - **Planned**
-- 🚧 SSO/OIDC - **Planned**
-- 🚧 PostgreSQL storage - **Planned**
-- 🚧 Network topology - **Planned**
-- 🚧 DNS/DHCP integration - **Planned**
-- 🚧 Circuit/NAT management - **Planned**
-- 🚧 Advanced monitoring - **Planned**
 
 ## Feature Completion Statistics
 
@@ -233,11 +227,13 @@ Previously planned as enterprise-only, now included in OSS:
 See [IMPLEMENTATION_PLAN_v2.md](IMPLEMENTATION_PLAN_v2.md) for detailed implementation plan.
 
 ### Immediate Priority (Phase 1)
+
 1. Full-text search
 2. Metrics endpoint
 3. Enhanced health checks
 
 ### Short-term (Phase 2-3)
+
 4. Webhook system
 5. Bulk operations
 6. API rate limiting
@@ -246,6 +242,7 @@ See [IMPLEMENTATION_PLAN_v2.md](IMPLEMENTATION_PLAN_v2.md) for detailed implemen
 9. Audit logging
 
 ### Medium-term (Phase 3-4)
+
 10. SSO/OIDC integration
 11. PostgreSQL storage backend
 12. Network topology visualization
@@ -256,6 +253,7 @@ See [IMPLEMENTATION_PLAN_v2.md](IMPLEMENTATION_PLAN_v2.md) for detailed implemen
 17. Advanced monitoring & dashboards
 
 ### Long-term (Phase 5)
+
 18. Performance optimizations
 19. Enhanced pagination
 20. Caching layer

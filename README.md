@@ -36,17 +36,20 @@ chmod +x rackd-linux-amd64
 Comprehensive documentation is available in the [docs/](docs/) directory:
 
 ### Getting Started
+
 - [Installation](docs/installation.md) - Installation methods and requirements
 - [Quick Start Guide](docs/quickstart.md) - Get up and running in 5 minutes
 - [Configuration](docs/configuration.md) - Environment variables and settings
 
 ### Core Features
+
 - [CLI Reference](docs/cli.md) - Command-line interface documentation
 - [API Reference](docs/api.md) - REST API endpoints and examples
 - [MCP Server](docs/mcp.md) - Model Context Protocol integration
 - [Web UI](docs/webui.md) - Web interface guide
 
 ### Modules
+
 - [Device Management](docs/devices.md) - Device inventory and tracking
 - [Network Management](docs/networks.md) - IPAM, subnets, and IP pools
 - [Datacenter Management](docs/datacenters.md) - Physical location tracking
@@ -54,12 +57,14 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Relationships](docs/relationships.md) - Device dependencies and connections
 
 ### Development
+
 - [Architecture](docs/architecture.md) - System design and structure
 - [Development Guide](docs/development.md) - Building and contributing
 - [Database Schema](docs/database.md) - SQLite schema reference
 - [Testing](docs/testing.md) - Testing strategy and guidelines
 
 ### Operations
+
 - [Deployment](docs/deployment.md) - Docker, Nomad, and production deployment
 - [Backup & Restore](docs/backup.md) - Data backup strategies
 - [Security](docs/security.md) - Security best practices
