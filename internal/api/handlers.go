@@ -153,6 +153,17 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/keys/{id}", wrap(h.getAPIKey))
 	mux.HandleFunc("DELETE /api/keys/{id}", wrap(h.deleteAPIKey))
 
+	// Bulk device operations
+	mux.HandleFunc("POST /api/devices/bulk", wrap(h.bulkCreateDevices))
+	mux.HandleFunc("PUT /api/devices/bulk", wrap(h.bulkUpdateDevices))
+	mux.HandleFunc("DELETE /api/devices/bulk", wrap(h.bulkDeleteDevices))
+	mux.HandleFunc("POST /api/devices/bulk/tags", wrap(h.bulkAddTags))
+	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrap(h.bulkRemoveTags))
+
+	// Bulk network operations
+	mux.HandleFunc("POST /api/networks/bulk", wrap(h.bulkCreateNetworks))
+	mux.HandleFunc("DELETE /api/networks/bulk", wrap(h.bulkDeleteNetworks))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

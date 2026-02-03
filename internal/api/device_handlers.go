@@ -191,3 +191,102 @@ func toAddressSlice(arr []any) []model.Address {
 	}
 	return result
 }
+
+
+// bulkCreateDevices handles POST /api/devices/bulk
+func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
+	var devices []*model.Device
+	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkCreateDevices(devices)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// bulkUpdateDevices handles PUT /api/devices/bulk
+func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
+	var devices []*model.Device
+	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkUpdateDevices(devices)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// bulkDeleteDevices handles DELETE /api/devices/bulk
+func (h *Handler) bulkDeleteDevices(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkDeleteDevices(req.IDs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// bulkAddTags handles POST /api/devices/bulk/tags
+func (h *Handler) bulkAddTags(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DeviceIDs []string `json:"device_ids"`
+		Tags      []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkAddTags(req.DeviceIDs, req.Tags)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// bulkRemoveTags handles DELETE /api/devices/bulk/tags
+func (h *Handler) bulkRemoveTags(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DeviceIDs []string `json:"device_ids"`
+		Tags      []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkRemoveTags(req.DeviceIDs, req.Tags)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}

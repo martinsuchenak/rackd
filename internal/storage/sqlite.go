@@ -283,6 +283,22 @@ func (s *SQLiteStorage) CreateDevice(device *model.Device) error {
 	}
 
 	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := s.createDeviceInTx(tx, device); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// createDeviceInTx creates a device within an existing transaction
+func (s *SQLiteStorage) createDeviceInTx(tx *sql.Tx, device *model.Device) error {
+	ctx := context.Background()
 
 	// Generate ID if not provided
 	if device.ID == "" {
@@ -293,15 +309,8 @@ func (s *SQLiteStorage) CreateDevice(device *model.Device) error {
 	device.CreatedAt = now
 	device.UpdatedAt = now
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
 	// Insert device
-	_, err = tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, `
 		INSERT INTO devices (id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, device.ID, device.Name, device.Hostname, device.Description, device.MakeModel,
@@ -326,7 +335,7 @@ func (s *SQLiteStorage) CreateDevice(device *model.Device) error {
 		return fmt.Errorf("failed to insert domains: %w", err)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // insertDeviceAddresses inserts addresses for a device within a transaction
@@ -380,17 +389,26 @@ func (s *SQLiteStorage) UpdateDevice(device *model.Device) error {
 	}
 
 	ctx := context.Background()
-
-	// Start transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	if err := s.updateDeviceInTx(tx, device); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// updateDeviceInTx updates a device within an existing transaction
+func (s *SQLiteStorage) updateDeviceInTx(tx *sql.Tx, device *model.Device) error {
+	ctx := context.Background()
+
 	// Check if device exists
 	var exists bool
-	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, device.ID).Scan(&exists)
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, device.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check device existence: %w", err)
 	}
@@ -435,7 +453,7 @@ func (s *SQLiteStorage) UpdateDevice(device *model.Device) error {
 		return fmt.Errorf("failed to insert domains: %w", err)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // DeleteDevice removes a device and all related data (cascades via foreign keys)
@@ -445,17 +463,26 @@ func (s *SQLiteStorage) DeleteDevice(id string) error {
 	}
 
 	ctx := context.Background()
-
-	// Start transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	if err := s.deleteDeviceInTx(tx, id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// deleteDeviceInTx deletes a device within an existing transaction
+func (s *SQLiteStorage) deleteDeviceInTx(tx *sql.Tx, id string) error {
+	ctx := context.Background()
+
 	// Check if device exists
 	var exists bool
-	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, id).Scan(&exists)
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check device existence: %w", err)
 	}
@@ -469,7 +496,7 @@ func (s *SQLiteStorage) DeleteDevice(id string) error {
 		return fmt.Errorf("failed to delete device: %w", err)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // ListDevices retrieves devices matching the filter criteria
@@ -1112,6 +1139,22 @@ func (s *SQLiteStorage) CreateNetwork(network *model.Network) error {
 	}
 
 	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := s.createNetworkInTx(tx, network); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// createNetworkInTx creates a network within an existing transaction
+func (s *SQLiteStorage) createNetworkInTx(tx *sql.Tx, network *model.Network) error {
+	ctx := context.Background()
 
 	// Generate ID if not provided
 	if network.ID == "" {
@@ -1122,7 +1165,7 @@ func (s *SQLiteStorage) CreateNetwork(network *model.Network) error {
 	network.CreatedAt = now
 	network.UpdatedAt = now
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, `
 		INSERT INTO networks (id, name, subnet, vlan_id, datacenter_id, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, network.ID, network.Name, network.Subnet, nullInt(network.VLANID),
@@ -1178,23 +1221,32 @@ func (s *SQLiteStorage) DeleteNetwork(id string) error {
 	}
 
 	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := s.deleteNetworkInTx(tx, id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// deleteNetworkInTx deletes a network within an existing transaction
+func (s *SQLiteStorage) deleteNetworkInTx(tx *sql.Tx, id string) error {
+	ctx := context.Background()
 
 	// Check if network exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, id).Scan(&exists)
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check network existence: %w", err)
 	}
 	if !exists {
 		return ErrNetworkNotFound
 	}
-
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
 
 	// Unlink addresses from this network (set network_id to NULL)
 	_, err = tx.ExecContext(ctx, `UPDATE addresses SET network_id = NULL WHERE network_id = ?`, id)
@@ -1214,7 +1266,7 @@ func (s *SQLiteStorage) DeleteNetwork(id string) error {
 		return fmt.Errorf("failed to delete network: %w", err)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // GetNetworkDevices retrieves all devices that have addresses in a network

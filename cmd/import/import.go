@@ -84,42 +84,50 @@ func DevicesCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			result := importdata.ImportResult{Total: len(devices)}
+			// Convert to pointers for bulk API
+			devicePtrs := make([]*model.Device, len(devices))
+			for i := range devices {
+				devicePtrs[i] = &devices[i]
+			}
 
-			for _, device := range devices {
-				// Try to create device
-				body, _ := json.Marshal(device)
-				resp, err := c.DoRequest("POST", "/api/devices", bytes.NewReader(body))
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", device.Name, err))
-					continue
-				}
-				resp.Body.Close()
+			// Use bulk create endpoint
+			body, _ := json.Marshal(devicePtrs)
+			resp, err := c.DoRequest("POST", "/api/devices/bulk", bytes.NewReader(body))
+			if err != nil {
+				return fmt.Errorf("bulk import failed: %w", err)
+			}
+			defer resp.Body.Close()
 
-				if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-					result.Created++
-				} else {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("%s: HTTP %d", device.Name, resp.StatusCode))
-				}
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("bulk import failed: HTTP %d", resp.StatusCode)
+			}
+
+			// Parse bulk result
+			var bulkResult struct {
+				Total   int      `json:"total"`
+				Success int      `json:"success"`
+				Failed  int      `json:"failed"`
+				Errors  []string `json:"errors,omitempty"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&bulkResult); err != nil {
+				return fmt.Errorf("failed to parse response: %w", err)
 			}
 
 			// Print results
 			fmt.Printf("\nImport complete:\n")
-			fmt.Printf("  Total:   %d\n", result.Total)
-			fmt.Printf("  Created: %d\n", result.Created)
-			fmt.Printf("  Failed:  %d\n", result.Failed)
+			fmt.Printf("  Total:   %d\n", bulkResult.Total)
+			fmt.Printf("  Created: %d\n", bulkResult.Success)
+			fmt.Printf("  Failed:  %d\n", bulkResult.Failed)
 
-			if len(result.Errors) > 0 {
+			if len(bulkResult.Errors) > 0 {
 				fmt.Printf("\nErrors:\n")
-				for _, err := range result.Errors {
+				for _, err := range bulkResult.Errors {
 					fmt.Printf("  - %s\n", err)
 				}
 			}
 
-			if result.Failed > 0 {
-				return fmt.Errorf("import completed with %d errors", result.Failed)
+			if bulkResult.Failed > 0 {
+				return fmt.Errorf("import completed with %d errors", bulkResult.Failed)
 			}
 
 			return nil
@@ -178,40 +186,49 @@ func NetworksCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			result := importdata.ImportResult{Total: len(networks)}
+			// Convert to pointers for bulk API
+			networkPtrs := make([]*model.Network, len(networks))
+			for i := range networks {
+				networkPtrs[i] = &networks[i]
+			}
 
-			for _, network := range networks {
-				body, _ := json.Marshal(network)
-				resp, err := c.DoRequest("POST", "/api/networks", bytes.NewReader(body))
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", network.Name, err))
-					continue
-				}
-				resp.Body.Close()
+			// Use bulk create endpoint
+			body, _ := json.Marshal(networkPtrs)
+			resp, err := c.DoRequest("POST", "/api/networks/bulk", bytes.NewReader(body))
+			if err != nil {
+				return fmt.Errorf("bulk import failed: %w", err)
+			}
+			defer resp.Body.Close()
 
-				if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-					result.Created++
-				} else {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("%s: HTTP %d", network.Name, resp.StatusCode))
-				}
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("bulk import failed: HTTP %d", resp.StatusCode)
+			}
+
+			// Parse bulk result
+			var bulkResult struct {
+				Total   int      `json:"total"`
+				Success int      `json:"success"`
+				Failed  int      `json:"failed"`
+				Errors  []string `json:"errors,omitempty"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&bulkResult); err != nil {
+				return fmt.Errorf("failed to parse response: %w", err)
 			}
 
 			fmt.Printf("\nImport complete:\n")
-			fmt.Printf("  Total:   %d\n", result.Total)
-			fmt.Printf("  Created: %d\n", result.Created)
-			fmt.Printf("  Failed:  %d\n", result.Failed)
+			fmt.Printf("  Total:   %d\n", bulkResult.Total)
+			fmt.Printf("  Created: %d\n", bulkResult.Success)
+			fmt.Printf("  Failed:  %d\n", bulkResult.Failed)
 
-			if len(result.Errors) > 0 {
+			if len(bulkResult.Errors) > 0 {
 				fmt.Printf("\nErrors:\n")
-				for _, err := range result.Errors {
+				for _, err := range bulkResult.Errors {
 					fmt.Printf("  - %s\n", err)
 				}
 			}
 
-			if result.Failed > 0 {
-				return fmt.Errorf("import completed with %d errors", result.Failed)
+			if bulkResult.Failed > 0 {
+				return fmt.Errorf("import completed with %d errors", bulkResult.Failed)
 			}
 
 			return nil

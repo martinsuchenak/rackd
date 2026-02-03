@@ -112,6 +112,17 @@ type DiscoveryStorage interface {
 	CleanupOldDiscoveries(olderThanDays int) error
 }
 
+// BulkOperations defines bulk operation methods
+type BulkOperations interface {
+	BulkCreateDevices(devices []*model.Device) (*BulkResult, error)
+	BulkUpdateDevices(devices []*model.Device) (*BulkResult, error)
+	BulkDeleteDevices(ids []string) (*BulkResult, error)
+	BulkAddTags(deviceIDs []string, tags []string) (*BulkResult, error)
+	BulkRemoveTags(deviceIDs []string, tags []string) (*BulkResult, error)
+	BulkCreateNetworks(networks []*model.Network) (*BulkResult, error)
+	BulkDeleteNetworks(ids []string) (*BulkResult, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -126,6 +137,7 @@ type ExtendedStorage interface {
 	NetworkPoolStorage
 	DiscoveryStorage
 	APIKeyStorage
+	BulkOperations
 	Close() error
 	DB() *sql.DB
 }

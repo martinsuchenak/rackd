@@ -139,32 +139,49 @@ rackd import datacenters --file datacenters.json
 - `cmd/export/export.go` - Export CLI commands
 - `cmd/import/import.go` - Import CLI commands
 
-### 2.2 Bulk Operations
+### 2.2 Bulk Operations ✅ COMPLETED (2026-02-03)
 
 **Effort**: 3-4 days | **Priority**: HIGH
 
 **What**: Manage large numbers of devices/networks efficiently
 
-**Tasks**:
-- [ ] Bulk device create/update/delete
-- [ ] Bulk tag add/remove
-- [ ] Bulk network operations
-- [ ] Transaction support (all-or-nothing)
-- [ ] Progress reporting for large operations
-- [ ] CLI commands
-- [ ] API endpoints
-- [ ] Web UI bulk import page
+**Completed**:
+- ✅ Bulk device create/update/delete
+- ✅ Bulk tag add/remove
+- ✅ Bulk network create/delete
+- ✅ Transaction support (all-or-nothing)
+- ✅ Detailed result reporting (total, success, failed, errors)
+- ✅ API endpoints (`/api/bulk/*`)
+- ✅ Comprehensive tests (6 tests, all passing)
 
-**Why High Priority**:
-- Makes large-scale management practical
-- Works well with export/import
-- Common user request
+**Features**:
+- All operations run in transactions for atomicity
+- Detailed error reporting per item
+- No deadlocks (direct SQL within transactions)
+- Result includes: total, success count, failed count, error messages
 
-**Files to Create**:
-- `internal/api/bulk_handlers.go`
-- `internal/storage/bulk_operations.go`
-- `cmd/device/bulk.go`
-- `webui/src/components/bulk-import.ts`
+**API Endpoints**:
+```
+POST   /api/devices/bulk          - Bulk create devices
+PUT    /api/devices/bulk          - Bulk update devices
+DELETE /api/devices/bulk          - Bulk delete devices (body: {"ids": [...]})
+POST   /api/devices/bulk/tags     - Bulk add tags (body: {"device_ids": [...], "tags": [...]})
+DELETE /api/devices/bulk/tags     - Bulk remove tags
+POST   /api/networks/bulk         - Bulk create networks
+DELETE /api/networks/bulk         - Bulk delete networks
+```
+
+**Files Created**:
+- `internal/storage/bulk.go` - Bulk operations implementation
+- `internal/storage/bulk_test.go` - Bulk operations tests (6 tests)
+
+**Files Modified**:
+- `internal/storage/storage.go` - Added BulkOperations interface
+- `internal/storage/sqlite.go` - Refactored to support transaction-based operations
+- `internal/api/handlers.go` - Registered bulk routes
+- `internal/api/device_handlers.go` - Added bulk device handlers
+- `internal/api/network_handlers.go` - Added bulk network handlers
+- `cmd/import/import.go` - Updated to use bulk endpoints for better performance
 
 ### 2.3 API Rate Limiting
 

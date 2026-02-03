@@ -319,3 +319,42 @@ func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, http.StatusOK, networks)
 }
+
+
+// bulkCreateNetworks handles POST /api/networks/bulk
+func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
+	var networks []*model.Network
+	if err := json.NewDecoder(r.Body).Decode(&networks); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkCreateNetworks(networks)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// bulkDeleteNetworks handles DELETE /api/networks/bulk
+func (h *Handler) bulkDeleteNetworks(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.store.BulkDeleteNetworks(req.IDs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
