@@ -1,0 +1,33 @@
+<div x-data="deviceGraph">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Device Relationships Graph</h1>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Visual representation of device relationships</p>
+  </div>
+
+  <div x-show="loading" class="text-gray-700 dark:text-gray-300" role="status" aria-live="polite">Loading graph...</div>
+  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md mb-4" x-text="error" role="alert"></div>
+
+  <div x-show="!loading && !error" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-4">
+    <!-- Legend -->
+    <div class="flex items-center gap-4 mb-4 text-sm">
+      <span class="text-gray-700 dark:text-gray-300 font-medium">Legend:</span>
+      <div class="flex items-center gap-1">
+        <div class="w-4 h-0.5 bg-green-500"></div>
+        <span class="text-gray-600 dark:text-gray-400">Contains</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <div class="w-4 h-0.5 bg-blue-500"></div>
+        <span class="text-gray-600 dark:text-gray-400">Connected To</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <div class="w-4 h-0.5 bg-purple-500"></div>
+        <span class="text-gray-600 dark:text-gray-400">Depends On</span>
+      </div>
+    </div>
+
+    <!-- Graph Container -->
+    <div id="graph-container" class="w-full bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600" style="height: 600px;"></div>
+
+    <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Click on a device to view details</p>
+  </div>
+</div>

@@ -12,7 +12,8 @@
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {
-    "alpinejs": "^3.14.8"
+    "alpinejs": "^3.14.8",
+    "cytoscape": "^3.33.1"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",

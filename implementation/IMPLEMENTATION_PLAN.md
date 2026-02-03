@@ -11,6 +11,12 @@ Based on review of specs vs current implementation, here are the features that n
 - Network/IPAM with CIDR, VLANs
 - Network Pools with IP allocation
 - Device Relationships (contains, connected_to, depends_on)
+  - **Enhanced**: Relationship metadata (notes field)
+  - **Enhanced**: Filtering by relationship type
+  - **Enhanced**: Sorting by type, date, or device name
+  - **Enhanced**: Interactive graph visualization (Cytoscape.js)
+  - **Enhanced**: Inline notes editing
+  - **Enhanced**: Color-coded relationship types
 - CLI Tool (all commands)
 - Web UI (all core pages)
 - MCP Server (all tools)
@@ -328,7 +334,42 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 ## Phase 4: Advanced Features (Medium Priority)
 
-### 4.1 Network Topology Visualization
+### 4.1 Relationship Enhancements
+
+**Priority**: Medium  
+**Effort**: 5-7 days  
+**Dependencies**: Device relationships (implemented)
+
+**Tasks**:
+
+- [ ] Bulk relationship operations (add/remove multiple at once)
+- [ ] Import relationships from CSV/JSON
+- [ ] Relationship validation (prevent circular dependencies)
+- [ ] Relationship suggestions based on network topology
+- [ ] Relationship history/audit trail
+- [ ] Export relationships to CSV/JSON
+- [ ] Advanced graph features:
+  - [ ] Multiple layout algorithms (hierarchical, circular, grid)
+  - [ ] Zoom and pan controls
+  - [ ] Subgraph selection (show only connected devices)
+  - [ ] Path finding between devices
+  - [ ] Save custom layouts
+  - [ ] Export graph as PNG/SVG
+  - [ ] Real-time updates via WebSocket
+- [ ] Relationship impact analysis (what breaks if device X fails)
+
+**Files to create/modify**:
+
+- `internal/api/relationship_handlers.go` - Add bulk operations
+- `internal/storage/sqlite.go` - Add validation queries
+- `webui/src/components/graph.ts` - Add advanced graph features
+- `webui/src/components/devices.ts` - Add bulk operations UI
+
+**Current Status**: ✅ Core features implemented (metadata, filtering, sorting, basic visualization)
+
+### 4.2 Network Topology Visualization
+
+### 4.2 Network Topology Visualization
 
 **Priority**: Medium  
 **Effort**: 7-10 days  
@@ -351,7 +392,11 @@ RACKD_POSTGRES_MAX_IDLE=10
 - `webui/src/components/topology.ts`
 - Add graph library dependency
 
-### 4.2 DNS Integration
+**Note**: Basic relationship graph visualization already implemented at `/devices/graph`
+
+### 4.3 DNS Integration
+
+### 4.3 DNS Integration
 
 **Priority**: Medium  
 **Effort**: 5-7 days  
@@ -377,7 +422,7 @@ RACKD_POSTGRES_MAX_IDLE=10
 - `webui/src/components/dns.ts`
 - `cmd/dns/dns.go`
 
-### 4.3 DHCP Integration
+### 4.4 DHCP Integration
 
 **Priority**: Medium  
 **Effort**: 5-7 days  
@@ -402,7 +447,7 @@ RACKD_POSTGRES_MAX_IDLE=10
 - `webui/src/components/dhcp.ts`
 - `cmd/dhcp/dhcp.go`
 
-### 4.4 Circuit Management
+### 4.5 Circuit Management
 
 **Priority**: Medium  
 **Effort**: 4-5 days  
@@ -426,7 +471,7 @@ RACKD_POSTGRES_MAX_IDLE=10
 - `webui/src/components/circuits.ts`
 - `cmd/circuit/circuit.go`
 
-### 4.5 NAT Tracking
+### 4.6 NAT Tracking
 
 **Priority**: Medium  
 **Effort**: 3-4 days  
@@ -450,7 +495,9 @@ RACKD_POSTGRES_MAX_IDLE=10
 - `webui/src/components/nat.ts`
 - `cmd/nat/nat.go`
 
-### 4.6 Advanced Monitoring & Dashboards
+### 4.7 Advanced Monitoring & Dashboards
+
+### 4.7 Advanced Monitoring & Dashboards
 
 **Priority**: Medium  
 **Effort**: 7-10 days  
@@ -535,18 +582,19 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 10. SSO/OIDC Integration (3.4)
 11. PostgreSQL Storage (3.5)
-12. Network Topology (4.1)
-13. DNS Integration (4.2)
-14. DHCP Integration (4.3)
-15. Circuit Management (4.4)
-16. NAT Tracking (4.5)
-17. Advanced Monitoring (4.6)
+12. Relationship Enhancements (4.1)
+13. Network Topology (4.2)
+14. DNS Integration (4.3)
+15. DHCP Integration (4.4)
+16. Circuit Management (4.5)
+17. NAT Tracking (4.6)
+18. Advanced Monitoring (4.7)
 
 ### Long-term (6+ months)
 
-18. Query Optimization (5.1)
-19. Enhanced Pagination (5.2)
-20. Caching Layer (5.3)
+19. Query Optimization (5.1)
+20. Enhanced Pagination (5.2)
+21. Caching Layer (5.3)
 
 ## Effort Summary
 
@@ -555,9 +603,9 @@ RACKD_POSTGRES_MAX_IDLE=10
 | Phase 1 (Core) | 3 features | 5-7 days |
 | Phase 2 (Integration) | 3 features | 10-13 days |
 | Phase 3 (Security & Users) | 5 features | 31-43 days |
-| Phase 4 (Advanced) | 6 features | 35-48 days |
+| Phase 4 (Advanced) | 7 features | 40-55 days |
 | Phase 5 (Performance) | 3 features | Ongoing |
-| **Total** | **20 features** | **81-111 days** |
+| **Total** | **21 features** | **86-118 days** |
 
 ## Dependencies
 
@@ -578,6 +626,7 @@ Phase 3 (Security & Users)
 
 Phase 4 (Advanced Features)
   ├─ Depends on: Phase 1, Phase 2, Phase 3
+  ├─ Relationship Enhancements depend on: Device relationships (implemented)
   ├─ Topology depends on: Device relationships (implemented)
   ├─ Monitoring depends on: Metrics (Phase 1)
   └─ Enables: Advanced IPAM, visualization, integrations
@@ -615,6 +664,7 @@ Phase 5 (Performance)
 
 ### Phase 4 (Advanced)
 
+- [ ] Relationship enhancements complete
 - [ ] Topology renders 500+ devices smoothly
 - [ ] DNS/DHCP sync works reliably
 - [ ] Circuit/NAT tracking accurate

@@ -149,8 +149,8 @@ export class RackdAPI {
   }
 
   // Relationships
-  async addRelationship(deviceId: string, childId: string, type: DeviceRelationship['type']): Promise<void> {
-    return this.request<void>('POST', `/api/devices/${deviceId}/relationships`, { child_id: childId, type });
+  async addRelationship(deviceId: string, childId: string, type: DeviceRelationship['type'], notes?: string): Promise<void> {
+    return this.request<void>('POST', `/api/devices/${deviceId}/relationships`, { child_id: childId, type, notes: notes || '' });
   }
 
   async getRelationships(deviceId: string): Promise<DeviceRelationship[]> {
@@ -159,6 +159,10 @@ export class RackdAPI {
 
   async getRelatedDevices(deviceId: string, type: DeviceRelationship['type']): Promise<Device[]> {
     return this.request<Device[]>('GET', `/api/devices/${deviceId}/related?type=${type}`);
+  }
+
+  async updateRelationshipNotes(deviceId: string, childId: string, type: DeviceRelationship['type'], notes: string): Promise<void> {
+    return this.request<void>('PATCH', `/api/devices/${deviceId}/relationships/${childId}/${type}`, { notes });
   }
 
   async removeRelationship(deviceId: string, childId: string, type: DeviceRelationship['type']): Promise<void> {

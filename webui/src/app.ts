@@ -8,6 +8,7 @@ import { api, RackdAPI } from './core/api';
 import { nav } from './components/nav';
 import { globalSearch } from './components/search';
 import { deviceList, deviceDetail, deviceForm } from './components/devices';
+import { deviceGraph } from './components/graph';
 import { networkList, networkDetail, networkForm } from './components/networks';
 import { poolDetail, poolForm } from './components/pools';
 import { datacenterList, datacenterDetail, datacenterForm } from './components/datacenters';
@@ -22,6 +23,7 @@ function updatePageTitle(route: string) {
     '/': 'Dashboard',
     '/devices': 'Devices',
     '/devices/detail': 'Device Details',
+    '/devices/graph': 'Device Relationships Graph',
     '/networks': 'Networks',
     '/networks/detail': 'Network Details',
     '/pools/detail': 'Pool Details',
@@ -180,6 +182,7 @@ async function init(): Promise<void> {
   Alpine.data('deviceList', deviceList);
   Alpine.data('deviceDetail', deviceDetail);
   Alpine.data('deviceForm', deviceForm);
+  Alpine.data('deviceGraph', deviceGraph);
   Alpine.data('networkList', networkList);
   Alpine.data('networkDetail', networkDetail);
   Alpine.data('networkForm', networkForm);

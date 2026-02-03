@@ -48,6 +48,12 @@ var migrations = []*Migration{
 		Up:      migrateAddDeviceHostnameUp,
 		Down:    migrateAddDeviceHostnameDown,
 	},
+	{
+		Version: "20260203000000",
+		Name:    "add_relationship_notes",
+		Up:      migrateAddRelationshipNotesUp,
+		Down:    migrateAddRelationshipNotesDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -446,5 +452,18 @@ func migrateAddDeviceHostnameUp(ctx context.Context, tx *sql.Tx) error {
 func migrateAddDeviceHostnameDown(ctx context.Context, tx *sql.Tx) error {
 	// SQLite doesn't support DROP COLUMN directly, so we'd need to recreate the table
 	// For simplicity, we'll just leave the column (it's safe to have extra columns)
+	return nil
+}
+
+// migrateAddRelationshipNotesUp adds the notes column to device_relationships table
+func migrateAddRelationshipNotesUp(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE device_relationships ADD COLUMN notes TEXT DEFAULT ''`); err != nil {
+		return fmt.Errorf("failed to add notes column: %w", err)
+	}
+	return nil
+}
+
+// migrateAddRelationshipNotesDown removes the notes column from device_relationships table
+func migrateAddRelationshipNotesDown(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }

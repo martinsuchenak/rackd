@@ -1735,13 +1735,13 @@ func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
 
 // Relationship operations - stub implementations for now (will be completed in P2-008)
 
-func (s *SQLiteStorage) AddRelationship(parentID, childID, relationshipType string) error {
+func (s *SQLiteStorage) AddRelationship(parentID, childID, relationshipType, notes string) error {
 	ctx := context.Background()
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO device_relationships (parent_id, child_id, type)
-		VALUES (?, ?, ?)
-		ON CONFLICT (parent_id, child_id, type) DO NOTHING
-	`, parentID, childID, relationshipType)
+		INSERT INTO device_relationships (parent_id, child_id, type, notes)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT (parent_id, child_id, type) DO UPDATE SET notes = excluded.notes
+	`, parentID, childID, relationshipType, notes)
 	return err
 }
 
@@ -1754,10 +1754,20 @@ func (s *SQLiteStorage) RemoveRelationship(parentID, childID, relationshipType s
 	return err
 }
 
+func (s *SQLiteStorage) UpdateRelationshipNotes(parentID, childID, relationshipType, notes string) error {
+	ctx := context.Background()
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE device_relationships
+		SET notes = ?
+		WHERE parent_id = ? AND child_id = ? AND type = ?
+	`, notes, parentID, childID, relationshipType)
+	return err
+}
+
 func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
 	ctx := context.Background()
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT parent_id, child_id, type, created_at
+		SELECT parent_id, child_id, type, notes, created_at
 		FROM device_relationships
 		WHERE parent_id = ? OR child_id = ?
 	`, deviceID, deviceID)
@@ -1769,7 +1779,7 @@ func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelatio
 	var rels []model.DeviceRelationship
 	for rows.Next() {
 		var r model.DeviceRelationship
-		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.Type, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ParentID, &r.ChildID, &r.Type, &r.Notes, &r.CreatedAt); err != nil {
 			return nil, err
 		}
 		rels = append(rels, r)

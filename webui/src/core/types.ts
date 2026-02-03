@@ -137,6 +137,7 @@ export interface DeviceRelationship {
   parent_id: string;
   child_id: string;
   type: 'contains' | 'connected_to' | 'depends_on';
+  notes: string;
   created_at: string;
 }
 

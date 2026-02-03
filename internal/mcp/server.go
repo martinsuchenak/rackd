@@ -266,12 +266,13 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 	parentID, _ := req.String("parent_id")
 	childID, _ := req.String("child_id")
 	relType, _ := req.String("type")
+	notes, _ := req.String("notes")
 
 	if relType != model.RelationshipContains && relType != model.RelationshipConnectedTo && relType != model.RelationshipDependsOn {
 		return nil, mcp.NewToolErrorInvalidParams("type must be one of: contains, connected_to, depends_on")
 	}
 
-	if err := s.storage.AddRelationship(parentID, childID, relType); err != nil {
+	if err := s.storage.AddRelationship(parentID, childID, relType, notes); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil

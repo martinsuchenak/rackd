@@ -430,6 +430,18 @@ export function deviceDetail() {
     tagInput: '',
     domainInput: '',
     saving: false,
+    // Relationship modal
+    showRelationshipModal: false,
+    newRelationship: { type: '', device: null as Device | null, notes: '' },
+    relationshipSearch: '',
+    relationshipSearchResults: [] as Device[],
+    showRelationshipDropdown: false,
+    // Relationship filtering/sorting
+    relationshipFilter: 'all' as 'all' | 'contains' | 'connected_to' | 'depends_on',
+    relationshipSort: 'type' as 'type' | 'date' | 'name',
+    // Edit relationship notes
+    editingRelationship: null as DeviceRelationship | null,
+    editNotes: '',
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation
@@ -441,6 +453,25 @@ export function deviceDetail() {
         return;
       }
       await Promise.all([this.loadDevice(), this.loadDatacenters(), this.loadNetworks()]);
+      
+      // Watch for URL changes
+      const checkURL = () => {
+        const newId = new URLSearchParams(window.location.search).get('id');
+        if (newId && newId !== this.device?.id) {
+          this.loading = true;
+          this.loadDevice();
+        }
+      };
+      window.addEventListener('popstate', checkURL);
+      
+      // Also check periodically for pushState changes
+      const interval = setInterval(() => {
+        if (window.location.pathname !== '/devices/detail') {
+          clearInterval(interval);
+          return;
+        }
+        checkURL();
+      }, 100);
     },
 
     async loadDatacenters(): Promise<void> {
@@ -660,6 +691,109 @@ export function deviceDetail() {
     formatDate(dateStr?: string): string {
       if (!dateStr) return '-';
       return formatDate(dateStr);
+    },
+
+    get filteredRelationships(): DeviceRelationship[] {
+      let filtered = this.relationships;
+      if (this.relationshipFilter !== 'all') {
+        filtered = filtered.filter(r => r.type === this.relationshipFilter);
+      }
+      
+      // Sort
+      const sorted = [...filtered];
+      if (this.relationshipSort === 'type') {
+        sorted.sort((a, b) => a.type.localeCompare(b.type));
+      } else if (this.relationshipSort === 'date') {
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      } else if (this.relationshipSort === 'name') {
+        sorted.sort((a, b) => {
+          const aId = a.parent_id === this.device?.id ? a.child_id : a.parent_id;
+          const bId = b.parent_id === this.device?.id ? b.child_id : b.parent_id;
+          const aName = this.relatedDevices.get(aId)?.name || '';
+          const bName = this.relatedDevices.get(bId)?.name || '';
+          return aName.localeCompare(bName);
+        });
+      }
+      return sorted;
+    },
+
+    openRelationshipModal(): void {
+      this.newRelationship = { type: '', device: null, notes: '' };
+      this.relationshipSearch = '';
+      this.relationshipSearchResults = [];
+      this.showRelationshipDropdown = false;
+      this.showRelationshipModal = true;
+    },
+
+    closeRelationshipModal(): void {
+      this.showRelationshipModal = false;
+    },
+
+    async searchDevicesForRelationship(): Promise<void> {
+      const query = this.relationshipSearch.trim();
+      if (!query || query.length < 2) {
+        this.relationshipSearchResults = [];
+        return;
+      }
+      try {
+        const results = await api.searchDevices(query);
+        this.relationshipSearchResults = results.filter(d => d.id !== this.device?.id);
+        this.showRelationshipDropdown = true;
+      } catch {
+        this.relationshipSearchResults = [];
+      }
+    },
+
+    selectRelationshipDevice(device: Device): void {
+      this.newRelationship.device = device;
+      this.relationshipSearch = device.name;
+      this.showRelationshipDropdown = false;
+    },
+
+    async saveRelationship(): Promise<void> {
+      if (!this.device || !this.newRelationship.type || !this.newRelationship.device) return;
+      this.saving = true;
+      this.error = '';
+      try {
+        await api.addRelationship(this.device.id, this.newRelationship.device.id, this.newRelationship.type as DeviceRelationship['type'], this.newRelationship.notes);
+        await this.loadRelationships();
+        this.closeRelationshipModal();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to add relationship';
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    startEditNotes(rel: DeviceRelationship): void {
+      this.editingRelationship = rel;
+      this.editNotes = rel.notes;
+    },
+
+    cancelEditNotes(): void {
+      this.editingRelationship = null;
+      this.editNotes = '';
+    },
+
+    async saveNotes(rel: DeviceRelationship): Promise<void> {
+      if (!this.device) return;
+      try {
+        await api.updateRelationshipNotes(rel.parent_id, rel.child_id, rel.type, this.editNotes);
+        await this.loadRelationships();
+        this.editingRelationship = null;
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to update notes';
+      }
+    },
+
+    async removeRelationship(rel: DeviceRelationship): Promise<void> {
+      if (!this.device || !confirm('Remove this relationship?')) return;
+      try {
+        await api.removeRelationship(rel.parent_id, rel.child_id, rel.type);
+        await this.loadRelationships();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to remove relationship';
+      }
     },
   };
 }

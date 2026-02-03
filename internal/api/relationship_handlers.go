@@ -12,6 +12,7 @@ import (
 type addRelationshipRequest struct {
 	ChildID string `json:"child_id"`
 	Type    string `json:"type"`
+	Notes   string `json:"notes"`
 }
 
 func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +30,7 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be contains, connected_to, or depends_on")
 		return
 	}
-	if err := h.storage.AddRelationship(parentID, req.ChildID, req.Type); err != nil {
+	if err := h.storage.AddRelationship(parentID, req.ChildID, req.Type, req.Notes); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Device not found")
 			return
@@ -66,6 +67,28 @@ func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
 	childID := r.PathValue("child_id")
 	relType := r.PathValue("type")
 	if err := h.storage.RemoveRelationship(parentID, childID, relType); err != nil {
+		h.internalError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type updateRelationshipNotesRequest struct {
+	Notes string `json:"notes"`
+}
+
+func (h *Handler) updateRelationshipNotes(w http.ResponseWriter, r *http.Request) {
+	parentID := r.PathValue("id")
+	childID := r.PathValue("child_id")
+	relType := r.PathValue("type")
+	
+	var req updateRelationshipNotesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		return
+	}
+	
+	if err := h.storage.UpdateRelationshipNotes(parentID, childID, relType, req.Notes); err != nil {
 		h.internalError(w, err)
 		return
 	}

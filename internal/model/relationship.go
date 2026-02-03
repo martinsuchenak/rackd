@@ -6,6 +6,7 @@ type DeviceRelationship struct {
 	ParentID  string    `json:"parent_id"`
 	ChildID   string    `json:"child_id"`
 	Type      string    `json:"type"`
+	Notes     string    `json:"notes"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
