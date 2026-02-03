@@ -122,3 +122,19 @@ func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeJSON(w, http.StatusOK, devices)
 }
+
+func (h *Handler) searchDatacenters(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		h.writeError(w, http.StatusBadRequest, "MISSING_QUERY", "query parameter 'q' is required")
+		return
+	}
+
+	datacenters, err := h.storage.SearchDatacenters(query)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, datacenters)
+}

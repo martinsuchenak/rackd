@@ -303,3 +303,19 @@ func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeJSON(w, http.StatusOK, heatmap)
 }
+
+func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		h.writeError(w, http.StatusBadRequest, "MISSING_QUERY", "query parameter 'q' is required")
+		return
+	}
+
+	networks, err := h.storage.SearchNetworks(query)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, networks)
+}

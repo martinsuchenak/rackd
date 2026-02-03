@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -563,26 +564,43 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 	return devices, nil
 }
 
-// SearchDevices performs a text search across device fields
+// SearchDevices performs a full-text search across device fields using FTS5
 func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	if query == "" {
 		return s.ListDevices(nil)
 	}
 
 	ctx := context.Background()
-	searchPattern := "%" + query + "%"
+	ftsQuery := escapeFTSQuery(query)
+	likePattern := "%" + query + "%"
 
+	// Use UNION to combine FTS results with tag/domain/address matches
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, 
+		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
 		FROM devices d
-		LEFT JOIN addresses a ON d.id = a.device_id
-		LEFT JOIN tags t ON d.id = t.device_id
-		LEFT JOIN domains dm ON d.id = dm.device_id
-		WHERE d.name LIKE ? OR d.hostname LIKE ? OR d.description LIKE ? OR d.make_model LIKE ? OR d.os LIKE ?
-		   OR d.location LIKE ? OR a.ip LIKE ? OR t.tag LIKE ? OR dm.domain LIKE ?
-		ORDER BY d.name
-	`, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
-		searchPattern, searchPattern, searchPattern, searchPattern)
+		INNER JOIN devices_fts fts ON d.id = fts.id
+		WHERE devices_fts MATCH ?
+		UNION
+		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, 
+		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		FROM devices d
+		INNER JOIN tags t ON d.id = t.device_id
+		WHERE t.tag LIKE ?
+		UNION
+		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, 
+		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		FROM devices d
+		INNER JOIN domains dm ON d.id = dm.device_id
+		WHERE dm.domain LIKE ?
+		UNION
+		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os, 
+		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		FROM devices d
+		INNER JOIN addresses a ON d.id = a.device_id
+		WHERE a.ip LIKE ?
+		ORDER BY name
+	`, ftsQuery, likePattern, likePattern, likePattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search devices: %w", err)
 	}
@@ -635,6 +653,14 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	}
 
 	return devices, nil
+}
+
+// escapeFTSQuery escapes special FTS5 characters and adds prefix matching
+func escapeFTSQuery(query string) string {
+	// Escape double quotes by doubling them
+	escaped := strings.ReplaceAll(query, `"`, `""`)
+	// Wrap in quotes and add * for prefix matching
+	return `"` + escaped + `"*`
 }
 
 // nullString returns a sql.NullString for empty strings
@@ -703,6 +729,47 @@ func (s *SQLiteStorage) ListDatacenters(filter *model.DatacenterFilter) ([]model
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list datacenters: %w", err)
+	}
+	defer rows.Close()
+
+	var datacenters []model.Datacenter
+	for rows.Next() {
+		var dc model.Datacenter
+		if err := rows.Scan(&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.CreatedAt, &dc.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan datacenter: %w", err)
+		}
+		datacenters = append(datacenters, dc)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if datacenters == nil {
+		datacenters = []model.Datacenter{}
+	}
+
+	return datacenters, nil
+}
+
+// SearchDatacenters performs a full-text search across datacenter fields using FTS5
+func (s *SQLiteStorage) SearchDatacenters(query string) ([]model.Datacenter, error) {
+	if query == "" {
+		return s.ListDatacenters(nil)
+	}
+
+	ctx := context.Background()
+	ftsQuery := escapeFTSQuery(query)
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT d.id, d.name, d.location, d.description, d.created_at, d.updated_at
+		FROM datacenters d
+		INNER JOIN datacenters_fts fts ON d.id = fts.id
+		WHERE datacenters_fts MATCH ?
+		ORDER BY d.name
+	`, ftsQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search datacenters: %w", err)
 	}
 	defer rows.Close()
 
@@ -947,6 +1014,60 @@ func (s *SQLiteStorage) ListNetworks(filter *model.NetworkFilter) ([]model.Netwo
 
 	return networks, nil
 }
+
+// SearchNetworks performs a full-text search across network fields using FTS5
+func (s *SQLiteStorage) SearchNetworks(query string) ([]model.Network, error) {
+	if query == "" {
+		return s.ListNetworks(nil)
+	}
+
+	ctx := context.Background()
+	ftsQuery := escapeFTSQuery(query)
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT n.id, n.name, n.subnet, n.vlan_id, n.datacenter_id, n.description, 
+		       n.created_at, n.updated_at
+		FROM networks n
+		INNER JOIN networks_fts fts ON n.id = fts.id
+		WHERE networks_fts MATCH ?
+		ORDER BY n.name
+	`, ftsQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search networks: %w", err)
+	}
+	defer rows.Close()
+
+	var networks []model.Network
+	for rows.Next() {
+		var network model.Network
+		var vlanID sql.NullInt64
+		var datacenterID sql.NullString
+		if err := rows.Scan(
+			&network.ID, &network.Name, &network.Subnet, &vlanID,
+			&datacenterID, &network.Description, &network.CreatedAt, &network.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan network: %w", err)
+		}
+		if vlanID.Valid {
+			network.VLANID = int(vlanID.Int64)
+		}
+		if datacenterID.Valid {
+			network.DatacenterID = datacenterID.String
+		}
+		networks = append(networks, network)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if networks == nil {
+		networks = []model.Network{}
+	}
+
+	return networks, nil
+}
+
 
 // GetNetwork retrieves a network by ID
 func (s *SQLiteStorage) GetNetwork(id string) (*model.Network, error) {

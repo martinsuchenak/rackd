@@ -167,3 +167,10 @@ export interface APIError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+export interface SearchResult {
+  type: 'device' | 'network' | 'datacenter';
+  device?: Device;
+  network?: Network;
+  datacenter?: Datacenter;
+}

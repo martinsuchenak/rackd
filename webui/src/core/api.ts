@@ -14,6 +14,7 @@ import type {
   Network,
   NetworkPool,
   NetworkUtilization,
+  SearchResult,
   UIConfig,
 } from './types';
 
@@ -146,6 +147,11 @@ export class RackdAPI {
 
   async searchDevices(query: string): Promise<Device[]> {
     return this.request<Device[]>('GET', `/api/devices/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async search(query: string): Promise<SearchResult[]> {
+    const response = await this.request<{ results: SearchResult[] }>('GET', `/api/search?q=${encodeURIComponent(query)}`);
+    return response.results;
   }
 
   // Relationships

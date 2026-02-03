@@ -54,6 +54,12 @@ var migrations = []*Migration{
 		Up:      migrateAddRelationshipNotesUp,
 		Down:    migrateAddRelationshipNotesDown,
 	},
+	{
+		Version: "20260203110000",
+		Name:    "add_fts_search",
+		Up:      migrateFTSUp,
+		Down:    migrateFTSDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -465,5 +471,194 @@ func migrateAddRelationshipNotesUp(ctx context.Context, tx *sql.Tx) error {
 
 // migrateAddRelationshipNotesDown removes the notes column from device_relationships table
 func migrateAddRelationshipNotesDown(ctx context.Context, tx *sql.Tx) error {
+	return nil
+}
+
+// migrateFTSUp creates FTS5 virtual tables for full-text search
+func migrateFTSUp(ctx context.Context, tx *sql.Tx) error {
+	// Create standalone FTS5 virtual table for devices
+	if _, err := tx.ExecContext(ctx, `
+		CREATE VIRTUAL TABLE IF NOT EXISTS devices_fts USING fts5(
+			id UNINDEXED,
+			name,
+			hostname,
+			description,
+			make_model,
+			os,
+			location
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create devices_fts table: %w", err)
+	}
+
+	// Create triggers to keep FTS table in sync
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS devices_fts_insert AFTER INSERT ON devices BEGIN
+			INSERT INTO devices_fts(id, name, hostname, description, make_model, os, location)
+			VALUES (new.id, new.name, COALESCE(new.hostname, ''), COALESCE(new.description, ''), 
+				   COALESCE(new.make_model, ''), COALESCE(new.os, ''), COALESCE(new.location, ''));
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create devices_fts_insert trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS devices_fts_delete AFTER DELETE ON devices BEGIN
+			DELETE FROM devices_fts WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create devices_fts_delete trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS devices_fts_update AFTER UPDATE ON devices BEGIN
+			UPDATE devices_fts SET 
+				name = new.name,
+				hostname = COALESCE(new.hostname, ''),
+				description = COALESCE(new.description, ''),
+				make_model = COALESCE(new.make_model, ''),
+				os = COALESCE(new.os, ''),
+				location = COALESCE(new.location, '')
+			WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create devices_fts_update trigger: %w", err)
+	}
+
+	// Populate FTS table with existing data
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO devices_fts(id, name, hostname, description, make_model, os, location)
+		SELECT id, name, COALESCE(hostname, ''), COALESCE(description, ''),
+			   COALESCE(make_model, ''), COALESCE(os, ''), COALESCE(location, '')
+		FROM devices
+	`); err != nil {
+		return fmt.Errorf("failed to populate devices_fts: %w", err)
+	}
+
+	// Create standalone FTS5 virtual table for networks
+	if _, err := tx.ExecContext(ctx, `
+		CREATE VIRTUAL TABLE IF NOT EXISTS networks_fts USING fts5(
+			id UNINDEXED,
+			name,
+			subnet,
+			description
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create networks_fts table: %w", err)
+	}
+
+	// Network FTS triggers
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS networks_fts_insert AFTER INSERT ON networks BEGIN
+			INSERT INTO networks_fts(id, name, subnet, description)
+			VALUES (new.id, new.name, new.subnet, COALESCE(new.description, ''));
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create networks_fts_insert trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS networks_fts_delete AFTER DELETE ON networks BEGIN
+			DELETE FROM networks_fts WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create networks_fts_delete trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS networks_fts_update AFTER UPDATE ON networks BEGIN
+			UPDATE networks_fts SET 
+				name = new.name,
+				subnet = new.subnet,
+				description = COALESCE(new.description, '')
+			WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create networks_fts_update trigger: %w", err)
+	}
+
+	// Populate networks FTS
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO networks_fts(id, name, subnet, description)
+		SELECT id, name, subnet, COALESCE(description, '')
+		FROM networks
+	`); err != nil {
+		return fmt.Errorf("failed to populate networks_fts: %w", err)
+	}
+
+	// Create standalone FTS5 virtual table for datacenters
+	if _, err := tx.ExecContext(ctx, `
+		CREATE VIRTUAL TABLE IF NOT EXISTS datacenters_fts USING fts5(
+			id UNINDEXED,
+			name,
+			location,
+			description
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create datacenters_fts table: %w", err)
+	}
+
+	// Datacenter FTS triggers
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS datacenters_fts_insert AFTER INSERT ON datacenters BEGIN
+			INSERT INTO datacenters_fts(id, name, location, description)
+			VALUES (new.id, new.name, COALESCE(new.location, ''), COALESCE(new.description, ''));
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create datacenters_fts_insert trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS datacenters_fts_delete AFTER DELETE ON datacenters BEGIN
+			DELETE FROM datacenters_fts WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create datacenters_fts_delete trigger: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TRIGGER IF NOT EXISTS datacenters_fts_update AFTER UPDATE ON datacenters BEGIN
+			UPDATE datacenters_fts SET 
+				name = new.name,
+				location = COALESCE(new.location, ''),
+				description = COALESCE(new.description, '')
+			WHERE id = old.id;
+		END
+	`); err != nil {
+		return fmt.Errorf("failed to create datacenters_fts_update trigger: %w", err)
+	}
+
+	// Populate datacenters FTS
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO datacenters_fts(id, name, location, description)
+		SELECT id, name, COALESCE(location, ''), COALESCE(description, '')
+		FROM datacenters
+	`); err != nil {
+		return fmt.Errorf("failed to populate datacenters_fts: %w", err)
+	}
+
+	return nil
+}
+
+// migrateFTSDown drops FTS5 virtual tables and triggers
+func migrateFTSDown(ctx context.Context, tx *sql.Tx) error {
+	// Drop triggers
+	for _, trigger := range []string{
+		"devices_fts_insert", "devices_fts_delete", "devices_fts_update",
+		"networks_fts_insert", "networks_fts_delete", "networks_fts_update",
+		"datacenters_fts_insert", "datacenters_fts_delete", "datacenters_fts_update",
+	} {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf("DROP TRIGGER IF EXISTS %s", trigger)); err != nil {
+			return fmt.Errorf("failed to drop trigger %s: %w", trigger, err)
+		}
+	}
+
+	// Drop FTS tables
+	for _, table := range []string{"devices_fts", "networks_fts", "datacenters_fts"} {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", table)); err != nil {
+			return fmt.Errorf("failed to drop table %s: %w", table, err)
+		}
+	}
+
 	return nil
 }

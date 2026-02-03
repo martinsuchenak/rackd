@@ -1,15 +1,8 @@
 // Search Component for Rackd Web UI
 
-import type { Device, Network, Datacenter } from '../core/types';
+import type { SearchResult } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { debounce } from '../core/utils';
-
-interface SearchResult {
-  type: 'device' | 'network' | 'datacenter';
-  device?: Device;
-  network?: Network;
-  datacenter?: Datacenter;
-}
 
 interface SearchData {
   query: string;
@@ -53,77 +46,14 @@ export function globalSearch(): SearchData {
       this.error = '';
 
       try {
-        const q = this.query.trim().toLowerCase();
-
-        const [devices, networks, datacenters] = await Promise.all([
-          api.listDevices().catch((e) => {
-            console.error('Failed to load devices:', e);
-            return [];
-          }),
-          api.listNetworks().catch((e) => {
-            console.error('Failed to load networks:', e);
-            return [];
-          }),
-          api.listDatacenters().catch((e) => {
-            console.error('Failed to load datacenters:', e);
-            return [];
-          }),
-        ]);
-
-        console.log('Search data loaded:', { devices: devices?.length, networks: networks?.length, datacenters: datacenters?.length });
-
-        const results: SearchResult[] = [];
-
-        if (devices && devices.length > 0) {
-          for (const d of devices) {
-            const deviceStr = [
-              d.name || '',
-              d.hostname || '',
-              d.make_model || '',
-              d.location || '',
-              d.description || '',
-              ...(d.tags || []).join(' ')
-            ].join(' ').toLowerCase();
-
-            if (deviceStr.includes(q)) {
-              results.push({ type: 'device', device: d });
-            }
-          }
-        }
-
-        if (networks && networks.length > 0) {
-          for (const n of networks) {
-            const networkStr = [
-              n.name || '',
-              n.subnet || '',
-              n.description || ''
-            ].join(' ').toLowerCase();
-
-            if (networkStr.includes(q)) {
-              results.push({ type: 'network', network: n });
-            }
-          }
-        }
-
-        if (datacenters && datacenters.length > 0) {
-          for (const dc of datacenters) {
-            const dcStr = [
-              dc.name || '',
-              dc.location || '',
-              dc.description || ''
-            ].join(' ').toLowerCase();
-
-            if (dcStr.includes(q)) {
-              results.push({ type: 'datacenter', datacenter: dc });
-            }
-          }
-        }
-
-        console.log('Search results:', results.length, 'query:', q);
-        this.results = results;
+        this.results = await api.search(this.query.trim());
       } catch (e) {
+        if (e instanceof RackdAPIError) {
+          this.error = e.message;
+        } else {
+          this.error = 'Search failed';
+        }
         console.error('Search error:', e);
-        this.error = e instanceof RackdAPIError ? e.message : 'Search failed';
         this.results = [];
       } finally {
         this.loading = false;

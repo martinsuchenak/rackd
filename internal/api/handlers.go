@@ -93,7 +93,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/devices/{id}", wrap(h.getDevice))
 	mux.HandleFunc("PUT /api/devices/{id}", wrap(h.updateDevice))
 	mux.HandleFunc("DELETE /api/devices/{id}", wrap(h.deleteDevice))
-	mux.HandleFunc("GET /api/devices/search", wrap(h.searchDevices))
+
+	// Search routes
+	mux.HandleFunc("GET /api/search", wrap(h.search))
 
 	// Relationship routes
 	mux.HandleFunc("POST /api/devices/{id}/relationships", wrap(h.addRelationship))

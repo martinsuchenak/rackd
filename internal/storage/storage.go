@@ -39,6 +39,7 @@ type DatacenterStorage interface {
 	UpdateDatacenter(dc *model.Datacenter) error
 	DeleteDatacenter(id string) error
 	GetDatacenterDevices(datacenterID string) ([]model.Device, error)
+	SearchDatacenters(query string) ([]model.Datacenter, error)
 }
 
 // NetworkStorage defines network persistence operations
@@ -50,6 +51,7 @@ type NetworkStorage interface {
 	DeleteNetwork(id string) error
 	GetNetworkDevices(networkID string) ([]model.Device, error)
 	GetNetworkUtilization(networkID string) (*model.NetworkUtilization, error)
+	SearchNetworks(query string) ([]model.Network, error)
 }
 
 // NetworkPoolStorage defines network pool persistence operations

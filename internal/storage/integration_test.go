@@ -281,7 +281,7 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	// 1. Add relationship
-	if err := store.AddRelationship(parent.ID, child.ID, model.RelationshipContains); err != nil {
+	if err := store.AddRelationship(parent.ID, child.ID, model.RelationshipContains, ""); err != nil {
 		t.Fatalf("AddRelationship failed: %v", err)
 	}
 

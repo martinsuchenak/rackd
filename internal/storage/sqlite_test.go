@@ -2482,7 +2482,7 @@ func TestRelationshipCRUD(t *testing.T) {
 	}
 
 	// Add relationship
-	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains); err != nil {
+	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains, ""); err != nil {
 		t.Fatalf("AddRelationship failed: %v", err)
 	}
 
@@ -2531,8 +2531,8 @@ func TestGetRelatedDevices(t *testing.T) {
 	}
 
 	// Add relationships
-	storage.AddRelationship(parent.ID, child1.ID, model.RelationshipContains)
-	storage.AddRelationship(parent.ID, child2.ID, model.RelationshipConnectedTo)
+	storage.AddRelationship(parent.ID, child1.ID, model.RelationshipContains, "")
+	storage.AddRelationship(parent.ID, child2.ID, model.RelationshipConnectedTo, "")
 
 	// Get related by type
 	related, err := storage.GetRelatedDevices(parent.ID, model.RelationshipContains)
@@ -2557,10 +2557,10 @@ func TestAddRelationshipIdempotent(t *testing.T) {
 	storage.CreateDevice(device2)
 
 	// Add same relationship twice - should not error
-	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains); err != nil {
+	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains, ""); err != nil {
 		t.Fatalf("first AddRelationship failed: %v", err)
 	}
-	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains); err != nil {
+	if err := storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains, ""); err != nil {
 		t.Fatalf("second AddRelationship failed: %v", err)
 	}
 
@@ -3039,13 +3039,13 @@ func TestRelationshipInvalidIDs(t *testing.T) {
 	storage.CreateDevice(device2)
 
 	// Test with non-existent device IDs (FK constraint)
-	err := storage.AddRelationship("nonexistent1", "nonexistent2", model.RelationshipContains)
+	err := storage.AddRelationship("nonexistent1", "nonexistent2", model.RelationshipContains, "")
 	if err == nil {
 		t.Error("expected error for non-existent device IDs")
 	}
 
 	// Valid relationship should work
-	err = storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains)
+	err = storage.AddRelationship(device1.ID, device2.ID, model.RelationshipContains, "")
 	if err != nil {
 		t.Errorf("AddRelationship failed: %v", err)
 	}
@@ -3559,7 +3559,7 @@ func TestDeleteDeviceWithRelationships(t *testing.T) {
 	child := &model.Device{Name: "Child"}
 	storage.CreateDevice(parent)
 	storage.CreateDevice(child)
-	storage.AddRelationship(parent.ID, child.ID, model.RelationshipContains)
+	storage.AddRelationship(parent.ID, child.ID, model.RelationshipContains, "")
 
 	// Delete parent - should cascade relationships
 	if err := storage.DeleteDevice(parent.ID); err != nil {
