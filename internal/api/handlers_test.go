@@ -110,11 +110,11 @@ func TestParseIntParam(t *testing.T) {
 }
 
 func TestWithAuth(t *testing.T) {
-	opt := WithAuth("test-token")
+	opt := WithAuth()
 	cfg := &handlerConfig{}
 	opt(cfg)
-	if cfg.authToken != "test-token" {
-		t.Errorf("expected authToken 'test-token', got '%s'", cfg.authToken)
+	if !cfg.requireAuth {
+		t.Error("expected requireAuth to be true")
 	}
 }
 
@@ -127,5 +127,5 @@ func TestRegisterRoutes(t *testing.T) {
 
 	// Test with auth - use separate mux
 	mux2 := http.NewServeMux()
-	h.RegisterRoutes(mux2, WithAuth("token"))
+	h.RegisterRoutes(mux2, WithAuth())
 }

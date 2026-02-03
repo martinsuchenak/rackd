@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/martinsuchenak/rackd/cmd/apikey"
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
 	"github.com/martinsuchenak/rackd/cmd/discovery"
@@ -30,6 +31,7 @@ func main() {
 			network.Command(),
 			datacenter.Command(),
 			discovery.Command(),
+			apikey.Command(),
 			{
 				Name:  "version",
 				Usage: "Show version information",

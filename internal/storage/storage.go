@@ -125,6 +125,7 @@ type ExtendedStorage interface {
 	NetworkStorage
 	NetworkPoolStorage
 	DiscoveryStorage
+	APIKeyStorage
 	Close() error
 	DB() *sql.DB
 }

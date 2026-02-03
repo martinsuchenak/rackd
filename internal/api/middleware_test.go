@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 func init() {
@@ -16,8 +19,23 @@ func init() {
 }
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+	defer store.Close()
+
+	// Create API key
+	key := &model.APIKey{
+		Name: "test-key",
+		Key:  "secret-token",
+	}
+	if err := store.CreateAPIKey(key); err != nil {
+		t.Fatalf("Failed to create API key: %v", err)
+	}
+
 	called := false
-	handler := AuthMiddleware("secret-token", func(w http.ResponseWriter, r *http.Request) {
+	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -37,8 +55,14 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_InvalidToken(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+	defer store.Close()
+
 	called := false
-	handler := AuthMiddleware("secret-token", func(w http.ResponseWriter, r *http.Request) {
+	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	})
 
@@ -57,8 +81,14 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_MissingBearer(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+	defer store.Close()
+
 	called := false
-	handler := AuthMiddleware("secret-token", func(w http.ResponseWriter, r *http.Request) {
+	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	})
 
@@ -77,8 +107,14 @@ func TestAuthMiddleware_MissingBearer(t *testing.T) {
 }
 
 func TestAuthMiddleware_NoHeader(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+	defer store.Close()
+
 	called := false
-	handler := AuthMiddleware("secret-token", func(w http.ResponseWriter, r *http.Request) {
+	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	})
 
@@ -89,6 +125,43 @@ func TestAuthMiddleware_NoHeader(t *testing.T) {
 
 	if called {
 		t.Error("handler should not have been called")
+	}
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestAuthMiddleware_ExpiredKey(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create storage: %v", err)
+	}
+	defer store.Close()
+
+	// Create expired API key
+	expired := time.Now().Add(-1 * time.Hour)
+	key := &model.APIKey{
+		Name:      "expired-key",
+		Key:       "expired-token",
+		ExpiresAt: &expired,
+	}
+	if err := store.CreateAPIKey(key); err != nil {
+		t.Fatalf("Failed to create API key: %v", err)
+	}
+
+	called := false
+	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Authorization", "Bearer expired-token")
+	w := httptest.NewRecorder()
+
+	handler(w, r)
+
+	if called {
+		t.Error("handler should not have been called for expired key")
 	}
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)

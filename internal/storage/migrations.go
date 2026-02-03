@@ -60,6 +60,12 @@ var migrations = []*Migration{
 		Up:      migrateFTSUp,
 		Down:    migrateFTSDown,
 	},
+	{
+		Version: "20260203120000",
+		Name:    "add_api_keys",
+		Up:      migrateAddAPIKeysUp,
+		Down:    migrateAddAPIKeysDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -660,5 +666,43 @@ func migrateFTSDown(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
+	return nil
+}
+
+
+// migrateAddAPIKeysUp creates the api_keys table
+func migrateAddAPIKeysUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS api_keys (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			key TEXT NOT NULL UNIQUE,
+			description TEXT,
+			created_at DATETIME NOT NULL,
+			last_used_at DATETIME,
+			expires_at DATETIME
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create api_keys table: %w", err)
+	}
+
+	// Create indexes
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key)`); err != nil {
+		return fmt.Errorf("failed to create api_keys key index: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_api_keys_name ON api_keys(name)`); err != nil {
+		return fmt.Errorf("failed to create api_keys name index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddAPIKeysDown drops the api_keys table
+func migrateAddAPIKeysDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS api_keys`); err != nil {
+		return fmt.Errorf("failed to drop api_keys table: %w", err)
+	}
 	return nil
 }

@@ -29,6 +29,7 @@ Based on review of specs vs current implementation, here are the features that n
 - Full-Text Search (FTS5)
 - Metrics and Monitoring (Prometheus-compatible)
 - Enhanced Health Checks (liveness and readiness probes)
+- API Key Authentication (optional, foundation for user management)
 
 ### 🚧 Partially Implemented
 
@@ -75,8 +76,6 @@ None - All core features fully implemented!
 - `webui/src/components/search.ts` - Updated to use unified endpoint
 
 **Tests**: All storage tests passing (150+ tests)
-
-### 1.2 Metrics and Monitoring ✅ COMPLETED
 
 **Priority**: High  
 **Effort**: 2-3 days  
@@ -151,6 +150,71 @@ None - All core features fully implemented!
 - `internal/server/server.go` - Removed old basic health check
 
 **Tests**: All tests passing (health check handlers)
+
+### 1.4 API Key Authentication ✅ COMPLETED
+
+**Priority**: High  
+**Effort**: 2-3 days  
+**Dependencies**: None  
+**Status**: ✅ Completed (2026-02-03)
+
+**Completed Tasks**:
+
+- ✅ Created API key model and storage (SQLite)
+- ✅ Implemented API key CRUD operations
+- ✅ Added secure key generation (256-bit random, base64-encoded)
+- ✅ Implemented timing-safe authentication
+- ✅ Added expiration support for API keys
+- ✅ Automatic last-used timestamp tracking
+- ✅ Enhanced middleware to support API keys
+- ✅ Updated MCP server authentication
+- ✅ Created API key management endpoints
+- ✅ Created CLI commands for key management
+- ✅ Backward compatible with legacy tokens
+- ✅ Created comprehensive documentation
+
+**Implementation Details**:
+- Migration: `20260203120000_add_api_keys`
+- Authentication is **optional by default** (no keys required)
+- Supports both REST API and MCP server
+- Keys are only shown once on creation
+- Async last-used updates (non-blocking)
+- Documentation: `docs/authentication.md`
+
+**Files Created**:
+- `internal/auth/apikey.go` - API key authenticator
+- `internal/auth/apikey_test.go` - Auth tests
+- `internal/model/apikey.go` - API key model
+- `internal/storage/apikey_sqlite.go` - Storage implementation
+- `internal/storage/apikey_test.go` - Storage tests
+- `internal/api/apikey_handlers.go` - API handlers
+- `cmd/apikey/apikey.go` - CLI commands
+- `docs/authentication.md` - Comprehensive auth documentation
+
+**Files Modified**:
+- `internal/storage/migrations.go` - Added API keys migration
+- `internal/storage/storage.go` - Added APIKeyStorage interface
+- `internal/api/middleware.go` - Enhanced auth middleware
+- `internal/api/handlers.go` - Registered API key routes
+- `internal/mcp/server.go` - Added API key auth support
+- `main.go` - Registered apikey command
+- `README.md` - Added authentication link
+
+**CLI Commands**:
+- `rackd apikey list` - List all API keys
+- `rackd apikey create` - Create new API key
+- `rackd apikey delete` - Delete API key
+- `rackd apikey generate` - Generate random key offline
+
+**API Endpoints**:
+- `GET /api/keys` - List API keys
+- `POST /api/keys` - Create API key
+- `GET /api/keys/{id}` - Get API key details
+- `DELETE /api/keys/{id}` - Delete API key
+
+**Tests**: All tests passing (6 new tests)
+
+**Future**: Will become required when full user management is implemented
 
 ## Phase 2: Integration Features (Medium Priority)
 
@@ -619,6 +683,7 @@ RACKD_POSTGRES_MAX_IDLE=10
 1. ~~Full-Text Search (1.1)~~ ✅ COMPLETED
 2. ~~Metrics and Monitoring (1.2)~~ ✅ COMPLETED
 3. ~~Enhanced Health Checks (1.3)~~ ✅ COMPLETED
+4. ~~API Key Authentication (NEW)~~ ✅ COMPLETED
 
 ### Short-term (1-2 months)
 
@@ -651,12 +716,12 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 | Phase | Features | Total Effort | Completed |
 |-------|----------|--------------|-----------|
-| Phase 1 (Core) | 3 features | 5-7 days | 3/3 ✅ |
+| Phase 1 (Core) | 4 features | 8-11 days | 4/4 ✅ |
 | Phase 2 (Integration) | 3 features | 10-13 days | 0/3 |
 | Phase 3 (Security & Users) | 5 features | 31-43 days | 0/5 |
 | Phase 4 (Advanced) | 7 features | 40-55 days | 0/7 |
 | Phase 5 (Performance) | 3 features | Ongoing | 0/3 |
-| **Total** | **21 features** | **86-118 days** | **3/21 (14%)** |
+| **Total** | **22 features** | **89-122 days** | **4/22 (18%)** |
 
 ## Dependencies
 
@@ -698,6 +763,8 @@ Phase 5 (Performance)
 - ✅ All tests passing
 - ✅ Metrics endpoint returns data in <50ms
 - ✅ Health checks respond in <10ms
+- ✅ API key authentication working
+- ✅ Keys can be created, listed, and deleted via CLI and API
 
 ### Phase 2
 

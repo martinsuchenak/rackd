@@ -42,6 +42,7 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Installation](docs/installation.md) - Installation methods and requirements
 - [Quick Start Guide](docs/quickstart.md) - Get up and running in 5 minutes
 - [Configuration](docs/configuration.md) - Environment variables and settings
+- [Authentication](docs/authentication.md) - API key management and security
 
 ### Core Features
 

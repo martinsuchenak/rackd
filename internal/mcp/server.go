@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -19,14 +18,14 @@ import (
 type Server struct {
 	mcpServer   *mcp.Server
 	storage     storage.ExtendedStorage
-	bearerToken string
+	requireAuth bool
 }
 
-func NewServer(store storage.ExtendedStorage, bearerToken string) *Server {
+func NewServer(store storage.ExtendedStorage, requireAuth bool) *Server {
 	s := &Server{
 		mcpServer:   mcp.NewServer("rackd", "1.0.0"),
 		storage:     store,
-		bearerToken: bearerToken,
+		requireAuth: requireAuth,
 	}
 	s.registerTools()
 	return s
@@ -167,7 +166,7 @@ func (s *Server) registerTools() {
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	log.Debug("MCP request received", "remote_addr", r.RemoteAddr)
 	
-	if s.bearerToken != "" {
+	if s.requireAuth {
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
 			log.Debug("MCP auth failed: missing Bearer prefix")
@@ -175,13 +174,30 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		token := strings.TrimPrefix(auth, "Bearer ")
-		if subtle.ConstantTimeCompare([]byte(token), []byte(s.bearerToken)) != 1 {
-			log.Debug("MCP auth failed: invalid token")
+		
+		// Try API key authentication
+		key, err := s.storage.GetAPIKeyByKey(token)
+		if err != nil {
+			log.Debug("MCP auth failed: invalid API key")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		log.Trace("MCP auth successful")
+		
+		// Check expiration
+		if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
+			log.Debug("MCP auth failed: expired API key", "key_name", key.Name)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		
+		// Update last used (async)
+		go func() {
+			s.storage.UpdateAPIKeyLastUsed(key.ID, time.Now())
+		}()
+		
+		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
 	}
+	
 	s.mcpServer.HandleRequest(w, r)
 }
 

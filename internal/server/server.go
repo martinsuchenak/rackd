@@ -41,13 +41,6 @@ func RunWithAdvancedFeatures(
 	scheduledStore storage.ScheduledScanStorage,
 	features ...Feature,
 ) error {
-	if cfg.APIAuthToken == "" {
-		log.Warn("API_AUTH_TOKEN not set - API is unauthenticated")
-	}
-	if cfg.MCPAuthToken == "" {
-		log.Warn("MCP_AUTH_TOKEN not set - MCP endpoint is unauthenticated")
-	}
-
 	mux := http.NewServeMux()
 
 	scanner := discovery.NewScanner(store, cfg)
@@ -68,15 +61,10 @@ func RunWithAdvancedFeatures(
 	handler.SetCredentialsStorage(credStore)
 	handler.SetProfileStorage(profileStore)
 	handler.SetScheduledScanStorage(scheduledStore)
-
-	if cfg.APIAuthToken != "" {
-		handler.RegisterRoutes(mux, api.WithAuth(cfg.APIAuthToken))
-	} else {
-		handler.RegisterRoutes(mux)
-	}
+	handler.RegisterRoutes(mux)
 
 	// MCP server
-	mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
+	mcpServer := mcp.NewServer(store, false)
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config with nav items for new features
@@ -133,13 +121,6 @@ func RunWithAdvancedFeatures(
 
 // RunWithCustomRoutes starts the server with optional features and custom route registration
 func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, registerRoutes func(mux *http.ServeMux), features ...Feature) error {
-	if cfg.APIAuthToken == "" {
-		log.Warn("API_AUTH_TOKEN not set - API is unauthenticated")
-	}
-	if cfg.MCPAuthToken == "" {
-		log.Warn("MCP_AUTH_TOKEN not set - MCP endpoint is unauthenticated")
-	}
-
 	mux := http.NewServeMux()
 
 	// Register custom routes if provided
@@ -153,14 +134,10 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 
 	// API routes
 	handler := api.NewHandler(store, scanner)
-	if cfg.APIAuthToken != "" {
-		handler.RegisterRoutes(mux, api.WithAuth(cfg.APIAuthToken))
-	} else {
-		handler.RegisterRoutes(mux)
-	}
+	handler.RegisterRoutes(mux)
 
 	// MCP server
-	mcpServer := mcp.NewServer(store, cfg.MCPAuthToken)
+	mcpServer := mcp.NewServer(store, false)
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config

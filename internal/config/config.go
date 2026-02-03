@@ -12,8 +12,6 @@ import (
 type Config struct {
 	DataDir                string
 	ListenAddr             string
-	APIAuthToken           string
-	MCPAuthToken           string
 	LogFormat              string
 	LogLevel               string
 	DiscoveryInterval      time.Duration
@@ -31,8 +29,6 @@ func Load() *Config {
 	cfg = Config{
 		DataDir:                getEnv("DATA_DIR", "./data"),
 		ListenAddr:             getEnv("LISTEN_ADDR", ":8080"),
-		APIAuthToken:           getEnv("API_AUTH_TOKEN", ""),
-		MCPAuthToken:           getEnv("MCP_AUTH_TOKEN", ""),
 		LogFormat:              getEnv("LOG_FORMAT", "text"),
 		LogLevel:               getEnv("LOG_LEVEL", "info"),
 		DiscoveryInterval:      getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
@@ -82,21 +78,9 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	apiToken := "***REDACTED***"
-	mcpToken := "***REDACTED***"
-
-	if c.APIAuthToken == "" {
-		apiToken = "(empty)"
-	}
-	if c.MCPAuthToken == "" {
-		mcpToken = "(empty)"
-	}
-
-	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, APIAuthToken:%s, MCPAuthToken:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v}",
 		c.DataDir,
 		c.ListenAddr,
-		apiToken,
-		mcpToken,
 		c.LogFormat,
 		c.LogLevel,
 		c.DiscoveryInterval,

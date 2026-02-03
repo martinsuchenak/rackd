@@ -22,8 +22,6 @@ func Command() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"},
 			&cli.StringFlag{Name: "listen-addr", Usage: "Listen address", DefaultValue: ":8080"},
-			&cli.StringFlag{Name: "api-auth-token", Usage: "API authentication token"},
-			&cli.StringFlag{Name: "mcp-auth-token", Usage: "MCP authentication token"},
 			&cli.StringFlag{Name: "log-level", Usage: "Log level (trace/debug/info/warn/error)", DefaultValue: "info"},
 			&cli.StringFlag{Name: "log-format", Usage: "Log format (text/json)", DefaultValue: "text"},
 			&cli.StringFlag{Name: "discovery-interval", Usage: "Discovery scan interval", DefaultValue: "24h"},
@@ -38,12 +36,6 @@ func Command() *cli.Command {
 			}
 			if v := cmd.GetString("listen-addr"); v != "" {
 				cfg.ListenAddr = v
-			}
-			if v := cmd.GetString("api-auth-token"); v != "" {
-				cfg.APIAuthToken = v
-			}
-			if v := cmd.GetString("mcp-auth-token"); v != "" {
-				cfg.MCPAuthToken = v
 			}
 			if v := cmd.GetString("log-level"); v != "" {
 				cfg.LogLevel = v

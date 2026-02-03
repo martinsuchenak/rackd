@@ -1,17 +1,22 @@
 package api
 
 import (
-	"crypto/subtle"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/metrics"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 // MaxRequestBodySize is the maximum allowed request body size (1MB)
 const MaxRequestBodySize = 1 << 20
+
+// AuthContext key for storing authenticated API key info
+type contextKey string
+
+const APIKeyContextKey contextKey = "apikey"
 
 // LoggingMiddleware logs all HTTP requests and records metrics
 func LoggingMiddleware(next http.Handler) http.Handler {
@@ -53,8 +58,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// AuthMiddleware validates bearer tokens using timing-safe comparison
-func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
+// AuthMiddleware validates API keys
+func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
@@ -65,15 +70,33 @@ func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		providedToken := strings.TrimPrefix(auth, "Bearer ")
-		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(token)) != 1 {
-			log.Debug("Auth failed: invalid token", "path", r.URL.Path)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
-			return
+
+		// Try API key authentication
+		if store != nil {
+			key, err := store.GetAPIKeyByKey(providedToken)
+			if err == nil {
+				// Check expiration
+				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
+					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
+					w.Header().Set("Content-Type", "application/json")
+					http.Error(w, `{"error":"Unauthorized","code":"EXPIRED_KEY"}`, http.StatusUnauthorized)
+					return
+				}
+
+				// Update last used (async, don't block request)
+				go func() {
+					store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+				}()
+
+				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
+				next(w, r)
+				return
+			}
 		}
 
-		log.Trace("Auth successful", "path", r.URL.Path)
-		next(w, r)
+		log.Debug("Auth failed: invalid token", "path", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 	}
 }
 

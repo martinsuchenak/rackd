@@ -38,12 +38,12 @@ func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
 type HandlerOption func(*handlerConfig)
 
 type handlerConfig struct {
-	authToken string
+	requireAuth bool
 }
 
-func WithAuth(token string) HandlerOption {
+func WithAuth() HandlerOption {
 	return func(c *handlerConfig) {
-		c.authToken = token
+		c.requireAuth = true
 	}
 }
 
@@ -55,8 +55,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 
 	wrap := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = LimitBody(handler)
-		if cfg.authToken != "" {
-			return AuthMiddleware(cfg.authToken, handler)
+		if cfg.requireAuth {
+			return AuthMiddleware(h.store, handler)
 		}
 		return handler
 	}
@@ -146,6 +146,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
 		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
 	}
+
+	// API Key routes (always available)
+	mux.HandleFunc("GET /api/keys", wrap(h.listAPIKeys))
+	mux.HandleFunc("POST /api/keys", wrap(h.createAPIKey))
+	mux.HandleFunc("GET /api/keys/{id}", wrap(h.getAPIKey))
+	mux.HandleFunc("DELETE /api/keys/{id}", wrap(h.deleteAPIKey))
 
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
