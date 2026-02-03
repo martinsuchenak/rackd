@@ -83,14 +83,19 @@ func (s *Scheduler) run() {
 }
 
 func (s *Scheduler) runScheduledScans() {
+	log.Debug("Running scheduled discovery scans")
+	
 	rules, err := s.storage.ListDiscoveryRules()
 	if err != nil {
 		log.Error("Failed to list discovery rules", "error", err)
 		return
 	}
 
+	log.Debug("Found discovery rules", "count", len(rules))
+
 	for _, rule := range rules {
 		if !rule.Enabled {
+			log.Trace("Skipping disabled rule", "network_id", rule.NetworkID)
 			continue
 		}
 
@@ -100,15 +105,18 @@ func (s *Scheduler) runScheduledScans() {
 			continue
 		}
 
-		log.Info("Starting scheduled discovery scan", "network", network.Name)
+		log.Info("Starting scheduled discovery scan", "network", network.Name, "subnet", network.Subnet, "scan_type", rule.ScanType)
 
 		_, err = s.scanner.Scan(s.ctx, network, rule.ScanType)
 		if err != nil {
 			log.Error("Scheduled scan failed", "network", network.Name, "error", err)
+		} else {
+			log.Info("Scheduled scan completed", "network", network.Name)
 		}
 	}
 
 	if s.config.DiscoveryCleanupDays > 0 {
+		log.Debug("Cleaning up old discoveries", "days", s.config.DiscoveryCleanupDays)
 		if err := s.storage.CleanupOldDiscoveries(s.config.DiscoveryCleanupDays); err != nil {
 			log.Error("Failed to cleanup old discoveries", "error", err)
 		}

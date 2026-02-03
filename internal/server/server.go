@@ -107,7 +107,7 @@ func RunWithAdvancedFeatures(
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      api.SecurityHeaders(mux),
+		Handler:      api.LoggingMiddleware(api.SecurityHeaders(mux)),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -193,7 +193,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      api.SecurityHeaders(mux),
+		Handler:      api.LoggingMiddleware(api.SecurityHeaders(mux)),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

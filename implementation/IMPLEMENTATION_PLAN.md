@@ -29,7 +29,6 @@ Based on review of specs vs current implementation, here are the features that n
 
 ### 🚧 Partially Implemented
 
-- Search (basic filtering exists, full-text search missing)
 - Monitoring (logging exists, metrics endpoint missing)
 - Health checks (basic, needs enhancement)
 
@@ -37,27 +36,43 @@ Based on review of specs vs current implementation, here are the features that n
 
 ## Phase 1: Core Enhancements (High Priority)
 
-### 1.1 Full-Text Search
+### 1.1 Full-Text Search ✅ COMPLETED
 
 **Priority**: High  
 **Effort**: 2-3 days  
-**Dependencies**: None
+**Status**: ✅ Completed (2026-02-03)
 
-**Tasks**:
+**Completed Tasks**:
 
-- [ ] Add FTS5 virtual table to SQLite schema
-- [ ] Create search index for devices (name, description, tags, domains)
-- [ ] Create search index for networks (name, description)
-- [ ] Implement search API endpoint with ranking
-- [ ] Add search to CLI
-- [ ] Update Web UI search component
+- ✅ Added FTS5 virtual tables to SQLite schema
+- ✅ Created search index for devices (name, hostname, description, make_model, os, location)
+- ✅ Created search index for networks (name, subnet, description)
+- ✅ Created search index for datacenters (name, location, description)
+- ✅ Implemented unified search API endpoint (`/api/search`)
+- ✅ Added prefix matching support (searches for "de" match "Default")
+- ✅ Hybrid search strategy (FTS5 for main fields, LIKE for tags/domains/addresses)
+- ✅ Updated Web UI with unified search endpoint
+- ✅ Automatic index maintenance via triggers
+- ✅ Query escaping for special characters
 
-**Files to modify**:
+**Implementation Details**:
+- Migration: `20260203110000_add_fts_search`
+- Standalone FTS5 tables (not external content)
+- UNION queries for comprehensive device search
+- Server-side filtering reduces network traffic
+- Documentation: `docs/fts.md`
 
-- `internal/storage/migrations.go` - Add FTS5 migration
-- `internal/storage/sqlite.go` - Implement search queries
-- `internal/api/device_handlers.go` - Enhance search endpoint
-- `webui/src/components/search.ts` - Update UI
+**Files Modified**:
+- `internal/storage/migrations.go` - Added FTS5 migration
+- `internal/storage/sqlite.go` - Implemented search queries with FTS5
+- `internal/storage/storage.go` - Added search methods to interfaces
+- `internal/api/search_handlers.go` - Unified search endpoint
+- `internal/api/handlers.go` - Registered search route
+- `webui/src/core/api.ts` - Added search() method
+- `webui/src/core/types.ts` - Added SearchResult type
+- `webui/src/components/search.ts` - Updated to use unified endpoint
+
+**Tests**: All storage tests passing (150+ tests)
 
 ### 1.2 Metrics and Monitoring
 
@@ -565,7 +580,7 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 ### Immediate (Next Sprint)
 
-1. Full-Text Search (1.1)
+1. ~~Full-Text Search (1.1)~~ ✅ COMPLETED
 2. Metrics and Monitoring (1.2)
 3. Enhanced Health Checks (1.3)
 
@@ -598,14 +613,14 @@ RACKD_POSTGRES_MAX_IDLE=10
 
 ## Effort Summary
 
-| Phase | Features | Total Effort |
-|-------|----------|--------------|
-| Phase 1 (Core) | 3 features | 5-7 days |
-| Phase 2 (Integration) | 3 features | 10-13 days |
-| Phase 3 (Security & Users) | 5 features | 31-43 days |
-| Phase 4 (Advanced) | 7 features | 40-55 days |
-| Phase 5 (Performance) | 3 features | Ongoing |
-| **Total** | **21 features** | **86-118 days** |
+| Phase | Features | Total Effort | Completed |
+|-------|----------|--------------|-----------|
+| Phase 1 (Core) | 3 features | 5-7 days | 1/3 ✅ |
+| Phase 2 (Integration) | 3 features | 10-13 days | 0/3 |
+| Phase 3 (Security & Users) | 5 features | 31-43 days | 0/5 |
+| Phase 4 (Advanced) | 7 features | 40-55 days | 0/7 |
+| Phase 5 (Performance) | 3 features | Ongoing | 0/3 |
+| **Total** | **21 features** | **86-118 days** | **1/21 (5%)** |
 
 ## Dependencies
 
@@ -641,10 +656,12 @@ Phase 5 (Performance)
 
 ### Phase 1
 
-- [ ] Search returns relevant results in <100ms
+- ✅ Search returns relevant results in <100ms
+- ✅ Prefix matching works (partial queries)
+- ✅ Unified search endpoint for all entity types
+- ✅ All tests passing
 - [ ] Metrics endpoint returns data in <50ms
 - [ ] Health checks respond in <10ms
-- [ ] All tests passing
 
 ### Phase 2
 

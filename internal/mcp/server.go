@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paularlott/mcp"
 
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -164,17 +165,22 @@ func (s *Server) registerTools() {
 }
 
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
+	log.Debug("MCP request received", "remote_addr", r.RemoteAddr)
+	
 	if s.bearerToken != "" {
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
+			log.Debug("MCP auth failed: missing Bearer prefix")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		token := strings.TrimPrefix(auth, "Bearer ")
 		if subtle.ConstantTimeCompare([]byte(token), []byte(s.bearerToken)) != 1 {
+			log.Debug("MCP auth failed: invalid token")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		log.Trace("MCP auth successful")
 	}
 	s.mcpServer.HandleRequest(w, r)
 }

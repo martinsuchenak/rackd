@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
 )
@@ -11,11 +12,49 @@ import (
 // MaxRequestBodySize is the maximum allowed request body size (1MB)
 const MaxRequestBodySize = 1 << 20
 
+// LoggingMiddleware logs all HTTP requests
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		
+		log.Debug("HTTP request started",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"query", r.URL.RawQuery,
+			"remote_addr", r.RemoteAddr,
+		)
+
+		// Wrap response writer to capture status code
+		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		
+		next.ServeHTTP(wrapped, r)
+		
+		duration := time.Since(start)
+		log.Debug("HTTP request completed",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", wrapped.statusCode,
+			"duration_ms", duration.Milliseconds(),
+		)
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 // AuthMiddleware validates bearer tokens using timing-safe comparison
 func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
+			log.Debug("Auth failed: missing Bearer prefix", "path", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 			return
@@ -23,11 +62,13 @@ func AuthMiddleware(token string, next http.HandlerFunc) http.HandlerFunc {
 
 		providedToken := strings.TrimPrefix(auth, "Bearer ")
 		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(token)) != 1 {
+			log.Debug("Auth failed: invalid token", "path", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 			return
 		}
 
+		log.Trace("Auth successful", "path", r.URL.Path)
 		next(w, r)
 	}
 }
