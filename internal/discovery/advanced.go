@@ -48,7 +48,7 @@ func (s *AdvancedDiscoveryService) ScanAdvanced(ctx context.Context, network *mo
 		TotalHosts: countHosts(ipNet),
 	}
 
-	if err := s.storage.CreateDiscoveryScan(scan); err != nil {
+	if err := s.storage.CreateDiscoveryScan(ctx, scan); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +79,7 @@ func (s *AdvancedDiscoveryService) runScan(ctx context.Context, scan *model.Disc
 	now := time.Now()
 	scan.Status = model.ScanStatusRunning
 	scan.StartedAt = &now
-	s.storage.UpdateDiscoveryScan(scan)
+	s.storage.UpdateDiscoveryScan(ctx, scan)
 
 	ips := expandCIDR(ipNet)
 	scan.TotalHosts = len(ips)
@@ -94,7 +94,7 @@ func (s *AdvancedDiscoveryService) runScan(ctx context.Context, scan *model.Disc
 		case <-ctx.Done():
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled"
-			s.storage.UpdateDiscoveryScan(scan)
+			s.storage.UpdateDiscoveryScan(ctx, scan)
 			return
 		default:
 		}
@@ -112,9 +112,9 @@ func (s *AdvancedDiscoveryService) runScan(ctx context.Context, scan *model.Disc
 				if existing != nil {
 					device.ID = existing.ID
 					device.FirstSeen = existing.FirstSeen
-					s.storage.UpdateDiscoveredDevice(device)
+					s.storage.UpdateDiscoveredDevice(ctx, device)
 				} else {
-					s.storage.CreateDiscoveredDevice(device)
+					s.storage.CreateDiscoveredDevice(ctx, device)
 				}
 
 				mu.Lock()
@@ -127,7 +127,7 @@ func (s *AdvancedDiscoveryService) runScan(ctx context.Context, scan *model.Disc
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
 			mu.Unlock()
-			s.storage.UpdateDiscoveryScan(scan)
+			s.storage.UpdateDiscoveryScan(ctx, scan)
 		}(ip, i)
 	}
 
@@ -136,7 +136,7 @@ func (s *AdvancedDiscoveryService) runScan(ctx context.Context, scan *model.Disc
 	completedAt := time.Now()
 	scan.Status = model.ScanStatusCompleted
 	scan.CompletedAt = &completedAt
-	s.storage.UpdateDiscoveryScan(scan)
+	s.storage.UpdateDiscoveryScan(ctx, scan)
 }
 
 func (s *AdvancedDiscoveryService) discoverHost(ctx context.Context, ip string, networkID string, profile *model.ScanProfile, snmpCredID, sshCredID string) *model.DiscoveredDevice {

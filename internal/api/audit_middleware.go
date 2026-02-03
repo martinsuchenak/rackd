@@ -80,6 +80,7 @@ func logAudit(store storage.AuditStorage, r *http.Request, statusCode int, bodyB
 		ResourceID: resourceID,
 		IPAddress:  getClientIP(r),
 		Status:     getStatus(statusCode),
+		Source:     "api",
 	}
 
 	// Extract user info from context (if authenticated)
@@ -145,7 +146,7 @@ func ExportAuditLogsJSON(logs []model.AuditLog) ([]byte, error) {
 // Export audit logs to CSV
 func ExportAuditLogsCSV(logs []model.AuditLog) ([]byte, error) {
 	var buf bytes.Buffer
-	buf.WriteString("ID,Timestamp,Action,Resource,ResourceID,UserID,Username,IPAddress,Status,Error\n")
+	buf.WriteString("ID,Timestamp,Action,Resource,ResourceID,UserID,Username,IPAddress,Status,Error,Source\n")
 
 	for _, log := range logs {
 		buf.WriteString(csvEscape(log.ID))
@@ -167,6 +168,8 @@ func ExportAuditLogsCSV(logs []model.AuditLog) ([]byte, error) {
 		buf.WriteString(csvEscape(log.Status))
 		buf.WriteByte(',')
 		buf.WriteString(csvEscape(log.Error))
+		buf.WriteByte(',')
+		buf.WriteString(csvEscape(log.Source))
 		buf.WriteByte('\n')
 	}
 

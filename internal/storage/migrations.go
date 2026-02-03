@@ -72,6 +72,12 @@ var migrations = []*Migration{
 		Up:      migrateAddAuditLogsUp,
 		Down:    migrateAddAuditLogsDown,
 	},
+	{
+		Version: "20260203170000",
+		Name:    "add_audit_source",
+		Up:      migrateAddAuditSourceUp,
+		Down:    migrateAddAuditSourceDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -675,7 +681,6 @@ func migrateFTSDown(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-
 // migrateAddAPIKeysUp creates the api_keys table
 func migrateAddAPIKeysUp(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
@@ -756,5 +761,82 @@ func migrateAddAuditLogsDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS audit_logs`); err != nil {
 		return fmt.Errorf("failed to drop audit_logs table: %w", err)
 	}
+	return nil
+}
+
+// migrateAddAuditSourceUp adds source column to audit_logs table
+func migrateAddAuditSourceUp(ctx context.Context, tx *sql.Tx) error {
+	// Add source column
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE audit_logs ADD COLUMN source TEXT`); err != nil {
+		return fmt.Errorf("failed to add source column to audit_logs: %w", err)
+	}
+
+	// Create index on source column
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_audit_logs_source ON audit_logs(source)`); err != nil {
+		return fmt.Errorf("failed to create idx_audit_logs_source index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddAuditSourceDown removes source column from audit_logs table
+func migrateAddAuditSourceDown(ctx context.Context, tx *sql.Tx) error {
+	// Drop index first
+	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_audit_logs_source`); err != nil {
+		return fmt.Errorf("failed to drop idx_audit_logs_source index: %w", err)
+	}
+
+	// SQLite doesn't support ALTER TABLE DROP COLUMN directly, need to recreate table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE audit_logs_new (
+			id TEXT PRIMARY KEY,
+			timestamp DATETIME NOT NULL,
+			action TEXT NOT NULL,
+			resource TEXT NOT NULL,
+			resource_id TEXT,
+			user_id TEXT,
+			username TEXT,
+			ip_address TEXT,
+			changes TEXT,
+			status TEXT NOT NULL,
+			error TEXT
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create audit_logs_new table: %w", err)
+	}
+
+	// Copy data from old table to new table
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO audit_logs_new (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error)
+		SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error
+		FROM audit_logs
+	`); err != nil {
+		return fmt.Errorf("failed to copy data to audit_logs_new: %w", err)
+	}
+
+	// Drop old table
+	if _, err := tx.ExecContext(ctx, `DROP TABLE audit_logs`); err != nil {
+		return fmt.Errorf("failed to drop old audit_logs table: %w", err)
+	}
+
+	// Rename new table to original name
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE audit_logs_new RENAME TO audit_logs`); err != nil {
+		return fmt.Errorf("failed to rename audit_logs_new to audit_logs: %w", err)
+	}
+
+	// Recreate indexes (they were dropped with the table)
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource, resource_id)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to recreate audit_logs index: %w", err)
+		}
+	}
+
 	return nil
 }

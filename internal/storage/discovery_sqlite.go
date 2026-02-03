@@ -10,8 +10,7 @@ import (
 )
 
 // CreateDiscoveredDevice inserts a new discovered device
-func (s *SQLiteStorage) CreateDiscoveredDevice(device *model.DiscoveredDevice) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
 	if device.ID == "" {
 		device.ID = newUUID()
 	}
@@ -29,16 +28,19 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(device *model.DiscoveredDevice) e
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO discovered_devices (id, ip, mac_address, hostname, network_id, status, confidence,
 			os_guess, vendor, open_ports, services, first_seen, last_seen, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, device.ID, device.IP, device.MACAddress, device.Hostname, device.NetworkID, device.Status,
 		device.Confidence, device.OSGuess, device.Vendor, string(openPorts), string(services),
 		device.FirstSeen, device.LastSeen, device.CreatedAt, device.UpdatedAt)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "create", "discovered_device", device.ID, device)
+	return nil
 }
 
 // UpdateDiscoveredDevice updates an existing discovered device
-func (s *SQLiteStorage) UpdateDiscoveredDevice(device *model.DiscoveredDevice) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
 	device.UpdatedAt = time.Now()
 	device.LastSeen = device.UpdatedAt
 
@@ -60,6 +62,7 @@ func (s *SQLiteStorage) UpdateDiscoveredDevice(device *model.DiscoveredDevice) e
 	if rows == 0 {
 		return ErrDiscoveryNotFound
 	}
+	s.auditLog(ctx, "update", "discovered_device", device.ID, device)
 	return nil
 }
 
@@ -184,8 +187,8 @@ func (s *SQLiteStorage) ListDiscoveredDevices(networkID string) ([]model.Discove
 }
 
 // DeleteDiscoveredDevice removes a discovered device
-func (s *SQLiteStorage) DeleteDiscoveredDevice(id string) error {
-	result, err := s.db.ExecContext(context.Background(),
+func (s *SQLiteStorage) DeleteDiscoveredDevice(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx,
 		"DELETE FROM discovered_devices WHERE id = ?", id)
 	if err != nil {
 		return err
@@ -194,13 +197,14 @@ func (s *SQLiteStorage) DeleteDiscoveredDevice(id string) error {
 	if rows == 0 {
 		return ErrDiscoveryNotFound
 	}
+	s.auditLog(ctx, "delete", "discovered_device", id, nil)
 	return nil
 }
 
 // PromoteDiscoveredDevice links a discovered device to a created device
-func (s *SQLiteStorage) PromoteDiscoveredDevice(discoveredID, deviceID string) error {
+func (s *SQLiteStorage) PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error {
 	now := time.Now()
-	result, err := s.db.ExecContext(context.Background(), `
+	result, err := s.db.ExecContext(ctx, `
 		UPDATE discovered_devices SET promoted_to_device_id = ?, promoted_at = ?, updated_at = ?
 		WHERE id = ?
 	`, deviceID, now, now, discoveredID)
@@ -211,12 +215,12 @@ func (s *SQLiteStorage) PromoteDiscoveredDevice(discoveredID, deviceID string) e
 	if rows == 0 {
 		return ErrDiscoveryNotFound
 	}
+	s.auditLog(ctx, "promote", "discovered_device", discoveredID, nil)
 	return nil
 }
 
 // CreateDiscoveryScan inserts a new discovery scan
-func (s *SQLiteStorage) CreateDiscoveryScan(scan *model.DiscoveryScan) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) CreateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error {
 	if scan.ID == "" {
 		scan.ID = newUUID()
 	}
@@ -231,13 +235,17 @@ func (s *SQLiteStorage) CreateDiscoveryScan(scan *model.DiscoveryScan) error {
 	`, scan.ID, scan.NetworkID, scan.Status, scan.ScanType, scan.TotalHosts, scan.ScannedHosts,
 		scan.FoundHosts, scan.ProgressPercent, scan.ErrorMessage, scan.StartedAt, scan.CompletedAt,
 		scan.CreatedAt, scan.UpdatedAt)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "create", "discovery_scan", scan.ID, scan)
+	return nil
 }
 
 // UpdateDiscoveryScan updates an existing discovery scan
-func (s *SQLiteStorage) UpdateDiscoveryScan(scan *model.DiscoveryScan) error {
+func (s *SQLiteStorage) UpdateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error {
 	scan.UpdatedAt = time.Now()
-	result, err := s.db.ExecContext(context.Background(), `
+	result, err := s.db.ExecContext(ctx, `
 		UPDATE discovery_scans SET status = ?, scan_type = ?, total_hosts = ?, scanned_hosts = ?,
 			found_hosts = ?, progress_percent = ?, error_message = ?, started_at = ?, completed_at = ?,
 			updated_at = ?
@@ -251,6 +259,7 @@ func (s *SQLiteStorage) UpdateDiscoveryScan(scan *model.DiscoveryScan) error {
 	if rows == 0 {
 		return ErrScanNotFound
 	}
+	s.auditLog(ctx, "update", "discovery_scan", scan.ID, scan)
 	return nil
 }
 
@@ -357,8 +366,7 @@ func (s *SQLiteStorage) GetDiscoveryRuleByNetwork(networkID string) (*model.Disc
 }
 
 // SaveDiscoveryRule creates or updates a discovery rule (upsert)
-func (s *SQLiteStorage) SaveDiscoveryRule(rule *model.DiscoveryRule) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) SaveDiscoveryRule(ctx context.Context, rule *model.DiscoveryRule) error {
 	if rule.ID == "" {
 		rule.ID = newUUID()
 	}
@@ -372,16 +380,19 @@ func (s *SQLiteStorage) SaveDiscoveryRule(rule *model.DiscoveryRule) error {
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO discovery_rules (id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(network_id) DO UPDATE SET
 			enabled = excluded.enabled, scan_type = excluded.scan_type,
 			interval_hours = excluded.interval_hours, exclude_ips = excluded.exclude_ips,
 			updated_at = excluded.updated_at
 	`, rule.ID, rule.NetworkID, enabled, rule.ScanType, rule.IntervalHours, rule.ExcludeIPs, now, now)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "save", "discovery_rule", rule.ID, rule)
+	return nil
 }
 
-// ListDiscoveryRules returns all discovery rules
 func (s *SQLiteStorage) ListDiscoveryRules() ([]model.DiscoveryRule, error) {
 	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at
@@ -407,8 +418,8 @@ func (s *SQLiteStorage) ListDiscoveryRules() ([]model.DiscoveryRule, error) {
 }
 
 // DeleteDiscoveryRule removes a discovery rule by ID
-func (s *SQLiteStorage) DeleteDiscoveryRule(id string) error {
-	result, err := s.db.ExecContext(context.Background(),
+func (s *SQLiteStorage) DeleteDiscoveryRule(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx,
 		"DELETE FROM discovery_rules WHERE id = ?", id)
 	if err != nil {
 		return err
@@ -417,20 +428,22 @@ func (s *SQLiteStorage) DeleteDiscoveryRule(id string) error {
 	if rows == 0 {
 		return ErrRuleNotFound
 	}
+	s.auditLog(ctx, "delete", "discovery_rule", id, nil)
 	return nil
 }
 
 // DeleteDiscoveryScan removes a discovery scan by ID
-func (s *SQLiteStorage) DeleteDiscoveryScan(id string) error {
-	result, err := s.db.ExecContext(context.Background(),
+func (s *SQLiteStorage) DeleteDiscoveryScan(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx,
 		"DELETE FROM discovery_scans WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return ErrDiscoveryNotFound
+		return ErrScanNotFound
 	}
+	s.auditLog(ctx, "delete", "discovery_scan", id, nil)
 	return nil
 }
 

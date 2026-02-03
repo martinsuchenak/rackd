@@ -59,7 +59,7 @@ func (s *DefaultScanner) Scan(scanCtx context.Context, network *model.Network, s
 		TotalHosts: countHosts(ipNet),
 	}
 
-	if err := s.storage.CreateDiscoveryScan(scan); err != nil {
+	if err := s.storage.CreateDiscoveryScan(ctx, scan); err != nil {
 		log.Error("Failed to create scan in database", "scan_id", scan.ID, "error", err)
 		return nil, err
 	}

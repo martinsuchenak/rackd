@@ -21,6 +21,7 @@ func TestAuditLog(t *testing.T) {
 		IPAddress:  "192.168.1.1",
 		Changes:    `{"name":"test"}`,
 		Status:     "success",
+		Source:     "api",
 	}
 
 	err := store.CreateAuditLog(log)
@@ -44,6 +45,9 @@ func TestAuditLog(t *testing.T) {
 	if retrieved.Resource != log.Resource {
 		t.Errorf("Expected resource %s, got %s", log.Resource, retrieved.Resource)
 	}
+	if retrieved.Source != log.Source {
+		t.Errorf("Expected source %s, got %s", log.Source, retrieved.Source)
+	}
 }
 
 func TestListAuditLogs(t *testing.T) {
@@ -52,9 +56,9 @@ func TestListAuditLogs(t *testing.T) {
 
 	// Create multiple audit logs
 	logs := []*model.AuditLog{
-		{Action: "create", Resource: "device", ResourceID: "dev-1", Status: "success"},
-		{Action: "update", Resource: "device", ResourceID: "dev-1", Status: "success"},
-		{Action: "delete", Resource: "network", ResourceID: "net-1", Status: "success"},
+		{Action: "create", Resource: "device", ResourceID: "dev-1", Status: "success", Source: "api"},
+		{Action: "update", Resource: "device", ResourceID: "dev-1", Status: "success", Source: "api"},
+		{Action: "delete", Resource: "network", ResourceID: "net-1", Status: "success", Source: "api"},
 	}
 
 	for _, log := range logs {
@@ -101,6 +105,16 @@ func TestListAuditLogs(t *testing.T) {
 
 	if len(createLogs) != 1 {
 		t.Errorf("Expected 1 create log, got %d", len(createLogs))
+	}
+
+	// Filter by source
+	apiLogs, err := store.ListAuditLogs(&model.AuditFilter{Source: "api"})
+	if err != nil {
+		t.Fatalf("Failed to list api logs: %v", err)
+	}
+
+	if len(apiLogs) != 3 {
+		t.Errorf("Expected 3 api logs, got %d", len(apiLogs))
 	}
 }
 

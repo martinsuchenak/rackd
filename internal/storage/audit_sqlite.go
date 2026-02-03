@@ -18,16 +18,16 @@ func (s *SQLiteStorage) CreateAuditLog(log *model.AuditLog) error {
 	}
 
 	_, err := s.db.Exec(`
-		INSERT INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error)
+		INSERT INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error, log.Source)
 
 	return err
 }
 
 // ListAuditLogs retrieves audit logs with optional filtering
 func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditLog, error) {
-	query := `SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error FROM audit_logs WHERE 1=1`
+	query := `SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source FROM audit_logs WHERE 1=1`
 	args := []interface{}{}
 
 	if filter != nil {
@@ -46,6 +46,10 @@ func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditL
 		if filter.Action != "" {
 			query += " AND action = ?"
 			args = append(args, filter.Action)
+		}
+		if filter.Source != "" {
+			query += " AND source = ?"
+			args = append(args, filter.Source)
 		}
 		if filter.StartTime != nil {
 			query += " AND timestamp >= ?"
@@ -77,7 +81,7 @@ func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditL
 	var logs []model.AuditLog
 	for rows.Next() {
 		var log model.AuditLog
-		err := rows.Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error)
+		err := rows.Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error, &log.Source)
 		if err != nil {
 			return nil, err
 		}
@@ -91,9 +95,9 @@ func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditL
 func (s *SQLiteStorage) GetAuditLog(id string) (*model.AuditLog, error) {
 	var log model.AuditLog
 	err := s.db.QueryRow(`
-		SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error
+		SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source
 		FROM audit_logs WHERE id = ?
-	`, id).Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error)
+	`, id).Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error, &log.Source)
 
 	if err == sql.ErrNoRows {
 		return nil, ErrAuditLogNotFound

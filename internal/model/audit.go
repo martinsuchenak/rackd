@@ -15,6 +15,7 @@ type AuditLog struct {
 	Changes    string    `json:"changes"`     // JSON of changes (before/after)
 	Status     string    `json:"status"`      // success, failure
 	Error      string    `json:"error"`       // Error message if failed
+	Source     string    `json:"source"`      // Entry point: api, mcp, cli, discovery, scheduler
 }
 
 // AuditFilter for querying audit logs
@@ -23,6 +24,7 @@ type AuditFilter struct {
 	ResourceID string
 	UserID     string
 	Action     string
+	Source     string
 	StartTime  *time.Time
 	EndTime    *time.Time
 	Limit      int

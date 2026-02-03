@@ -16,17 +16,17 @@ type BulkResult struct {
 }
 
 // BulkCreateDevices creates multiple devices in a transaction
-func (s *SQLiteStorage) BulkCreateDevices(devices []*model.Device) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkCreateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error) {
 	result := &BulkResult{Total: len(devices)}
-	
-	tx, err := s.db.BeginTx(context.Background(), nil)
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	for _, device := range devices {
-		if err := s.createDeviceInTx(tx, device); err != nil {
+		if err := s.createDeviceInTx(ctx, tx, device); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.Name, err))
 		} else {
@@ -38,21 +38,22 @@ func (s *SQLiteStorage) BulkCreateDevices(devices []*model.Device) (*BulkResult,
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_create", "device", "", map[string]interface{}{"count": len(devices)})
 	return result, nil
 }
 
 // BulkUpdateDevices updates multiple devices in a transaction
-func (s *SQLiteStorage) BulkUpdateDevices(devices []*model.Device) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkUpdateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error) {
 	result := &BulkResult{Total: len(devices)}
-	
-	tx, err := s.db.BeginTx(context.Background(), nil)
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	for _, device := range devices {
-		if err := s.updateDeviceInTx(tx, device); err != nil {
+		if err := s.updateDeviceInTx(ctx, tx, device); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.ID, err))
 		} else {
@@ -64,21 +65,22 @@ func (s *SQLiteStorage) BulkUpdateDevices(devices []*model.Device) (*BulkResult,
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_update", "device", "", map[string]interface{}{"count": len(devices)})
 	return result, nil
 }
 
 // BulkDeleteDevices deletes multiple devices in a transaction
-func (s *SQLiteStorage) BulkDeleteDevices(ids []string) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkDeleteDevices(ctx context.Context, ids []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(ids)}
-	
-	tx, err := s.db.BeginTx(context.Background(), nil)
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	for _, id := range ids {
-		if err := s.deleteDeviceInTx(tx, id); err != nil {
+		if err := s.deleteDeviceInTx(ctx, tx, id); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 		} else {
@@ -90,14 +92,14 @@ func (s *SQLiteStorage) BulkDeleteDevices(ids []string) (*BulkResult, error) {
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_delete", "device", "", map[string]interface{}{"count": len(ids)})
 	return result, nil
 }
 
 // BulkAddTags adds tags to multiple devices
-func (s *SQLiteStorage) BulkAddTags(deviceIDs []string, tags []string) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(deviceIDs)}
-	
-	ctx := context.Background()
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
@@ -144,14 +146,14 @@ func (s *SQLiteStorage) BulkAddTags(deviceIDs []string, tags []string) (*BulkRes
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_add_tags", "device", "", map[string]interface{}{"count": len(deviceIDs)})
 	return result, nil
 }
 
 // BulkRemoveTags removes tags from multiple devices
-func (s *SQLiteStorage) BulkRemoveTags(deviceIDs []string, tags []string) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkRemoveTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(deviceIDs)}
-	
-	ctx := context.Background()
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
@@ -175,21 +177,22 @@ func (s *SQLiteStorage) BulkRemoveTags(deviceIDs []string, tags []string) (*Bulk
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_remove_tags", "device", "", map[string]interface{}{"count": len(deviceIDs)})
 	return result, nil
 }
 
 // BulkCreateNetworks creates multiple networks in a transaction
-func (s *SQLiteStorage) BulkCreateNetworks(networks []*model.Network) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkCreateNetworks(ctx context.Context, networks []*model.Network) (*BulkResult, error) {
 	result := &BulkResult{Total: len(networks)}
-	
-	tx, err := s.db.BeginTx(context.Background(), nil)
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	for _, network := range networks {
-		if err := s.createNetworkInTx(tx, network); err != nil {
+		if err := s.createNetworkInTx(ctx, tx, network); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", network.Name, err))
 		} else {
@@ -201,21 +204,22 @@ func (s *SQLiteStorage) BulkCreateNetworks(networks []*model.Network) (*BulkResu
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_create", "network", "", map[string]interface{}{"count": len(networks)})
 	return result, nil
 }
 
 // BulkDeleteNetworks deletes multiple networks in a transaction
-func (s *SQLiteStorage) BulkDeleteNetworks(ids []string) (*BulkResult, error) {
+func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(ids)}
-	
-	tx, err := s.db.BeginTx(context.Background(), nil)
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	for _, id := range ids {
-		if err := s.deleteNetworkInTx(tx, id); err != nil {
+		if err := s.deleteNetworkInTx(ctx, tx, id); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", id, err))
 		} else {
@@ -227,5 +231,6 @@ func (s *SQLiteStorage) BulkDeleteNetworks(ids []string) (*BulkResult, error) {
 		return result, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.auditLog(ctx, "bulk_delete", "network", "", map[string]interface{}{"count": len(ids)})
 	return result, nil
 }

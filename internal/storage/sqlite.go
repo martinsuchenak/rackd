@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/audit"
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	_ "modernc.org/sqlite"
 )
@@ -277,28 +280,31 @@ func (s *SQLiteStorage) getDeviceDomains(ctx context.Context, deviceID string) (
 }
 
 // CreateDevice creates a new device with its addresses, tags, and domains
-func (s *SQLiteStorage) CreateDevice(device *model.Device) error {
+func (s *SQLiteStorage) CreateDevice(ctx context.Context, device *model.Device) error {
 	if device == nil {
 		return fmt.Errorf("device is nil")
 	}
 
-	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := s.createDeviceInTx(tx, device); err != nil {
+	if err := s.createDeviceInTx(ctx, tx, device); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "create", "device", device.ID, device)
+	return nil
 }
 
 // createDeviceInTx creates a device within an existing transaction
-func (s *SQLiteStorage) createDeviceInTx(tx *sql.Tx, device *model.Device) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device *model.Device) error {
 
 	// Generate ID if not provided
 	if device.ID == "" {
@@ -380,7 +386,7 @@ func (s *SQLiteStorage) insertDeviceDomains(ctx context.Context, tx *sql.Tx, dev
 }
 
 // UpdateDevice updates an existing device and its related data
-func (s *SQLiteStorage) UpdateDevice(device *model.Device) error {
+func (s *SQLiteStorage) UpdateDevice(ctx context.Context, device *model.Device) error {
 	if device == nil {
 		return fmt.Errorf("device is nil")
 	}
@@ -388,23 +394,26 @@ func (s *SQLiteStorage) UpdateDevice(device *model.Device) error {
 		return ErrInvalidID
 	}
 
-	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := s.updateDeviceInTx(tx, device); err != nil {
+	if err := s.updateDeviceInTx(ctx, tx, device); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "update", "device", device.ID, device)
+	return nil
 }
 
 // updateDeviceInTx updates a device within an existing transaction
-func (s *SQLiteStorage) updateDeviceInTx(tx *sql.Tx, device *model.Device) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device *model.Device) error {
 
 	// Check if device exists
 	var exists bool
@@ -457,28 +466,31 @@ func (s *SQLiteStorage) updateDeviceInTx(tx *sql.Tx, device *model.Device) error
 }
 
 // DeleteDevice removes a device and all related data (cascades via foreign keys)
-func (s *SQLiteStorage) DeleteDevice(id string) error {
+func (s *SQLiteStorage) DeleteDevice(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
 
-	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := s.deleteDeviceInTx(tx, id); err != nil {
+	if err := s.deleteDeviceInTx(ctx, tx, id); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "delete", "device", id, nil)
+	return nil
 }
 
 // deleteDeviceInTx deletes a device within an existing transaction
-func (s *SQLiteStorage) deleteDeviceInTx(tx *sql.Tx, id string) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) deleteDeviceInTx(ctx context.Context, tx *sql.Tx, id string) error {
 
 	// Check if device exists
 	var exists bool
@@ -731,7 +743,7 @@ func (s *SQLiteStorage) ensureDefaultDatacenter(ctx context.Context) error {
 			Location:    "",
 			Description: "Default datacenter",
 		}
-		if err := s.CreateDatacenter(defaultDC); err != nil {
+		if err := s.CreateDatacenter(ctx, defaultDC); err != nil {
 			return fmt.Errorf("failed to create default datacenter: %w", err)
 		}
 	}
@@ -845,12 +857,10 @@ func (s *SQLiteStorage) GetDatacenter(id string) (*model.Datacenter, error) {
 }
 
 // CreateDatacenter creates a new datacenter
-func (s *SQLiteStorage) CreateDatacenter(dc *model.Datacenter) error {
+func (s *SQLiteStorage) CreateDatacenter(ctx context.Context, dc *model.Datacenter) error {
 	if dc == nil {
 		return fmt.Errorf("datacenter is nil")
 	}
-
-	ctx := context.Background()
 
 	// Generate ID if not provided
 	if dc.ID == "" {
@@ -870,19 +880,18 @@ func (s *SQLiteStorage) CreateDatacenter(dc *model.Datacenter) error {
 		return fmt.Errorf("failed to create datacenter: %w", err)
 	}
 
+	s.auditLog(ctx, "create", "datacenter", dc.ID, dc)
 	return nil
 }
 
 // UpdateDatacenter updates an existing datacenter
-func (s *SQLiteStorage) UpdateDatacenter(dc *model.Datacenter) error {
+func (s *SQLiteStorage) UpdateDatacenter(ctx context.Context, dc *model.Datacenter) error {
 	if dc == nil {
 		return fmt.Errorf("datacenter is nil")
 	}
 	if dc.ID == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Check if datacenter exists
 	var exists bool
@@ -905,16 +914,15 @@ func (s *SQLiteStorage) UpdateDatacenter(dc *model.Datacenter) error {
 		return fmt.Errorf("failed to update datacenter: %w", err)
 	}
 
+	s.auditLog(ctx, "update", "datacenter", dc.ID, dc)
 	return nil
 }
 
 // DeleteDatacenter removes a datacenter by ID
-func (s *SQLiteStorage) DeleteDatacenter(id string) error {
+func (s *SQLiteStorage) DeleteDatacenter(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Check if datacenter exists
 	var exists bool
@@ -947,6 +955,7 @@ func (s *SQLiteStorage) DeleteDatacenter(id string) error {
 		return fmt.Errorf("failed to delete datacenter: %w", err)
 	}
 
+	s.auditLog(ctx, "delete", "datacenter", id, nil)
 	return nil
 }
 
@@ -1095,7 +1104,6 @@ func (s *SQLiteStorage) SearchNetworks(query string) ([]model.Network, error) {
 	return networks, nil
 }
 
-
 // GetNetwork retrieves a network by ID
 func (s *SQLiteStorage) GetNetwork(id string) (*model.Network, error) {
 	if id == "" {
@@ -1133,28 +1141,31 @@ func (s *SQLiteStorage) GetNetwork(id string) (*model.Network, error) {
 }
 
 // CreateNetwork creates a new network
-func (s *SQLiteStorage) CreateNetwork(network *model.Network) error {
+func (s *SQLiteStorage) CreateNetwork(ctx context.Context, network *model.Network) error {
 	if network == nil {
 		return fmt.Errorf("network is nil")
 	}
 
-	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := s.createNetworkInTx(tx, network); err != nil {
+	if err := s.createNetworkInTx(ctx, tx, network); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "create", "network", network.ID, network)
+	return nil
 }
 
 // createNetworkInTx creates a network within an existing transaction
-func (s *SQLiteStorage) createNetworkInTx(tx *sql.Tx, network *model.Network) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) createNetworkInTx(ctx context.Context, tx *sql.Tx, network *model.Network) error {
 
 	// Generate ID if not provided
 	if network.ID == "" {
@@ -1179,15 +1190,13 @@ func (s *SQLiteStorage) createNetworkInTx(tx *sql.Tx, network *model.Network) er
 }
 
 // UpdateNetwork updates an existing network
-func (s *SQLiteStorage) UpdateNetwork(network *model.Network) error {
+func (s *SQLiteStorage) UpdateNetwork(ctx context.Context, network *model.Network) error {
 	if network == nil {
 		return fmt.Errorf("network is nil")
 	}
 	if network.ID == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Check if network exists
 	var exists bool
@@ -1211,32 +1220,36 @@ func (s *SQLiteStorage) UpdateNetwork(network *model.Network) error {
 		return fmt.Errorf("failed to update network: %w", err)
 	}
 
+	s.auditLog(ctx, "update", "network", network.ID, network)
 	return nil
 }
 
 // DeleteNetwork removes a network by ID
-func (s *SQLiteStorage) DeleteNetwork(id string) error {
+func (s *SQLiteStorage) DeleteNetwork(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
 
-	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := s.deleteNetworkInTx(tx, id); err != nil {
+	if err := s.deleteNetworkInTx(ctx, tx, id); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "delete", "network", id, nil)
+	return nil
 }
 
 // deleteNetworkInTx deletes a network within an existing transaction
-func (s *SQLiteStorage) deleteNetworkInTx(tx *sql.Tx, id string) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) deleteNetworkInTx(ctx context.Context, tx *sql.Tx, id string) error {
 
 	// Check if network exists
 	var exists bool
@@ -1382,12 +1395,10 @@ func calculateCIDRSize(cidr string) (int, error) {
 // Pool operations (P2-007)
 
 // CreateNetworkPool creates a new network pool
-func (s *SQLiteStorage) CreateNetworkPool(pool *model.NetworkPool) error {
+func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.NetworkPool) error {
 	if pool == nil {
 		return fmt.Errorf("pool is nil")
 	}
-
-	ctx := context.Background()
 
 	// Validate network exists
 	var networkExists bool
@@ -1418,7 +1429,7 @@ func (s *SQLiteStorage) CreateNetworkPool(pool *model.NetworkPool) error {
 	// Insert pool
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO network_pools (id, network_id, name, start_ip, end_ip, description, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`, pool.ID, pool.NetworkID, pool.Name, pool.StartIP, pool.EndIP, pool.Description, pool.CreatedAt, pool.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create network pool: %w", err)
@@ -1429,7 +1440,12 @@ func (s *SQLiteStorage) CreateNetworkPool(pool *model.NetworkPool) error {
 		return fmt.Errorf("failed to insert pool tags: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "create", "pool", pool.ID, pool)
+	return nil
 }
 
 // insertPoolTags inserts tags for a pool within a transaction
@@ -1504,15 +1520,13 @@ func (s *SQLiteStorage) GetNetworkPool(id string) (*model.NetworkPool, error) {
 }
 
 // UpdateNetworkPool updates an existing network pool
-func (s *SQLiteStorage) UpdateNetworkPool(pool *model.NetworkPool) error {
+func (s *SQLiteStorage) UpdateNetworkPool(ctx context.Context, pool *model.NetworkPool) error {
 	if pool == nil {
 		return fmt.Errorf("pool is nil")
 	}
 	if pool.ID == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Start transaction
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1550,16 +1564,19 @@ func (s *SQLiteStorage) UpdateNetworkPool(pool *model.NetworkPool) error {
 		return fmt.Errorf("failed to insert pool tags: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "update", "pool", pool.ID, pool)
+	return nil
 }
 
 // DeleteNetworkPool removes a network pool by ID
-func (s *SQLiteStorage) DeleteNetworkPool(id string) error {
+func (s *SQLiteStorage) DeleteNetworkPool(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Start transaction
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1590,7 +1607,12 @@ func (s *SQLiteStorage) DeleteNetworkPool(id string) error {
 		return fmt.Errorf("failed to delete network pool: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.auditLog(ctx, "delete", "pool", id, nil)
+	return nil
 }
 
 // ListNetworkPools retrieves pools matching the filter criteria
@@ -1908,33 +1930,42 @@ func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
 
 // Relationship operations - stub implementations for now (will be completed in P2-008)
 
-func (s *SQLiteStorage) AddRelationship(parentID, childID, relationshipType, notes string) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) AddRelationship(ctx context.Context, parentID, childID, relationshipType, notes string) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO device_relationships (parent_id, child_id, type, notes)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT (parent_id, child_id, type) DO UPDATE SET notes = excluded.notes
 	`, parentID, childID, relationshipType, notes)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "add", "relationship", parentID+":"+childID, nil)
+	return nil
 }
 
-func (s *SQLiteStorage) RemoveRelationship(parentID, childID, relationshipType string) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) RemoveRelationship(ctx context.Context, parentID, childID, relationshipType string) error {
 	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM device_relationships
 		WHERE parent_id = ? AND child_id = ? AND type = ?
 	`, parentID, childID, relationshipType)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "remove", "relationship", parentID+":"+childID, nil)
+	return nil
 }
 
-func (s *SQLiteStorage) UpdateRelationshipNotes(parentID, childID, relationshipType, notes string) error {
-	ctx := context.Background()
+func (s *SQLiteStorage) UpdateRelationshipNotes(ctx context.Context, parentID, childID, relationshipType, notes string) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE device_relationships
 		SET notes = ?
 		WHERE parent_id = ? AND child_id = ? AND type = ?
 	`, notes, parentID, childID, relationshipType)
-	return err
+	if err != nil {
+		return err
+	}
+	s.auditLog(ctx, "update", "relationship", parentID+":"+childID, nil)
+	return nil
 }
 
 func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
@@ -2018,4 +2049,43 @@ func (s *SQLiteStorage) GetRelatedDevices(deviceID, relationshipType string) ([]
 		devices[i].Domains, _ = s.getDeviceDomains(ctx, devices[i].ID)
 	}
 	return devices, nil
+}
+
+// auditLog creates an audit log entry asynchronously
+func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resourceID string, changes interface{}) {
+	auditCtx, ok := audit.FromContext(ctx)
+	if !ok {
+		return
+	}
+
+	go func() {
+		var changesStr string
+		if changes != nil {
+			if str, ok := changes.(string); ok {
+				changesStr = str
+			} else {
+				changesBytes, err := json.Marshal(changes)
+				if err == nil {
+					changesStr = string(changesBytes)
+				}
+			}
+		}
+
+		auditLog := &model.AuditLog{
+			Timestamp:  time.Now(),
+			Action:     action,
+			Resource:   resource,
+			ResourceID: resourceID,
+			UserID:     auditCtx.UserID,
+			Username:   auditCtx.Username,
+			IPAddress:  auditCtx.IPAddress,
+			Changes:    changesStr,
+			Source:     auditCtx.Source,
+			Status:     "success",
+		}
+
+		if err := s.CreateAuditLog(auditLog); err != nil {
+			log.Error("Failed to create audit log", "error", err)
+		}
+	}()
 }

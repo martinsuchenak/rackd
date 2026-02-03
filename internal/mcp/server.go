@@ -165,7 +165,7 @@ func (s *Server) registerTools() {
 
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	log.Debug("MCP request received", "remote_addr", r.RemoteAddr)
-	
+
 	if s.requireAuth {
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
@@ -174,7 +174,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		token := strings.TrimPrefix(auth, "Bearer ")
-		
+
 		// Try API key authentication
 		key, err := s.storage.GetAPIKeyByKey(token)
 		if err != nil {
@@ -182,22 +182,22 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
+
 		// Check expiration
 		if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
 			log.Debug("MCP auth failed: expired API key", "key_name", key.Name)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
+
 		// Update last used (async)
 		go func() {
 			s.storage.UpdateAPIKeyLastUsed(key.ID, time.Now())
 		}()
-		
+
 		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
 	}
-	
+
 	s.mcpServer.HandleRequest(w, r)
 }
 
@@ -232,11 +232,11 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 
 	if id == "" {
 		device.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDevice(device); err != nil {
+		if err := s.storage.CreateDevice(ctx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDevice(device); err != nil {
+		if err := s.storage.UpdateDevice(ctx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -276,7 +276,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 
 func (s *Server) handleDeviceDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	if err := s.storage.DeleteDevice(id); err != nil {
+	if err := s.storage.DeleteDevice(ctx, id); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
@@ -294,7 +294,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 		return nil, mcp.NewToolErrorInvalidParams("type must be one of: contains, connected_to, depends_on")
 	}
 
-	if err := s.storage.AddRelationship(parentID, childID, relType, notes); err != nil {
+	if err := s.storage.AddRelationship(ctx, parentID, childID, relType, notes); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil
@@ -332,11 +332,11 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 
 	if id == "" {
 		dc.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDatacenter(dc); err != nil {
+		if err := s.storage.CreateDatacenter(ctx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDatacenter(dc); err != nil {
+		if err := s.storage.UpdateDatacenter(ctx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -373,11 +373,11 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 	if id == "" {
 		network.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateNetwork(network); err != nil {
+		if err := s.storage.CreateNetwork(ctx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateNetwork(network); err != nil {
+		if err := s.storage.UpdateNetwork(ctx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -415,7 +415,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 		StartedAt: &now,
 	}
 
-	if err := s.storage.CreateDiscoveryScan(scan); err != nil {
+	if err := s.storage.CreateDiscoveryScan(ctx, scan); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
@@ -453,11 +453,11 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 		device.Domains = append(device.Domains, discovered.Hostname)
 	}
 
-	if err := s.storage.CreateDevice(device); err != nil {
+	if err := s.storage.CreateDevice(ctx, device); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
-	if err := s.storage.PromoteDiscoveredDevice(discoveredID, device.ID); err != nil {
+	if err := s.storage.PromoteDiscoveredDevice(ctx, discoveredID, device.ID); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 

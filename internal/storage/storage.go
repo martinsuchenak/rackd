@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -25,9 +26,9 @@ var (
 // DeviceStorage defines device persistence operations
 type DeviceStorage interface {
 	GetDevice(id string) (*model.Device, error)
-	CreateDevice(device *model.Device) error
-	UpdateDevice(device *model.Device) error
-	DeleteDevice(id string) error
+	CreateDevice(ctx context.Context, device *model.Device) error
+	UpdateDevice(ctx context.Context, device *model.Device) error
+	DeleteDevice(ctx context.Context, id string) error
 	ListDevices(filter *model.DeviceFilter) ([]model.Device, error)
 	SearchDevices(query string) ([]model.Device, error)
 }
@@ -36,9 +37,9 @@ type DeviceStorage interface {
 type DatacenterStorage interface {
 	ListDatacenters(filter *model.DatacenterFilter) ([]model.Datacenter, error)
 	GetDatacenter(id string) (*model.Datacenter, error)
-	CreateDatacenter(dc *model.Datacenter) error
-	UpdateDatacenter(dc *model.Datacenter) error
-	DeleteDatacenter(id string) error
+	CreateDatacenter(ctx context.Context, dc *model.Datacenter) error
+	UpdateDatacenter(ctx context.Context, dc *model.Datacenter) error
+	DeleteDatacenter(ctx context.Context, id string) error
 	GetDatacenterDevices(datacenterID string) ([]model.Device, error)
 	SearchDatacenters(query string) ([]model.Datacenter, error)
 }
@@ -47,9 +48,9 @@ type DatacenterStorage interface {
 type NetworkStorage interface {
 	ListNetworks(filter *model.NetworkFilter) ([]model.Network, error)
 	GetNetwork(id string) (*model.Network, error)
-	CreateNetwork(network *model.Network) error
-	UpdateNetwork(network *model.Network) error
-	DeleteNetwork(id string) error
+	CreateNetwork(ctx context.Context, network *model.Network) error
+	UpdateNetwork(ctx context.Context, network *model.Network) error
+	DeleteNetwork(ctx context.Context, id string) error
 	GetNetworkDevices(networkID string) ([]model.Device, error)
 	GetNetworkUtilization(networkID string) (*model.NetworkUtilization, error)
 	SearchNetworks(query string) ([]model.Network, error)
@@ -57,9 +58,9 @@ type NetworkStorage interface {
 
 // NetworkPoolStorage defines network pool persistence operations
 type NetworkPoolStorage interface {
-	CreateNetworkPool(pool *model.NetworkPool) error
-	UpdateNetworkPool(pool *model.NetworkPool) error
-	DeleteNetworkPool(id string) error
+	CreateNetworkPool(ctx context.Context, pool *model.NetworkPool) error
+	UpdateNetworkPool(ctx context.Context, pool *model.NetworkPool) error
+	DeleteNetworkPool(ctx context.Context, id string) error
 	GetNetworkPool(id string) (*model.NetworkPool, error)
 	ListNetworkPools(filter *model.NetworkPoolFilter) ([]model.NetworkPool, error)
 	GetNextAvailableIP(poolID string) (string, error)
@@ -76,39 +77,39 @@ type IPStatus struct {
 
 // RelationshipStorage defines device relationship operations
 type RelationshipStorage interface {
-	AddRelationship(parentID, childID, relationshipType, notes string) error
-	RemoveRelationship(parentID, childID, relationshipType string) error
+	AddRelationship(ctx context.Context, parentID, childID, relationshipType, notes string) error
+	RemoveRelationship(ctx context.Context, parentID, childID, relationshipType string) error
 	GetRelationships(deviceID string) ([]model.DeviceRelationship, error)
 	ListAllRelationships() ([]model.DeviceRelationship, error)
 	GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error)
-	UpdateRelationshipNotes(parentID, childID, relationshipType, notes string) error
+	UpdateRelationshipNotes(ctx context.Context, parentID, childID, relationshipType, notes string) error
 }
 
 // DiscoveryStorage defines discovery persistence operations
 type DiscoveryStorage interface {
 	// Discovered devices
-	CreateDiscoveredDevice(device *model.DiscoveredDevice) error
-	UpdateDiscoveredDevice(device *model.DiscoveredDevice) error
+	CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error
+	UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error
 	GetDiscoveredDevice(id string) (*model.DiscoveredDevice, error)
 	GetDiscoveredDeviceByIP(networkID, ip string) (*model.DiscoveredDevice, error)
 	ListDiscoveredDevices(networkID string) ([]model.DiscoveredDevice, error)
-	DeleteDiscoveredDevice(id string) error
+	DeleteDiscoveredDevice(ctx context.Context, id string) error
 	DeleteDiscoveredDevicesByNetwork(networkID string) error
-	PromoteDiscoveredDevice(discoveredID, deviceID string) error
+	PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error
 
 	// Discovery scans
-	CreateDiscoveryScan(scan *model.DiscoveryScan) error
-	UpdateDiscoveryScan(scan *model.DiscoveryScan) error
+	CreateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error
+	UpdateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error
 	GetDiscoveryScan(id string) (*model.DiscoveryScan, error)
 	ListDiscoveryScans(networkID string) ([]model.DiscoveryScan, error)
-	DeleteDiscoveryScan(id string) error
+	DeleteDiscoveryScan(ctx context.Context, id string) error
 
 	// Discovery rules
 	GetDiscoveryRule(id string) (*model.DiscoveryRule, error)
 	GetDiscoveryRuleByNetwork(networkID string) (*model.DiscoveryRule, error)
-	SaveDiscoveryRule(rule *model.DiscoveryRule) error
+	SaveDiscoveryRule(ctx context.Context, rule *model.DiscoveryRule) error
 	ListDiscoveryRules() ([]model.DiscoveryRule, error)
-	DeleteDiscoveryRule(id string) error
+	DeleteDiscoveryRule(ctx context.Context, id string) error
 
 	// Cleanup
 	CleanupOldDiscoveries(olderThanDays int) error
@@ -116,13 +117,13 @@ type DiscoveryStorage interface {
 
 // BulkOperations defines bulk operation methods
 type BulkOperations interface {
-	BulkCreateDevices(devices []*model.Device) (*BulkResult, error)
-	BulkUpdateDevices(devices []*model.Device) (*BulkResult, error)
-	BulkDeleteDevices(ids []string) (*BulkResult, error)
-	BulkAddTags(deviceIDs []string, tags []string) (*BulkResult, error)
-	BulkRemoveTags(deviceIDs []string, tags []string) (*BulkResult, error)
-	BulkCreateNetworks(networks []*model.Network) (*BulkResult, error)
-	BulkDeleteNetworks(ids []string) (*BulkResult, error)
+	BulkCreateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error)
+	BulkUpdateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error)
+	BulkDeleteDevices(ctx context.Context, ids []string) (*BulkResult, error)
+	BulkAddTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error)
+	BulkRemoveTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error)
+	BulkCreateNetworks(ctx context.Context, networks []*model.Network) (*BulkResult, error)
+	BulkDeleteNetworks(ctx context.Context, ids []string) (*BulkResult, error)
 }
 
 // AuditStorage defines audit log persistence operations
