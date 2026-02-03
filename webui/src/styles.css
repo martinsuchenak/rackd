@@ -64,7 +64,7 @@
   --accent-foreground: var(--white);
   --destructive: #EF4444;
   --destructive-foreground: var(--white);
-  --border: #E2E8F0;
+  --border: #CBD5E1;
   --input: oklch(0.269 0 0);
   --input-background: var(--white);
   --switch-background: #CBD5E1;
@@ -81,10 +81,9 @@
   --sidebar-primary-foreground: var(--white);
   --sidebar-accent: #E2E8F0;
   --sidebar-accent-foreground: var(--deep-slate);
-  --sidebar-border: #E2E8F0;
+  --sidebar-border: #CBD5E1;
   --sidebar-ring: var(--core-blue);
   
-  /* Focus ring for AAA - enhanced visibility */
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 }
@@ -271,4 +270,73 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Reduced Motion Support - WCAG 2.3.3 Level AAA */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* AAA Compliant Status Badge Colors (7:1+ contrast) */
+.status-active {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+.dark .status-active {
+  background-color: rgba(6, 95, 70, 0.3);
+  color: #A7F3D0;
+}
+
+.status-pending {
+  background-color: #FEF3C7;
+  color: #78350F;
+}
+.dark .status-pending {
+  background-color: rgba(120, 53, 15, 0.3);
+  color: #FDE68A;
+}
+
+.status-failed {
+  background-color: #FEE2E2;
+  color: #7F1D1D;
+}
+.dark .status-failed {
+  background-color: rgba(127, 29, 29, 0.3);
+  color: #FECACA;
+}
+
+/* Enhanced focus indicators for icon buttons and small targets */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Extra prominent focus for icon-only buttons */
+button[aria-label]:not([aria-label=""]):focus-visible {
+  outline-width: 4px;
+  outline-offset: 3px;
+}
+
+/* Focus visible for inputs */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }

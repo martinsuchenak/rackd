@@ -14,46 +14,46 @@
     </div>
 
     <!-- General Information -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6 mb-6">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">General Information</h2>
       <dl class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Hostname</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.hostname || '-'"></dd></div>
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Make/Model</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.make_model || '-'"></dd></div>
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">OS</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.os || '-'"></dd></div>
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Datacenter</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(device?.datacenter_id)"></dd></div>
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Location</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.location || '-'"></dd></div>
-        <div><dt class="text-sm text-gray-700 dark:text-gray-300">Username</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.username || '-'"></dd></div>
-        <div class="md:col-span-2 lg:col-span-3"><dt class="text-sm text-gray-700 dark:text-gray-300">Description</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="device?.description || '-'"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Hostname</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.hostname || '-'"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Make/Model</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.make_model || '-'"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">OS</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.os || '-'"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Datacenter</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(device?.datacenter_id)"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Location</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.location || '-'"></dd></div>
+        <div><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Username</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.username || '-'"></dd></div>
+        <div class="md:col-span-2 lg:col-span-3"><dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Description</dt><dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device?.description || '-'"></dd></div>
       </dl>
       <!-- Tags -->
-      <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</h3>
+      <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tags</h3>
         <div class="flex flex-wrap gap-2" x-show="device?.tags?.length">
           <template x-for="tag in device?.tags || []" :key="tag">
-            <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded" x-text="tag"></span>
+            <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800" x-text="tag"></span>
           </template>
         </div>
-        <p x-show="!device?.tags?.length" class="text-sm text-gray-700 dark:text-gray-300">No tags</p>
+        <p x-show="!device?.tags?.length" class="text-sm text-gray-600 dark:text-gray-400">No tags</p>
       </div>
       <!-- Domains -->
-      <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Domains</h3>
+      <div class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Domains</h3>
         <div class="flex flex-wrap gap-2" x-show="device?.domains?.length">
           <template x-for="domain in device?.domains || []" :key="domain">
-            <span class="px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded" x-text="domain"></span>
+            <span class="px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded border border-purple-200 dark:border-purple-800" x-text="domain"></span>
           </template>
         </div>
-        <p x-show="!device?.domains?.length" class="text-sm text-gray-700 dark:text-gray-300">No domains</p>
+        <p x-show="!device?.domains?.length" class="text-sm text-gray-600 dark:text-gray-400">No domains</p>
       </div>
       <!-- Timestamps -->
-      <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex gap-6 text-sm text-gray-700 dark:text-gray-300">
-        <span>Created: <span class="font-medium" x-text="formatDate(device?.created_at)"></span></span>
-        <span>Updated: <span class="font-medium" x-text="formatDate(device?.updated_at)"></span></span>
+      <div class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-700 flex gap-6 text-sm text-gray-600 dark:text-gray-400">
+        <span>Created: <span class="font-medium text-gray-900 dark:text-white" x-text="formatDate(device?.created_at)"></span></span>
+        <span>Updated: <span class="font-medium text-gray-900 dark:text-white" x-text="formatDate(device?.updated_at)"></span></span>
       </div>
     </div>
 
     <!-- IP Addresses -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6 mb-6">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         IP Addresses
         <span x-show="device?.addresses?.length" class="ml-2 px-2 py-0.5 text-sm font-normal bg-gray-200 dark:bg-gray-700 rounded-full" x-text="device?.addresses?.length"></span>
@@ -61,22 +61,22 @@
       <div x-show="device?.addresses?.length" class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead>
-            <tr class="text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-              <th scope="col" class="pb-3 pr-4">IP Address</th>
-              <th scope="col" class="pb-3 pr-4">Port</th>
-              <th scope="col" class="pb-3 pr-4">Type</th>
-              <th scope="col" class="pb-3 pr-4">Label</th>
-              <th scope="col" class="pb-3 pr-4">Network</th>
-              <th scope="col" class="pb-3">Switch Port</th>
+            <tr class="text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50">
+              <th scope="col" class="pb-3 pr-4 pt-2">IP Address</th>
+              <th scope="col" class="pb-3 pr-4 pt-2">Port</th>
+              <th scope="col" class="pb-3 pr-4 pt-2">Type</th>
+              <th scope="col" class="pb-3 pr-4 pt-2">Label</th>
+              <th scope="col" class="pb-3 pr-4 pt-2">Network</th>
+              <th scope="col" class="pb-3 pt-2">Switch Port</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
             <template x-for="addr in device?.addresses || []" :key="addr.ip + (addr.port || '')">
-              <tr class="text-sm">
+              <tr class="text-sm hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="py-3 pr-4 font-mono text-gray-900 dark:text-white" x-text="addr.ip"></td>
                 <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="addr.port || '-'"></td>
                 <td class="py-3 pr-4">
-                  <span class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300" x-text="addr.type || '-'"></span>
+                  <span class="px-2 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" x-text="addr.type || '-'"></span>
                 </td>
                 <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="addr.label || '-'"></td>
                 <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="networks.find(n => n.id === addr.network_id)?.name || '-'"></td>
@@ -86,11 +86,11 @@
           </tbody>
         </table>
       </div>
-      <p x-show="!device?.addresses?.length" class="text-sm text-gray-700 dark:text-gray-300">No IP addresses configured</p>
+      <p x-show="!device?.addresses?.length" class="text-sm text-gray-600 dark:text-gray-400">No IP addresses configured</p>
     </div>
 
     <!-- Relationships section placeholder for future -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-show="relationships.length > 0">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6" x-show="relationships.length > 0">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Relationships
         <span class="ml-2 px-2 py-0.5 text-sm font-normal bg-gray-200 dark:bg-gray-700 rounded-full" x-text="relationships.length"></span>

@@ -79,22 +79,36 @@
         <!-- Global Search -->
         <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block" role="search">
           <label for="global-search" class="sr-only">Search devices, networks, datacenters</label>
-          <input id="global-search" type="search" x-model="query" @input="onInput()" @focus="onFocus()" @blur="onBlur()"
+          <input id="global-search" 
+                 type="search" 
+                 x-model="query" 
+                 @input="onInput()" 
+                 @keydown="onKeyDown($event)"
+                 @focus="onFocus()" 
+                 @blur="onBlur()"
                  placeholder="Search devices, networks, datacenters..."
+                 role="combobox"
+                 aria-autocomplete="list"
                  aria-describedby="search-instructions"
                  aria-controls="search-results"
+                 :aria-activedescendant="selectedIndex >= 0 ? 'search-result-' + selectedIndex : undefined"
                  :aria-expanded="showResults && (results.length > 0 || loading)"
                  class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-[var(--input-background)] text-gray-900 dark:text-gray-50 placeholder:text-gray-600 dark:placeholder:text-gray-400 focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px]">
-          <span id="search-instructions" class="sr-only">Type to search. Results will appear below.</span>
+          <span id="search-instructions" class="sr-only">Type to search. Use arrow keys to navigate results, Enter to select, Escape to close.</span>
           <div x-show="showResults && (results.length > 0 || loading)" x-cloak
                id="search-results"
                class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
                role="listbox" aria-label="Search results">
             <div x-show="loading" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">Searching...</div>
-            <template x-for="result in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
-              <a :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
-                 @click.prevent="$dispatch('nav', result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id)"
-                 class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]" role="option">
+            <template x-for="(result, index) in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
+              <a :id="'search-result-' + index"
+                 :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
+                 @click.prevent="selectResult(result)"
+                 @mouseenter="selectedIndex = index"
+                 class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]"
+                 :class="{ 'bg-[var(--muted)]': index === selectedIndex }"
+                 role="option"
+                 :aria-selected="index === selectedIndex">
                 <div class="flex items-center gap-2">
                   <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100 rounded font-medium">Device</span>
                   <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded font-medium">Network</span>

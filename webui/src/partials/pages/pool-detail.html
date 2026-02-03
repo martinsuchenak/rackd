@@ -15,7 +15,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Pool Details -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pool Details</h2>
         <dl class="grid grid-cols-2 gap-4">
           <div><dt class="text-sm text-gray-500 dark:text-gray-400">Start IP</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.start_ip"></dd></div>
@@ -37,7 +37,7 @@
         </div>
 
         <!-- Next IP -->
-        <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-700">
           <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Get Next Available IP</h3>
           <div class="flex items-center gap-3">
             <button @click="fetchNextIP()" :disabled="fetchingNextIP" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
@@ -50,7 +50,7 @@
       </div>
 
       <!-- IP Heatmap -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">IP Usage Heatmap</h2>
         <div class="mb-4 flex items-center gap-4 text-sm">
           <div class="flex items-center gap-1"><span class="w-4 h-4 bg-green-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Available</span></div>

@@ -27,11 +27,11 @@ func TestNewUIConfigBuilder(t *testing.T) {
 
 func TestUIConfigBuilder_SetEdition(t *testing.T) {
 	b := NewUIConfigBuilder()
-	b.SetEdition("enterprise")
+	b.SetEdition("oss")
 	config := b.Build()
 
-	if config.Edition != "enterprise" {
-		t.Errorf("expected edition 'enterprise', got %q", config.Edition)
+	if config.Edition != "oss" {
+		t.Errorf("expected edition 'oss', got %q", config.Edition)
 	}
 }
 
@@ -96,9 +96,9 @@ func TestUIConfigBuilder_SetUser(t *testing.T) {
 
 func TestUIConfigBuilder_Handler(t *testing.T) {
 	b := NewUIConfigBuilder()
-	b.SetEdition("enterprise")
-	b.AddFeature("sso")
-	b.AddNavItem(NavItem{Label: "SSO", Path: "/sso", Icon: "lock", Order: 100})
+	b.SetEdition("oss")
+	b.AddFeature("advanced_scanning")
+	b.AddNavItem(NavItem{Label: "Profiles", Path: "/profiles", Icon: "settings", Order: 100})
 
 	handler := b.Handler()
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
@@ -117,10 +117,10 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&config); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if config.Edition != "enterprise" {
-		t.Errorf("expected edition 'enterprise', got %q", config.Edition)
+	if config.Edition != "oss" {
+		t.Errorf("expected edition 'oss', got %q", config.Edition)
 	}
-	if len(config.Features) != 1 || config.Features[0] != "sso" {
+	if len(config.Features) != 1 || config.Features[0] != "advanced_scanning" {
 		t.Errorf("unexpected features: %v", config.Features)
 	}
 	if len(config.NavItems) != 1 || config.NavItems[0].Label != "SSO" {

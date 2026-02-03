@@ -7,8 +7,8 @@
         Add Network
       </button>
     </div>
-    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md" role="alert" x-text="error"></div>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
         <div>
           <label for="network-search" class="sr-only">Search networks</label>
@@ -32,6 +32,7 @@
         </button>
       </div>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <caption class="sr-only">List of networks with name, subnet, VLAN, and datacenter</caption>
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
@@ -42,7 +43,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200" role="status">Loading...</td></tr>
+          <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading networks...</span></td></tr>
           <tr x-show="!loading && networks.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No networks found</td></tr>
           <template x-for="n in networks" :key="n.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">

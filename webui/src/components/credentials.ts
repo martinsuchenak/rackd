@@ -171,38 +171,38 @@ export function credentialsPageTemplate(): string {
         </button>
       </div>
 
-      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md border border-red-300 dark:border-red-800" x-text="error"></div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" role="table" aria-label="Credentials list">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700" role="table" aria-label="Credentials list">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Type</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Description</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
               <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
-            <tr x-show="!loading && credentials.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No credentials found</td></tr>
+          <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
+            <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading...</td></tr>
+            <tr x-show="!loading && credentials.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No credentials found</td></tr>
             <template x-for="cred in credentials" :key="cred.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
                   <button @click="openEditModal(cred)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" x-text="cred.name" :aria-label="'Edit credential: ' + cred.name"></button>
                 </td>
                 <td class="px-6 py-4">
-                  <span class="px-2 py-1 text-xs font-medium rounded-full"
+                  <span class="px-2 py-1 text-xs font-medium rounded-full border"
                         :class="{
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': cred.type.startsWith('snmp'),
-                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': cred.type.startsWith('ssh')
+                          'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800': cred.type.startsWith('snmp'),
+                          'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800': cred.type.startsWith('ssh')
                         }"
                         x-text="cred.type.toUpperCase()"></span>
                 </td>
-                <td class="px-6 py-4 text-gray-500 dark:text-gray-400" x-text="cred.description || '-'"></td>
+                <td class="px-6 py-4 text-gray-700 dark:text-gray-300" x-text="cred.description || '-'"></td>
                 <td class="px-6 py-4">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                  <span class="text-xs text-gray-600 dark:text-gray-400">
                     <template x-if="cred.has_community"><span class="mr-2">Community set</span></template>
                     <template x-if="cred.has_auth"><span class="mr-2">Auth set</span></template>
                     <template x-if="cred.has_username"><span>Username set</span></template>

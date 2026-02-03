@@ -210,43 +210,43 @@ export function scheduledScansPageTemplate(): string {
         </button>
       </div>
 
-      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md border border-red-300 dark:border-red-800" x-text="error"></div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" role="table" aria-label="Scheduled scans list">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700" role="table" aria-label="Scheduled scans list">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Network</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Profile</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Schedule</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Next Run</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Network</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Profile</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Schedule</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Next Run</th>
               <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
-            <tr x-show="!loading && scans.length === 0"><td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No scheduled scans found</td></tr>
+          <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
+            <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading...</td></tr>
+            <tr x-show="!loading && scans.length === 0"><td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No scheduled scans found</td></tr>
             <template x-for="scan in scans" :key="scan.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
                   <button @click="openEditModal(scan)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="scan.name" :aria-label="'Edit schedule: ' + scan.name"></button>
-                  <div class="text-sm text-gray-500 dark:text-gray-400" x-text="scan.description || ''"></div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400" x-text="scan.description || ''"></div>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="getNetworkName(scan.network_id)"></td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="getProfileName(scan.profile_id)"></td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono" x-text="scan.cron_expression"></td>
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="getNetworkName(scan.network_id)"></td>
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="getProfileName(scan.profile_id)"></td>
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 font-mono" x-text="scan.cron_expression"></td>
                 <td class="px-6 py-4">
                   <button @click="toggleEnabled(scan)"
-                          class="px-2 py-1 text-xs font-medium rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
-                          :class="scan.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'"
+                          class="px-2 py-1 text-xs font-medium rounded-full border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                          :class="scan.enabled ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'"
                           :aria-label="(scan.enabled ? 'Disable' : 'Enable') + ' schedule: ' + scan.name"
                           :aria-pressed="scan.enabled">
                     <span x-text="scan.enabled ? 'Enabled' : 'Disabled'"></span>
                   </button>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(scan.next_run_at)"></td>
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="formatDate(scan.next_run_at)"></td>
                 <td class="px-6 py-4 text-right space-x-3">
                   <button @click="openEditModal(scan)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + scan.name">Edit</button>
                   <button @click="confirmDelete(scan)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + scan.name">Delete</button>

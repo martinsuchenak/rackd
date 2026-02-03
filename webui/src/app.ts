@@ -16,6 +16,23 @@ import { credentialsList, credentialForm, credentialsPageTemplate } from './comp
 import { profileList, profileForm, profilesPageTemplate } from './components/profiles';
 import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } from './components/scheduled-scans';
 
+// Update page title based on route
+function updatePageTitle(route: string) {
+  const titles: Record<string, string> = {
+    '/': 'Dashboard',
+    '/devices': 'Devices',
+    '/devices/detail': 'Device Details',
+    '/networks': 'Networks',
+    '/networks/detail': 'Network Details',
+    '/pools/detail': 'Pool Details',
+    '/datacenters': 'Datacenters',
+    '/datacenters/detail': 'Datacenter Details',
+    '/discovery': 'Discovery',
+  };
+  const path = route.split('?')[0];
+  document.title = `${titles[path] || 'Page'} - Rackd`;
+}
+
 // Page registry for extensions
 interface ExtensionPage {
   path: string;
@@ -43,7 +60,6 @@ declare global {
     Alpine: typeof Alpine;
     rackdAPI: RackdAPI;
     rackdConfig: UIConfig | null;
-    rackdEnterprise?: { init(): void };
     rackdRegisterPage: (path: string, render: () => string) => void;
     rackdExtensionPages: ExtensionPage[];
     rackdRegisterScanType: (type: ScanType) => void;
@@ -51,7 +67,7 @@ declare global {
   }
 }
 
-// Extension API - called by enterprise/plugins
+// Extension API - for plugins
 window.rackdRegisterPage = (path: string, render: () => string) => {
   extensionPages.push({ path, render });
 };
@@ -72,7 +88,7 @@ function router() {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
 
-    // Nav items from config (core + enterprise)
+    // Nav items from config
     get navItems() {
       const base = [
         { label: 'Devices', path: '/devices', order: 10 },
@@ -97,8 +113,10 @@ function router() {
     },
 
     init() {
+      updatePageTitle(this.route);
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
+        updatePageTitle(this.route);
       });
     },
 
@@ -106,6 +124,7 @@ function router() {
       if (path !== this.route) {
         history.pushState({}, '', path);
         this.route = path;
+        updatePageTitle(path);
         this.sidebarOpen = false;
       }
     },
@@ -194,11 +213,8 @@ async function init(): Promise<void> {
     description: 'Comprehensive scan with SNMP/SSH',
   });
 
-  // Expose Alpine globally (before enterprise init)
+  // Expose Alpine globally
   window.Alpine = Alpine;
-
-  // Enterprise extension hook (preserved for future extensibility)
-  window.rackdEnterprise?.init();
 
   // Start Alpine
   Alpine.start();

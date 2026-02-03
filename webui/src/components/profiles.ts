@@ -182,47 +182,47 @@ export function profilesPageTemplate(): string {
         </button>
       </div>
 
-      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+      <div x-show="error" role="alert" aria-live="polite" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md border border-red-300 dark:border-red-800" x-text="error"></div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" role="table" aria-label="Scan profiles list">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700" role="table" aria-label="Scan profiles list">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Features</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ports</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Settings</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Type</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Features</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Ports</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Settings</th>
               <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr x-show="loading"><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
-            <tr x-show="!loading && profiles.length === 0"><td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No scan profiles found</td></tr>
+          <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
+            <tr x-show="loading"><td colspan="6" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading...</td></tr>
+            <tr x-show="!loading && profiles.length === 0"><td colspan="6" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No scan profiles found</td></tr>
             <template x-for="profile in profiles" :key="profile.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
                   <button @click="openEditModal(profile)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="profile.name" :aria-label="'Edit profile: ' + profile.name"></button>
-                  <div class="text-sm text-gray-500 dark:text-gray-400" x-text="profile.description || ''"></div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400" x-text="profile.description || ''"></div>
                 </td>
                 <td class="px-6 py-4">
-                  <span class="px-2 py-1 text-xs font-medium rounded-full"
+                  <span class="px-2 py-1 text-xs font-medium rounded-full border"
                         :class="{
-                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': profile.scan_type === 'quick',
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': profile.scan_type === 'full',
-                          'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400': profile.scan_type === 'deep'
+                          'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800': profile.scan_type === 'quick',
+                          'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800': profile.scan_type === 'full',
+                          'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800': profile.scan_type === 'deep'
                         }"
                         x-text="profile.scan_type.toUpperCase()"></span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                   <div class="flex gap-2">
-                    <span x-show="profile.enable_snmp" class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded">SNMP</span>
-                    <span x-show="profile.enable_ssh" class="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">SSH</span>
-                    <span x-show="!profile.enable_snmp && !profile.enable_ssh" class="text-gray-400 dark:text-gray-500">-</span>
+                    <span x-show="profile.enable_snmp" class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 rounded">SNMP</span>
+                    <span x-show="profile.enable_ssh" class="px-2 py-0.5 text-xs bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 rounded">SSH</span>
+                    <span x-show="!profile.enable_snmp && !profile.enable_ssh" class="text-gray-600 dark:text-gray-400">-</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="formatPorts(profile.ports)"></td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="formatPorts(profile.ports)"></td>
+                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                   <div x-text="profile.timeout_sec + 's timeout'"></div>
                   <div x-text="profile.max_workers + ' workers'"></div>
                 </td>

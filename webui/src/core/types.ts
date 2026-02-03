@@ -155,7 +155,7 @@ export interface UserInfo {
 }
 
 export interface UIConfig {
-  edition: 'oss' | 'enterprise';
+  edition: 'oss';
   features: string[];
   nav_items: NavItem[];
   user?: UserInfo;

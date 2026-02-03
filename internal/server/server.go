@@ -19,7 +19,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/worker"
 )
 
-// Feature interface for enterprise extension
+// Feature interface for extensions
 type Feature interface {
 	Name() string
 	RegisterRoutes(mux *http.ServeMux)

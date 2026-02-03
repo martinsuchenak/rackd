@@ -1,4 +1,4 @@
-// Package server provides the public server entry point for enterprise extension.
+// Package server provides the public server entry point for extensions.
 package server
 
 import (

@@ -10,7 +10,7 @@ The web interface features:
 - **Accessibility**: WCAG AAA compliant with keyboard navigation and screen reader support
 - **Real-time Updates**: Live data updates without page refreshes
 - **Global Search**: Search across devices, networks, and datacenters
-- **Extension Support**: Plugin architecture for enterprise features
+- **Extension Support**: Plugin architecture for additional features
 
 ## Navigation
 
@@ -21,7 +21,7 @@ The left sidebar provides access to all main sections:
 - **Networks** - Network and subnet management  
 - **Datacenters** - Physical location tracking
 - **Discovery** - Network scanning and device discovery
-- **Extension Pages** - Dynamically loaded enterprise features
+- **Extension Pages** - Dynamically loaded additional features
 
 ### Top Bar
 - **Mobile Menu Toggle** - Hamburger menu for mobile devices
@@ -146,7 +146,7 @@ Consistent modal interface for:
 **Navigation** (`nav`):
 - Dynamic navigation items
 - Feature detection
-- Enterprise integration
+- Extension integration
 
 **Global Search** (`globalSearch`):
 - Debounced search input

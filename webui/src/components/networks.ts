@@ -2,7 +2,7 @@
 
 import type { Datacenter, Network, NetworkPool, NetworkUtilization } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
-import { debounce } from '../core/utils';
+import { debounce, isValidCIDR, createFocusTrap } from '../core/utils';
 
 interface NetworkListData {
   networks: Network[];
@@ -56,6 +56,8 @@ export function networkList() {
     isEditMode: false,
     editNetwork: {} as Partial<Network>,
     saving: false,
+    validationErrors: {} as Record<string, string>,
+    focusTrapCleanup: null as (() => void) | null,
 
     get hasMultipleDatacenters(): boolean {
       return this.datacenters.length > 1;
@@ -71,6 +73,17 @@ export function networkList() {
 
     async init(): Promise<void> {
       await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
+      this.$watch('showModal', (show: boolean) => {
+        if (show) {
+          setTimeout(() => {
+            const modal = document.querySelector('[role="dialog"]') as HTMLElement;
+            if (modal) this.focusTrapCleanup = createFocusTrap(modal);
+          }, 50);
+        } else {
+          this.focusTrapCleanup?.();
+          this.focusTrapCleanup = null;
+        }
+      });
     },
 
     async loadDatacenters(): Promise<void> {
@@ -191,10 +204,30 @@ export function networkList() {
     },
 
     closeModal(): void {
+      this.focusTrapCleanup?.();
+      this.focusTrapCleanup = null;
       this.showModal = false;
     },
 
+    validateNetwork(): boolean {
+      this.validationErrors = {};
+      
+      if (!this.editNetwork.name?.trim()) {
+        this.validationErrors.name = 'Network name is required';
+      }
+      
+      if (!this.editNetwork.subnet?.trim()) {
+        this.validationErrors.subnet = 'Subnet is required';
+      } else if (!isValidCIDR(this.editNetwork.subnet)) {
+        this.validationErrors.subnet = 'Invalid CIDR format (e.g., 192.168.1.0/24)';
+      }
+      
+      return Object.keys(this.validationErrors).length === 0;
+    },
+
     async saveNetwork(): Promise<void> {
+      if (!this.validateNetwork()) return;
+      
       this.saving = true;
       this.error = '';
       try {

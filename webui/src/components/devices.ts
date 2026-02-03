@@ -2,7 +2,7 @@
 
 import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
-import { debounce, formatDate } from '../core/utils';
+import { debounce, formatDate, createFocusTrap, isValidIP } from '../core/utils';
 
 interface DeviceListData {
   devices: Device[];
@@ -66,6 +66,8 @@ export function deviceList() {
     tagInput: '',
     domainInput: '',
     saving: false,
+    focusTrapCleanup: null as (() => void) | null,
+    validationErrors: {} as Record<string, string>,
 
     get totalPages(): number {
       return Math.ceil(this.devices.length / this.pageSize) || 1;
@@ -94,6 +96,18 @@ export function deviceList() {
 
     async init(): Promise<void> {
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
+      // Watch for modal open/close to manage focus trap
+      this.$watch('showDeviceModal', (show: boolean) => {
+        if (show) {
+          setTimeout(() => {
+            const modal = document.querySelector('[role="dialog"]') as HTMLElement;
+            if (modal) this.focusTrapCleanup = createFocusTrap(modal);
+          }, 50);
+        } else {
+          this.focusTrapCleanup?.();
+          this.focusTrapCleanup = null;
+        }
+      });
     },
 
     async loadDatacenters(): Promise<void> {
@@ -288,6 +302,8 @@ export function deviceList() {
     },
 
     closeModal(): void {
+      this.focusTrapCleanup?.();
+      this.focusTrapCleanup = null;
       this.showDeviceModal = false;
     },
 
@@ -326,7 +342,27 @@ export function deviceList() {
       this.editDevice.addresses = this.editDevice.addresses?.filter((_, i) => i !== index) ?? [];
     },
 
+    validateDevice(): boolean {
+      this.validationErrors = {};
+      
+      if (!this.editDevice.name?.trim()) {
+        this.validationErrors.name = 'Device name is required';
+      }
+      
+      this.editDevice.addresses?.forEach((addr, i) => {
+        if (!addr.ip?.trim()) {
+          this.validationErrors[`addr_${i}_ip`] = 'IP address is required';
+        } else if (!isValidIP(addr.ip)) {
+          this.validationErrors[`addr_${i}_ip`] = 'Invalid IP address format';
+        }
+      });
+      
+      return Object.keys(this.validationErrors).length === 0;
+    },
+
     async saveDevice(): Promise<void> {
+      if (!this.validateDevice()) return;
+      
       this.saving = true;
       this.error = '';
       try {

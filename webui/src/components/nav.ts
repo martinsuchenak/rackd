@@ -7,7 +7,6 @@ interface NavData {
   loading: boolean;
   items: NavItem[];
   hasFeature(name: string): boolean;
-  isEnterprise: boolean;
   init(): Promise<void>;
 }
 
@@ -26,10 +25,6 @@ export function nav(): NavData {
 
     hasFeature(name: string): boolean {
       return this.config?.features.includes(name) ?? false;
-    },
-
-    get isEnterprise(): boolean {
-      return this.config?.edition === 'enterprise';
     },
 
     async init(): Promise<void> {
