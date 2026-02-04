@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"net/http"
@@ -94,16 +95,16 @@ func (s *StorageAdapter) GetDevice(id string) (*rackd.Device, error) {
 	return convertDeviceToPublic(d), nil
 }
 
-func (s *StorageAdapter) CreateDevice(device *rackd.Device) error {
-	return s.internal.CreateDevice(convertDeviceToInternal(device))
+func (s *StorageAdapter) CreateDevice(ctx context.Context, device *rackd.Device) error {
+	return s.internal.CreateDevice(ctx, convertDeviceToInternal(device))
 }
 
-func (s *StorageAdapter) UpdateDevice(device *rackd.Device) error {
-	return s.internal.UpdateDevice(convertDeviceToInternal(device))
+func (s *StorageAdapter) UpdateDevice(ctx context.Context, device *rackd.Device) error {
+	return s.internal.UpdateDevice(ctx, convertDeviceToInternal(device))
 }
 
-func (s *StorageAdapter) DeleteDevice(id string) error {
-	return s.internal.DeleteDevice(id)
+func (s *StorageAdapter) DeleteDevice(ctx context.Context, id string) error {
+	return s.internal.DeleteDevice(ctx, id)
 }
 
 func (s *StorageAdapter) ListDevices(filter *rackd.DeviceFilter) ([]rackd.Device, error) {
@@ -147,16 +148,16 @@ func (s *StorageAdapter) GetNetwork(id string) (*rackd.Network, error) {
 	return convertNetworkToPublic(n), nil
 }
 
-func (s *StorageAdapter) CreateNetwork(network *rackd.Network) error {
-	return s.internal.CreateNetwork(convertNetworkToInternal(network))
+func (s *StorageAdapter) CreateNetwork(ctx context.Context, network *rackd.Network) error {
+	return s.internal.CreateNetwork(ctx, convertNetworkToInternal(network))
 }
 
-func (s *StorageAdapter) UpdateNetwork(network *rackd.Network) error {
-	return s.internal.UpdateNetwork(convertNetworkToInternal(network))
+func (s *StorageAdapter) UpdateNetwork(ctx context.Context, network *rackd.Network) error {
+	return s.internal.UpdateNetwork(ctx, convertNetworkToInternal(network))
 }
 
-func (s *StorageAdapter) DeleteNetwork(id string) error {
-	return s.internal.DeleteNetwork(id)
+func (s *StorageAdapter) DeleteNetwork(ctx context.Context, id string) error {
+	return s.internal.DeleteNetwork(ctx, id)
 }
 
 func (s *StorageAdapter) ListNetworks(filter *rackd.NetworkFilter) ([]rackd.Network, error) {
@@ -180,12 +181,12 @@ func (s *StorageAdapter) ListNetworks(filter *rackd.NetworkFilter) ([]rackd.Netw
 }
 
 // DiscoveryStorage methods
-func (s *StorageAdapter) CreateDiscoveredDevice(device *rackd.DiscoveredDevice) error {
-	return s.internal.CreateDiscoveredDevice(convertDiscoveredDeviceToInternal(device))
+func (s *StorageAdapter) CreateDiscoveredDevice(ctx context.Context, device *rackd.DiscoveredDevice) error {
+	return s.internal.CreateDiscoveredDevice(ctx, convertDiscoveredDeviceToInternal(device))
 }
 
-func (s *StorageAdapter) UpdateDiscoveredDevice(device *rackd.DiscoveredDevice) error {
-	return s.internal.UpdateDiscoveredDevice(convertDiscoveredDeviceToInternal(device))
+func (s *StorageAdapter) UpdateDiscoveredDevice(ctx context.Context, device *rackd.DiscoveredDevice) error {
+	return s.internal.UpdateDiscoveredDevice(ctx, convertDiscoveredDeviceToInternal(device))
 }
 
 func (s *StorageAdapter) GetDiscoveredDevice(id string) (*rackd.DiscoveredDevice, error) {
@@ -216,20 +217,20 @@ func (s *StorageAdapter) ListDiscoveredDevices(networkID string) ([]rackd.Discov
 	return result, nil
 }
 
-func (s *StorageAdapter) DeleteDiscoveredDevice(id string) error {
-	return s.internal.DeleteDiscoveredDevice(id)
+func (s *StorageAdapter) DeleteDiscoveredDevice(ctx context.Context, id string) error {
+	return s.internal.DeleteDiscoveredDevice(ctx, id)
 }
 
-func (s *StorageAdapter) PromoteDiscoveredDevice(discoveredID, deviceID string) error {
-	return s.internal.PromoteDiscoveredDevice(discoveredID, deviceID)
+func (s *StorageAdapter) PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error {
+	return s.internal.PromoteDiscoveredDevice(ctx, discoveredID, deviceID)
 }
 
-func (s *StorageAdapter) CreateDiscoveryScan(scan *rackd.DiscoveryScan) error {
-	return s.internal.CreateDiscoveryScan(convertDiscoveryScanToInternal(scan))
+func (s *StorageAdapter) CreateDiscoveryScan(ctx context.Context, scan *rackd.DiscoveryScan) error {
+	return s.internal.CreateDiscoveryScan(ctx, convertDiscoveryScanToInternal(scan))
 }
 
-func (s *StorageAdapter) UpdateDiscoveryScan(scan *rackd.DiscoveryScan) error {
-	return s.internal.UpdateDiscoveryScan(convertDiscoveryScanToInternal(scan))
+func (s *StorageAdapter) UpdateDiscoveryScan(ctx context.Context, scan *rackd.DiscoveryScan) error {
+	return s.internal.UpdateDiscoveryScan(ctx, convertDiscoveryScanToInternal(scan))
 }
 
 func (s *StorageAdapter) GetDiscoveryScan(id string) (*rackd.DiscoveryScan, error) {
