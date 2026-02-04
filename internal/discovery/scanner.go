@@ -87,7 +87,7 @@ func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanT
 				scan.Status = model.ScanStatusFailed
 				scan.ErrorMessage = "panic during scan initialization"
 				scan.CompletedAt = &now
-				s.storage.UpdateDiscoveryScan(scan)
+				s.storage.UpdateDiscoveryScan(ctx, scan)
 			}
 		}()
 
@@ -97,7 +97,7 @@ func (s *DefaultScanner) Scan(ctx context.Context, network *model.Network, scanT
 			log.Info("Scan cancelled before starting", "scan_id", scan.ID)
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled before starting"
-			s.storage.UpdateDiscoveryScan(scan)
+			s.storage.UpdateDiscoveryScan(ctx, scan)
 			return
 		default:
 		}
@@ -149,7 +149,7 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 	now := time.Now()
 	scan.Status = model.ScanStatusRunning
 	scan.StartedAt = &now
-	if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Error("Failed to update scan to running", "scan_id", scan.ID, "error", err)
 		return
 	}
@@ -173,7 +173,7 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 			log.Info("Scan cancelled by context", "scan_id", scan.ID)
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled"
-			if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+			if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 				log.Error("Failed to update scan to cancelled", "scan_id", scan.ID, "error", err)
 			}
 			return
@@ -195,11 +195,11 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 					if existing != nil {
 						device.ID = existing.ID
 						device.FirstSeen = existing.FirstSeen
-						if err := s.storage.UpdateDiscoveredDevice(device); err != nil {
+						if err := s.storage.UpdateDiscoveredDevice(ctx, device); err != nil {
 							log.Error("Failed to update discovered device", "ip", ip, "error", err)
 						}
 					} else {
-						if err := s.storage.CreateDiscoveredDevice(device); err != nil {
+						if err := s.storage.CreateDiscoveredDevice(ctx, device); err != nil {
 							log.Error("Failed to create discovered device", "ip", ip, "error", err)
 						}
 					}
@@ -215,7 +215,7 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
 			mu.Unlock()
-			if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+			if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 				log.Error("Failed to update scan progress", "scan_id", scan.ID, "ip", ip, "scanned", scan.ScannedHosts, "error", err)
 			}
 		}(ip, i)
@@ -227,7 +227,7 @@ func (s *DefaultScanner) runScan(ctx context.Context, scan *model.DiscoveryScan,
 	completedAt := time.Now()
 	scan.Status = model.ScanStatusCompleted
 	scan.CompletedAt = &completedAt
-	if err := s.storage.UpdateDiscoveryScan(scan); err != nil {
+	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Error("Failed to update scan to completed", "scan_id", scan.ID, "error", err)
 	}
 

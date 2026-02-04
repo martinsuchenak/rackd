@@ -154,11 +154,11 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 	if device.Name == "" {
 		device.Name = discovered.Hostname
 	}
-	if err := h.store.CreateDevice(device); err != nil {
+	if err := h.store.CreateDevice(h.auditContext(r), device); err != nil {
 		h.internalError(w, err)
 		return
 	}
-	if err := h.store.PromoteDiscoveredDevice(discoveredID, device.ID); err != nil {
+	if err := h.store.PromoteDiscoveredDevice(h.auditContext(r), discoveredID, device.ID); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -167,7 +167,7 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveredDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDiscoveredDevice(id); err != nil {
+	if err := h.store.DeleteDiscoveredDevice(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovered device not found")
 			return
@@ -180,7 +180,7 @@ func (h *Handler) deleteDiscoveredDevice(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) deleteDiscoveryScan(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDiscoveryScan(id); err != nil {
+	if err := h.store.DeleteDiscoveryScan(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Scan not found")
 			return
@@ -244,7 +244,7 @@ func (h *Handler) createDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	if rule.IntervalHours == 0 {
 		rule.IntervalHours = 24
 	}
-	if err := h.store.SaveDiscoveryRule(rule); err != nil {
+	if err := h.store.SaveDiscoveryRule(h.auditContext(r), rule); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -290,7 +290,7 @@ func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	}
 	existing.ExcludeIPs = req.ExcludeIPs
 	existing.UpdatedAt = time.Now()
-	if err := h.store.SaveDiscoveryRule(existing); err != nil {
+	if err := h.store.SaveDiscoveryRule(h.auditContext(r), existing); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -299,7 +299,7 @@ func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDiscoveryRule(id); err != nil {
+	if err := h.store.DeleteDiscoveryRule(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrRuleNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Discovery rule not found")
 			return

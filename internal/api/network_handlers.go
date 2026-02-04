@@ -33,7 +33,7 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.store.CreateNetwork(&network); err != nil {
+	if err := h.store.CreateNetwork(h.auditContext(r), &network); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -93,7 +93,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdateNetwork(network); err != nil {
+	if err := h.store.UpdateNetwork(h.auditContext(r), network); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -102,7 +102,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteNetwork(id); err != nil {
+	if err := h.store.DeleteNetwork(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			h.writeError(w, http.StatusNotFound, "NETWORK_NOT_FOUND", "Network not found")
 			return
@@ -187,7 +187,7 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.CreateNetworkPool(&pool); err != nil {
+	if err := h.store.CreateNetworkPool(h.auditContext(r), &pool); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -252,7 +252,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdateNetworkPool(pool); err != nil {
+	if err := h.store.UpdateNetworkPool(h.auditContext(r), pool); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -261,7 +261,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteNetworkPool(id); err != nil {
+	if err := h.store.DeleteNetworkPool(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			h.writeError(w, http.StatusNotFound, "POOL_NOT_FOUND", "Pool not found")
 			return
@@ -320,7 +320,6 @@ func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, networks)
 }
 
-
 // bulkCreateNetworks handles POST /api/networks/bulk
 func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 	var networks []*model.Network
@@ -329,7 +328,7 @@ func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkCreateNetworks(networks)
+	result, err := h.store.BulkCreateNetworks(h.auditContext(r), networks)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -349,7 +348,7 @@ func (h *Handler) bulkDeleteNetworks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkDeleteNetworks(req.IDs)
+	result, err := h.store.BulkDeleteNetworks(h.auditContext(r), req.IDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

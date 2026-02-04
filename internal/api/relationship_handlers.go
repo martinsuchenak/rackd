@@ -39,7 +39,7 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be contains, connected_to, or depends_on")
 		return
 	}
-	if err := h.store.AddRelationship(parentID, req.ChildID, req.Type, req.Notes); err != nil {
+	if err := h.store.AddRelationship(h.auditContext(r), parentID, req.ChildID, req.Type, req.Notes); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Device not found")
 			return
@@ -75,7 +75,7 @@ func (h *Handler) removeRelationship(w http.ResponseWriter, r *http.Request) {
 	parentID := r.PathValue("id")
 	childID := r.PathValue("child_id")
 	relType := r.PathValue("type")
-	if err := h.store.RemoveRelationship(parentID, childID, relType); err != nil {
+	if err := h.store.RemoveRelationship(h.auditContext(r), parentID, childID, relType); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -90,14 +90,14 @@ func (h *Handler) updateRelationshipNotes(w http.ResponseWriter, r *http.Request
 	parentID := r.PathValue("id")
 	childID := r.PathValue("child_id")
 	relType := r.PathValue("type")
-	
+
 	var req updateRelationshipNotesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
-	
-	if err := h.store.UpdateRelationshipNotes(parentID, childID, relType, req.Notes); err != nil {
+
+	if err := h.store.UpdateRelationshipNotes(h.auditContext(r), parentID, childID, relType, req.Notes); err != nil {
 		h.internalError(w, err)
 		return
 	}

@@ -31,7 +31,7 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.store.CreateDatacenter(&dc); err != nil {
+	if err := h.store.CreateDatacenter(h.auditContext(r), &dc); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -85,7 +85,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdateDatacenter(dc); err != nil {
+	if err := h.store.UpdateDatacenter(h.auditContext(r), dc); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -94,7 +94,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDatacenter(id); err != nil {
+	if err := h.store.DeleteDatacenter(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
 			return

@@ -33,7 +33,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.store.CreateDevice(&device); err != nil {
+	if err := h.store.CreateDevice(h.auditContext(r), &device); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -111,7 +111,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdateDevice(device); err != nil {
+	if err := h.store.UpdateDevice(h.auditContext(r), device); err != nil {
 		h.internalError(w, err)
 		return
 	}
@@ -120,7 +120,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDevice(id); err != nil {
+	if err := h.store.DeleteDevice(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
 			return
@@ -192,7 +192,6 @@ func toAddressSlice(arr []any) []model.Address {
 	return result
 }
 
-
 // bulkCreateDevices handles POST /api/devices/bulk
 func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 	var devices []*model.Device
@@ -201,7 +200,7 @@ func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkCreateDevices(devices)
+	result, err := h.store.BulkCreateDevices(h.auditContext(r), devices)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -219,7 +218,7 @@ func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkUpdateDevices(devices)
+	result, err := h.store.BulkUpdateDevices(h.auditContext(r), devices)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -239,7 +238,7 @@ func (h *Handler) bulkDeleteDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkDeleteDevices(req.IDs)
+	result, err := h.store.BulkDeleteDevices(h.auditContext(r), req.IDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -260,7 +259,7 @@ func (h *Handler) bulkAddTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkAddTags(req.DeviceIDs, req.Tags)
+	result, err := h.store.BulkAddTags(h.auditContext(r), req.DeviceIDs, req.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -281,7 +280,7 @@ func (h *Handler) bulkRemoveTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.BulkRemoveTags(req.DeviceIDs, req.Tags)
+	result, err := h.store.BulkRemoveTags(h.auditContext(r), req.DeviceIDs, req.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

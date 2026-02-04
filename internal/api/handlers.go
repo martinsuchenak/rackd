@@ -1,13 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -33,6 +36,23 @@ func (h *Handler) SetProfileStorage(ps storage.ProfileStorage) {
 
 func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
 	h.scheduledStore = ss
+}
+
+func (h *Handler) auditContext(r *http.Request) context.Context {
+	auditCtx := &audit.Context{
+		Source: "api",
+	}
+
+	if apiKey := r.Context().Value("api_key"); apiKey != nil {
+		if key, ok := apiKey.(*model.APIKey); ok {
+			auditCtx.UserID = key.ID
+			auditCtx.Username = key.Name
+		}
+	}
+
+	auditCtx.IPAddress = r.RemoteAddr
+
+	return audit.WithContext(r.Context(), auditCtx)
 }
 
 type HandlerOption func(*handlerConfig)
