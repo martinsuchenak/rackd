@@ -26,7 +26,7 @@ func (m *mockScanner) Scan(ctx context.Context, network *model.Network, scanType
 		ScanType:   scanType,
 		TotalHosts: 256,
 	}
-	if err := m.store.CreateDiscoveryScan(scan); err != nil {
+	if err := m.store.CreateDiscoveryScan(context.Background(), scan); err != nil {
 		return nil, err
 	}
 	return scan, nil
@@ -59,7 +59,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	// Create a network for discovery tests
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(network)
+	store.CreateNetwork(context.Background(), network)
 
 	var scanID string
 
@@ -207,7 +207,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(network)
+	store.CreateNetwork(context.Background(), network)
 
 	var ruleID string
 
@@ -375,7 +375,7 @@ func TestPromoteDevice(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(network)
+	store.CreateNetwork(context.Background(), network)
 
 	discovered := &model.DiscoveredDevice{
 		IP:        "192.168.1.100",
@@ -383,7 +383,7 @@ func TestPromoteDevice(t *testing.T) {
 		NetworkID: network.ID,
 		Status:    "active",
 	}
-	store.CreateDiscoveredDevice(discovered)
+	store.CreateDiscoveredDevice(context.Background(), discovered)
 
 	t.Run("PromoteDevice", func(t *testing.T) {
 		body := `{"name":"promoted-device","make_model":"Dell R640"}`
@@ -406,7 +406,7 @@ func TestPromoteDevice(t *testing.T) {
 	t.Run("PromoteDevice_WithDatacenter", func(t *testing.T) {
 		// Create a datacenter first
 		dc := &model.Datacenter{Name: "Test DC", Location: "NYC"}
-		store.CreateDatacenter(dc)
+		store.CreateDatacenter(context.Background(), dc)
 
 		// Create another discovered device
 		discovered2 := &model.DiscoveredDevice{
@@ -415,7 +415,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(discovered2)
+		store.CreateDiscoveredDevice(context.Background(), discovered2)
 
 		body := `{"name":"promoted-device-2","make_model":"HP DL380","datacenter_id":"` + dc.ID + `"}`
 		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered2.ID+"/promote", bytes.NewBufferString(body))
@@ -436,7 +436,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(discovered3)
+		store.CreateDiscoveredDevice(context.Background(), discovered3)
 
 		// Empty name should use hostname
 		body := `{}`
@@ -476,7 +476,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(discovered4)
+		store.CreateDiscoveredDevice(context.Background(), discovered4)
 
 		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered4.ID+"/promote", bytes.NewBufferString("invalid"))
 		w := httptest.NewRecorder()

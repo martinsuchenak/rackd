@@ -29,7 +29,7 @@ func (m *mockIntegrationScanner) Scan(ctx context.Context, network *model.Networ
 		ScanType:   scanType,
 		TotalHosts: 256,
 	}
-	if err := m.store.CreateDiscoveryScan(scan); err != nil {
+	if err := m.store.CreateDiscoveryScan(ctx, scan); err != nil {
 		return nil, err
 	}
 	return scan, nil

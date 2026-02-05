@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
@@ -106,11 +107,11 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 
 	switch format {
 	case "csv":
-		data, err = ExportAuditLogsCSV(logs)
+		data, err = audit.ExportAuditLogsCSV(logs)
 		contentType = "text/csv"
 		filename = "audit-logs.csv"
 	default:
-		data, err = ExportAuditLogsJSON(logs)
+		data, err = audit.ExportAuditLogsJSON(logs)
 		contentType = "application/json"
 		filename = "audit-logs.json"
 	}

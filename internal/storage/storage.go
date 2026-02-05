@@ -94,7 +94,7 @@ type DiscoveryStorage interface {
 	GetDiscoveredDeviceByIP(networkID, ip string) (*model.DiscoveredDevice, error)
 	ListDiscoveredDevices(networkID string) ([]model.DiscoveredDevice, error)
 	DeleteDiscoveredDevice(ctx context.Context, id string) error
-	DeleteDiscoveredDevicesByNetwork(networkID string) error
+	DeleteDiscoveredDevicesByNetwork(ctx context.Context, networkID string) error
 	PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error
 
 	// Discovery scans

@@ -45,7 +45,7 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Scan request received", "network_id", networkID, "network_name", network.Name, "subnet", network.Subnet, "scan_type", req.ScanType)
 
-	scan, err := h.scanner.Scan(r.Context(), network, req.ScanType)
+	scan, err := h.scanner.Scan(h.auditContext(r), network, req.ScanType)
 	if err != nil {
 		log.Error("Failed to start scan", "network_id", networkID, "network_name", network.Name, "error", err)
 		h.internalError(w, err)
@@ -193,7 +193,7 @@ func (h *Handler) deleteDiscoveryScan(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteDiscoveredDevicesByNetwork(w http.ResponseWriter, r *http.Request) {
 	networkID := r.URL.Query().Get("network_id")
-	if err := h.store.DeleteDiscoveredDevicesByNetwork(networkID); err != nil {
+	if err := h.store.DeleteDiscoveredDevicesByNetwork(h.auditContext(r), networkID); err != nil {
 		h.internalError(w, err)
 		return
 	}

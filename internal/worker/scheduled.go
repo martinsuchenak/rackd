@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -27,7 +28,12 @@ func NewScheduledScanWorker(
 	profileStore storage.ProfileStorage,
 	discoveryService *discovery.AdvancedDiscoveryService,
 ) *ScheduledScanWorker {
-	ctx, cancel := context.WithCancel(context.Background())
+	// Create base context with audit info for scheduler operations
+	baseCtx := context.Background()
+	auditCtx := audit.WithContext(baseCtx, &audit.Context{
+		Source: "scheduler",
+	})
+	ctx, cancel := context.WithCancel(auditCtx)
 	return &ScheduledScanWorker{
 		scheduledStore:   scheduledStore,
 		profileStore:     profileStore,

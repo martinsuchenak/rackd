@@ -448,20 +448,29 @@ func (s *SQLiteStorage) DeleteDiscoveryScan(ctx context.Context, id string) erro
 }
 
 // DeleteDiscoveredDevicesByNetwork removes all discovered devices for a network (or all if networkID is empty)
-func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(networkID string) error {
+func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(ctx context.Context, networkID string) error {
 	var err error
 
 	if networkID == "" {
 		// Delete ALL discovered devices
-		_, err = s.db.ExecContext(context.Background(),
+		_, err = s.db.ExecContext(ctx,
 			"DELETE FROM discovered_devices")
 	} else {
 		// Delete devices for specific network
-		_, err = s.db.ExecContext(context.Background(),
+		_, err = s.db.ExecContext(ctx,
 			"DELETE FROM discovered_devices WHERE network_id = ?", networkID)
 	}
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	resourceID := "all"
+	if networkID != "" {
+		resourceID = "network:" + networkID
+	}
+	s.auditLog(ctx, "delete", "discovered_device", resourceID, nil)
+	return nil
 }
 
 // CleanupOldDiscoveries removes discovered devices older than specified days

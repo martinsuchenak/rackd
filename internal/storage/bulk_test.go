@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -19,7 +20,7 @@ func TestBulkCreateDevices(t *testing.T) {
 		{Name: "device3", Hostname: "host3.example.com"},
 	}
 
-	result, err := store.BulkCreateDevices(devices)
+	result, err := store.BulkCreateDevices(context.Background(), devices)
 	if err != nil {
 		t.Fatalf("BulkCreateDevices failed: %v", err)
 	}
@@ -49,13 +50,13 @@ func TestBulkDeleteDevices(t *testing.T) {
 		{Name: "device3"},
 	}
 	for _, d := range devices {
-		if err := store.CreateDevice(d); err != nil {
+		if err := store.CreateDevice(context.Background(), d); err != nil {
 			t.Fatalf("failed to create device: %v", err)
 		}
 	}
 
 	ids := []string{devices[0].ID, devices[1].ID, devices[2].ID}
-	result, err := store.BulkDeleteDevices(ids)
+	result, err := store.BulkDeleteDevices(context.Background(), ids)
 	if err != nil {
 		t.Fatalf("BulkDeleteDevices failed: %v", err)
 	}
@@ -81,15 +82,15 @@ func TestBulkAddTags(t *testing.T) {
 		{Name: "device2"},
 	}
 	for _, d := range devices {
-		if err := store.CreateDevice(d); err != nil {
+		if err := store.CreateDevice(context.Background(), d); err != nil {
 			t.Fatalf("failed to create device: %v", err)
 		}
 	}
 
 	ids := []string{devices[0].ID, devices[1].ID}
 	tags := []string{"prod", "web"}
-	
-	result, err := store.BulkAddTags(ids, tags)
+
+	result, err := store.BulkAddTags(context.Background(), ids, tags)
 	if err != nil {
 		t.Fatalf("BulkAddTags failed: %v", err)
 	}
@@ -118,15 +119,15 @@ func TestBulkRemoveTags(t *testing.T) {
 		{Name: "device2", Tags: []string{"prod", "db"}},
 	}
 	for _, d := range devices {
-		if err := store.CreateDevice(d); err != nil {
+		if err := store.CreateDevice(context.Background(), d); err != nil {
 			t.Fatalf("failed to create device: %v", err)
 		}
 	}
 
 	ids := []string{devices[0].ID, devices[1].ID}
 	tags := []string{"prod"}
-	
-	result, err := store.BulkRemoveTags(ids, tags)
+
+	result, err := store.BulkRemoveTags(context.Background(), ids, tags)
 	if err != nil {
 		t.Fatalf("BulkRemoveTags failed: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestBulkCreateNetworks(t *testing.T) {
 		{Name: "net2", Subnet: "10.0.2.0/24"},
 	}
 
-	result, err := store.BulkCreateNetworks(networks)
+	result, err := store.BulkCreateNetworks(context.Background(), networks)
 	if err != nil {
 		t.Fatalf("BulkCreateNetworks failed: %v", err)
 	}
@@ -180,13 +181,13 @@ func TestBulkDeleteNetworks(t *testing.T) {
 		{Name: "net2", Subnet: "10.0.2.0/24"},
 	}
 	for _, n := range networks {
-		if err := store.CreateNetwork(n); err != nil {
+		if err := store.CreateNetwork(context.Background(), n); err != nil {
 			t.Fatalf("failed to create network: %v", err)
 		}
 	}
 
 	ids := []string{networks[0].ID, networks[1].ID}
-	result, err := store.BulkDeleteNetworks(ids)
+	result, err := store.BulkDeleteNetworks(context.Background(), ids)
 	if err != nil {
 		t.Fatalf("BulkDeleteNetworks failed: %v", err)
 	}

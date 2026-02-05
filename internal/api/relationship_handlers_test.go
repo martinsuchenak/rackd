@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -21,9 +22,9 @@ func TestRelationshipHandlers(t *testing.T) {
 	device1 := &model.Device{Name: "parent-device"}
 	device2 := &model.Device{Name: "child-device"}
 	device3 := &model.Device{Name: "another-child"}
-	store.CreateDevice(device1)
-	store.CreateDevice(device2)
-	store.CreateDevice(device3)
+	store.CreateDevice(context.Background(), device1)
+	store.CreateDevice(context.Background(), device2)
+	store.CreateDevice(context.Background(), device3)
 
 	t.Run("AddRelationship_Contains", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `","type":"contains"}`

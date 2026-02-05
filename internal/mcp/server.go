@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paularlott/mcp"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -201,6 +202,13 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	s.mcpServer.HandleRequest(w, r)
 }
 
+// auditContext wraps the given context with audit information for MCP operations
+func (s *Server) auditContext(ctx context.Context) context.Context {
+	return audit.WithContext(ctx, &audit.Context{
+		Source: "mcp",
+	})
+}
+
 // Device handlers
 
 func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
@@ -230,13 +238,14 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 		}
 	}
 
+	auditCtx := s.auditContext(ctx)
 	if id == "" {
 		device.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDevice(ctx, device); err != nil {
+		if err := s.storage.CreateDevice(auditCtx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDevice(ctx, device); err != nil {
+		if err := s.storage.UpdateDevice(auditCtx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -276,7 +285,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 
 func (s *Server) handleDeviceDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	if err := s.storage.DeleteDevice(ctx, id); err != nil {
+	if err := s.storage.DeleteDevice(s.auditContext(ctx), id); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
@@ -294,7 +303,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 		return nil, mcp.NewToolErrorInvalidParams("type must be one of: contains, connected_to, depends_on")
 	}
 
-	if err := s.storage.AddRelationship(ctx, parentID, childID, relType, notes); err != nil {
+	if err := s.storage.AddRelationship(s.auditContext(ctx), parentID, childID, relType, notes); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil
@@ -330,13 +339,14 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 		Description: req.StringOr("description", ""),
 	}
 
+	auditCtx := s.auditContext(ctx)
 	if id == "" {
 		dc.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDatacenter(ctx, dc); err != nil {
+		if err := s.storage.CreateDatacenter(auditCtx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDatacenter(ctx, dc); err != nil {
+		if err := s.storage.UpdateDatacenter(auditCtx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -371,13 +381,14 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 		Description:  req.StringOr("description", ""),
 	}
 
+	auditCtx := s.auditContext(ctx)
 	if id == "" {
 		network.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateNetwork(ctx, network); err != nil {
+		if err := s.storage.CreateNetwork(auditCtx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateNetwork(ctx, network); err != nil {
+		if err := s.storage.UpdateNetwork(auditCtx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -415,7 +426,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 		StartedAt: &now,
 	}
 
-	if err := s.storage.CreateDiscoveryScan(ctx, scan); err != nil {
+	if err := s.storage.CreateDiscoveryScan(s.auditContext(ctx), scan); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
@@ -453,11 +464,12 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 		device.Domains = append(device.Domains, discovered.Hostname)
 	}
 
-	if err := s.storage.CreateDevice(ctx, device); err != nil {
+	auditCtx := s.auditContext(ctx)
+	if err := s.storage.CreateDevice(auditCtx, device); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
-	if err := s.storage.PromoteDiscoveredDevice(ctx, discoveredID, device.ID); err != nil {
+	if err := s.storage.PromoteDiscoveredDevice(auditCtx, discoveredID, device.ID); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 

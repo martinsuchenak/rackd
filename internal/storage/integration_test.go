@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -19,16 +20,17 @@ func TestDeviceLifecycle(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create datacenter first (for device association)
 	dc := &model.Datacenter{Name: "Test DC", Location: "Test Location"}
-	if err := store.CreateDatacenter(dc); err != nil {
+	if err := store.CreateDatacenter(ctx, dc); err != nil {
 		t.Fatalf("failed to create datacenter: %v", err)
 	}
 
 	// Create network (for device address)
 	network := &model.Network{Name: "Test Network", Subnet: "10.0.0.0/24", DatacenterID: dc.ID}
-	if err := store.CreateNetwork(network); err != nil {
+	if err := store.CreateNetwork(ctx, network); err != nil {
 		t.Fatalf("failed to create network: %v", err)
 	}
 
@@ -43,7 +45,7 @@ func TestDeviceLifecycle(t *testing.T) {
 			{IP: "10.0.0.10", Type: "ipv4", NetworkID: network.ID},
 		},
 	}
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(ctx, device); err != nil {
 		t.Fatalf("CREATE failed: %v", err)
 	}
 	if device.ID == "" {
@@ -70,7 +72,7 @@ func TestDeviceLifecycle(t *testing.T) {
 	retrieved.Name = "updated-device"
 	retrieved.Tags = []string{"updated"}
 	retrieved.Addresses = append(retrieved.Addresses, model.Address{IP: "10.0.0.11", Type: "ipv4", NetworkID: network.ID})
-	if err := store.UpdateDevice(retrieved); err != nil {
+	if err := store.UpdateDevice(ctx, retrieved); err != nil {
 		t.Fatalf("UPDATE failed: %v", err)
 	}
 
@@ -90,7 +92,7 @@ func TestDeviceLifecycle(t *testing.T) {
 	}
 
 	// 4. DELETE
-	if err := store.DeleteDevice(deviceID); err != nil {
+	if err := store.DeleteDevice(ctx, deviceID); err != nil {
 		t.Fatalf("DELETE failed: %v", err)
 	}
 
@@ -107,10 +109,11 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create network first
 	network := &model.Network{Name: "Pool Test Network", Subnet: "192.168.1.0/24"}
-	if err := store.CreateNetwork(network); err != nil {
+	if err := store.CreateNetwork(ctx, network); err != nil {
 		t.Fatalf("failed to create network: %v", err)
 	}
 
@@ -122,7 +125,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 		EndIP:     "192.168.1.110",
 		Tags:      []string{"dhcp"},
 	}
-	if err := store.CreateNetworkPool(pool); err != nil {
+	if err := store.CreateNetworkPool(ctx, pool); err != nil {
 		t.Fatalf("CREATE pool failed: %v", err)
 	}
 	poolID := pool.ID
@@ -164,12 +167,12 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 
 	// 5. UPDATE pool
 	retrieved.Name = "Updated Pool"
-	if err := store.UpdateNetworkPool(retrieved); err != nil {
+	if err := store.UpdateNetworkPool(ctx, retrieved); err != nil {
 		t.Fatalf("UPDATE pool failed: %v", err)
 	}
 
 	// 6. DELETE pool
-	if err := store.DeleteNetworkPool(poolID); err != nil {
+	if err := store.DeleteNetworkPool(ctx, poolID); err != nil {
 		t.Fatalf("DELETE pool failed: %v", err)
 	}
 
@@ -185,10 +188,11 @@ func TestDiscoveryLifecycle(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create network
 	network := &model.Network{Name: "Discovery Network", Subnet: "10.10.0.0/24"}
-	if err := store.CreateNetwork(network); err != nil {
+	if err := store.CreateNetwork(ctx, network); err != nil {
 		t.Fatalf("failed to create network: %v", err)
 	}
 
@@ -198,7 +202,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 		ScanType:  model.ScanTypeQuick,
 		Status:    model.ScanStatusPending,
 	}
-	if err := store.CreateDiscoveryScan(scan); err != nil {
+	if err := store.CreateDiscoveryScan(ctx, scan); err != nil {
 		t.Fatalf("CREATE scan failed: %v", err)
 	}
 
@@ -206,7 +210,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 	now := time.Now()
 	scan.Status = model.ScanStatusRunning
 	scan.StartedAt = &now
-	if err := store.UpdateDiscoveryScan(scan); err != nil {
+	if err := store.UpdateDiscoveryScan(ctx, scan); err != nil {
 		t.Fatalf("UPDATE scan failed: %v", err)
 	}
 
@@ -221,7 +225,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 		FirstSeen: time.Now(),
 		LastSeen:  time.Now(),
 	}
-	if err := store.CreateDiscoveredDevice(discovered); err != nil {
+	if err := store.CreateDiscoveredDevice(ctx, discovered); err != nil {
 		t.Fatalf("CREATE discovered device failed: %v", err)
 	}
 
@@ -236,10 +240,10 @@ func TestDiscoveryLifecycle(t *testing.T) {
 
 	// 5. Promote to device
 	device := &model.Device{Name: "promoted-device", MakeModel: "Unknown"}
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(ctx, device); err != nil {
 		t.Fatalf("CREATE device for promotion failed: %v", err)
 	}
-	if err := store.PromoteDiscoveredDevice(discovered.ID, device.ID); err != nil {
+	if err := store.PromoteDiscoveredDevice(ctx, discovered.ID, device.ID); err != nil {
 		t.Fatalf("PromoteDiscoveredDevice failed: %v", err)
 	}
 
@@ -257,7 +261,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 	scan.Status = model.ScanStatusCompleted
 	scan.CompletedAt = &completedAt
 	scan.FoundHosts = 1
-	if err := store.UpdateDiscoveryScan(scan); err != nil {
+	if err := store.UpdateDiscoveryScan(ctx, scan); err != nil {
 		t.Fatalf("UPDATE scan completion failed: %v", err)
 	}
 }
@@ -268,20 +272,21 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create parent and child devices
 	parent := &model.Device{Name: "parent-device", MakeModel: "Rack"}
-	if err := store.CreateDevice(parent); err != nil {
+	if err := store.CreateDevice(ctx, parent); err != nil {
 		t.Fatalf("CREATE parent failed: %v", err)
 	}
 
 	child := &model.Device{Name: "child-device", MakeModel: "Server"}
-	if err := store.CreateDevice(child); err != nil {
+	if err := store.CreateDevice(ctx, child); err != nil {
 		t.Fatalf("CREATE child failed: %v", err)
 	}
 
 	// 1. Add relationship
-	if err := store.AddRelationship(parent.ID, child.ID, model.RelationshipContains, ""); err != nil {
+	if err := store.AddRelationship(ctx, parent.ID, child.ID, model.RelationshipContains, ""); err != nil {
 		t.Fatalf("AddRelationship failed: %v", err)
 	}
 
@@ -304,7 +309,7 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	// 4. Remove relationship
-	if err := store.RemoveRelationship(parent.ID, child.ID, model.RelationshipContains); err != nil {
+	if err := store.RemoveRelationship(ctx, parent.ID, child.ID, model.RelationshipContains); err != nil {
 		t.Fatalf("RemoveRelationship failed: %v", err)
 	}
 
@@ -349,7 +354,7 @@ func TestMigrationOnFreshDB(t *testing.T) {
 
 	// Verify we can perform basic operations
 	device := &model.Device{Name: "migration-test", MakeModel: "Test"}
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(context.Background(), device); err != nil {
 		t.Errorf("failed to create device after migration: %v", err)
 	}
 }
@@ -360,10 +365,11 @@ func TestConcurrentDeviceAccess(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create initial device
 	device := &model.Device{Name: "concurrent-test", MakeModel: "Test", Tags: []string{}}
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(ctx, device); err != nil {
 		t.Fatalf("CREATE failed: %v", err)
 	}
 
@@ -408,6 +414,7 @@ func TestConcurrentWrites(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	var wg sync.WaitGroup
 	errors := make(chan error, 10)
@@ -422,7 +429,7 @@ func TestConcurrentWrites(t *testing.T) {
 				MakeModel: "Test",
 				Tags:      []string{},
 			}
-			if err := store.CreateDevice(device); err != nil {
+			if err := store.CreateDevice(ctx, device); err != nil {
 				errors <- err
 			}
 		}(i)
@@ -451,10 +458,11 @@ func TestConcurrentPoolOperations(t *testing.T) {
 	}
 
 	store := newTestStorage(t)
+	ctx := context.Background()
 
 	// Create network and pool
 	network := &model.Network{Name: "Concurrent Pool Network", Subnet: "172.16.0.0/24"}
-	if err := store.CreateNetwork(network); err != nil {
+	if err := store.CreateNetwork(ctx, network); err != nil {
 		t.Fatalf("failed to create network: %v", err)
 	}
 
@@ -465,7 +473,7 @@ func TestConcurrentPoolOperations(t *testing.T) {
 		EndIP:     "172.16.0.100",
 		Tags:      []string{},
 	}
-	if err := store.CreateNetworkPool(pool); err != nil {
+	if err := store.CreateNetworkPool(ctx, pool); err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 

@@ -95,9 +95,9 @@ func RunWithAdvancedFeatures(
 		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)
 	if cfg.AuditEnabled {
-		log.Info("Audit logging enabled", "retention_days", cfg.AuditRetentionDays)
-		httpHandler = api.AuditMiddleware(store)(httpHandler)
+		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
 	}
 
 	server := &http.Server{
@@ -177,9 +177,9 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)
 	if cfg.AuditEnabled {
-		log.Info("Audit logging enabled", "retention_days", cfg.AuditRetentionDays)
-		httpHandler = api.AuditMiddleware(store)(httpHandler)
+		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
 	}
 
 	server := &http.Server{

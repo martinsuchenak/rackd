@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,20 +19,21 @@ func TestSearch(t *testing.T) {
 	defer store.Close()
 
 	handler := NewHandler(store, nil)
+	ctx := context.Background()
 
 	// Create test data
 	dc := &model.Datacenter{Name: "NYC Datacenter", Location: "New York"}
-	if err := store.CreateDatacenter(dc); err != nil {
+	if err := store.CreateDatacenter(ctx, dc); err != nil {
 		t.Fatalf("Failed to create datacenter: %v", err)
 	}
 
 	net := &model.Network{Name: "Production Network", Subnet: "10.0.0.0/24"}
-	if err := store.CreateNetwork(net); err != nil {
+	if err := store.CreateNetwork(ctx, net); err != nil {
 		t.Fatalf("Failed to create network: %v", err)
 	}
 
 	dev := &model.Device{Name: "web-server", Description: "Production server"}
-	if err := store.CreateDevice(dev); err != nil {
+	if err := store.CreateDevice(ctx, dev); err != nil {
 		t.Fatalf("Failed to create device: %v", err)
 	}
 
