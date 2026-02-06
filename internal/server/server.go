@@ -73,6 +73,10 @@ func RunWithAdvancedFeatures(
 	handler.SetCredentialsStorage(credStore)
 	handler.SetProfileStorage(profileStore)
 	handler.SetScheduledScanStorage(scheduledStore)
+	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
+	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
+	handler.SetTrustProxy(cfg.TrustProxy)
+	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
 	handler.RegisterRoutes(mux)
 
 	// MCP server
@@ -105,7 +109,7 @@ func RunWithAdvancedFeatures(
 	if cfg.RateLimitEnabled {
 		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
 		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
+		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)
@@ -169,6 +173,9 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
+	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
+	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
+	handler.SetTrustProxy(cfg.TrustProxy)
 	handler.RegisterRoutes(mux)
 
 	// MCP server
@@ -198,7 +205,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	if cfg.RateLimitEnabled {
 		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
 		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter)(httpHandler)
+		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)

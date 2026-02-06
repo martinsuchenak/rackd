@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +24,8 @@ const (
 	APIKeyContextKey  contextKey = "apikey"
 	SessionContextKey contextKey = "session"
 	UserContextKey    contextKey = "user"
+
+	sessionCookieName = "rackd_session"
 )
 
 // LoggingMiddleware logs all HTTP requests and records metrics
@@ -80,7 +84,7 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 		// Try API key authentication
 		if store != nil {
 			key, err := store.GetAPIKeyByKey(providedToken)
-			if err == nil {
+			if err == nil && subtle.ConstantTimeCompare([]byte(providedToken), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
 					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
@@ -109,20 +113,34 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 // AuthMiddlewareWithSessions validates API keys and sessions
 func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *auth.SessionManager, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			log.Debug("Auth failed: missing Bearer prefix", "path", r.URL.Path)
+		// Try session authentication via cookie first
+		if sessionManager != nil {
+			if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
+				session, err := sessionManager.GetSession(cookie.Value)
+				if err == nil {
+					sessionManager.RefreshSession(cookie.Value)
+					log.Trace("Auth successful (session cookie)", "path", r.URL.Path, "username", session.Username)
+					r = r.WithContext(context.WithValue(r.Context(), SessionContextKey, session))
+					next(w, r)
+					return
+				}
+			}
+		}
+
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			log.Debug("Auth failed: no session cookie or Bearer token", "path", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 			return
 		}
 
-		providedToken := strings.TrimPrefix(auth, "Bearer ")
+		providedToken := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// Try API key authentication
 		if store != nil {
 			key, err := store.GetAPIKeyByKey(providedToken)
-			if err == nil {
+			if err == nil && subtle.ConstantTimeCompare([]byte(providedToken), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
 					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
@@ -137,22 +155,6 @@ func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *aut
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
-				next(w, r)
-				return
-			}
-		}
-
-		// Try session authentication
-		if sessionManager != nil {
-			session, err := sessionManager.GetSession(providedToken)
-			if err == nil {
-				// Refresh session
-				go func() {
-					sessionManager.RefreshSession(providedToken)
-				}()
-
-				log.Trace("Auth successful (session)", "path", r.URL.Path, "username", session.Username)
-				r = r.WithContext(context.WithValue(r.Context(), SessionContextKey, session))
 				next(w, r)
 				return
 			}
@@ -190,6 +192,29 @@ func SecurityHeaders(next http.Handler) http.Handler {
 func LimitBody(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
+		next(w, r)
+	}
+}
+
+// LoginRateLimitMiddleware wraps a handler with a strict per-IP rate limiter
+// for the login endpoint. Unlike the global rate limiter, this does NOT bypass localhost.
+func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientID := getClientIP(r, trustProxy)
+
+		if !limiter.Allow(clientID) {
+			resetTime := limiter.GetResetTime(clientID)
+			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", limiter.requests))
+			w.Header().Set("X-RateLimit-Remaining", "0")
+			w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC3339))
+			w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
+
+			log.Warn("Login rate limit exceeded", "client", clientID)
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, `{"error":"Too many login attempts. Please try again later.","code":"LOGIN_RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
+			return
+		}
+
 		next(w, r)
 	}
 }

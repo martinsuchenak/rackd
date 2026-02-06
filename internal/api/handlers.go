@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/auth"
@@ -21,7 +22,11 @@ type Handler struct {
 	credStore      credentials.Storage
 	profileStore   storage.ProfileStorage
 	scheduledStore storage.ScheduledScanStorage
-	sessionManager *auth.SessionManager
+	sessionManager   *auth.SessionManager
+	loginRateLimiter *RateLimiter
+	cookieSecure     bool
+	sessionTTL       time.Duration
+	trustProxy       bool
 }
 
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
@@ -42,6 +47,19 @@ func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
 
 func (h *Handler) SetSessionManager(sm *auth.SessionManager) {
 	h.sessionManager = sm
+}
+
+func (h *Handler) SetLoginRateLimiter(rl *RateLimiter) {
+	h.loginRateLimiter = rl
+}
+
+func (h *Handler) SetCookieConfig(secure bool, sessionTTL time.Duration) {
+	h.cookieSecure = secure
+	h.sessionTTL = sessionTTL
+}
+
+func (h *Handler) SetTrustProxy(trustProxy bool) {
+	h.trustProxy = trustProxy
 }
 
 func (h *Handler) auditContext(r *http.Request) context.Context {
@@ -215,7 +233,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/audit/{id}", wrap(h.getAuditLog))
 
 	// Auth routes (no auth required for login)
-	mux.HandleFunc("POST /api/auth/login", LimitBody(h.login))
+	loginHandler := LimitBody(h.login)
+	if h.loginRateLimiter != nil {
+		loginHandler = LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, loginHandler)
+	}
+	mux.HandleFunc("POST /api/auth/login", loginHandler)
 	mux.HandleFunc("POST /api/auth/logout", wrapAuth(h.logout))
 	mux.HandleFunc("GET /api/auth/me", wrapAuth(h.getCurrentUser))
 
@@ -231,8 +253,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)
 
-	// Metrics route (no auth required)
-	mux.HandleFunc("GET /metrics", h.metricsHandler)
+	// Metrics route (requires auth)
+	mux.HandleFunc("GET /metrics", wrap(h.metricsHandler))
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

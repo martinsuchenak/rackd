@@ -76,8 +76,17 @@ func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager
 		cfg.UserInfo = nil
 
 		if sessionManager != nil {
-			if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
-				token := strings.TrimPrefix(authHeader, "Bearer ")
+			var token string
+
+			// Check session cookie first
+			if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
+				token = cookie.Value
+			} else if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+				// Fall back to Authorization header
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+
+			if token != "" {
 				if session, err := sessionManager.GetSession(token); err == nil {
 					roles := []string{"user"}
 					if session.IsAdmin {

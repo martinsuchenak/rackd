@@ -151,9 +151,12 @@ export function userMenu() {
       }
     },
 
-    logout(): void {
-      localStorage.removeItem('rackd_token');
-      api.setToken('');
+    async logout(): Promise<void> {
+      try {
+        await api.logout();
+      } catch {
+        // Continue with redirect even if server call fails
+      }
       window.location.href = '/login';
     },
   };

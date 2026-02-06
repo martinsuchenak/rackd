@@ -53,7 +53,7 @@ func TestRateLimiterGetRemaining(t *testing.T) {
 
 func TestRateLimitMiddleware(t *testing.T) {
 	limiter := NewRateLimiter(2, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter)
+	middleware := RateLimitMiddleware(limiter, false)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -97,7 +97,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 
 func TestRateLimitMiddlewareLocalhostBypass(t *testing.T) {
 	limiter := NewRateLimiter(1, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter)
+	middleware := RateLimitMiddleware(limiter, false)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -120,7 +120,7 @@ func TestRateLimitMiddlewareLocalhostBypass(t *testing.T) {
 
 func TestRateLimitMiddlewareAPIKey(t *testing.T) {
 	limiter := NewRateLimiter(2, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter)
+	middleware := RateLimitMiddleware(limiter, false)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -164,7 +164,7 @@ func TestRateLimitMiddlewareAPIKey(t *testing.T) {
 	}
 }
 
-func TestGetClientIP(t *testing.T) {
+func TestGetClientIP_TrustProxy(t *testing.T) {
 	tests := []struct {
 		name       string
 		remoteAddr string
@@ -189,11 +189,24 @@ func TestGetClientIP(t *testing.T) {
 				req.Header.Set("X-Real-IP", tt.xri)
 			}
 
-			ip := getClientIP(req)
+			ip := getClientIP(req, true)
 			if ip != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, ip)
 			}
 		})
+	}
+}
+
+func TestGetClientIP_NoTrustProxy(t *testing.T) {
+	// When trustProxy is false, X-Forwarded-For and X-Real-IP should be ignored
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.1.1:1234"
+	req.Header.Set("X-Forwarded-For", "10.0.0.1")
+	req.Header.Set("X-Real-IP", "10.0.0.2")
+
+	ip := getClientIP(req, false)
+	if ip != "192.168.1.1" {
+		t.Errorf("Expected 192.168.1.1 (RemoteAddr), got %s (proxy headers should be ignored)", ip)
 	}
 }
 

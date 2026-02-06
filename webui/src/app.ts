@@ -171,13 +171,7 @@ function themeToggle() {
 async function init(): Promise<void> {
   window.rackdAPI = api;
 
-  // Restore token from localStorage
-  const storedToken = localStorage.getItem('rackd_token');
-  if (storedToken) {
-    api.setToken(storedToken);
-  }
-
-  // Fetch config
+  // Fetch config (session cookie is sent automatically)
   try {
     window.rackdConfig = await api.getConfig();
   } catch {

@@ -1,7 +1,7 @@
 // Login Component for Rackd Web UI
 
-import type { LoginRequest, LoginResponse, User } from '../core/types';
-import { api, RackdAPIError } from '../core/api';
+import type { LoginRequest } from '../core/types';
+import { api } from '../core/api';
 
 interface LoginData {
   username: string;
@@ -53,6 +53,7 @@ export function login() {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify(request),
         });
 
@@ -63,15 +64,7 @@ export function login() {
           return;
         }
 
-        const loginResponse = data as LoginResponse;
-        
-        // Store token in localStorage
-        localStorage.setItem('rackd_token', loginResponse.token);
-        
-        // Set token on API client
-        api.setToken(loginResponse.token);
-
-        // Redirect to home
+        // Cookie is set by the server (httpOnly) — just redirect
         window.location.href = '/';
       } catch (err) {
         this.showError('Network error. Please try again.');

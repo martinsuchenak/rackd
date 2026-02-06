@@ -61,21 +61,14 @@ export class RackdAPIError extends Error {
 
 export interface RackdAPIOptions {
   baseURL?: string;
-  token?: string;
 }
 
 export class RackdAPI {
   private baseURL: string;
-  private token?: string;
   private inFlightRequests: Map<string, Promise<unknown>> = new Map();
 
   constructor(options: RackdAPIOptions = {}) {
     this.baseURL = options.baseURL || '';
-    this.token = options.token;
-  }
-
-  setToken(token: string): void {
-    this.token = token;
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -87,14 +80,12 @@ export class RackdAPI {
     }
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
 
     const requestPromise = (async () => {
       const response = await fetch(`${this.baseURL}${path}`, {
         method,
         headers,
+        credentials: 'same-origin',
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
 

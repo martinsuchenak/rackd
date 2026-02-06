@@ -24,11 +24,15 @@ type Config struct {
 	RateLimitWindow        time.Duration
 	AuditEnabled           bool
 	AuditRetentionDays     int
-	SessionTTL             time.Duration
-	InitialAdminUsername   string
-	InitialAdminPassword   string
-	InitialAdminEmail      string
-	InitialAdminFullName   string
+	SessionTTL               time.Duration
+	LoginRateLimitRequests   int
+	LoginRateLimitWindow     time.Duration
+	CookieSecure             bool
+	TrustProxy               bool
+	InitialAdminUsername     string
+	InitialAdminPassword     string
+	InitialAdminEmail        string
+	InitialAdminFullName     string
 }
 
 var cfg Config
@@ -52,6 +56,10 @@ func Load() *Config {
 		AuditEnabled:           getBoolEnv("AUDIT_ENABLED", false),
 		AuditRetentionDays:     getIntEnv("AUDIT_RETENTION_DAYS", 90),
 		SessionTTL:             getDurationEnv("SESSION_TTL", 24*time.Hour),
+		LoginRateLimitRequests: getIntEnv("LOGIN_RATE_LIMIT_REQUESTS", 5),
+		LoginRateLimitWindow:   getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
+		CookieSecure:           getBoolEnv("COOKIE_SECURE", true),
+		TrustProxy:             getBoolEnv("TRUST_PROXY", false),
 		InitialAdminUsername:   getEnv("INITIAL_ADMIN_USERNAME", ""),
 		InitialAdminPassword:   getEnv("INITIAL_ADMIN_PASSWORD", ""),
 		InitialAdminEmail:      getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),

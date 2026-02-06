@@ -126,7 +126,7 @@ func (rl *RateLimiter) cleanupLoop() {
 }
 
 // RateLimitMiddleware applies rate limiting to requests
-func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
+func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Bypass for localhost
@@ -136,7 +136,7 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 			}
 
 			// Use API key as client ID if present, otherwise use IP
-			clientID := getClientIP(r)
+			clientID := getClientIP(r, trustProxy)
 			if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 				clientID = strings.TrimPrefix(auth, "Bearer ")
 			}
@@ -166,16 +166,17 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ips := strings.Split(xff, ",")
-		return strings.TrimSpace(ips[0])
-	}
+func getClientIP(r *http.Request, trustProxy bool) string {
+	if trustProxy {
+		// Only trust proxy headers when explicitly configured
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			ips := strings.Split(xff, ",")
+			return strings.TrimSpace(ips[0])
+		}
 
-	// Check X-Real-IP header
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			return xri
+		}
 	}
 
 	// Use RemoteAddr - use net.SplitHostPort to handle both IPv4 and IPv6
