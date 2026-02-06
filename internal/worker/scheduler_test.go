@@ -145,6 +145,7 @@ func TestScheduler_DoubleStop(t *testing.T) {
 func TestScheduler_RunsScheduledScans(t *testing.T) {
 	scheduler, store, scanner := newTestScheduler(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	// Create a network and rule
 	network := &model.Network{
@@ -152,7 +153,7 @@ func TestScheduler_RunsScheduledScans(t *testing.T) {
 		Name:   "Test Network",
 		Subnet: "192.168.1.0/24",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	rule := &model.DiscoveryRule{
 		ID:            "rule-1",
@@ -161,7 +162,7 @@ func TestScheduler_RunsScheduledScans(t *testing.T) {
 		ScanType:      model.ScanTypeQuick,
 		IntervalHours: 24,
 	}
-	store.SaveDiscoveryRule(rule)
+	store.SaveDiscoveryRule(ctx, rule)
 
 	scheduler.runScheduledScans()
 
@@ -173,13 +174,14 @@ func TestScheduler_RunsScheduledScans(t *testing.T) {
 func TestScheduler_SkipsDisabledRules(t *testing.T) {
 	scheduler, store, scanner := newTestScheduler(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	network := &model.Network{
 		ID:     "net-1",
 		Name:   "Test Network",
 		Subnet: "192.168.1.0/24",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	rule := &model.DiscoveryRule{
 		ID:            "rule-1",
@@ -188,7 +190,7 @@ func TestScheduler_SkipsDisabledRules(t *testing.T) {
 		ScanType:      model.ScanTypeQuick,
 		IntervalHours: 24,
 	}
-	store.SaveDiscoveryRule(rule)
+	store.SaveDiscoveryRule(ctx, rule)
 
 	scheduler.runScheduledScans()
 
@@ -200,6 +202,7 @@ func TestScheduler_SkipsDisabledRules(t *testing.T) {
 func TestScheduler_HandlesNetworkNotFound(t *testing.T) {
 	scheduler, store, scanner := newTestScheduler(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	// Rule without corresponding network
 	rule := &model.DiscoveryRule{
@@ -209,7 +212,7 @@ func TestScheduler_HandlesNetworkNotFound(t *testing.T) {
 		ScanType:      model.ScanTypeQuick,
 		IntervalHours: 24,
 	}
-	store.SaveDiscoveryRule(rule)
+	store.SaveDiscoveryRule(ctx, rule)
 
 	// Should not panic
 	scheduler.runScheduledScans()
@@ -225,6 +228,7 @@ func TestScheduler_ScanOnStartup(t *testing.T) {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 	defer store.Close()
+	ctx := context.Background()
 
 	cfg := &config.Config{
 		DiscoveryInterval:      1 * time.Hour, // Long interval
@@ -237,7 +241,7 @@ func TestScheduler_ScanOnStartup(t *testing.T) {
 		Name:   "Test Network",
 		Subnet: "192.168.1.0/24",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	rule := &model.DiscoveryRule{
 		ID:            "rule-1",
@@ -246,7 +250,7 @@ func TestScheduler_ScanOnStartup(t *testing.T) {
 		ScanType:      model.ScanTypeQuick,
 		IntervalHours: 24,
 	}
-	store.SaveDiscoveryRule(rule)
+	store.SaveDiscoveryRule(ctx, rule)
 
 	scanner := &mockScanner{}
 	scheduler := NewScheduler(store, scanner, cfg)
@@ -266,6 +270,7 @@ func TestScheduler_TickerTriggersScans(t *testing.T) {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 	defer store.Close()
+	ctx := context.Background()
 
 	cfg := &config.Config{
 		DiscoveryInterval:      50 * time.Millisecond, // Short interval for testing
@@ -278,7 +283,7 @@ func TestScheduler_TickerTriggersScans(t *testing.T) {
 		Name:   "Test Network",
 		Subnet: "192.168.1.0/24",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	rule := &model.DiscoveryRule{
 		ID:            "rule-1",
@@ -287,7 +292,7 @@ func TestScheduler_TickerTriggersScans(t *testing.T) {
 		ScanType:      model.ScanTypeQuick,
 		IntervalHours: 24,
 	}
-	store.SaveDiscoveryRule(rule)
+	store.SaveDiscoveryRule(ctx, rule)
 
 	scanner := &mockScanner{}
 	scheduler := NewScheduler(store, scanner, cfg)

@@ -1429,7 +1429,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 	// Insert pool
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO network_pools (id, network_id, name, start_ip, end_ip, description, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, pool.ID, pool.NetworkID, pool.Name, pool.StartIP, pool.EndIP, pool.Description, pool.CreatedAt, pool.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create network pool: %w", err)

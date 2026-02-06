@@ -28,7 +28,7 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *mode
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO discovered_devices (id, ip, mac_address, hostname, network_id, status, confidence,
 			os_guess, vendor, open_ports, services, first_seen, last_seen, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, device.ID, device.IP, device.MACAddress, device.Hostname, device.NetworkID, device.Status,
 		device.Confidence, device.OSGuess, device.Vendor, string(openPorts), string(services),
 		device.FirstSeen, device.LastSeen, device.CreatedAt, device.UpdatedAt)
@@ -380,7 +380,7 @@ func (s *SQLiteStorage) SaveDiscoveryRule(ctx context.Context, rule *model.Disco
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO discovery_rules (id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(network_id) DO UPDATE SET
 			enabled = excluded.enabled, scan_type = excluded.scan_type,
 			interval_hours = excluded.interval_hours, exclude_ips = excluded.exclude_ips,

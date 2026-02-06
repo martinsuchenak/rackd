@@ -159,13 +159,14 @@ func TestScan_InvalidCIDR(t *testing.T) {
 func TestScan_CreatesScanRecord(t *testing.T) {
 	scanner, store := newTestScanner(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	network := &model.Network{
 		ID:     "net-1",
 		Name:   "Test",
 		Subnet: "192.168.1.0/30",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	scan, err := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 	if err != nil {
@@ -186,13 +187,14 @@ func TestScan_CreatesScanRecord(t *testing.T) {
 func TestGetScanStatus_FromCache(t *testing.T) {
 	scanner, store := newTestScanner(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	network := &model.Network{
 		ID:     "net-1",
 		Name:   "Test",
 		Subnet: "192.168.1.0/30",
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	scan, _ := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 
@@ -208,10 +210,11 @@ func TestGetScanStatus_FromCache(t *testing.T) {
 func TestGetScanStatus_FromStorage(t *testing.T) {
 	scanner, store := newTestScanner(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	// Create network first (foreign key constraint)
 	network := &model.Network{ID: "net-1", Name: "Test", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	scan := &model.DiscoveryScan{
 		ID:        "scan-123",
@@ -219,7 +222,7 @@ func TestGetScanStatus_FromStorage(t *testing.T) {
 		Status:    model.ScanStatusCompleted,
 		ScanType:  model.ScanTypeQuick,
 	}
-	store.CreateDiscoveryScan(scan)
+	store.CreateDiscoveryScan(ctx, scan)
 
 	status, err := scanner.GetScanStatus("scan-123")
 	if err != nil {
@@ -239,7 +242,7 @@ func TestScan_Cancellation(t *testing.T) {
 		Name:   "Test",
 		Subnet: "10.0.0.0/24", // Large enough to test cancellation
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(context.Background(), network)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	scan, err := scanner.Scan(ctx, network, model.ScanTypeQuick)
@@ -305,13 +308,14 @@ func TestScan_SubnetTooLarge(t *testing.T) {
 func TestScan_MaxAllowedSubnet(t *testing.T) {
 	scanner, store := newTestScanner(t)
 	defer store.Close()
+	ctx := context.Background()
 
 	network := &model.Network{
 		ID:     "net-1",
 		Name:   "Test",
 		Subnet: "10.0.0.0/16", // Max allowed
 	}
-	store.CreateNetwork(network)
+	store.CreateNetwork(ctx, network)
 
 	scan, err := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 	if err != nil {

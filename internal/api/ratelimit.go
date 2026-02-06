@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -177,12 +178,13 @@ func getClientIP(r *http.Request) string {
 		return xri
 	}
 
-	// Use RemoteAddr
-	ip := r.RemoteAddr
-	if idx := strings.LastIndex(ip, ":"); idx != -1 {
-		ip = ip[:idx]
+	// Use RemoteAddr - use net.SplitHostPort to handle both IPv4 and IPv6
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		// If splitting fails, return as-is (may not have port)
+		return r.RemoteAddr
 	}
-	return ip
+	return host
 }
 
 func isLocalhost(addr string) bool {
