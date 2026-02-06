@@ -15,6 +15,16 @@
   </a>
 
   <div x-data="router">
+    <!-- Login page (full screen, no chrome) -->
+    <template x-if="route === '/login'">
+      <div>
+        <include src="partials/pages/login.html"></include>
+      </div>
+    </template>
+
+    <!-- Main app layout (hidden on login) -->
+    <template x-if="route !== '/login'">
+      <div>
     <!-- Sidebar -->
     <aside class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
            :class="{ '-translate-x-full': !sidebarOpen }"
@@ -140,6 +150,110 @@
             </svg>
           </button>
         </div>
+
+        <!-- User Menu -->
+        <div x-data="userMenu" class="relative" @click.outside="close()">
+          <button @click="toggle()" class="flex items-center gap-2 p-1 rounded-md hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px] cursor-pointer transition-colors" :aria-expanded="open" aria-haspopup="true">
+            <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-200 text-sm font-medium" x-text="initial"></div>
+            <span class="text-sm font-medium text-gray-800 dark:text-gray-200 hidden sm:inline" x-text="username"></span>
+            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+
+          <!-- Dropdown -->
+          <div x-show="open" x-cloak x-transition class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1" role="menu">
+            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="username"></p>
+              <p x-show="isAdmin" class="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+            </div>
+            <button @click="openEditProfile()" class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Edit Profile</button>
+            <button @click="openChangePassword()" class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Change Password</button>
+            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+            <button @click="logout()" class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Sign Out</button>
+          </div>
+
+          <!-- Edit Profile Modal -->
+          <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" @keydown.escape.window="closeEditModal()">
+            <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="showEditModal">
+              <button @click="closeEditModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              <h2 id="profile-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit Profile</h2>
+              <div x-show="error" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm" role="alert" x-text="error"></div>
+              <form @submit.prevent="saveProfile()">
+                <div class="space-y-4">
+                  <div>
+                    <label for="profile-email" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
+                    <input id="profile-email" type="email" x-model="editForm.email"
+                           :aria-invalid="!!validationErrors.email"
+                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                           :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <p x-show="validationErrors.email" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.email"></p>
+                  </div>
+                  <div>
+                    <label for="profile-fullname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
+                    <input id="profile-fullname" type="text" x-model="editForm.full_name"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                  <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+                  <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                    <span x-show="!saving">Save Changes</span>
+                    <span x-show="saving">Saving...</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Change Password Modal -->
+          <div x-show="showPasswordModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="my-password-modal-title" @keydown.escape.window="closePasswordModal()">
+            <div class="fixed inset-0 bg-black/50" @click="closePasswordModal()" aria-hidden="true"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="showPasswordModal">
+              <button @click="closePasswordModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              <h2 id="my-password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Change Password</h2>
+              <div x-show="error" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm" role="alert" x-text="error"></div>
+              <form @submit.prevent="doChangePassword()">
+                <div class="space-y-4">
+                  <div>
+                    <label for="my-old-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span aria-hidden="true">*</span></label>
+                    <input id="my-old-password" type="password" x-model="passwordForm.old_password" required
+                           :aria-invalid="!!validationErrors.old_password"
+                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                           :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.old_password"></p>
+                  </div>
+                  <div>
+                    <label for="my-new-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span aria-hidden="true">*</span></label>
+                    <input id="my-new-password" type="password" x-model="passwordForm.new_password" required
+                           :aria-invalid="!!validationErrors.new_password"
+                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                           :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.new_password"></p>
+                  </div>
+                  <div>
+                    <label for="my-confirm-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span aria-hidden="true">*</span></label>
+                    <input id="my-confirm-password" type="password" x-model="passwordForm.confirm_password" required
+                           :aria-invalid="!!validationErrors.confirm_password"
+                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                           :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <p x-show="validationErrors.confirm_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.confirm_password"></p>
+                  </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                  <button type="button" @click="closePasswordModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+                  <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                    <span x-show="!saving">Change Password</span>
+                    <span x-show="saving">Changing...</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </header>
 
       <!-- Page content -->
@@ -150,6 +264,7 @@
         <include src="partials/pages/networks.html"></include>
         <include src="partials/pages/datacenters.html"></include>
         <include src="partials/pages/discovery.html"></include>
+        <include src="partials/pages/users.html"></include>
 
         <!-- Extension pages slot -->
         <template x-for="page in (extensionPage ? [extensionPage] : [])" :key="page.path">
@@ -158,6 +273,8 @@
 
       </main>
     </div>
+      </div>
+    </template>
   </div>
 
   <script type="module" src="/app.js"></script>

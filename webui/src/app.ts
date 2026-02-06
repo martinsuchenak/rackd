@@ -1,6 +1,7 @@
 // Rackd Web UI - Main Application Entry Point
 
 import Alpine from 'alpinejs';
+import focus from '@alpinejs/focus';
 import type { UIConfig } from './core/types';
 import { api, RackdAPI } from './core/api';
 
@@ -16,6 +17,9 @@ import { discoveryList, scanForm, scanDetail, promoteForm } from './components/d
 import { credentialsList, credentialForm, credentialsPageTemplate } from './components/credentials';
 import { profileList, profileForm, profilesPageTemplate } from './components/profiles';
 import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } from './components/scheduled-scans';
+import { login } from './components/login';
+import { usersList } from './components/users';
+import { userMenu } from './components/user-menu';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -167,11 +171,23 @@ function themeToggle() {
 async function init(): Promise<void> {
   window.rackdAPI = api;
 
+  // Restore token from localStorage
+  const storedToken = localStorage.getItem('rackd_token');
+  if (storedToken) {
+    api.setToken(storedToken);
+  }
+
   // Fetch config
   try {
     window.rackdConfig = await api.getConfig();
   } catch {
     window.rackdConfig = { edition: 'oss', features: [], nav_items: [] };
+  }
+
+  // Auth guard: redirect to login if not authenticated (and not already on login page)
+  if (!window.rackdConfig?.user && window.location.pathname !== '/login') {
+    window.location.href = '/login';
+    return;
   }
 
   // Register Alpine components
@@ -204,6 +220,11 @@ async function init(): Promise<void> {
   Alpine.data('scheduledScansList', scheduledScansList);
   Alpine.data('scheduledScanForm', scheduledScanForm);
 
+  // Auth & user management
+  Alpine.data('login', login);
+  Alpine.data('usersList', usersList);
+  Alpine.data('userMenu', userMenu);
+
   // Register pages for credentials, profiles, scheduled scans
   window.rackdRegisterPage('/credentials', credentialsPageTemplate);
   window.rackdRegisterPage('/scan-profiles', profilesPageTemplate);
@@ -218,6 +239,9 @@ async function init(): Promise<void> {
 
   // Expose Alpine globally
   window.Alpine = Alpine;
+
+  // Register plugins
+  Alpine.plugin(focus);
 
   // Start Alpine
   Alpine.start();

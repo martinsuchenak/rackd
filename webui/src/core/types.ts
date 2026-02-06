@@ -150,9 +150,59 @@ export interface NavItem {
 
 export interface UserInfo {
   id: string;
+  username: string;
   email: string;
-  name: string;
   roles: string[];
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
+  last_login_at?: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: User;
+  expires_at: string;
+}
+
+export interface UserFilter {
+  username?: string;
+  email?: string;
+  is_active?: boolean;
+  is_admin?: boolean;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  email: string;
+  full_name?: string;
+  is_admin?: boolean;
+}
+
+export interface UpdateUserRequest {
+  email?: string;
+  full_name?: string;
+  is_active?: boolean;
+  is_admin?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
 }
 
 export interface UIConfig {

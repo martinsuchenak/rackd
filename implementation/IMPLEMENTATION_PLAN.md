@@ -346,9 +346,9 @@ rackd audit export --format json --output audit.json
 - ✅ Login/logout endpoints
 - ✅ User CLI commands
 - ✅ Environment variable bootstrapping for initial admin
-- ✅ Comprehensive tests
-- ⏳ User management UI (pending)
-- ⏳ Web UI login page (pending)
+- ✅ Comprehensive tests (30 tests, all passing)
+- ✅ Web UI login page
+- ✅ Web UI users management page
 - ⏳ Make API keys REQUIRED (breaking change - requires careful deployment)
 
 **Dependencies**: Audit trail (should be in place first)
@@ -365,8 +365,10 @@ rackd audit export --format json --output audit.json
 - ✅ `internal/auth/password_test.go` (3 tests, all passing)
 - ✅ `internal/api/auth_handlers.go`
 - ✅ `internal/api/user_handlers.go`
-- ⏳ `webui/src/components/users.ts` (pending)
-- ⏳ `webui/src/components/login.ts` (pending)
+- ✅ `webui/src/components/users.ts` - Users management UI
+- ✅ `webui/src/components/login.ts` - Login page
+- ✅ `webui/src/partials/pages/login.html` - Login template
+- ✅ `webui/src/partials/pages/users.html` - Users template
 - ✅ `cmd/user/user.go`
 - ✅ `docs/user-authentication.md` - Full documentation
 
@@ -422,6 +424,7 @@ SESSION_TTL=24h                    # Optional (default: 24h)
 - Password changes invalidate all sessions
 - Industry-standard environment variable bootstrapping for initial admin
 - Graceful handling when no initial admin is configured
+- Full web UI for user management and login
 
 ### 3.2 Role-Based Access Control (RBAC)
 
@@ -762,9 +765,9 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 
 ## Change Log
 
+- **2026-02-06**: Completed User Management (3.1) - Full implementation with web UI and CLI
 - **2026-02-06**: Added initial admin bootstrapping via environment variables (industry standard for deployments)
 - **2026-02-06**: Completed Phase 2 (Production Ready)
-- **2026-02-06**: Completed User Management (3.1) - backend implementation with full API, CLI, and tests
 - **2026-02-03**: Merged FEATURE_STATUS.md, reorganized by priority, completed Phase 1
 - **2026-02-03**: Added API Key Authentication (1.4)
 - **2026-02-03**: Completed Full-Text Search (1.1), Metrics (1.2), Health Checks (1.3)

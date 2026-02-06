@@ -1,6 +1,6 @@
 <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="network-modal-title" @keydown.escape.window="closeModal()">
   <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6" x-trap.inert.noscroll="showModal">
     <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>

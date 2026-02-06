@@ -81,6 +81,7 @@ func RunWithAdvancedFeatures(
 
 	// UI config with nav items for new features
 	uiBuilder := api.NewUIConfigBuilder()
+	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Credentials", Path: "/credentials", Icon: "key", Order: 50})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scan Profiles", Path: "/scan-profiles", Icon: "cog", Order: 51})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scheduled Scans", Path: "/scheduled-scans", Icon: "clock", Order: 52})
@@ -94,7 +95,7 @@ func RunWithAdvancedFeatures(
 	}
 
 	// UI config endpoint
-	mux.HandleFunc("GET /api/config", uiBuilder.Handler())
+	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager))
 
 	// Static UI
 	ui.RegisterRoutes(mux)
@@ -176,6 +177,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 
 	// UI config
 	uiBuilder := api.NewUIConfigBuilder()
+	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15})
 
 	// Register features
 	for _, f := range features {
@@ -186,7 +188,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	}
 
 	// UI config endpoint
-	mux.HandleFunc("GET /api/config", uiBuilder.Handler())
+	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager))
 
 	// Static UI
 	ui.RegisterRoutes(mux)

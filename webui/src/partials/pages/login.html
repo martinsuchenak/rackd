@@ -1,0 +1,79 @@
+<!-- Login Page -->
+  <div x-data="login()" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" x-init="await init()">
+    <div class="max-w-md w-full space-y-8 bg-[var(--card)] rounded-xl shadow-lg border border-[var(--border)] p-8">
+      <div class="text-center">
+        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-full bg-[var(--primary-light)] mb-4">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-[var(--primary)]" aria-hidden="true">
+            <rect class="rack-frame" x="15" y="5" width="70" height="90" rx="8" />
+            <rect class="rack-unit" x="25" y="15" width="50" height="12" rx="2" />
+            <rect class="rack-unit" x="25" y="32" width="50" height="12" rx="2" fill="#3B82F6"/>
+            <rect class="rack-unit" x="25" y="49" width="50" height="12" rx="2" />
+            <rect class="rack-unit" x="25" y="66" width="50" height="12" rx="2" fill="#EF4444"/>
+            <circle cx="68" cy="21" r="2" fill="#10B981"/>
+            <circle cx="68" cy="38" r="2" fill="#10B981"/>
+            <circle cx="68" cy="55" r="2" fill="#EF4444"/>
+            <circle cx="68" cy="72" r="2" fill="#10B981"/>
+          </svg>
+        </div>
+        <h2 class="mt-6 text-3xl font-extrabold text-gray-900 dark:text-gray-50">
+          Welcome to <span style="color: var(--core-blue)">Rack</span><span style="color: var(--accent-cyan)">d</span>
+        </h2>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Sign in to your account to continue
+        </p>
+      </div>
+
+      <form @submit.prevent="submit()" class="mt-8 space-y-6" aria-labelledby="login-heading">
+        <div x-show="error" 
+             class="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mb-6"
+             role="alert">
+          <p class="text-sm text-red-800 dark:text-red-200" x-text="error"></p>
+        </div>
+
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Username
+          </label>
+          <input id="username" 
+                 type="text" 
+                 x-model="username"
+                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-[3px] focus:ring-[var(--ring)] focus:border-[var(--primary)]"
+                 :disabled="loading"
+                 autocomplete="username"
+                 required>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Password
+          </label>
+          <input id="password" 
+                 type="password" 
+                 x-model="password"
+                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-[3px] focus:ring-[var(--ring)] focus:border-[var(--primary)]"
+                 :disabled="loading"
+                 autocomplete="current-password"
+                 required>
+        </div>
+
+        <div>
+          <button type="submit"
+                  :disabled="loading"
+                  class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[var(--primary)] hover:bg-[var(--primary-dark)] focus:outline-none focus:ring-[3px] focus:ring-offset-2 focus:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]">
+            <svg x-show="loading" x-cloak class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span x-show="loading">Signing in...</span>
+            <span x-show="!loading">Sign in</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Don't have an account? Contact your administrator to get one.
+        </p>
+      </div>
+    </div>
+  </div>

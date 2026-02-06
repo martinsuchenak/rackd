@@ -1,0 +1,275 @@
+<!-- Users Management Page -->
+<template x-if="route === '/users'">
+  <div x-data="usersList()" x-init="await init()">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Users</h1>
+      <button @click="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+        Add User
+      </button>
+    </div>
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+        <div>
+          <label for="filter-username" class="sr-only">Search by username</label>
+          <input id="filter-username" type="text" x-model="filter.username" @input.debounce.300="applyFilter()" placeholder="Search by username..."
+                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        </div>
+        <div>
+          <label for="filter-email" class="sr-only">Search by email</label>
+          <input id="filter-email" type="text" x-model="filter.email" @input.debounce.300="applyFilter()" placeholder="Search by email..."
+                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        </div>
+        <button @click="clearFilter()" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">
+          Clear filters
+        </button>
+      </div>
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <caption class="sr-only">List of users with username, email, role, and status</caption>
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">User</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Email</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Full Name</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Admin</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Active</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Last Login</th>
+            <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading users...</span></td></tr>
+          <tr x-show="!loading && pagedUsers.length === 0"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No users found</td></tr>
+          <template x-for="user in pagedUsers" :key="user.id">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-6 py-4">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-200 text-sm font-medium">
+                    <span x-text="user.username.charAt(0).toUpperCase()"></span>
+                  </div>
+                  <div class="ml-3">
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="user.username"></div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="user.id"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="user.email"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="user.full_name || '-'"></td>
+              <td class="px-6 py-4">
+                <span x-show="user.is_admin" class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200">Yes</span>
+                <span x-show="!user.is_admin" class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200">No</span>
+              </td>
+              <td class="px-6 py-4">
+                <span x-show="user.is_active" class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200">Active</span>
+                <span x-show="!user.is_active" class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200">Inactive</span>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="user.last_login_at ? formatDate(user.last_login_at) : 'Never'"></td>
+              <td class="px-6 py-4 text-right">
+                <div class="inline-flex gap-1">
+                  <button @click="openEditModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + user.username">Edit</button>
+                  <button @click="openPasswordModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Change password for ' + user.username">Password</button>
+                  <button @click="openDeleteModal(user)" x-show="currentUser?.is_admin || currentUser?.id !== user.id" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + user.username">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <nav x-show="totalPages > 1" class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between" aria-label="Pagination">
+        <span class="text-sm text-gray-800 dark:text-gray-200">Page <span x-text="page"></span> of <span x-text="totalPages"></span></span>
+        <div class="flex gap-2">
+          <button @click="goToPage(page - 1)" :disabled="page === 1" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]" aria-label="Go to previous page">Previous</button>
+          <button @click="goToPage(page + 1)" :disabled="page === totalPages" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]" aria-label="Go to next page">Next</button>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Create User Modal -->
+    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeCreateModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeCreateModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6" x-trap.inert.noscroll="showCreateModal">
+        <button @click="closeCreateModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="create-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create User</h2>
+        <form @submit.prevent="doCreateUser()">
+          <div class="space-y-4">
+            <div>
+              <label for="create-username" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Username <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input id="create-username" type="text" x-model="createForm.username" required aria-required="true"
+                     :aria-invalid="!!validationErrors.username"
+                     :aria-describedby="validationErrors.username ? 'create-username-error' : undefined"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.username ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.username" id="create-username-error" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.username"></p>
+            </div>
+            <div>
+              <label for="create-email" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input id="create-email" type="email" x-model="createForm.email" required aria-required="true"
+                     :aria-invalid="!!validationErrors.email"
+                     :aria-describedby="validationErrors.email ? 'create-email-error' : undefined"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.email" id="create-email-error" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.email"></p>
+            </div>
+            <div>
+              <label for="create-fullname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
+              <input id="create-fullname" type="text" x-model="createForm.full_name"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            </div>
+            <div>
+              <label for="create-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input id="create-password" type="password" x-model="createForm.password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.password"
+                     :aria-describedby="validationErrors.password ? 'create-password-error' : undefined"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.password" id="create-password-error" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.password"></p>
+            </div>
+            <div class="flex items-center">
+              <input id="create-admin" type="checkbox" x-model="createForm.is_admin"
+                     class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-[3px] focus:ring-blue-500">
+              <label for="create-admin" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Administrator</label>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="closeCreateModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <span x-show="!saving">Create User</span>
+              <span x-show="saving">Creating...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <template x-if="showEditModal && selectedUser">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" @keydown.escape.window="closeEditModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6" x-trap.inert.noscroll="true">
+        <button @click="closeEditModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit User</h2>
+        <form @submit.prevent="doUpdateUser()">
+          <div class="space-y-4">
+            <div>
+              <label :for="'edit-email-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
+              <input :id="'edit-email-' + selectedUser.id" type="email" x-model="createForm.email"
+                     :aria-invalid="!!validationErrors.email"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.email" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.email"></p>
+            </div>
+            <div>
+              <label :for="'edit-fullname-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
+              <input :id="'edit-fullname-' + selectedUser.id" type="text" x-model="createForm.full_name"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            </div>
+            <div class="flex gap-4">
+              <div class="flex-1">
+                <label :for="'edit-active-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Active Status</label>
+                <select :id="'edit-active-' + selectedUser.id" x-model.number="createForm.is_active"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <option :value="1">Active</option>
+                  <option :value="0">Inactive</option>
+                </select>
+              </div>
+              <div class="flex-1">
+                <label :for="'edit-admin-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Administrator</label>
+                <select :id="'edit-admin-' + selectedUser.id" x-model.number="createForm.is_admin"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <option :value="1">Yes</option>
+                  <option :value="0">No</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <span x-show="!saving">Save Changes</span>
+              <span x-show="saving">Saving...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    </template>
+
+    <!-- Delete Confirmation Modal -->
+    <template x-if="showDeleteModal && selectedUser">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc" @keydown.escape.window="closeDeleteModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeDeleteModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
+        <button @click="closeDeleteModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete User</h2>
+        <p id="delete-confirm-desc" class="text-gray-800 dark:text-gray-200 mb-6">
+          Are you sure you want to delete <strong x-text="selectedUser?.username"></strong>? This action cannot be undone.
+        </p>
+        <div class="flex justify-end gap-3">
+          <button @click="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+          <button @click="doDeleteUser()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <span x-show="!deleting">Delete</span>
+            <span x-show="deleting">Deleting...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    </template>
+
+    <!-- Change Password Modal -->
+    <template x-if="showPasswordModal && selectedUser">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="password-modal-title" @keydown.escape.window="closePasswordModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closePasswordModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
+        <button @click="closePasswordModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Change Password</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Changing password for user <span class="font-semibold text-gray-900 dark:text-gray-50" x-text="selectedUser?.username"></span>
+        </p>
+        <form @submit.prevent="doChangePassword()">
+          <div class="space-y-4">
+            <div>
+              <label :for="'old-password-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input :id="'old-password-' + selectedUser.id" type="password" x-model="passwordForm.old_password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.old_password"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.old_password"></p>
+            </div>
+            <div>
+              <label :for="'new-password-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input :id="'new-password-' + selectedUser.id" type="password" x-model="passwordForm.new_password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.new_password"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.new_password"></p>
+            </div>
+            <div>
+              <label :for="'confirm-password-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input :id="'confirm-password-' + selectedUser.id" type="password" x-model="passwordForm.confirm_password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.confirm_password"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.confirm_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.confirm_password"></p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="closePasswordModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <span x-show="!saving">Change Password</span>
+              <span x-show="saving">Changing...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    </template>
+  </div>
+</template>

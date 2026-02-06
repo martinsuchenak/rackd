@@ -3,6 +3,8 @@
 import type {
   Address,
   APIError,
+  ChangePasswordRequest,
+  CreateUserRequest,
   Datacenter,
   Device,
   DeviceFilter,
@@ -11,11 +13,19 @@ import type {
   DiscoveryRule,
   DiscoveryScan,
   IPStatus,
+  LoginRequest,
+  LoginResponse,
+  NavItem,
   Network,
   NetworkPool,
   NetworkUtilization,
   SearchResult,
+  ServiceInfo,
   UIConfig,
+  UpdateUserRequest,
+  User,
+  UserFilter,
+  UserInfo,
 } from './types';
 
 export type {
@@ -308,6 +318,50 @@ export class RackdAPI {
 
   async saveDiscoveryRule(networkId: string, rule: Partial<DiscoveryRule>): Promise<DiscoveryRule> {
     return this.request<DiscoveryRule>('POST', `/api/discovery/networks/${networkId}/rules`, rule);
+  }
+
+  // Auth
+  async login(username: string, password: string): Promise<LoginResponse> {
+    return this.request<LoginResponse>('POST', '/api/auth/login', { username, password });
+  }
+
+  async logout(): Promise<void> {
+    return this.request<void>('POST', '/api/auth/logout');
+  }
+
+  async getCurrentUser(): Promise<User> {
+    return this.request<User>('GET', '/api/auth/me');
+  }
+
+  // Users
+  async listUsers(filter?: UserFilter): Promise<User[]> {
+    const params = new URLSearchParams();
+    if (filter?.username) params.set('username', filter.username);
+    if (filter?.email) params.set('email', filter.email);
+    if (filter?.is_active !== undefined) params.set('is_active', filter.is_active.toString());
+    if (filter?.is_admin !== undefined) params.set('is_admin', filter.is_admin.toString());
+    const query = params.toString();
+    return this.request<User[]>('GET', `/api/users${query ? `?${query}` : ''}`);
+  }
+
+  async getUser(id: string): Promise<User> {
+    return this.request<User>('GET', `/api/users/${id}`);
+  }
+
+  async createUser(user: CreateUserRequest): Promise<User> {
+    return this.request<User>('POST', '/api/users', user);
+  }
+
+  async updateUser(id: string, updates: UpdateUserRequest): Promise<User> {
+    return this.request<User>('PUT', `/api/users/${id}`, updates);
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/users/${id}`);
+  }
+
+  async changePassword(id: string, request: ChangePasswordRequest): Promise<void> {
+    return this.request<void>('POST', `/api/users/${id}/password`, request);
   }
 }
 

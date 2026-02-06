@@ -286,6 +286,7 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 }
 
 func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {
-	config := NewUIConfigBuilder().Build()
-	h.writeJSON(w, http.StatusOK, config)
+	config := NewUIConfigBuilder()
+	config.AddNavItem(NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15})
+	h.writeJSON(w, http.StatusOK, config.Build())
 }

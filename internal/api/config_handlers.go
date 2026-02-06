@@ -3,6 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+
+	"github.com/martinsuchenak/rackd/internal/auth"
 )
 
 // UIConfig represents frontend configuration
@@ -63,8 +66,34 @@ func (b *UIConfigBuilder) Build() UIConfig {
 }
 
 func (b *UIConfigBuilder) Handler() http.HandlerFunc {
+	return b.HandlerWithSession(nil)
+}
+
+// HandlerWithSession returns a handler that optionally populates user info from a session token.
+func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		cfg := b.config
+		cfg.UserInfo = nil
+
+		if sessionManager != nil {
+			if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+				token := strings.TrimPrefix(authHeader, "Bearer ")
+				if session, err := sessionManager.GetSession(token); err == nil {
+					roles := []string{"user"}
+					if session.IsAdmin {
+						roles = append(roles, "admin")
+					}
+					cfg.UserInfo = &UserInfo{
+						ID:       session.UserID,
+						Username: session.Username,
+						Email:    "",
+						Roles:    roles,
+					}
+				}
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(b.config)
+		json.NewEncoder(w).Encode(cfg)
 	}
 }
