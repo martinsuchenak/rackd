@@ -78,6 +78,12 @@ var migrations = []*Migration{
 		Up:      migrateAddAuditSourceUp,
 		Down:    migrateAddAuditSourceDown,
 	},
+	{
+		Version: "20260206120000",
+		Name:    "add_users",
+		Up:      migrateAddUsersUp,
+		Down:    migrateAddUsersDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -838,5 +844,46 @@ func migrateAddAuditSourceDown(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
+	return nil
+}
+
+func migrateAddUsersUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			username TEXT NOT NULL UNIQUE,
+			email TEXT UNIQUE,
+			full_name TEXT,
+			password_hash TEXT NOT NULL,
+			is_active INTEGER NOT NULL DEFAULT 1,
+			is_admin INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			last_login_at DATETIME
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create users table: %w", err)
+	}
+
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+		"CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+		"CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create user index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func migrateAddUsersDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS users`); err != nil {
+		return fmt.Errorf("failed to drop users table: %w", err)
+	}
 	return nil
 }

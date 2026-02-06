@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/metrics"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -16,13 +18,17 @@ const MaxRequestBodySize = 1 << 20
 // AuthContext key for storing authenticated API key info
 type contextKey string
 
-const APIKeyContextKey contextKey = "apikey"
+const (
+	APIKeyContextKey  contextKey = "apikey"
+	SessionContextKey contextKey = "session"
+	UserContextKey    contextKey = "user"
+)
 
 // LoggingMiddleware logs all HTTP requests and records metrics
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		log.Debug("HTTP request started",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -32,9 +38,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Wrap response writer to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		next.ServeHTTP(wrapped, r)
-		
+
 		duration := time.Since(start)
 		log.Debug("HTTP request completed",
 			"method", r.Method,
@@ -89,6 +95,64 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
+				next(w, r)
+				return
+			}
+		}
+
+		log.Debug("Auth failed: invalid token", "path", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+	}
+}
+
+// AuthMiddlewareWithSessions validates API keys and sessions
+func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *auth.SessionManager, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") {
+			log.Debug("Auth failed: missing Bearer prefix", "path", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+			return
+		}
+
+		providedToken := strings.TrimPrefix(auth, "Bearer ")
+
+		// Try API key authentication
+		if store != nil {
+			key, err := store.GetAPIKeyByKey(providedToken)
+			if err == nil {
+				// Check expiration
+				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
+					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
+					w.Header().Set("Content-Type", "application/json")
+					http.Error(w, `{"error":"Unauthorized","code":"EXPIRED_KEY"}`, http.StatusUnauthorized)
+					return
+				}
+
+				// Update last used (async, don't block request)
+				go func() {
+					store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+				}()
+
+				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
+				next(w, r)
+				return
+			}
+		}
+
+		// Try session authentication
+		if sessionManager != nil {
+			session, err := sessionManager.GetSession(providedToken)
+			if err == nil {
+				// Refresh session
+				go func() {
+					sessionManager.RefreshSession(providedToken)
+				}()
+
+				log.Trace("Auth successful (session)", "path", r.URL.Path, "username", session.Username)
+				r = r.WithContext(context.WithValue(r.Context(), SessionContextKey, session))
 				next(w, r)
 				return
 			}

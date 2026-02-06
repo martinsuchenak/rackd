@@ -21,6 +21,7 @@ var (
 	ErrIPNotAvailable     = errors.New("no IP addresses available")
 	ErrIPConflict         = errors.New("IP address already in use")
 	ErrAuditLogNotFound   = errors.New("audit log not found")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -150,6 +151,7 @@ type ExtendedStorage interface {
 	APIKeyStorage
 	BulkOperations
 	AuditStorage
+	UserStorage
 	Close() error
 	DB() *sql.DB
 }

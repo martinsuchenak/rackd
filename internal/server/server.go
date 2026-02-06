@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/api"
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
@@ -43,6 +45,15 @@ func RunWithAdvancedFeatures(
 ) error {
 	mux := http.NewServeMux()
 
+	// Initialize session manager
+	sessionManager := auth.NewSessionManager(cfg.SessionTTL)
+	defer sessionManager.Stop()
+
+	// Bootstrap initial admin user
+	if err := storage.BootstrapInitialAdmin(store, cfg, sessionManager); err != nil {
+		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
+	}
+
 	scanner := discovery.NewScanner(store, cfg)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
@@ -58,6 +69,7 @@ func RunWithAdvancedFeatures(
 
 	// API routes
 	handler := api.NewHandler(store, scanner)
+	handler.SetSessionManager(sessionManager)
 	handler.SetCredentialsStorage(credStore)
 	handler.SetProfileStorage(profileStore)
 	handler.SetScheduledScanStorage(scheduledStore)
@@ -140,12 +152,22 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		registerRoutes(mux)
 	}
 
+	// Initialize session manager
+	sessionManager := auth.NewSessionManager(cfg.SessionTTL)
+	defer sessionManager.Stop()
+
+	// Bootstrap initial admin user
+	if err := storage.BootstrapInitialAdmin(store, cfg, sessionManager); err != nil {
+		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
+	}
+
 	scanner := discovery.NewScanner(store, cfg)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 
 	// API routes
 	handler := api.NewHandler(store, scanner)
+	handler.SetSessionManager(sessionManager)
 	handler.RegisterRoutes(mux)
 
 	// MCP server

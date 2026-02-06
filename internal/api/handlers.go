@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/martinsuchenak/rackd/internal/audit"
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -20,6 +21,7 @@ type Handler struct {
 	credStore      credentials.Storage
 	profileStore   storage.ProfileStorage
 	scheduledStore storage.ScheduledScanStorage
+	sessionManager *auth.SessionManager
 }
 
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
@@ -38,6 +40,10 @@ func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
 	h.scheduledStore = ss
 }
 
+func (h *Handler) SetSessionManager(sm *auth.SessionManager) {
+	h.sessionManager = sm
+}
+
 func (h *Handler) auditContext(r *http.Request) context.Context {
 	auditCtx := &audit.Context{
 		Source: "api",
@@ -47,6 +53,13 @@ func (h *Handler) auditContext(r *http.Request) context.Context {
 		if key, ok := apiKey.(*model.APIKey); ok {
 			auditCtx.UserID = key.ID
 			auditCtx.Username = key.Name
+		}
+	}
+
+	if session := r.Context().Value(SessionContextKey); session != nil {
+		if sess, ok := session.(*auth.Session); ok {
+			auditCtx.UserID = sess.UserID
+			auditCtx.Username = sess.Username
 		}
 	}
 
@@ -76,9 +89,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	wrap := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = LimitBody(handler)
 		if cfg.requireAuth {
+			if h.sessionManager != nil {
+				return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
+			}
 			return AuthMiddleware(h.store, handler)
 		}
 		return handler
+	}
+
+	wrapAuth := func(handler http.HandlerFunc) http.HandlerFunc {
+		handler = LimitBody(handler)
+		if h.sessionManager != nil {
+			return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
+		}
+		return AuthMiddleware(h.store, handler)
 	}
 
 	// Datacenter routes
@@ -189,6 +213,19 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/audit", wrap(h.listAuditLogs))
 	mux.HandleFunc("GET /api/audit/export", wrap(h.exportAuditLogs))
 	mux.HandleFunc("GET /api/audit/{id}", wrap(h.getAuditLog))
+
+	// Auth routes (no auth required for login)
+	mux.HandleFunc("POST /api/auth/login", LimitBody(h.login))
+	mux.HandleFunc("POST /api/auth/logout", wrapAuth(h.logout))
+	mux.HandleFunc("GET /api/auth/me", wrapAuth(h.getCurrentUser))
+
+	// User routes (require auth)
+	mux.HandleFunc("GET /api/users", wrapAuth(h.listUsers))
+	mux.HandleFunc("POST /api/users", wrapAuth(h.createUser))
+	mux.HandleFunc("GET /api/users/{id}", wrapAuth(h.getUser))
+	mux.HandleFunc("PUT /api/users/{id}", wrapAuth(h.updateUser))
+	mux.HandleFunc("DELETE /api/users/{id}", wrapAuth(h.deleteUser))
+	mux.HandleFunc("POST /api/users/{id}/password", wrapAuth(h.changePassword))
 
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)

@@ -24,6 +24,11 @@ type Config struct {
 	RateLimitWindow        time.Duration
 	AuditEnabled           bool
 	AuditRetentionDays     int
+	SessionTTL             time.Duration
+	InitialAdminUsername   string
+	InitialAdminPassword   string
+	InitialAdminEmail      string
+	InitialAdminFullName   string
 }
 
 var cfg Config
@@ -46,6 +51,11 @@ func Load() *Config {
 		RateLimitWindow:        getDurationEnv("RATE_LIMIT_WINDOW", 1*time.Minute),
 		AuditEnabled:           getBoolEnv("AUDIT_ENABLED", false),
 		AuditRetentionDays:     getIntEnv("AUDIT_RETENTION_DAYS", 90),
+		SessionTTL:             getDurationEnv("SESSION_TTL", 24*time.Hour),
+		InitialAdminUsername:   getEnv("INITIAL_ADMIN_USERNAME", ""),
+		InitialAdminPassword:   getEnv("INITIAL_ADMIN_PASSWORD", ""),
+		InitialAdminEmail:      getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),
+		InitialAdminFullName:   getEnv("INITIAL_ADMIN_FULL_NAME", "System Administrator"),
 	}
 
 	return &cfg
