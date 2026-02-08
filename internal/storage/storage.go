@@ -152,6 +152,7 @@ type ExtendedStorage interface {
 	BulkOperations
 	AuditStorage
 	UserStorage
+	RBACStorage
 	Close() error
 	DB() *sql.DB
 }

@@ -19,10 +19,15 @@ import type {
   Network,
   NetworkPool,
   NetworkUtilization,
+  Permission,
+  Role,
+  RoleFilter,
   SearchResult,
   ServiceInfo,
   UIConfig,
   UpdateUserRequest,
+  CreateRoleRequest,
+  UpdateRoleRequest,
   User,
   UserFilter,
   UserInfo,
@@ -43,6 +48,8 @@ export type {
   Network,
   NetworkPool,
   NetworkUtilization,
+  Permission,
+  Role,
   ServiceInfo,
   UIConfig,
   UserInfo,
@@ -99,10 +106,14 @@ export class RackdAPI {
         throw new RackdAPIError(error.code, error.message, error.details);
       }
 
-      if (response.status === 204) {
+      if (response.status === 204 || response.status === 201 && response.headers.get('content-length') === '0') {
         return undefined as T;
       }
-      return response.json();
+      const text = await response.text();
+      if (!text) {
+        return undefined as T;
+      }
+      return JSON.parse(text);
     })();
 
     if (cacheKey) {
@@ -353,6 +364,55 @@ export class RackdAPI {
 
   async changePassword(id: string, request: ChangePasswordRequest): Promise<void> {
     return this.request<void>('POST', `/api/users/${id}/password`, request);
+  }
+
+  async grantRole(userId: string, roleId: string): Promise<void> {
+    return this.request<void>('POST', '/api/users/grant-role', { user_id: userId, role_id: roleId });
+  }
+
+  async revokeRole(userId: string, roleId: string): Promise<void> {
+    return this.request<void>('POST', '/api/users/revoke-role', { user_id: userId, role_id: roleId });
+  }
+
+  // Roles
+  async listRoles(filter?: RoleFilter): Promise<Role[]> {
+    const params = new URLSearchParams();
+    if (filter?.name) params.set('name', filter.name);
+    if (filter?.is_system !== undefined) params.set('is_system', filter.is_system.toString());
+    const query = params.toString();
+    return this.request<Role[]>('GET', `/api/roles${query ? `?${query}` : ''}`);
+  }
+
+  async getRole(id: string): Promise<Role> {
+    return this.request<Role>('GET', `/api/roles/${id}`);
+  }
+
+  async createRole(role: CreateRoleRequest): Promise<Role> {
+    return this.request<Role>('POST', '/api/roles', role);
+  }
+
+  async updateRole(id: string, role: UpdateRoleRequest): Promise<Role> {
+    return this.request<Role>('PUT', `/api/roles/${id}`, role);
+  }
+
+  async deleteRole(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/roles/${id}`);
+  }
+
+  async getRolePermissions(id: string): Promise<{ role: Role; permissions: Permission[] }> {
+    return this.request<{ role: Role; permissions: Permission[] }>('GET', `/api/roles/${id}/permissions`);
+  }
+
+  async listPermissions(): Promise<Permission[]> {
+    return this.request<Permission[]>('GET', '/api/permissions');
+  }
+
+  async getUserRoles(id: string): Promise<Role[]> {
+    return this.request<Role[]>('GET', `/api/users/${id}/roles`);
+  }
+
+  async getUserPermissions(id: string): Promise<Permission[]> {
+    return this.request<Permission[]>('GET', `/api/users/${id}/permissions`);
   }
 }
 

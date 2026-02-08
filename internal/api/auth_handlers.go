@@ -71,7 +71,10 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionManager.CreateSession(user.ID, user.Username, user.IsAdmin)
+	// Derive admin status from RBAC roles instead of the legacy IsAdmin field
+	isAdmin, _ := h.store.HasPermission(r.Context(), user.ID, "users", "create")
+
+	session, err := h.sessionManager.CreateSession(user.ID, user.Username, isAdmin)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -125,5 +128,17 @@ func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, user.ToResponse())
+	roles, err := h.store.GetUserRoles(r.Context(), session.UserID)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	response := user.ToResponse()
+	response.Roles = make([]model.Role, len(roles))
+	for i, role := range roles {
+		response.Roles[i] = role
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
 }

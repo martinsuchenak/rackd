@@ -17,11 +17,11 @@ import (
 )
 
 type Handler struct {
-	store          storage.ExtendedStorage
-	scanner        discovery.Scanner
-	credStore      credentials.Storage
-	profileStore   storage.ProfileStorage
-	scheduledStore storage.ScheduledScanStorage
+	store            storage.ExtendedStorage
+	scanner          discovery.Scanner
+	credStore        credentials.Storage
+	profileStore     storage.ProfileStorage
+	scheduledStore   storage.ScheduledScanStorage
 	sessionManager   *auth.SessionManager
 	loginRateLimiter *RateLimiter
 	cookieSecure     bool
@@ -123,114 +123,129 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		return AuthMiddleware(h.store, handler)
 	}
 
+	// wrapPerm requires authentication AND checks RBAC permission.
+	// When auth is not configured (cfg.requireAuth == false and no session manager),
+	// it falls back to wrap behavior for backward compatibility.
+	wrapPerm := func(handler http.HandlerFunc, resource, action string) http.HandlerFunc {
+		handler = LimitBody(handler)
+		if cfg.requireAuth || h.sessionManager != nil {
+			handler = RequirePermission(h.store, resource, action)(handler)
+			if h.sessionManager != nil {
+				return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
+			}
+			return AuthMiddleware(h.store, handler)
+		}
+		return handler
+	}
+
 	// Datacenter routes
-	mux.HandleFunc("GET /api/datacenters", wrap(h.listDatacenters))
-	mux.HandleFunc("POST /api/datacenters", wrap(h.createDatacenter))
-	mux.HandleFunc("GET /api/datacenters/{id}", wrap(h.getDatacenter))
-	mux.HandleFunc("PUT /api/datacenters/{id}", wrap(h.updateDatacenter))
-	mux.HandleFunc("DELETE /api/datacenters/{id}", wrap(h.deleteDatacenter))
-	mux.HandleFunc("GET /api/datacenters/{id}/devices", wrap(h.getDatacenterDevices))
+	mux.HandleFunc("GET /api/datacenters", wrapPerm(h.listDatacenters, "datacenters", "list"))
+	mux.HandleFunc("POST /api/datacenters", wrapPerm(h.createDatacenter, "datacenters", "create"))
+	mux.HandleFunc("GET /api/datacenters/{id}", wrapPerm(h.getDatacenter, "datacenters", "read"))
+	mux.HandleFunc("PUT /api/datacenters/{id}", wrapPerm(h.updateDatacenter, "datacenters", "update"))
+	mux.HandleFunc("DELETE /api/datacenters/{id}", wrapPerm(h.deleteDatacenter, "datacenters", "delete"))
+	mux.HandleFunc("GET /api/datacenters/{id}/devices", wrapPerm(h.getDatacenterDevices, "datacenters", "read"))
 
 	// Network routes
-	mux.HandleFunc("GET /api/networks", wrap(h.listNetworks))
-	mux.HandleFunc("POST /api/networks", wrap(h.createNetwork))
-	mux.HandleFunc("GET /api/networks/{id}", wrap(h.getNetwork))
-	mux.HandleFunc("PUT /api/networks/{id}", wrap(h.updateNetwork))
-	mux.HandleFunc("DELETE /api/networks/{id}", wrap(h.deleteNetwork))
-	mux.HandleFunc("GET /api/networks/{id}/devices", wrap(h.getNetworkDevices))
-	mux.HandleFunc("GET /api/networks/{id}/utilization", wrap(h.getNetworkUtilization))
-	mux.HandleFunc("GET /api/networks/{id}/pools", wrap(h.listNetworkPools))
-	mux.HandleFunc("POST /api/networks/{id}/pools", wrap(h.createNetworkPool))
+	mux.HandleFunc("GET /api/networks", wrapPerm(h.listNetworks, "networks", "list"))
+	mux.HandleFunc("POST /api/networks", wrapPerm(h.createNetwork, "networks", "create"))
+	mux.HandleFunc("GET /api/networks/{id}", wrapPerm(h.getNetwork, "networks", "read"))
+	mux.HandleFunc("PUT /api/networks/{id}", wrapPerm(h.updateNetwork, "networks", "update"))
+	mux.HandleFunc("DELETE /api/networks/{id}", wrapPerm(h.deleteNetwork, "networks", "delete"))
+	mux.HandleFunc("GET /api/networks/{id}/devices", wrapPerm(h.getNetworkDevices, "networks", "read"))
+	mux.HandleFunc("GET /api/networks/{id}/utilization", wrapPerm(h.getNetworkUtilization, "networks", "read"))
+	mux.HandleFunc("GET /api/networks/{id}/pools", wrapPerm(h.listNetworkPools, "pools", "list"))
+	mux.HandleFunc("POST /api/networks/{id}/pools", wrapPerm(h.createNetworkPool, "pools", "create"))
 
 	// Pool routes
-	mux.HandleFunc("GET /api/pools/{id}", wrap(h.getNetworkPool))
-	mux.HandleFunc("PUT /api/pools/{id}", wrap(h.updateNetworkPool))
-	mux.HandleFunc("DELETE /api/pools/{id}", wrap(h.deleteNetworkPool))
-	mux.HandleFunc("GET /api/pools/{id}/next-ip", wrap(h.getNextIP))
-	mux.HandleFunc("GET /api/pools/{id}/heatmap", wrap(h.getPoolHeatmap))
+	mux.HandleFunc("GET /api/pools/{id}", wrapPerm(h.getNetworkPool, "pools", "read"))
+	mux.HandleFunc("PUT /api/pools/{id}", wrapPerm(h.updateNetworkPool, "pools", "update"))
+	mux.HandleFunc("DELETE /api/pools/{id}", wrapPerm(h.deleteNetworkPool, "pools", "delete"))
+	mux.HandleFunc("GET /api/pools/{id}/next-ip", wrapPerm(h.getNextIP, "pools", "read"))
+	mux.HandleFunc("GET /api/pools/{id}/heatmap", wrapPerm(h.getPoolHeatmap, "pools", "read"))
 
 	// Device routes
-	mux.HandleFunc("GET /api/devices", wrap(h.listDevices))
-	mux.HandleFunc("POST /api/devices", wrap(h.createDevice))
-	mux.HandleFunc("GET /api/devices/{id}", wrap(h.getDevice))
-	mux.HandleFunc("PUT /api/devices/{id}", wrap(h.updateDevice))
-	mux.HandleFunc("DELETE /api/devices/{id}", wrap(h.deleteDevice))
+	mux.HandleFunc("GET /api/devices", wrapPerm(h.listDevices, "devices", "list"))
+	mux.HandleFunc("POST /api/devices", wrapPerm(h.createDevice, "devices", "create"))
+	mux.HandleFunc("GET /api/devices/{id}", wrapPerm(h.getDevice, "devices", "read"))
+	mux.HandleFunc("PUT /api/devices/{id}", wrapPerm(h.updateDevice, "devices", "update"))
+	mux.HandleFunc("DELETE /api/devices/{id}", wrapPerm(h.deleteDevice, "devices", "delete"))
 
 	// Search routes
-	mux.HandleFunc("GET /api/search", wrap(h.search))
+	mux.HandleFunc("GET /api/search", wrapPerm(h.search, "search", "read"))
 
 	// Relationship routes
-	mux.HandleFunc("GET /api/relationships", wrap(h.listAllRelationships))
-	mux.HandleFunc("POST /api/devices/{id}/relationships", wrap(h.addRelationship))
-	mux.HandleFunc("GET /api/devices/{id}/relationships", wrap(h.getRelationships))
-	mux.HandleFunc("GET /api/devices/{id}/related", wrap(h.getRelatedDevices))
-	mux.HandleFunc("PATCH /api/devices/{id}/relationships/{child_id}/{type}", wrap(h.updateRelationshipNotes))
-	mux.HandleFunc("DELETE /api/devices/{id}/relationships/{child_id}/{type}", wrap(h.removeRelationship))
+	mux.HandleFunc("GET /api/relationships", wrapPerm(h.listAllRelationships, "relationships", "list"))
+	mux.HandleFunc("POST /api/devices/{id}/relationships", wrapPerm(h.addRelationship, "relationships", "create"))
+	mux.HandleFunc("GET /api/devices/{id}/relationships", wrapPerm(h.getRelationships, "relationships", "read"))
+	mux.HandleFunc("GET /api/devices/{id}/related", wrapPerm(h.getRelatedDevices, "relationships", "read"))
+	mux.HandleFunc("PATCH /api/devices/{id}/relationships/{child_id}/{type}", wrapPerm(h.updateRelationshipNotes, "relationships", "update"))
+	mux.HandleFunc("DELETE /api/devices/{id}/relationships/{child_id}/{type}", wrapPerm(h.removeRelationship, "relationships", "delete"))
 
 	// Discovery routes
-	mux.HandleFunc("POST /api/discovery/networks/{id}/scan", wrap(h.startScan))
-	mux.HandleFunc("GET /api/discovery/scans", wrap(h.listScans))
-	mux.HandleFunc("GET /api/discovery/scans/{id}", wrap(h.getScan))
-	mux.HandleFunc("POST /api/discovery/scans/{id}/cancel", wrap(h.cancelScan))
-	mux.HandleFunc("DELETE /api/discovery/scans/{id}", wrap(h.deleteDiscoveryScan))
-	mux.HandleFunc("GET /api/discovery/devices", wrap(h.listDiscoveredDevices))
-	mux.HandleFunc("DELETE /api/discovery/devices", wrap(h.deleteDiscoveredDevicesByNetwork))
-	mux.HandleFunc("DELETE /api/discovery/devices/{id}", wrap(h.deleteDiscoveredDevice))
-	mux.HandleFunc("POST /api/discovery/devices/{id}/promote", wrap(h.promoteDevice))
-	mux.HandleFunc("GET /api/discovery/rules", wrap(h.listDiscoveryRules))
-	mux.HandleFunc("POST /api/discovery/rules", wrap(h.createDiscoveryRule))
-	mux.HandleFunc("GET /api/discovery/rules/{id}", wrap(h.getDiscoveryRule))
-	mux.HandleFunc("PUT /api/discovery/rules/{id}", wrap(h.updateDiscoveryRule))
-	mux.HandleFunc("DELETE /api/discovery/rules/{id}", wrap(h.deleteDiscoveryRule))
+	mux.HandleFunc("POST /api/discovery/networks/{id}/scan", wrapPerm(h.startScan, "discovery", "create"))
+	mux.HandleFunc("GET /api/discovery/scans", wrapPerm(h.listScans, "discovery", "list"))
+	mux.HandleFunc("GET /api/discovery/scans/{id}", wrapPerm(h.getScan, "discovery", "read"))
+	mux.HandleFunc("POST /api/discovery/scans/{id}/cancel", wrapPerm(h.cancelScan, "discovery", "delete"))
+	mux.HandleFunc("DELETE /api/discovery/scans/{id}", wrapPerm(h.deleteDiscoveryScan, "discovery", "delete"))
+	mux.HandleFunc("GET /api/discovery/devices", wrapPerm(h.listDiscoveredDevices, "discovery", "list"))
+	mux.HandleFunc("DELETE /api/discovery/devices", wrapPerm(h.deleteDiscoveredDevicesByNetwork, "discovery", "delete"))
+	mux.HandleFunc("DELETE /api/discovery/devices/{id}", wrapPerm(h.deleteDiscoveredDevice, "discovery", "delete"))
+	mux.HandleFunc("POST /api/discovery/devices/{id}/promote", wrapPerm(h.promoteDevice, "discovery", "create"))
+	mux.HandleFunc("GET /api/discovery/rules", wrapPerm(h.listDiscoveryRules, "discovery", "list"))
+	mux.HandleFunc("POST /api/discovery/rules", wrapPerm(h.createDiscoveryRule, "discovery", "create"))
+	mux.HandleFunc("GET /api/discovery/rules/{id}", wrapPerm(h.getDiscoveryRule, "discovery", "read"))
+	mux.HandleFunc("PUT /api/discovery/rules/{id}", wrapPerm(h.updateDiscoveryRule, "discovery", "update"))
+	mux.HandleFunc("DELETE /api/discovery/rules/{id}", wrapPerm(h.deleteDiscoveryRule, "discovery", "delete"))
 
 	// Credentials routes (if storage is configured)
 	if h.credStore != nil {
-		mux.HandleFunc("GET /api/credentials", wrap(h.listCredentials))
-		mux.HandleFunc("POST /api/credentials", wrap(h.createCredential))
-		mux.HandleFunc("GET /api/credentials/{id}", wrap(h.getCredential))
-		mux.HandleFunc("PUT /api/credentials/{id}", wrap(h.updateCredential))
-		mux.HandleFunc("DELETE /api/credentials/{id}", wrap(h.deleteCredential))
+		mux.HandleFunc("GET /api/credentials", wrapPerm(h.listCredentials, "credentials", "list"))
+		mux.HandleFunc("POST /api/credentials", wrapPerm(h.createCredential, "credentials", "create"))
+		mux.HandleFunc("GET /api/credentials/{id}", wrapPerm(h.getCredential, "credentials", "read"))
+		mux.HandleFunc("PUT /api/credentials/{id}", wrapPerm(h.updateCredential, "credentials", "update"))
+		mux.HandleFunc("DELETE /api/credentials/{id}", wrapPerm(h.deleteCredential, "credentials", "delete"))
 	}
 
 	// Scan Profiles routes (if storage is configured)
 	if h.profileStore != nil {
-		mux.HandleFunc("GET /api/scan-profiles", wrap(h.listProfiles))
-		mux.HandleFunc("POST /api/scan-profiles", wrap(h.createProfile))
-		mux.HandleFunc("GET /api/scan-profiles/{id}", wrap(h.getProfile))
-		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrap(h.updateProfile))
-		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrap(h.deleteProfile))
+		mux.HandleFunc("GET /api/scan-profiles", wrapPerm(h.listProfiles, "scan-profiles", "list"))
+		mux.HandleFunc("POST /api/scan-profiles", wrapPerm(h.createProfile, "scan-profiles", "create"))
+		mux.HandleFunc("GET /api/scan-profiles/{id}", wrapPerm(h.getProfile, "scan-profiles", "read"))
+		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrapPerm(h.updateProfile, "scan-profiles", "update"))
+		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrapPerm(h.deleteProfile, "scan-profiles", "delete"))
 	}
 
 	// Scheduled Scans routes (if storage is configured)
 	if h.scheduledStore != nil {
-		mux.HandleFunc("GET /api/scheduled-scans", wrap(h.listScheduledScans))
-		mux.HandleFunc("POST /api/scheduled-scans", wrap(h.createScheduledScan))
-		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrap(h.getScheduledScan))
-		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
-		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
+		mux.HandleFunc("GET /api/scheduled-scans", wrapPerm(h.listScheduledScans, "scheduled-scans", "list"))
+		mux.HandleFunc("POST /api/scheduled-scans", wrapPerm(h.createScheduledScan, "scheduled-scans", "create"))
+		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrapPerm(h.getScheduledScan, "scheduled-scans", "read"))
+		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrapPerm(h.updateScheduledScan, "scheduled-scans", "update"))
+		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrapPerm(h.deleteScheduledScan, "scheduled-scans", "delete"))
 	}
 
-	// API Key routes (always available)
-	mux.HandleFunc("GET /api/keys", wrap(h.listAPIKeys))
-	mux.HandleFunc("POST /api/keys", wrap(h.createAPIKey))
-	mux.HandleFunc("GET /api/keys/{id}", wrap(h.getAPIKey))
-	mux.HandleFunc("DELETE /api/keys/{id}", wrap(h.deleteAPIKey))
+	// API Key routes
+	mux.HandleFunc("GET /api/keys", wrapPerm(h.listAPIKeys, "apikeys", "list"))
+	mux.HandleFunc("POST /api/keys", wrapPerm(h.createAPIKey, "apikeys", "create"))
+	mux.HandleFunc("GET /api/keys/{id}", wrapPerm(h.getAPIKey, "apikeys", "read"))
+	mux.HandleFunc("DELETE /api/keys/{id}", wrapPerm(h.deleteAPIKey, "apikeys", "delete"))
 
 	// Bulk device operations
-	mux.HandleFunc("POST /api/devices/bulk", wrap(h.bulkCreateDevices))
-	mux.HandleFunc("PUT /api/devices/bulk", wrap(h.bulkUpdateDevices))
-	mux.HandleFunc("DELETE /api/devices/bulk", wrap(h.bulkDeleteDevices))
-	mux.HandleFunc("POST /api/devices/bulk/tags", wrap(h.bulkAddTags))
-	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrap(h.bulkRemoveTags))
+	mux.HandleFunc("POST /api/devices/bulk", wrapPerm(h.bulkCreateDevices, "devices", "create"))
+	mux.HandleFunc("PUT /api/devices/bulk", wrapPerm(h.bulkUpdateDevices, "devices", "update"))
+	mux.HandleFunc("DELETE /api/devices/bulk", wrapPerm(h.bulkDeleteDevices, "devices", "delete"))
+	mux.HandleFunc("POST /api/devices/bulk/tags", wrapPerm(h.bulkAddTags, "devices", "update"))
+	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapPerm(h.bulkRemoveTags, "devices", "update"))
 
 	// Bulk network operations
-	mux.HandleFunc("POST /api/networks/bulk", wrap(h.bulkCreateNetworks))
-	mux.HandleFunc("DELETE /api/networks/bulk", wrap(h.bulkDeleteNetworks))
+	mux.HandleFunc("POST /api/networks/bulk", wrapPerm(h.bulkCreateNetworks, "networks", "create"))
+	mux.HandleFunc("DELETE /api/networks/bulk", wrapPerm(h.bulkDeleteNetworks, "networks", "delete"))
 
 	// Audit log routes
-	mux.HandleFunc("GET /api/audit", wrap(h.listAuditLogs))
-	mux.HandleFunc("GET /api/audit/export", wrap(h.exportAuditLogs))
-	mux.HandleFunc("GET /api/audit/{id}", wrap(h.getAuditLog))
+	mux.HandleFunc("GET /api/audit", wrapPerm(h.listAuditLogs, "audit", "list"))
+	mux.HandleFunc("GET /api/audit/export", wrapPerm(h.exportAuditLogs, "audit", "list"))
+	mux.HandleFunc("GET /api/audit/{id}", wrapPerm(h.getAuditLog, "audit", "list"))
 
 	// Auth routes (no auth required for login)
 	loginHandler := LimitBody(h.login)
@@ -241,13 +256,26 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/auth/logout", wrapAuth(h.logout))
 	mux.HandleFunc("GET /api/auth/me", wrapAuth(h.getCurrentUser))
 
-	// User routes (require auth)
-	mux.HandleFunc("GET /api/users", wrapAuth(h.listUsers))
-	mux.HandleFunc("POST /api/users", wrapAuth(h.createUser))
-	mux.HandleFunc("GET /api/users/{id}", wrapAuth(h.getUser))
-	mux.HandleFunc("PUT /api/users/{id}", wrapAuth(h.updateUser))
-	mux.HandleFunc("DELETE /api/users/{id}", wrapAuth(h.deleteUser))
+	// User routes (require auth + RBAC)
+	mux.HandleFunc("GET /api/users", wrapPerm(h.listUsers, "users", "list"))
+	mux.HandleFunc("POST /api/users", wrapPerm(h.createUser, "users", "create"))
+	mux.HandleFunc("GET /api/users/{id}", wrapPerm(h.getUser, "users", "read"))
+	mux.HandleFunc("PUT /api/users/{id}", wrapPerm(h.updateUser, "users", "update"))
+	mux.HandleFunc("DELETE /api/users/{id}", wrapPerm(h.deleteUser, "users", "delete"))
 	mux.HandleFunc("POST /api/users/{id}/password", wrapAuth(h.changePassword))
+
+	// Role routes (require auth + RBAC)
+	mux.HandleFunc("GET /api/roles", wrapPerm(h.listRoles, "roles", "list"))
+	mux.HandleFunc("POST /api/roles", wrapPerm(h.createRole, "roles", "create"))
+	mux.HandleFunc("GET /api/roles/{id}", wrapPerm(h.getRole, "roles", "read"))
+	mux.HandleFunc("PUT /api/roles/{id}", wrapPerm(h.updateRole, "roles", "update"))
+	mux.HandleFunc("DELETE /api/roles/{id}", wrapPerm(h.deleteRole, "roles", "delete"))
+	mux.HandleFunc("GET /api/roles/{id}/permissions", wrapPerm(h.getRolePermissions, "roles", "read"))
+	mux.HandleFunc("GET /api/permissions", wrapPerm(h.listPermissions, "roles", "list"))
+	mux.HandleFunc("POST /api/users/grant-role", wrapPerm(h.grantRoleToUser, "roles", "update"))
+	mux.HandleFunc("POST /api/users/revoke-role", wrapPerm(h.revokeRoleFromUser, "roles", "update"))
+	mux.HandleFunc("GET /api/users/{id}/roles", wrapAuth(h.getUserRoles))
+	mux.HandleFunc("GET /api/users/{id}/permissions", wrapAuth(h.getUserPermissions))
 
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
@@ -310,5 +338,6 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {
 	config := NewUIConfigBuilder()
 	config.AddNavItem(NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15})
+	config.AddNavItem(NavItem{Label: "Roles", Path: "/roles", Icon: "shield", Order: 16})
 	h.writeJSON(w, http.StatusOK, config.Build())
 }

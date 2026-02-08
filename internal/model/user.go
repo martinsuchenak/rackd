@@ -32,6 +32,7 @@ type UserResponse struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+	Roles       []Role     `json:"roles,omitempty"`
 }
 
 type LoginRequest struct {
@@ -50,6 +51,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email,omitempty"`
 	FullName string `json:"full_name,omitempty"`
 	IsAdmin  bool   `json:"is_admin,omitempty"`
+	RoleID   string `json:"role_id,omitempty"`
 }
 
 type UpdateUserRequest struct {

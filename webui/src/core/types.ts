@@ -165,6 +165,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   last_login_at?: string;
+  roles?: Role[];
 }
 
 export interface LoginRequest {
@@ -202,6 +203,40 @@ export interface UpdateUserRequest {
 export interface ChangePasswordRequest {
   old_password: string;
   new_password: string;
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  resource: string;
+  action: string;
+  created_at: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+  permissions?: Permission[];
+}
+
+export interface RoleFilter {
+  name?: string;
+  is_system?: boolean;
+}
+
+export interface CreateRoleRequest {
+  name: string;
+  description?: string;
+  permissions?: string[];
+}
+
+export interface UpdateRoleRequest {
+  description?: string;
+  permissions?: string[];
 }
 
 export interface UIConfig {

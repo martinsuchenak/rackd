@@ -27,7 +27,11 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 
 	responses := make([]model.UserResponse, len(users))
 	for i, user := range users {
-		responses[i] = user.ToResponse()
+		resp := user.ToResponse()
+		if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
+			resp.Roles = roles
+		}
+		responses[i] = resp
 	}
 
 	h.writeJSON(w, http.StatusOK, responses)
@@ -42,7 +46,12 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, user.ToResponse())
+	resp := user.ToResponse()
+	if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
+		resp.Roles = roles
+	}
+
+	h.writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +107,13 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.CreateUser(r.Context(), user); err != nil {
 		h.internalError(w, err)
 		return
+	}
+
+	// Assign role if specified
+	if req.RoleID != "" {
+		if err := h.store.AssignRoleToUser(r.Context(), user.ID, req.RoleID); err != nil {
+			log.Warn("Failed to assign role during user creation", "user_id", user.ID, "role_id", req.RoleID, "error", err)
+		}
 	}
 
 	log.Info("User created", "username", user.Username, "id", user.ID)

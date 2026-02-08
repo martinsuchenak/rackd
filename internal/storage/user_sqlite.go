@@ -296,6 +296,10 @@ func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password s
 		return fmt.Errorf("username and password are required for initial admin")
 	}
 
+	if len(password) < 8 {
+		return fmt.Errorf("initial admin password must be at least 8 characters")
+	}
+
 	existingUser, err := s.GetUserByUsername(username)
 	if err == nil && existingUser != nil {
 		return fmt.Errorf("user '%s' already exists", username)
@@ -304,10 +308,6 @@ func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password s
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		return fmt.Errorf("failed to hash initial admin password: %w", err)
-	}
-
-	if len(password) < 8 {
-		return fmt.Errorf("initial admin password must be at least 8 characters")
 	}
 
 	user := &model.User{
@@ -320,5 +320,19 @@ func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password s
 	}
 
 	ctx := context.Background()
-	return s.CreateUser(ctx, user)
+	if err := s.CreateUser(ctx, user); err != nil {
+		return err
+	}
+
+	// Assign the admin role so RBAC permissions are enforced
+	adminRole, err := s.GetRoleByName(ctx, "admin")
+	if err != nil {
+		return fmt.Errorf("failed to find admin role: %w", err)
+	}
+
+	if err := s.AssignRoleToUser(ctx, user.ID, adminRole.ID); err != nil {
+		return fmt.Errorf("failed to assign admin role: %w", err)
+	}
+
+	return nil
 }

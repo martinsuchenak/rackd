@@ -84,6 +84,24 @@ var migrations = []*Migration{
 		Up:      migrateAddUsersUp,
 		Down:    migrateAddUsersDown,
 	},
+	{
+		Version: "20260206130000",
+		Name:    "add_rbac",
+		Up:      migrateAddRBACUp,
+		Down:    migrateAddRBACDown,
+	},
+	{
+		Version: "20260207100000",
+		Name:    "add_rbac_missing_permissions",
+		Up:      migrateAddRBACMissingPermissionsUp,
+		Down:    migrateAddRBACMissingPermissionsDown,
+	},
+	{
+		Version: "20260207110000",
+		Name:    "assign_roles_to_existing_admins",
+		Up:      migrateAssignRolesToExistingAdminsUp,
+		Down:    migrateAssignRolesToExistingAdminsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -885,5 +903,347 @@ func migrateAddUsersDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS users`); err != nil {
 		return fmt.Errorf("failed to drop users table: %w", err)
 	}
+	return nil
+}
+
+func migrateAddRBACUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS permissions (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			resource TEXT NOT NULL,
+			action TEXT NOT NULL,
+			created_at DATETIME NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create permissions table: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS roles (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT,
+			is_system INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create roles table: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS role_permissions (
+			role_id TEXT NOT NULL,
+			permission_id TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY (role_id, permission_id),
+			FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+			FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create role_permissions table: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS user_roles (
+			user_id TEXT NOT NULL,
+			role_id TEXT NOT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY (user_id, role_id),
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+			FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create user_roles table: %w", err)
+	}
+
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_permissions_resource ON permissions(resource, action)",
+		"CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role_id)",
+		"CREATE INDEX IF NOT EXISTS idx_role_permissions_permission ON role_permissions(permission_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create rbac index: %w", err)
+		}
+	}
+
+	now := time.Now()
+
+	defaultPermissions := [][]string{
+		{"device:list", "devices", "list"},
+		{"device:create", "devices", "create"},
+		{"device:read", "devices", "read"},
+		{"device:update", "devices", "update"},
+		{"device:delete", "devices", "delete"},
+		{"network:list", "networks", "list"},
+		{"network:create", "networks", "create"},
+		{"network:read", "networks", "read"},
+		{"network:update", "networks", "update"},
+		{"network:delete", "networks", "delete"},
+		{"datacenter:list", "datacenters", "list"},
+		{"datacenter:create", "datacenters", "create"},
+		{"datacenter:read", "datacenters", "read"},
+		{"datacenter:update", "datacenters", "update"},
+		{"datacenter:delete", "datacenters", "delete"},
+		{"discovery:list", "discovery", "list"},
+		{"discovery:create", "discovery", "create"},
+		{"discovery:read", "discovery", "read"},
+		{"discovery:delete", "discovery", "delete"},
+		{"user:list", "users", "list"},
+		{"user:create", "users", "create"},
+		{"user:read", "users", "read"},
+		{"user:update", "users", "update"},
+		{"user:delete", "users", "delete"},
+		{"role:list", "roles", "list"},
+		{"role:create", "roles", "create"},
+		{"role:read", "roles", "read"},
+		{"role:update", "roles", "update"},
+		{"role:delete", "roles", "delete"},
+		{"audit:list", "audit", "list"},
+		{"apikey:list", "apikeys", "list"},
+		{"apikey:create", "apikeys", "create"},
+		{"apikey:read", "apikeys", "read"},
+		{"apikey:update", "apikeys", "update"},
+		{"apikey:delete", "apikeys", "delete"},
+	}
+
+	for _, perm := range defaultPermissions {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to insert default permission: %w", err)
+		}
+	}
+
+	roles := [][]any{
+		{"admin", "Full administrative access", true},
+		{"operator", "Can manage devices, networks, and discovery", true},
+		{"viewer", "Read-only access", true},
+	}
+
+	for _, role := range roles {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO roles (id, name, description, is_system, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, newUUID(), role[0], role[1], role[2], now, now)
+		if err != nil {
+			return fmt.Errorf("failed to insert default role: %w", err)
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'admin'
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign permissions to admin role: %w", err)
+	}
+
+	operatorPerms := []string{
+		"device:list", "device:create", "device:read", "device:update",
+		"network:list", "network:create", "network:read", "network:update",
+		"datacenter:list", "datacenter:read",
+		"discovery:list", "discovery:create", "discovery:read",
+	}
+	for _, permName := range operatorPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator permission: %w", err)
+		}
+	}
+
+	viewerPerms := []string{
+		"device:list", "device:read",
+		"network:list", "network:read",
+		"datacenter:list", "datacenter:read",
+		"discovery:list", "discovery:read",
+	}
+	for _, permName := range viewerPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer permission: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func migrateAddRBACDown(ctx context.Context, tx *sql.Tx) error {
+	tables := []string{"user_roles", "role_permissions", "roles", "permissions"}
+
+	for _, table := range tables {
+		if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
+			return fmt.Errorf("failed to drop %s table: %w", table, err)
+		}
+	}
+
+	return nil
+}
+
+func migrateAddRBACMissingPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	// Add missing permissions for resources that weren't covered in the initial RBAC migration
+	newPermissions := [][]string{
+		{"pool:list", "pools", "list"},
+		{"pool:create", "pools", "create"},
+		{"pool:read", "pools", "read"},
+		{"pool:update", "pools", "update"},
+		{"pool:delete", "pools", "delete"},
+		{"credential:list", "credentials", "list"},
+		{"credential:create", "credentials", "create"},
+		{"credential:read", "credentials", "read"},
+		{"credential:update", "credentials", "update"},
+		{"credential:delete", "credentials", "delete"},
+		{"scan-profile:list", "scan-profiles", "list"},
+		{"scan-profile:create", "scan-profiles", "create"},
+		{"scan-profile:read", "scan-profiles", "read"},
+		{"scan-profile:update", "scan-profiles", "update"},
+		{"scan-profile:delete", "scan-profiles", "delete"},
+		{"scheduled-scan:list", "scheduled-scans", "list"},
+		{"scheduled-scan:create", "scheduled-scans", "create"},
+		{"scheduled-scan:read", "scheduled-scans", "read"},
+		{"scheduled-scan:update", "scheduled-scans", "update"},
+		{"scheduled-scan:delete", "scheduled-scans", "delete"},
+		{"relationship:list", "relationships", "list"},
+		{"relationship:create", "relationships", "create"},
+		{"relationship:read", "relationships", "read"},
+		{"relationship:update", "relationships", "update"},
+		{"relationship:delete", "relationships", "delete"},
+		{"search:read", "search", "read"},
+	}
+
+	for _, perm := range newPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to insert permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant all new permissions to admin role
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'admin'
+		AND p.id NOT IN (SELECT permission_id FROM role_permissions WHERE role_id = r.id)
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign new permissions to admin role: %w", err)
+	}
+
+	// Grant operator permissions for pools, credentials, scan-profiles, scheduled-scans, relationships, search
+	operatorPerms := []string{
+		"pool:list", "pool:create", "pool:read", "pool:update",
+		"credential:list", "credential:create", "credential:read", "credential:update",
+		"scan-profile:list", "scan-profile:create", "scan-profile:read", "scan-profile:update",
+		"scheduled-scan:list", "scheduled-scan:create", "scheduled-scan:read", "scheduled-scan:update",
+		"relationship:list", "relationship:create", "relationship:read", "relationship:update",
+		"search:read",
+	}
+	for _, permName := range operatorPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant viewer read permissions
+	viewerPerms := []string{
+		"pool:list", "pool:read",
+		"credential:list", "credential:read",
+		"scan-profile:list", "scan-profile:read",
+		"scheduled-scan:list", "scheduled-scan:read",
+		"relationship:list", "relationship:read",
+		"search:read",
+	}
+	for _, permName := range viewerPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+func migrateAddRBACMissingPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{
+		"pool:list", "pool:create", "pool:read", "pool:update", "pool:delete",
+		"credential:list", "credential:create", "credential:read", "credential:update", "credential:delete",
+		"scan-profile:list", "scan-profile:create", "scan-profile:read", "scan-profile:update", "scan-profile:delete",
+		"scheduled-scan:list", "scheduled-scan:create", "scheduled-scan:read", "scheduled-scan:update", "scheduled-scan:delete",
+		"relationship:list", "relationship:create", "relationship:read", "relationship:update", "relationship:delete",
+		"search:read",
+	}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAssignRolesToExistingAdminsUp assigns the admin role to any existing users
+// with is_admin=true who don't already have it. This fixes the case where users were
+// created before RBAC was introduced and thus have no entries in user_roles.
+func migrateAssignRolesToExistingAdminsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at)
+		SELECT u.id, r.id, ?
+		FROM users u, roles r
+		WHERE u.is_admin = 1
+		AND r.name = 'admin'
+		AND NOT EXISTS (
+			SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role_id = r.id
+		)
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign admin role to existing admin users: %w", err)
+	}
+
+	return nil
+}
+
+func migrateAssignRolesToExistingAdminsDown(ctx context.Context, tx *sql.Tx) error {
+	// No-op: removing role assignments could lock out admin users
 	return nil
 }

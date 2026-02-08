@@ -1,6 +1,6 @@
 // Users Component for Rackd Web UI
 
-import type { User, UserFilter, CreateUserRequest, UpdateUserRequest } from '../core/types';
+import type { User, UserFilter, CreateUserRequest, UpdateUserRequest, Role } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { formatDate } from '../core/utils';
 
@@ -24,8 +24,14 @@ interface UsersListData {
   createForm: CreateUserRequest;
   passwordForm: { old_password: string; new_password: string; confirm_password: string };
   currentUser: User | null;
+  availableRoles: Role[];
+  userRolesCache: Map<string, Role[]>;
+  showRoleManager: boolean;
+  roleSaving: boolean;
   init(): Promise<void>;
   loadUsers(): Promise<void>;
+  loadAvailableRoles(): Promise<void>;
+  loadUserRoles(userId: string): Promise<Role[]>;
   applyFilter(): void;
   clearFilter(): void;
   goToPage(p: number): void;
@@ -37,10 +43,14 @@ interface UsersListData {
   closeDeleteModal(): void;
   openPasswordModal(user: User): void;
   closePasswordModal(): void;
+  openRoleManager(user: User): void;
+  closeRoleManager(): void;
   doCreateUser(): Promise<void>;
   doUpdateUser(): Promise<void>;
   doDeleteUser(): Promise<void>;
   doChangePassword(): Promise<void>;
+  grantRole(role: Role): Promise<void>;
+  revokeRole(role: Role): Promise<void>;
   logout(): void;
 }
 
@@ -73,6 +83,10 @@ export function usersList() {
       confirm_password: '',
     },
     currentUser: null as User | null,
+    availableRoles: [] as Role[],
+    userRolesCache: new Map<string, Role[]>(),
+    showRoleManager: false,
+    roleSaving: false,
 
     get totalPages(): number {
       return Math.ceil(this.users.length / this.pageSize) || 1;
@@ -119,9 +133,37 @@ export function usersList() {
       } catch {
         this.currentUser = null;
       }
+      await this.loadAvailableRoles();
+    },
+
+    async loadAvailableRoles(): Promise<void> {
+      try {
+        this.availableRoles = await api.listRoles({});
+      } catch (err) {
+        console.error('Failed to load roles:', err);
+        if (err instanceof RackdAPIError) {
+          this.error = 'Failed to load roles: ' + err.message;
+        }
+        this.availableRoles = [];
+      }
+    },
+
+    async loadUserRoles(userId: string): Promise<Role[]> {
+      if (this.userRolesCache.has(userId)) {
+        return this.userRolesCache.get(userId)!;
+      }
+
+      try {
+        const roles = await api.getUserRoles(userId);
+        this.userRolesCache.set(userId, roles);
+        return roles;
+      } catch {
+        return [];
+      }
     },
 
     applyFilter(): void {
+
       this.page = 1;
       this.loadUsers();
     },
@@ -202,6 +244,70 @@ export function usersList() {
         new_password: '',
         confirm_password: '',
       };
+    },
+
+    hasRole(role: Role): boolean {
+      if (!this.selectedUser?.roles) {
+        return false;
+      }
+      return this.selectedUser.roles.some((r: Role) => r.id === role.id);
+    },
+
+    async openRoleManager(user: User): Promise<void> {
+      this.selectedUser = user;
+      await this.loadUserRoles(user.id);
+      this.showRoleManager = true;
+    },
+
+    closeRoleManager(): void {
+      this.showRoleManager = false;
+      this.selectedUser = null;
+    },
+
+    async grantRole(role: Role): Promise<void> {
+      if (!this.selectedUser) {
+        return;
+      }
+
+      this.roleSaving = true;
+
+      try {
+        await api.grantRole(this.selectedUser.id, role.id);
+        this.userRolesCache.delete(this.selectedUser.id);
+        this.selectedUser.roles = await this.loadUserRoles(this.selectedUser.id);
+        await this.loadUsers();
+      } catch (err) {
+        if (err instanceof RackdAPIError) {
+          this.error = err.message;
+        } else {
+          this.error = 'Failed to grant role';
+        }
+      } finally {
+        this.roleSaving = false;
+      }
+    },
+
+    async revokeRole(role: Role): Promise<void> {
+      if (!this.selectedUser) {
+        return;
+      }
+
+      this.roleSaving = true;
+
+      try {
+        await api.revokeRole(this.selectedUser.id, role.id);
+        this.userRolesCache.delete(this.selectedUser.id);
+        this.selectedUser.roles = await this.loadUserRoles(this.selectedUser.id);
+        await this.loadUsers();
+      } catch (err) {
+        if (err instanceof RackdAPIError) {
+          this.error = err.message;
+        } else {
+          this.error = 'Failed to revoke role';
+        }
+      } finally {
+        this.roleSaving = false;
+      }
     },
 
     async doCreateUser(): Promise<void> {
@@ -373,14 +479,15 @@ export function usersList() {
     async logout(): Promise<void> {
       try {
         await api.logout();
-      } catch {
-        // Continue with redirect even if server call fails
-      }
-      window.location.href = '/login';
-    },
+       } catch {
+         // Continue with redirect even if server call fails
+       }
+       window.location.href = '/login';
+     },
 
     formatDate: (dateString: string) => {
       return formatDate(dateString);
     },
   };
 }
+
