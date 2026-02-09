@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
@@ -43,19 +42,9 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if h.svc != nil && h.svc.Audit != nil {
-		logs, err := h.svc.Audit.List(r.Context(), filter)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-		h.writeJSON(w, http.StatusOK, logs)
-		return
-	}
-
-	logs, err := h.store.ListAuditLogs(filter)
+	logs, err := h.svc.Audit.List(r.Context(), filter)
 	if err != nil {
-		h.internalError(w, err)
+		h.handleServiceError(w, err)
 		return
 	}
 	h.writeJSON(w, http.StatusOK, logs)
@@ -65,19 +54,9 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAuditLog(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if h.svc != nil && h.svc.Audit != nil {
-		log, err := h.svc.Audit.Get(r.Context(), id)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-		h.writeJSON(w, http.StatusOK, log)
-		return
-	}
-
-	log, err := h.store.GetAuditLog(id)
+	log, err := h.svc.Audit.Get(r.Context(), id)
 	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Audit log not found")
+		h.handleServiceError(w, err)
 		return
 	}
 	h.writeJSON(w, http.StatusOK, log)
@@ -109,55 +88,22 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if h.svc != nil && h.svc.Audit != nil {
-		data, err := h.svc.Audit.Export(r.Context(), filter, format)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		var contentType string
-		var filename string
-
-		switch format {
-		case "csv":
-			contentType = "text/csv"
-			filename = "audit-logs.csv"
-		default:
-			contentType = "application/json"
-			filename = "audit-logs.json"
-		}
-
-		w.Header().Set("Content-Type", contentType)
-		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-		w.Write(data)
-		return
-	}
-
-	logs, err := h.store.ListAuditLogs(filter)
+	data, err := h.svc.Audit.Export(r.Context(), filter, format)
 	if err != nil {
-		h.internalError(w, err)
+		h.handleServiceError(w, err)
 		return
 	}
 
-	var data []byte
 	var contentType string
 	var filename string
 
 	switch format {
 	case "csv":
-		data, err = audit.ExportAuditLogsCSV(logs)
 		contentType = "text/csv"
 		filename = "audit-logs.csv"
 	default:
-		data, err = audit.ExportAuditLogsJSON(logs)
 		contentType = "application/json"
 		filename = "audit-logs.json"
-	}
-
-	if err != nil {
-		h.internalError(w, err)
-		return
 	}
 
 	w.Header().Set("Content-Type", contentType)

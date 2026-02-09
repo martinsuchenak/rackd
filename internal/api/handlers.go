@@ -1,19 +1,16 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -69,30 +66,6 @@ func (h *Handler) SetServices(svc *service.Services) {
 	h.svc = svc
 }
 
-func (h *Handler) auditContext(r *http.Request) context.Context {
-	auditCtx := &audit.Context{
-		Source: "api",
-	}
-
-	if apiKey := r.Context().Value("api_key"); apiKey != nil {
-		if key, ok := apiKey.(*model.APIKey); ok {
-			auditCtx.UserID = key.ID
-			auditCtx.Username = key.Name
-		}
-	}
-
-	if session := r.Context().Value(SessionContextKey); session != nil {
-		if sess, ok := session.(*auth.Session); ok {
-			auditCtx.UserID = sess.UserID
-			auditCtx.Username = sess.Username
-		}
-	}
-
-	auditCtx.IPAddress = r.RemoteAddr
-
-	return audit.WithContext(r.Context(), auditCtx)
-}
-
 type HandlerOption func(*handlerConfig)
 
 type handlerConfig struct {
@@ -130,21 +103,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		return AuthMiddleware(h.store, handler)
 	}
 
-	// wrapPerm requires authentication AND checks RBAC permission.
-	// When auth is not configured (cfg.requireAuth == false and no session manager),
-	// it falls back to wrap behavior for backward compatibility.
-	wrapPerm := func(handler http.HandlerFunc, resource, action string) http.HandlerFunc {
-		handler = LimitBody(handler)
-		if cfg.requireAuth || h.sessionManager != nil {
-			handler = RequirePermission(h.store, resource, action)(handler)
-			if h.sessionManager != nil {
-				return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
-			}
-			return AuthMiddleware(h.store, handler)
-		}
-		return handler
-	}
-
 	// Datacenter routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/datacenters", wrapAuth(h.listDatacenters))
 	mux.HandleFunc("POST /api/datacenters", wrapAuth(h.createDatacenter))
@@ -178,9 +136,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("PUT /api/devices/{id}", wrapAuth(h.updateDevice))
 	mux.HandleFunc("DELETE /api/devices/{id}", wrapAuth(h.deleteDevice))
 
-	// Search routes
-	mux.HandleFunc("GET /api/search", wrapPerm(h.search, "search", "read"))
-
 	// Relationship routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/relationships", wrapAuth(h.listAllRelationships))
 	mux.HandleFunc("POST /api/devices/{id}/relationships", wrapAuth(h.addRelationship))
@@ -207,29 +162,29 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 
 	// Credentials routes (if storage is configured)
 	if h.credStore != nil {
-		mux.HandleFunc("GET /api/credentials", wrapPerm(h.listCredentials, "credentials", "list"))
-		mux.HandleFunc("POST /api/credentials", wrapPerm(h.createCredential, "credentials", "create"))
-		mux.HandleFunc("GET /api/credentials/{id}", wrapPerm(h.getCredential, "credentials", "read"))
-		mux.HandleFunc("PUT /api/credentials/{id}", wrapPerm(h.updateCredential, "credentials", "update"))
-		mux.HandleFunc("DELETE /api/credentials/{id}", wrapPerm(h.deleteCredential, "credentials", "delete"))
+		mux.HandleFunc("GET /api/credentials", wrap(h.listCredentials))
+		mux.HandleFunc("POST /api/credentials", wrap(h.createCredential))
+		mux.HandleFunc("GET /api/credentials/{id}", wrap(h.getCredential))
+		mux.HandleFunc("PUT /api/credentials/{id}", wrap(h.updateCredential))
+		mux.HandleFunc("DELETE /api/credentials/{id}", wrap(h.deleteCredential))
 	}
 
 	// Scan Profiles routes (if storage is configured)
 	if h.profileStore != nil {
-		mux.HandleFunc("GET /api/scan-profiles", wrapPerm(h.listProfiles, "scan-profiles", "list"))
-		mux.HandleFunc("POST /api/scan-profiles", wrapPerm(h.createProfile, "scan-profiles", "create"))
-		mux.HandleFunc("GET /api/scan-profiles/{id}", wrapPerm(h.getProfile, "scan-profiles", "read"))
-		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrapPerm(h.updateProfile, "scan-profiles", "update"))
-		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrapPerm(h.deleteProfile, "scan-profiles", "delete"))
+		mux.HandleFunc("GET /api/scan-profiles", wrap(h.listProfiles))
+		mux.HandleFunc("POST /api/scan-profiles", wrap(h.createProfile))
+		mux.HandleFunc("GET /api/scan-profiles/{id}", wrap(h.getProfile))
+		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrap(h.updateProfile))
+		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrap(h.deleteProfile))
 	}
 
 	// Scheduled Scans routes (if storage is configured)
 	if h.scheduledStore != nil {
-		mux.HandleFunc("GET /api/scheduled-scans", wrapPerm(h.listScheduledScans, "scheduled-scans", "list"))
-		mux.HandleFunc("POST /api/scheduled-scans", wrapPerm(h.createScheduledScan, "scheduled-scans", "create"))
-		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrapPerm(h.getScheduledScan, "scheduled-scans", "read"))
-		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrapPerm(h.updateScheduledScan, "scheduled-scans", "update"))
-		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrapPerm(h.deleteScheduledScan, "scheduled-scans", "delete"))
+		mux.HandleFunc("GET /api/scheduled-scans", wrap(h.listScheduledScans))
+		mux.HandleFunc("POST /api/scheduled-scans", wrap(h.createScheduledScan))
+		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrap(h.getScheduledScan))
+		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
+		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
 	}
 
 	// API Key routes (RBAC enforced in service layer)
@@ -248,6 +203,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	// Bulk network operations (RBAC enforced in service layer)
 	mux.HandleFunc("POST /api/networks/bulk", wrapAuth(h.bulkCreateNetworks))
 	mux.HandleFunc("DELETE /api/networks/bulk", wrapAuth(h.bulkDeleteNetworks))
+
+	// Search routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/search", wrapAuth(h.search))
 
 	// Audit log routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/audit", wrapAuth(h.listAuditLogs))

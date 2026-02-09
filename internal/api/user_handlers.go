@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
-	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -19,66 +17,22 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		Email:    email,
 	}
 
-	if h.svc != nil && h.svc.Users != nil {
-		users, err := h.svc.Users.List(r.Context(), filter)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		responses := make([]model.UserResponse, len(users))
-		for i, user := range users {
-			resp := user.ToResponse()
-			if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
-				resp.Roles = roles
-			}
-			responses[i] = resp
-		}
-
-		h.writeJSON(w, http.StatusOK, responses)
-		return
-	}
-
-	users, err := h.store.ListUsers(filter)
+	users, err := h.svc.Users.List(r.Context(), filter)
 	if err != nil {
-		h.internalError(w, err)
+		h.handleServiceError(w, err)
 		return
 	}
 
-	responses := make([]model.UserResponse, len(users))
-	for i, user := range users {
-		resp := user.ToResponse()
-		if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
-			resp.Roles = roles
-		}
-		responses[i] = resp
-	}
-
-	h.writeJSON(w, http.StatusOK, responses)
+	h.writeJSON(w, http.StatusOK, users)
 }
 
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if h.svc != nil && h.svc.Users != nil {
-		resp, err := h.svc.Users.Get(r.Context(), id)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-		h.writeJSON(w, http.StatusOK, resp)
-		return
-	}
-
-	user, err := h.store.GetUser(id)
+	resp, err := h.svc.Users.Get(r.Context(), id)
 	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
+		h.handleServiceError(w, err)
 		return
-	}
-
-	resp := user.ToResponse()
-	if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
-		resp.Roles = roles
 	}
 
 	h.writeJSON(w, http.StatusOK, resp)
@@ -92,75 +46,14 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.svc != nil && h.svc.Users != nil {
-		resp, err := h.svc.Users.Create(r.Context(), &req)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		log.Info("User created", "username", req.Username, "id", resp.ID)
-		h.writeJSON(w, http.StatusCreated, resp)
-		return
-	}
-
-	if req.Username == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_USERNAME", "Username is required")
-		return
-	}
-
-	if len(req.Password) < 8 {
-		h.writeError(w, http.StatusBadRequest, "PASSWORD_TOO_SHORT", "Password must be at least 8 characters")
-		return
-	}
-
-	if req.Email == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_EMAIL", "Email is required")
-		return
-	}
-
-	existingUser, err := h.store.GetUserByUsername(req.Username)
-	if err == nil && existingUser != nil {
-		h.writeError(w, http.StatusConflict, "USERNAME_EXISTS", "Username already exists")
-		return
-	}
-
-	existingUser, err = h.store.GetUserByEmail(req.Email)
-	if err == nil && existingUser != nil {
-		h.writeError(w, http.StatusConflict, "EMAIL_EXISTS", "Email already exists")
-		return
-	}
-
-	passwordHash, err := auth.HashPassword(req.Password)
+	resp, err := h.svc.Users.Create(r.Context(), &req)
 	if err != nil {
-		h.internalError(w, err)
+		h.handleServiceError(w, err)
 		return
 	}
 
-	user := &model.User{
-		Username:     req.Username,
-		Email:        req.Email,
-		FullName:     req.FullName,
-		PasswordHash: passwordHash,
-		IsActive:     true,
-		IsAdmin:      req.IsAdmin,
-	}
-
-	if err := h.store.CreateUser(r.Context(), user); err != nil {
-		h.internalError(w, err)
-		return
-	}
-
-	// Assign role if specified
-	if req.RoleID != "" {
-		if err := h.store.AssignRoleToUser(r.Context(), user.ID, req.RoleID); err != nil {
-			log.Warn("Failed to assign role during user creation", "user_id", user.ID, "role_id", req.RoleID, "error", err)
-		}
-	}
-
-	log.Info("User created", "username", user.Username, "id", user.ID)
-
-	h.writeJSON(w, http.StatusCreated, user.ToResponse())
+	log.Info("User created", "username", req.Username, "id", resp.ID)
+	h.writeJSON(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -172,94 +65,25 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.svc != nil && h.svc.Users != nil {
-		resp, err := h.svc.Users.Update(r.Context(), id, &req)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		log.Info("User updated", "id", id)
-		h.writeJSON(w, http.StatusOK, resp)
-		return
-	}
-
-	user, err := h.store.GetUser(id)
+	resp, err := h.svc.Users.Update(r.Context(), id, &req)
 	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
+		h.handleServiceError(w, err)
 		return
 	}
 
-	if req.Email != "" {
-		existingUser, err := h.store.GetUserByEmail(req.Email)
-		if err == nil && existingUser != nil && existingUser.ID != id {
-			h.writeError(w, http.StatusConflict, "EMAIL_EXISTS", "Email already exists")
-			return
-		}
-		user.Email = req.Email
-	}
-
-	if req.FullName != "" {
-		user.FullName = req.FullName
-	}
-
-	if req.IsActive != nil {
-		user.IsActive = *req.IsActive
-	}
-
-	if req.IsAdmin != nil {
-		user.IsAdmin = *req.IsAdmin
-	}
-
-	if err := h.store.UpdateUser(r.Context(), user); err != nil {
-		h.internalError(w, err)
-		return
-	}
-
-	log.Info("User updated", "id", user.ID, "username", user.Username)
-
-	h.writeJSON(w, http.StatusOK, user.ToResponse())
+	log.Info("User updated", "id", id)
+	h.writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if h.svc != nil && h.svc.Users != nil {
-		if err := h.svc.Users.Delete(r.Context(), id); err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		log.Info("User deleted", "id", id)
-		w.WriteHeader(http.StatusNoContent)
+	if err := h.svc.Users.Delete(r.Context(), id); err != nil {
+		h.handleServiceError(w, err)
 		return
 	}
 
-	user, err := h.store.GetUser(id)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
-		return
-	}
-
-	session, ok := r.Context().Value(contextKey(SessionContextKey)).(*auth.Session)
-	if ok && session != nil && session.UserID == id {
-		h.writeError(w, http.StatusBadRequest, "CANNOT_DELETE_SELF", "Cannot delete your own account")
-		return
-	}
-
-	if err := h.store.DeleteUser(r.Context(), id); err != nil {
-		if err == storage.ErrUserNotFound {
-			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
-		} else {
-			h.internalError(w, err)
-		}
-		return
-	}
-
-	h.sessionManager.InvalidateUserSessions(id)
-
-	log.Info("User deleted", "id", id, "username", user.Username)
-
+	log.Info("User deleted", "id", id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -272,59 +96,13 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.svc != nil && h.svc.Users != nil {
-		if err := h.svc.Users.ChangePassword(r.Context(), id, &req); err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		h.sessionManager.InvalidateUserSessions(id)
-		log.Info("Password changed", "user_id", id)
-
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	user, err := h.store.GetUser(id)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
-		return
-	}
-
-	if req.OldPassword == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_OLD_PASSWORD", "Old password is required")
-		return
-	}
-
-	if req.NewPassword == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_NEW_PASSWORD", "New password is required")
-		return
-	}
-
-	if len(req.NewPassword) < 8 {
-		h.writeError(w, http.StatusBadRequest, "PASSWORD_TOO_SHORT", "New password must be at least 8 characters")
-		return
-	}
-
-	if err := auth.VerifyPassword(user.PasswordHash, req.OldPassword); err != nil {
-		h.writeError(w, http.StatusUnauthorized, "INVALID_PASSWORD", "Old password is incorrect")
-		return
-	}
-
-	newPasswordHash, err := auth.HashPassword(req.NewPassword)
-	if err != nil {
-		h.internalError(w, err)
-		return
-	}
-
-	if err := h.store.UpdateUserPassword(id, newPasswordHash); err != nil {
-		h.internalError(w, err)
+	if err := h.svc.Users.ChangePassword(r.Context(), id, &req); err != nil {
+		h.handleServiceError(w, err)
 		return
 	}
 
 	h.sessionManager.InvalidateUserSessions(id)
-
-	log.Info("Password changed", "user_id", id, "username", user.Username)
+	log.Info("Password changed", "user_id", id)
 
 	w.WriteHeader(http.StatusNoContent)
 }

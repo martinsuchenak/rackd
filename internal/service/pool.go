@@ -23,6 +23,23 @@ func (s *PoolService) List(ctx context.Context, filter *model.NetworkPoolFilter)
 	return s.store.ListNetworkPools(filter)
 }
 
+// ListByNetwork lists pools for a network, returning ErrNotFound if the network doesn't exist.
+func (s *PoolService) ListByNetwork(ctx context.Context, networkID string) ([]model.NetworkPool, error) {
+	if err := requirePermission(ctx, s.store, "pools", "list"); err != nil {
+		return nil, err
+	}
+
+	// Verify network exists
+	if _, err := s.store.GetNetwork(networkID); err != nil {
+		if errors.Is(err, storage.ErrNetworkNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return s.store.ListNetworkPools(&model.NetworkPoolFilter{NetworkID: networkID})
+}
+
 func (s *PoolService) Create(ctx context.Context, pool *model.NetworkPool) error {
 	if err := requirePermission(ctx, s.store, "pools", "create"); err != nil {
 		return err
@@ -34,6 +51,14 @@ func (s *PoolService) Create(ctx context.Context, pool *model.NetworkPool) error
 
 	if pool.NetworkID == "" {
 		return ValidationErrors{{Field: "network_id", Message: "Network ID is required"}}
+	}
+
+	// Verify network exists
+	if _, err := s.store.GetNetwork(pool.NetworkID); err != nil {
+		if errors.Is(err, storage.ErrNetworkNotFound) {
+			return ErrNotFound
+		}
+		return err
 	}
 
 	if pool.StartIP == "" {

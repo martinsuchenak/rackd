@@ -7,10 +7,10 @@ import (
 )
 
 type SearchResult struct {
-	Type       string              `json:"type"`
-	Device     *model.Device       `json:"device,omitempty"`
-	Network    *model.Network      `json:"network,omitempty"`
-	Datacenter *model.Datacenter   `json:"datacenter,omitempty"`
+	Type       string            `json:"type"`
+	Device     *model.Device     `json:"device,omitempty"`
+	Network    *model.Network    `json:"network,omitempty"`
+	Datacenter *model.Datacenter `json:"datacenter,omitempty"`
 }
 
 type SearchResponse struct {
@@ -26,36 +26,39 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 
 	var results []SearchResult
 
-	// Search devices
-	devices, err := h.store.SearchDevices(query)
-	if err == nil {
-		for i := range devices {
-			results = append(results, SearchResult{
-				Type:   "device",
-				Device: &devices[i],
-			})
+	if h.svc != nil && h.svc.Devices != nil {
+		devices, err := h.svc.Devices.Search(r.Context(), query)
+		if err == nil {
+			for i := range devices {
+				results = append(results, SearchResult{
+					Type:   "device",
+					Device: &devices[i],
+				})
+			}
 		}
 	}
 
-	// Search networks
-	networks, err := h.store.SearchNetworks(query)
-	if err == nil {
-		for i := range networks {
-			results = append(results, SearchResult{
-				Type:    "network",
-				Network: &networks[i],
-			})
+	if h.svc != nil && h.svc.Networks != nil {
+		networks, err := h.svc.Networks.Search(r.Context(), query)
+		if err == nil {
+			for i := range networks {
+				results = append(results, SearchResult{
+					Type:    "network",
+					Network: &networks[i],
+				})
+			}
 		}
 	}
 
-	// Search datacenters
-	datacenters, err := h.store.SearchDatacenters(query)
-	if err == nil {
-		for i := range datacenters {
-			results = append(results, SearchResult{
-				Type:       "datacenter",
-				Datacenter: &datacenters[i],
-			})
+	if h.svc != nil && h.svc.Datacenters != nil {
+		datacenters, err := h.svc.Datacenters.Search(r.Context(), query)
+		if err == nil {
+			for i := range datacenters {
+				results = append(results, SearchResult{
+					Type:       "datacenter",
+					Datacenter: &datacenters[i],
+				})
+			}
 		}
 	}
 

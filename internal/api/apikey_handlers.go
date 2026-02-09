@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -14,25 +13,9 @@ func (h *Handler) listAPIKeys(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	filter := &model.APIKeyFilter{Name: name}
 
-	if h.svc != nil && h.svc.APIKeys != nil {
-		keys, err := h.svc.APIKeys.List(r.Context(), filter)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		responses := make([]model.APIKeyResponse, len(keys))
-		for i, key := range keys {
-			responses[i] = key.ToResponse()
-		}
-
-		h.writeJSON(w, http.StatusOK, responses)
-		return
-	}
-
-	keys, err := h.store.ListAPIKeys(filter)
+	keys, err := h.svc.APIKeys.List(r.Context(), filter)
 	if err != nil {
-		h.internalError(w, err)
+		h.handleServiceError(w, err)
 		return
 	}
 
@@ -56,49 +39,18 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.svc != nil && h.svc.APIKeys != nil {
-		key, err := h.svc.APIKeys.Create(r.Context(), &model.APIKey{
-			Name:        req.Name,
-			Description: req.Description,
-			ExpiresAt:   req.ExpiresAt,
-		})
-
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		log.Info("API key created", "name", req.Name, "id", key)
-
-		h.writeJSON(w, http.StatusCreated, key)
-		return
-	}
-
-	if req.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_NAME", "Name is required")
-		return
-	}
-
-	keyStr, err := auth.GenerateKey()
-	if err != nil {
-		h.internalError(w, err)
-		return
-	}
-
-	key := &model.APIKey{
+	key, err := h.svc.APIKeys.Create(r.Context(), &model.APIKey{
 		Name:        req.Name,
-		Key:         keyStr,
 		Description: req.Description,
-		CreatedAt:   time.Now(),
 		ExpiresAt:   req.ExpiresAt,
-	}
+	})
 
-	if err := h.store.CreateAPIKey(key); err != nil {
-		h.internalError(w, err)
+	if err != nil {
+		h.handleServiceError(w, err)
 		return
 	}
 
-	log.Info("API key created", "name", key.Name, "id", key.ID)
+	log.Info("API key created", "name", req.Name, "id", key)
 
 	h.writeJSON(w, http.StatusCreated, key)
 }
@@ -106,20 +58,9 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if h.svc != nil && h.svc.APIKeys != nil {
-		key, err := h.svc.APIKeys.Get(r.Context(), id)
-		if err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		h.writeJSON(w, http.StatusOK, key.ToResponse())
-		return
-	}
-
-	key, err := h.store.GetAPIKey(id)
+	key, err := h.svc.APIKeys.Get(r.Context(), id)
 	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "API key not found")
+		h.handleServiceError(w, err)
 		return
 	}
 
@@ -129,20 +70,8 @@ func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if h.svc != nil && h.svc.APIKeys != nil {
-		if err := h.svc.APIKeys.Delete(r.Context(), id); err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
-
-		log.Info("API key deleted", "id", id)
-
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if err := h.store.DeleteAPIKey(id); err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "API key not found")
+	if err := h.svc.APIKeys.Delete(r.Context(), id); err != nil {
+		h.handleServiceError(w, err)
 		return
 	}
 

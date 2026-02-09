@@ -9,7 +9,6 @@ import (
 
 	"github.com/paularlott/mcp"
 
-	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -215,13 +214,6 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mcpServer.HandleRequest(w, r)
-}
-
-// auditContext wraps the given context with audit information for MCP operations
-func (s *Server) auditContext(ctx context.Context) context.Context {
-	return audit.WithContext(ctx, &audit.Context{
-		Source: "mcp",
-	})
 }
 
 // Device handlers

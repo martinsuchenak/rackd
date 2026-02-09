@@ -2,13 +2,13 @@ package audit
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/paularlott/cli"
 )
@@ -46,6 +46,8 @@ func listCommand() *cli.Command {
 			}
 			defer store.Close()
 
+			svc := service.NewServices(store, nil, nil)
+
 			filter := &model.AuditFilter{
 				Resource:   cmd.GetString("resource"),
 				ResourceID: cmd.GetString("resource-id"),
@@ -53,7 +55,8 @@ func listCommand() *cli.Command {
 				Limit:      cmd.GetInt("limit"),
 			}
 
-			logs, err := store.ListAuditLogs(filter)
+			ctx = service.SystemContext(ctx, "cli")
+			logs, err := svc.Audit.List(ctx, filter)
 			if err != nil {
 				return err
 			}
@@ -105,25 +108,17 @@ func exportCommand() *cli.Command {
 			}
 			defer store.Close()
 
+			svc := service.NewServices(store, nil, nil)
+
 			filter := &model.AuditFilter{
 				Resource:   cmd.GetString("resource"),
 				ResourceID: cmd.GetString("resource-id"),
 			}
 
-			logs, err := store.ListAuditLogs(filter)
-			if err != nil {
-				return err
-			}
-
+			ctx = service.SystemContext(ctx, "cli")
 			format := cmd.GetString("format")
-			var data []byte
 
-			if format == "json" {
-				data, err = json.MarshalIndent(logs, "", "  ")
-			} else {
-				return fmt.Errorf("unsupported format: %s", format)
-			}
-
+			data, err := svc.Audit.Export(ctx, filter, format)
 			if err != nil {
 				return err
 			}
@@ -135,7 +130,7 @@ func exportCommand() *cli.Command {
 				if err := os.WriteFile(output, data, 0644); err != nil {
 					return err
 				}
-				fmt.Printf("Exported %d audit logs to %s\n", len(logs), output)
+				fmt.Printf("Exported %d audit logs to %s\n", len(data), output)
 			}
 
 			return nil

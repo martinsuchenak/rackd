@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -19,6 +20,7 @@ func TestSearch(t *testing.T) {
 	defer store.Close()
 
 	handler := NewHandler(store, nil)
+	handler.SetServices(service.NewServices(store, nil, nil))
 	ctx := context.Background()
 
 	// Create test data
@@ -37,8 +39,9 @@ func TestSearch(t *testing.T) {
 		t.Fatalf("Failed to create device: %v", err)
 	}
 
-	// Test search
+	// Test search — inject system caller so service layer RBAC allows access
 	req := httptest.NewRequest("GET", "/api/search?q=Production", nil)
+	req = req.WithContext(service.SystemContext(req.Context(), "test"))
 	w := httptest.NewRecorder()
 
 	handler.search(w, req)

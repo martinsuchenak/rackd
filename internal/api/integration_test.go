@@ -215,7 +215,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	}
 
 	// 7. Search devices
-	resp, err = http.Get(server.URL + "/api/search?q=updated&type=devices")
+	resp, err = authGet(server.URL + "/api/search?q=updated&type=devices")
 	if err != nil {
 		t.Fatalf("search devices request failed: %v", err)
 	}
