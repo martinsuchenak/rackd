@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,23 +15,30 @@ import (
 )
 
 type AdvancedDiscoveryService struct {
-	storage     storage.DiscoveryStorage
-	netStorage  storage.NetworkStorage
-	credStore   credentials.Storage
-	snmpScanner *SNMPScanner
-	sshScanner  *SSHScanner
-	scans       map[string]*model.DiscoveryScan
-	mu          sync.RWMutex
+	storage       storage.DiscoveryStorage
+	netStorage    storage.NetworkStorage
+	credStore     credentials.Storage
+	snmpScanner   *SNMPScanner
+	sshScanner    *SSHScanner
+	arpScanner    *ARPScanner
+	bannerGrabber *BannerGrabber
+	scans         map[string]*model.DiscoveryScan
+	mu            sync.RWMutex
 }
 
 func NewAdvancedDiscoveryService(store storage.DiscoveryStorage, netStore storage.NetworkStorage, credStore credentials.Storage, timeout time.Duration) *AdvancedDiscoveryService {
+	arpScanner := NewARPScanner()
+	arpScanner.LoadARPTable()
+
 	return &AdvancedDiscoveryService{
-		storage:     store,
-		netStorage:  netStore,
-		credStore:   credStore,
-		snmpScanner: NewSNMPScanner(credStore, timeout),
-		sshScanner:  NewSSHScanner(credStore, timeout),
-		scans:       make(map[string]*model.DiscoveryScan),
+		storage:       store,
+		netStorage:    netStore,
+		credStore:     credStore,
+		snmpScanner:   NewSNMPScanner(credStore, timeout),
+		sshScanner:    NewSSHScanner(credStore, timeout),
+		arpScanner:    arpScanner,
+		bannerGrabber: NewBannerGrabber(2 * time.Second),
+		scans:         make(map[string]*model.DiscoveryScan),
 	}
 }
 
@@ -156,17 +164,40 @@ func (s *AdvancedDiscoveryService) discoverHost(ctx context.Context, ip string, 
 		Services:  []model.ServiceInfo{},
 	}
 
+	mac := s.arpScanner.LookupMAC(ip)
+	if mac != "" {
+		device.MACAddress = mac
+	}
+
 	names, err := net.LookupAddr(ip)
 	if err == nil && len(names) > 0 {
-		device.Hostname = names[0]
+		device.Hostname = strings.TrimSuffix(names[0], ".")
 	}
 
 	if profile.EnableSNMP && snmpCredID != "" {
 		if snmpResult, err := s.snmpScanner.Scan(ctx, ip, snmpCredID); err == nil {
-			if snmpResult.SysName != "" {
+			if snmpResult.SysName != "" && device.Hostname == "" {
 				device.Hostname = snmpResult.SysName
 			}
 			device.Services = append(device.Services, model.ServiceInfo{Port: 161, Protocol: "udp", Service: "snmp"})
+
+			if device.MACAddress == "" {
+				for _, iface := range snmpResult.Interfaces {
+					if iface.MAC != "" && iface.MAC != "00:00:00:00:00:00" {
+						device.MACAddress = iface.MAC
+						break
+					}
+				}
+			}
+
+			if device.MACAddress == "" {
+				for _, entry := range snmpResult.ARPEntries {
+					if entry.MAC != "" && entry.MAC != "00:00:00:00:00:00" {
+						device.MACAddress = entry.MAC
+						break
+					}
+				}
+			}
 		}
 	}
 
@@ -176,7 +207,21 @@ func (s *AdvancedDiscoveryService) discoverHost(ctx context.Context, ip string, 
 				device.Hostname = sshResult.Hostname
 			}
 			device.Services = append(device.Services, model.ServiceInfo{Port: 22, Protocol: "tcp", Service: "ssh"})
+
+			if sshResult.OS != "" {
+				device.OSGuess = sshResult.OS
+			}
 		}
+	}
+
+	banners := s.bannerGrabber.GrabBanners(ip, device.OpenPorts)
+	for _, banner := range banners {
+		device.Services = append(device.Services, model.ServiceInfo{
+			Port:     banner.Port,
+			Protocol: banner.Protocol,
+			Service:  banner.Service,
+			Version:  banner.Version,
+		})
 	}
 
 	return device

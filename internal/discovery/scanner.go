@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,15 +20,20 @@ type DefaultScanner struct {
 	config      *config.Config
 	scans       map[string]*model.DiscoveryScan
 	cancelFuncs map[string]context.CancelFunc
+	arpScanner  *ARPScanner
 	mu          sync.RWMutex
 }
 
 func NewScanner(store storage.DiscoveryStorage, cfg *config.Config) *DefaultScanner {
+	arpScanner := NewARPScanner()
+	arpScanner.LoadARPTable()
+
 	return &DefaultScanner{
 		storage:     store,
 		config:      cfg,
 		scans:       make(map[string]*model.DiscoveryScan),
 		cancelFuncs: make(map[string]context.CancelFunc),
+		arpScanner:  arpScanner,
 	}
 }
 
@@ -273,6 +279,11 @@ func (s *DefaultScanner) discoverHost(ip string, networkID string, scanType stri
 		Services:  []model.ServiceInfo{},
 	}
 
+	mac := s.arpScanner.LookupMAC(ip)
+	if mac != "" {
+		device.MACAddress = mac
+	}
+
 	// DNS lookup with timeout
 	lookupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -293,7 +304,7 @@ func (s *DefaultScanner) discoverHost(ip string, networkID string, scanType stri
 		log.Warn("DNS lookup timeout", "ip", ip)
 	case result := <-resultCh:
 		if result.err == nil && len(result.names) > 0 {
-			device.Hostname = result.names[0]
+			device.Hostname = strings.TrimSuffix(result.names[0], ".")
 		} else if result.err != nil {
 			log.Debug("DNS lookup failed", "ip", ip, "error", result.err)
 		}

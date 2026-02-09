@@ -3,6 +3,8 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gosnmp/gosnmp"
@@ -26,7 +28,10 @@ type SNMPResult struct {
 	SysLocation string
 	SysContact  string
 	Interfaces  []SNMPInterface
-	ARPEntries  []ARPEntry
+	ARPEntries  []struct {
+		IP  string
+		MAC string
+	}
 }
 
 type SNMPInterface struct {
@@ -37,11 +42,6 @@ type SNMPInterface struct {
 	MAC         string
 	AdminStatus int
 	OperStatus  int
-}
-
-type ARPEntry struct {
-	IP  string
-	MAC string
 }
 
 func (s *SNMPScanner) Scan(ctx context.Context, ip string, credentialID string) (*SNMPResult, error) {
@@ -118,23 +118,139 @@ func (s *SNMPScanner) getSysInfo(client *gosnmp.GoSNMP, result *SNMPResult) {
 
 func (s *SNMPScanner) getInterfaces(client *gosnmp.GoSNMP, result *SNMPResult) {
 	ifTable := "1.3.6.1.2.1.2.2.1"
+
+	type ifaceData struct {
+		index       int
+		description string
+		ifType      int
+		speed       uint64
+		mac         string
+		adminStatus int
+		operStatus  int
+	}
+
+	ifaces := make(map[int]*ifaceData)
+
 	err := client.Walk(ifTable, func(pdu gosnmp.SnmpPDU) error {
-		// Parse interface data from walk results
+		oidParts := strings.Split(pdu.Name, ".")
+		if len(oidParts) < 11 {
+			return nil
+		}
+
+		index, err := strconv.Atoi(oidParts[10])
+		if err != nil {
+			return nil
+		}
+
+		if ifaces[index] == nil {
+			ifaces[index] = &ifaceData{index: index}
+		}
+
+		switch strings.Join(oidParts[0:10], ".") {
+		case ".1.3.6.1.2.1.2.2.1.2":
+			if val, ok := pdu.Value.(string); ok {
+				ifaces[index].description = val
+			}
+		case ".1.3.6.1.2.1.2.2.1.3":
+			if val, ok := pdu.Value.(int); ok {
+				ifaces[index].ifType = val
+			}
+		case ".1.3.6.1.2.1.2.2.1.5":
+			if val, ok := pdu.Value.(uint); ok {
+				ifaces[index].speed = uint64(val)
+			}
+		case ".1.3.6.1.2.1.2.2.1.6":
+			if val, ok := pdu.Value.([]byte); ok && len(val) == 6 {
+				ifaces[index].mac = fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", val[0], val[1], val[2], val[3], val[4], val[5])
+			}
+		case ".1.3.6.1.2.1.2.2.1.7":
+			if val, ok := pdu.Value.(int); ok {
+				ifaces[index].adminStatus = val
+			}
+		case ".1.3.6.1.2.1.2.2.1.8":
+			if val, ok := pdu.Value.(int); ok {
+				ifaces[index].operStatus = val
+			}
+		}
+
 		return nil
 	})
+
 	if err != nil {
 		return
+	}
+
+	for _, iface := range ifaces {
+		result.Interfaces = append(result.Interfaces, SNMPInterface{
+			Index:       iface.index,
+			Description: iface.description,
+			Type:        iface.ifType,
+			Speed:       iface.speed,
+			MAC:         iface.mac,
+			AdminStatus: iface.adminStatus,
+			OperStatus:  iface.operStatus,
+		})
 	}
 }
 
 func (s *SNMPScanner) getARPTable(client *gosnmp.GoSNMP, result *SNMPResult) {
 	arpTable := "1.3.6.1.2.1.4.22.1"
+
+	type arpEntry struct {
+		ifIndex  int
+		physAddr string
+		netAddr  string
+	}
+
+	arpMap := make(map[int]*arpEntry)
+
 	err := client.Walk(arpTable, func(pdu gosnmp.SnmpPDU) error {
-		// Parse ARP entries from walk results
+		oidParts := strings.Split(pdu.Name, ".")
+		if len(oidParts) < 12 {
+			return nil
+		}
+
+		ifIndex, err := strconv.Atoi(oidParts[10])
+		if err != nil {
+			return nil
+		}
+
+		if arpMap[ifIndex] == nil {
+			arpMap[ifIndex] = &arpEntry{ifIndex: ifIndex}
+		}
+
+		switch oidParts[11] {
+		case "1":
+			if val, ok := pdu.Value.(int); ok {
+				arpMap[ifIndex].ifIndex = val
+			}
+		case "2":
+			if val, ok := pdu.Value.([]byte); ok && len(val) == 6 {
+				arpMap[ifIndex].physAddr = fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", val[0], val[1], val[2], val[3], val[4], val[5])
+			}
+		case "3":
+			if val, ok := pdu.Value.(string); ok {
+				arpMap[ifIndex].netAddr = val
+			}
+		}
+
 		return nil
 	})
+
 	if err != nil {
 		return
+	}
+
+	for _, entry := range arpMap {
+		if entry.physAddr != "" && entry.netAddr != "" {
+			result.ARPEntries = append(result.ARPEntries, struct {
+				IP  string
+				MAC string
+			}{
+				IP:  entry.netAddr,
+				MAC: entry.physAddr,
+			})
+		}
 	}
 }
 
