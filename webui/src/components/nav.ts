@@ -1,6 +1,6 @@
 // Navigation Component for Rackd Web UI
 
-import type { NavItem, UIConfig } from '../core/types';
+import type { NavItem, UIConfig, Permission } from '../core/types';
 
 interface NavData {
   config: UIConfig | null;
@@ -8,6 +8,7 @@ interface NavData {
   items: NavItem[];
   hasFeature(name: string): boolean;
   init(): Promise<void>;
+  get filteredItems(): NavItem[];
 }
 
 const baseNavItems: NavItem[] = [
@@ -21,7 +22,26 @@ export function nav(): NavData {
   return {
     config: null,
     loading: true,
-    items: [],
+    items: baseNavItems,
+
+    get filteredItems(): NavItem[] {
+      if (!this.config) {
+        return this.items;
+      }
+      const allItems = [...baseNavItems, ...(this.config.nav_items ?? [])];
+      const userPermissions = this.config.user?.permissions ?? [];
+      
+      return allItems.filter((item: NavItem) => {
+        if (!item.required_permissions || item.required_permissions.length === 0) {
+          return true;
+        }
+        return item.required_permissions.every((req) =>
+          userPermissions.some((perm: Permission) =>
+            perm.resource === req.resource && perm.action === req.action
+          )
+        );
+      });
+    },
 
     hasFeature(name: string): boolean {
       return this.config?.features.includes(name) ?? false;
@@ -32,13 +52,9 @@ export function nav(): NavData {
         const response = await fetch('/api/config');
         if (response.ok) {
           this.config = await response.json();
-          const dynamicItems = this.config?.nav_items ?? [];
-          this.items = [...baseNavItems, ...dynamicItems].sort((a, b) => a.order - b.order);
-        } else {
-          this.items = baseNavItems;
         }
       } catch {
-        this.items = baseNavItems;
+        this.config = null;
       } finally {
         this.loading = false;
       }

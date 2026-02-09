@@ -1,6 +1,6 @@
 # RBAC UI Enforcement Plan
 
-## Status: PLANNED
+## Status: IN_PROGRESS (Phase 2: COMPLETED, Phase 3: IN_PROGRESS)
 
 ## Problem
 
@@ -90,126 +90,122 @@ type CurrentUserResponse struct {
 - Test login returns enhanced user object with permissions
 - Test unauthorized access returns 401
 
-### Phase 2: UI Permission State
+### Phase 2: UI Permission State - **COMPLETED**
 
 **Frontend Changes:**
 
 `webui/src/core/types.ts`:
-- Add `Permission` interface
-- Add `UserPermissions` type
+- ✅ Add `Permission` interface
+- ✅ Add `CurrentUser` type that extends `User` with `permissions: Permission[]`
 
 `webui/src/app.ts`:
-- Fetch permissions on init after fetching current user
-- Store in Alpine data as `permissions` reactive array
-- Add helper: `hasPermission(resource, action)` → bool
-- Add helper: `hasAnyPermission(resource, ...actions)` → bool
-- Add helper: `hasAllPermissions(resource, ...actions)` → bool
-- Add helper: `canList(resource)` → bool
-- Add helper: `canRead(resource)` → bool
-- Add helper: `canCreate(resource)` → bool
-- Add helper: `canUpdate(resource)` → bool
-- Add helper: `canDelete(resource)` → bool
+- ✅ Fetch permissions on init after fetching current user
+- ✅ Store in Alpine data as `permissions` reactive array
+- ✅ Add helper: `can(resource, action)` → bool
+- ✅ Add helper: `hasAnyPermission(resource, ...actions)` → bool
+- ✅ Add helper: `hasAllPermissions(resource, ...actions)` → bool
+- ✅ Add helper: `canList(resource)` → bool
+- ✅ Add helper: `canRead(resource)` → bool
+- ✅ Add helper: `canCreate(resource)` → bool
+- ✅ Add helper: `canUpdate(resource)` → bool
+- ✅ Add helper: `canDelete(resource)` → bool
 
-`webui/src/api/client.ts`:
-- Update `getCurrentUser()` to return `CurrentUserResponse` with permissions and roles
-- No separate `getUserPermissions()` method needed (included in current user response)
+`webui/src/core/api.ts`:
+- ✅ Update `getCurrentUser()` to return `CurrentUser` instead of `User`
 
 **Example Alpine data:**
 ```typescript
 Alpine.data('permissions', () => ({
-  permissions: [],
-  roles: [],
-  loaded: false,
+   permissions: [],
+   roles: [],
+   loaded: false,
 
-  init() {
-    this.load();
-  },
+   init() {
+     this.load();
+   },
 
-  async load() {
-    this.permissions = await api.getUserPermissions();
-    this.loaded = true;
-  },
+   async load() {
+     try {
+       const user = await api.getCurrentUser();
+       this.permissions = user.permissions;
+       this.roles = user.roles || [];
+       this.loaded = true;
+     } catch {
+       this.permissions = [];
+       this.roles = [];
+       this.loaded = true;
+     }
+   },
 
-  can(resource: string, action: string): boolean {
-    return this.permissions.some(p =>
-      p.resource === resource && p.action === action
-    );
-  },
+   can(resource: string, action: string): boolean {
+     return this.permissions.some(p =>
+       p.resource === resource && p.action === action
+     );
+   },
 
-  canList(resource: string): boolean {
-    return this.can(resource, 'list');
-  },
+   canList(resource: string): boolean {
+     return this.can(resource, 'list');
+   },
 
-  canRead(resource: string): boolean {
-    return this.can(resource, 'read');
-  },
+   canRead(resource: string): boolean {
+     return this.can(resource, 'read');
+   },
 
-  canCreate(resource: string): boolean {
-    return this.can(resource, 'create');
-  },
+   canCreate(resource: string): boolean {
+     return this.can(resource, 'create');
+   },
 
-  canUpdate(resource: string): boolean {
-    return this.can(resource, 'update');
-  },
+   canUpdate(resource: string): boolean {
+     return this.can(resource, 'update');
+   },
 
-  canDelete(resource: string): boolean {
-    return this.can(resource, 'delete');
-  }
+   canDelete(resource: string): boolean {
+     return this.can(resource, 'delete');
+   }
 }));
 ```
 
 **Verification:**
-- Test permissions load on app start
-- Test helper functions return correct booleans
-- Test empty permissions state
+- ✅ Test permissions load on app start
+- ✅ Test helper functions return correct booleans
+- ✅ Test empty permissions state
 
-### Phase 3: Navigation Filtering
+### Phase 3: Navigation Filtering - **IN_PROGRESS**
 
 **Backend Changes:**
 
-`internal/api/handlers.go`:
-- Update `NewUIConfigBuilder()` or route handler to accept user context
-- Mark nav items with required permissions
-- Return filtered nav items based on user permissions
+`internal/api/config_handlers.go`:
+- ✅ Update `NavItem` struct to include `RequiredPermissions: []PermissionCheck`
+- ✅ Update `UserInfo` struct to include `Permissions []model.Permission` and `Roles []model.Role`
+- ✅ Update `HandlerWithSession(sessionManager, store)` to accept storage parameter
+- ✅ Fetch user roles and permissions from storage
+- ✅ Return filtered nav items based on user permissions in UserInfo
 
-`internal/api/api.go` (or similar):
-- Update nav items structure to include `required_permissions`:
-```go
-NavItem{
-  Label: "Users",
-  Path: "/users",
-  Icon: "user",
-  Order: 15,
-  RequiredPermissions: []PermissionCheck{
-    {Resource: "users", Action: "list"},
-  },
-}
-```
+`internal/api/handlers.go`:
+- ✅ Update `getConfig()` to add `required_permissions` to Users and Roles nav items
+
+`internal/server/server.go`:
+- ✅ Update Users nav item to require `users:list` permission
+- ✅ Update Roles nav item to require `roles:list` permission
+- ✅ Update `HandlerWithSession()` calls to pass `store` parameter
+
+`internal/api/integration_test.go`:
+- ✅ Update test to pass sessionManager and store to Handler()
+
+`internal/api/config_handlers_test.go`:
+- ✅ Update tests to use new Handler signature
+- ✅ Update UserInfo to use model.Role and model.Permission types
 
 **Frontend Changes:**
 
-`webui/src/components/nav.ts`:
-- Filter nav items based on `permissions.can()`
-- Only show items user has `list` permission for
-
 `webui/src/core/types.ts`:
-- Update `NavItem` interface to include `required_permissions?: {resource: string, action: string}[]`
+- ✅ Update `NavItem` interface to include `required_permissions?: {resource: string, action: string}[]`
+- ✅ Update `UserInfo` interface to include `permissions?: Permission[]`
 
-**Example filtering:**
-```typescript
-items: this.items.filter(item => {
-  if (!item.required_permissions) return true;
-  return item.required_permissions.every(req =>
-    this.permissions.can(req.resource, req.action)
-  );
-})
-```
-
-**Verification:**
-- Admin sees all nav items
-- Operator sees devices, networks, datacenters, discovery, credentials, profiles, scheduled scans
-- Viewer sees devices, networks, datacenters, discovery (read-only)
-- User with no permissions sees minimal nav
+`webui/src/components/nav.ts`:
+- ✅ Add `filteredItems` getter that filters nav items based on `required_permissions`
+- ✅ Update to fetch user permissions from config
+- ✅ Filter items using permissions: check if user has all required permissions
 
 ### Phase 4: Action Button Guards
 

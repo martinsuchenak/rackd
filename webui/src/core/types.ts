@@ -146,6 +146,7 @@ export interface NavItem {
   path: string;
   icon?: string;
   order: number;
+  required_permissions?: {resource: string; action: string}[];
 }
 
 export interface UserInfo {
@@ -153,19 +154,24 @@ export interface UserInfo {
   username: string;
   email: string;
   roles: string[];
+  permissions?: Permission[];
 }
 
 export interface User {
-  id: string;
-  username: string;
-  email: string;
-  full_name: string;
-  is_active: boolean;
-  is_admin: boolean;
-  created_at: string;
-  updated_at: string;
-  last_login_at?: string;
-  roles?: Role[];
+   id: string;
+   username: string;
+   email: string;
+   full_name: string;
+   is_active: boolean;
+   is_admin: boolean;
+   created_at: string;
+   updated_at: string;
+   last_login_at?: string;
+   roles?: Role[];
+}
+
+export interface CurrentUser extends User {
+   permissions: Permission[];
 }
 
 export interface LoginRequest {
@@ -174,7 +180,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  user: User;
+  user: CurrentUser;
   expires_at: string;
 }
 

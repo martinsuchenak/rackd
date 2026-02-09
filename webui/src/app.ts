@@ -2,7 +2,7 @@
 
 import Alpine from 'alpinejs';
 import focus from '@alpinejs/focus';
-import type { UIConfig } from './core/types';
+import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 
 // Components
@@ -167,6 +167,67 @@ function themeToggle() {
   };
 }
 
+// Permissions component for checking user permissions
+function permissions() {
+  return {
+    permissions: [] as Permission[],
+    roles: [] as Role[],
+    loaded: false,
+
+    async init() {
+      await this.load();
+    },
+
+    async load() {
+      try {
+        const user = await api.getCurrentUser();
+        this.permissions = user.permissions;
+        this.roles = user.roles || [];
+        this.loaded = true;
+      } catch {
+        this.permissions = [];
+        this.roles = [];
+        this.loaded = true;
+      }
+    },
+
+    can(resource: string, action: string): boolean {
+      return this.permissions.some((p: Permission) =>
+        p.resource === resource && p.action === action
+      );
+    },
+
+    canList(resource: string): boolean {
+      return this.can(resource, 'list');
+    },
+
+    canRead(resource: string): boolean {
+      return this.can(resource, 'read');
+    },
+
+    canCreate(resource: string): boolean {
+      return this.can(resource, 'create');
+    },
+
+    canUpdate(resource: string): boolean {
+      return this.can(resource, 'update');
+    },
+
+    canDelete(resource: string): boolean {
+      return this.can(resource, 'delete');
+    },
+
+    hasAnyPermission(resource: string, ...actions: string[]): boolean {
+      return actions.some((action) => this.can(resource, action));
+    },
+
+    hasAllPermissions(resource: string, ...actions: string[]): boolean {
+      return actions.every((action) => this.can(resource, action));
+    },
+  };
+}
+
+
 // Initialize application
 async function init(): Promise<void> {
   window.rackdAPI = api;
@@ -218,6 +279,9 @@ async function init(): Promise<void> {
   Alpine.data('login', login);
   Alpine.data('usersList', usersList);
   Alpine.data('userMenu', userMenu);
+
+  // Permissions
+  Alpine.data('permissions', permissions);
 
   // Register pages for credentials, profiles, scheduled scans
   window.rackdRegisterPage('/credentials', credentialsPageTemplate);

@@ -65,11 +65,17 @@ func (a *uiBuilderAdapter) SetUser(user *rackd.UserInfo) {
 		a.b.SetUser(nil)
 		return
 	}
+	// Convert string roles to model.Role
+	roles := make([]model.Role, len(user.Roles))
+	for i, roleName := range user.Roles {
+		roles[i] = model.Role{Name: roleName}
+	}
 	a.b.SetUser(&api.UserInfo{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Roles:    user.Roles,
+		ID:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		Roles:       roles,
+		Permissions: []model.Permission{},
 	})
 }
 

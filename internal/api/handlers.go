@@ -318,7 +318,7 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 
 func (h *Handler) getConfig(w http.ResponseWriter, r *http.Request) {
 	config := NewUIConfigBuilder()
-	config.AddNavItem(NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15})
-	config.AddNavItem(NavItem{Label: "Roles", Path: "/roles", Icon: "shield", Order: 16})
+	config.AddNavItem(NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15, RequiredPermissions: []PermissionCheck{{Resource: "users", Action: "list"}}})
+	config.AddNavItem(NavItem{Label: "Roles", Path: "/roles", Icon: "shield", Order: 16, RequiredPermissions: []PermissionCheck{{Resource: "roles", Action: "list"}}})
 	h.writeJSON(w, http.StatusOK, config.Build())
 }

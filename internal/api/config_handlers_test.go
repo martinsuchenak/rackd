@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/martinsuchenak/rackd/internal/model"
 )
 
 func TestNewUIConfigBuilder(t *testing.T) {
@@ -72,10 +74,11 @@ func TestUIConfigBuilder_AddNavItem(t *testing.T) {
 func TestUIConfigBuilder_SetUser(t *testing.T) {
 	b := NewUIConfigBuilder()
 	user := &UserInfo{
-		ID:       "user-123",
-		Username: "admin",
-		Email:    "admin@example.com",
-		Roles:    []string{"admin", "viewer"},
+		ID:          "user-123",
+		Username:    "admin",
+		Email:       "admin@example.com",
+		Roles:       []model.Role{},
+		Permissions: []model.Permission{},
 	}
 	b.SetUser(user)
 	config := b.Build()
@@ -89,8 +92,11 @@ func TestUIConfigBuilder_SetUser(t *testing.T) {
 	if config.UserInfo.Username != "admin" {
 		t.Errorf("expected username 'admin', got %q", config.UserInfo.Username)
 	}
-	if len(config.UserInfo.Roles) != 2 {
-		t.Errorf("expected 2 roles, got %d", len(config.UserInfo.Roles))
+	if len(config.UserInfo.Roles) != 0 {
+		t.Errorf("expected 0 roles, got %d", len(config.UserInfo.Roles))
+	}
+	if len(config.UserInfo.Permissions) != 0 {
+		t.Errorf("expected 0 permissions, got %d", len(config.UserInfo.Permissions))
 	}
 }
 
@@ -100,7 +106,7 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 	b.AddFeature("advanced_scanning")
 	b.AddNavItem(NavItem{Label: "Profiles", Path: "/profiles", Icon: "settings", Order: 100})
 
-	handler := b.Handler()
+	handler := b.Handler(nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
 

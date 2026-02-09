@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
+	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 // UIConfig represents frontend configuration
@@ -17,17 +19,24 @@ type UIConfig struct {
 }
 
 type NavItem struct {
-	Label string `json:"label"`
-	Path  string `json:"path"`
-	Icon  string `json:"icon"`
-	Order int    `json:"order"`
+	Label               string            `json:"label"`
+	Path                string            `json:"path"`
+	Icon                string            `json:"icon"`
+	Order               int               `json:"order"`
+	RequiredPermissions []PermissionCheck `json:"required_permissions,omitempty"`
+}
+
+type PermissionCheck struct {
+	Resource string `json:"resource"`
+	Action   string `json:"action"`
 }
 
 type UserInfo struct {
-	ID       string   `json:"id"`
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Roles    []string `json:"roles"`
+	ID          string             `json:"id"`
+	Username    string             `json:"username"`
+	Email       string             `json:"email"`
+	Roles       []model.Role       `json:"roles"`
+	Permissions []model.Permission `json:"permissions"`
 }
 
 // UIConfigBuilder collects config from features
@@ -65,12 +74,12 @@ func (b *UIConfigBuilder) Build() UIConfig {
 	return b.config
 }
 
-func (b *UIConfigBuilder) Handler() http.HandlerFunc {
-	return b.HandlerWithSession(nil)
+func (b *UIConfigBuilder) Handler(sessionManager *auth.SessionManager, store storage.ExtendedStorage) http.HandlerFunc {
+	return b.HandlerWithSession(sessionManager, store)
 }
 
 // HandlerWithSession returns a handler that optionally populates user info from a session token.
-func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager) http.HandlerFunc {
+func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager, store storage.ExtendedStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg := b.config
 		cfg.UserInfo = nil
@@ -88,15 +97,18 @@ func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager
 
 			if token != "" {
 				if session, err := sessionManager.GetSession(token); err == nil {
-					roles := []string{"user"}
-					if session.IsAdmin {
-						roles = append(roles, "admin")
-					}
+					ctx := r.Context()
+
+					// Get user roles and permissions
+					roles, _ := store.GetUserRoles(ctx, session.UserID)
+					permissions, _ := store.GetUserPermissions(ctx, session.UserID)
+
 					cfg.UserInfo = &UserInfo{
-						ID:       session.UserID,
-						Username: session.Username,
-						Email:    "",
-						Roles:    roles,
+						ID:          session.UserID,
+						Username:    session.Username,
+						Email:       "",
+						Roles:       roles,
+						Permissions: permissions,
 					}
 				}
 			}

@@ -5,6 +5,7 @@ import type {
   APIError,
   ChangePasswordRequest,
   CreateUserRequest,
+  CurrentUser,
   Datacenter,
   Device,
   DeviceFilter,
@@ -331,8 +332,8 @@ export class RackdAPI {
     return this.request<void>('POST', '/api/auth/logout');
   }
 
-  async getCurrentUser(): Promise<User> {
-    return this.request<User>('GET', '/api/auth/me');
+  async getCurrentUser(): Promise<CurrentUser> {
+    return this.request<CurrentUser>('GET', '/api/auth/me');
   }
 
   // Users

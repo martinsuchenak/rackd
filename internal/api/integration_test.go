@@ -72,7 +72,7 @@ func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, s
 
 	// Register UI config endpoint
 	uiBuilder := NewUIConfigBuilder()
-	mux.HandleFunc("GET /api/config", uiBuilder.Handler())
+	mux.HandleFunc("GET /api/config", uiBuilder.Handler(h.sessionManager, store))
 
 	// Wrap with security headers
 	handler := SecurityHeaders(mux)
