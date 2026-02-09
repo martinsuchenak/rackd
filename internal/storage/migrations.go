@@ -102,6 +102,12 @@ var migrations = []*Migration{
 		Up:      migrateAssignRolesToExistingAdminsUp,
 		Down:    migrateAssignRolesToExistingAdminsDown,
 	},
+	{
+		Version: "20260207120000",
+		Name:    "add_apikey_user_id",
+		Up:      migrateAddAPIKeyUserIDUp,
+		Down:    migrateAddAPIKeyUserIDDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1245,5 +1251,34 @@ func migrateAssignRolesToExistingAdminsUp(ctx context.Context, tx *sql.Tx) error
 
 func migrateAssignRolesToExistingAdminsDown(ctx context.Context, tx *sql.Tx) error {
 	// No-op: removing role assignments could lock out admin users
+	return nil
+}
+
+// migrateAddAPIKeyUserIDUp adds user_id column to api_keys table
+func migrateAddAPIKeyUserIDUp(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE api_keys ADD COLUMN user_id TEXT REFERENCES users(id)`); err != nil {
+		return fmt.Errorf("failed to add user_id column to api_keys: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id)`); err != nil {
+		return fmt.Errorf("failed to create api_keys user_id index: %w", err)
+	}
+	return nil
+}
+
+// migrateAddAPIKeyUserIDDown removes user_id column from api_keys table
+func migrateAddAPIKeyUserIDDown(ctx context.Context, tx *sql.Tx) error {
+	// SQLite doesn't support DROP COLUMN before 3.35.0, so recreate the table
+	queries := []string{
+		`CREATE TABLE api_keys_backup AS SELECT id, name, key, description, created_at, last_used_at, expires_at FROM api_keys`,
+		`DROP TABLE api_keys`,
+		`ALTER TABLE api_keys_backup RENAME TO api_keys`,
+		`CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key)`,
+		`CREATE INDEX IF NOT EXISTS idx_api_keys_name ON api_keys(name)`,
+	}
+	for _, q := range queries {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to remove user_id column from api_keys: %w", err)
+		}
+	}
 	return nil
 }

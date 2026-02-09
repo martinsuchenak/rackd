@@ -199,12 +199,29 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
 
-		// Inject caller context - API keys bypass RBAC (no user association)
-		caller := &service.Caller{
-			Type:     service.CallerTypeAPIKey,
-			UserID:   key.ID,
-			Username: key.Name,
-			Source:   "mcp",
+		// Resolve API key owner: if the key has a UserID, use the owner's
+		// identity so RBAC is enforced using their roles.
+		var caller *service.Caller
+		if key.UserID != "" {
+			user, err := s.store.GetUser(key.UserID)
+			if err == nil && user.IsActive {
+				caller = &service.Caller{
+					Type:      service.CallerTypeUser,
+					UserID:    user.ID,
+					Username:  user.Username,
+					IPAddress: r.RemoteAddr,
+					Source:    "mcp",
+				}
+			}
+		}
+		if caller == nil {
+			// Legacy key (no user association)
+			caller = &service.Caller{
+				Type:     service.CallerTypeAPIKey,
+				UserID:   key.ID,
+				Username: key.Name,
+				Source:   "mcp",
+			}
 		}
 		r = r.WithContext(service.WithCaller(r.Context(), caller))
 	} else {

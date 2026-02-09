@@ -1,6 +1,6 @@
 # RBAC Remediation Plan
 
-## Status: TODO
+## Status: DONE
 
 ## Problems
 
@@ -27,7 +27,7 @@ No service layer needed for these yet — they don't have RBAC permissions but a
 
 ### 2a: Model & DB Migration
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/model/apikey.go`:
 - Add `UserID string` field to `APIKey` struct (json: `"user_id"`)
@@ -43,7 +43,7 @@ No service layer needed for these yet — they don't have RBAC permissions but a
 
 ### 2b: Storage Layer
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/storage/storage.go`:
 - `ListAPIKeys` signature already takes `*model.APIKeyFilter` — add UserID filtering in SQL
@@ -55,7 +55,7 @@ SQLite implementation (likely `internal/storage/sqlite_apikey.go` or similar):
 
 ### 2c: Service Layer
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/service/apikey.go`:
 - `Create()`: set `key.UserID` from `CallerFrom(ctx).UserID` (the creating user owns the key)
@@ -65,7 +65,7 @@ SQLite implementation (likely `internal/storage/sqlite_apikey.go` or similar):
 
 ### 2d: Auth Middleware — Resolve API Key Owner
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/api/middleware.go`:
 - Change `AuthMiddleware` and `AuthMiddlewareWithSessions` to accept `storage.ExtendedStorage` instead of `storage.APIKeyStorage` (needed to call `GetUser` for owner lookup). Update call sites in `RegisterRoutes`.
@@ -94,7 +94,7 @@ This means API key requests inherit the owner's RBAC permissions — no special 
 
 ### 2e: Remove API Key RBAC Bypass
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/service/rbac.go`:
 - Remove the `CallerTypeAPIKey` bypass block (lines 20-26)
@@ -117,7 +117,7 @@ func requirePermission(ctx, checker, resource, action) error {
 
 ### 2f: API Key Handlers
 
-**Status: TODO**
+**Status: DONE**
 
 `internal/api/apikey_handlers.go`:
 - `createAPIKey`: service now sets UserID from caller context
@@ -126,7 +126,7 @@ func requirePermission(ctx, checker, resource, action) error {
 
 ### 2g: UI Updates
 
-**Status: TODO**
+**Status: DONE**
 
 API key management UI — show UserID/username in key list, filter by current user.
 

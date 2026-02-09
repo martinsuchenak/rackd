@@ -11,6 +11,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/metrics"
+	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -69,18 +70,46 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// resolveAPIKeyCaller builds a Caller for an authenticated API key.
+// If the key has a UserID, it resolves the owner and returns a CallerTypeUser
+// so that RBAC is enforced using the owner's roles. Legacy keys (no UserID)
+// get CallerTypeAPIKey which bypasses RBAC.
+func resolveAPIKeyCaller(store storage.ExtendedStorage, key *model.APIKey, ip, source string) *service.Caller {
+	if key.UserID != "" {
+		user, err := store.GetUser(key.UserID)
+		if err == nil && user.IsActive {
+			return &service.Caller{
+				Type:      service.CallerTypeUser,
+				UserID:    user.ID,
+				Username:  user.Username,
+				IPAddress: ip,
+				Source:    source,
+			}
+		}
+		log.Warn("API key owner not found or inactive", "key_name", key.Name, "user_id", key.UserID)
+	}
+	// Legacy key (no user association) — keep CallerTypeAPIKey
+	return &service.Caller{
+		Type:      service.CallerTypeAPIKey,
+		UserID:    key.ID,
+		Username:  key.Name,
+		IPAddress: ip,
+		Source:    source,
+	}
+}
+
 // AuthMiddleware validates API keys
-func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.HandlerFunc {
+func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Debug("Auth failed: missing Bearer prefix", "path", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
 			return
 		}
 
-		providedToken := strings.TrimPrefix(auth, "Bearer ")
+		providedToken := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// Try API key authentication
 		if store != nil {
@@ -100,15 +129,7 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
-				// API keys are not associated with users, so they bypass RBAC
-				// (CallerTypeAPIKey is treated as system-level access in requirePermission)
-				caller := &service.Caller{
-					Type:      service.CallerTypeAPIKey,
-					UserID:    key.ID,
-					Username:  key.Name,
-					IPAddress: getClientIP(r, false),
-					Source:    "api",
-				}
+				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
 				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return
@@ -122,7 +143,7 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 }
 
 // AuthMiddlewareWithSessions validates API keys and sessions
-func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *auth.SessionManager, next http.HandlerFunc) http.HandlerFunc {
+func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *auth.SessionManager, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Try session authentication via cookie first
 		if sessionManager != nil {
@@ -174,14 +195,7 @@ func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *aut
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
-				// API keys are not associated with users, so they bypass RBAC
-				caller := &service.Caller{
-					Type:      service.CallerTypeAPIKey,
-					UserID:    key.ID,
-					Username:  key.Name,
-					IPAddress: getClientIP(r, false),
-					Source:    "api",
-				}
+				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
 				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return

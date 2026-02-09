@@ -29,11 +29,16 @@ func (s *SQLiteStorage) CreateAPIKey(key *model.APIKey) error {
 	}
 
 	ctx := context.Background()
-	query := `INSERT INTO api_keys (id, name, key, description, created_at, last_used_at, expires_at) 
-	          VALUES (?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at)
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+
+	var userID sql.NullString
+	if key.UserID != "" {
+		userID = sql.NullString{String: key.UserID, Valid: true}
+	}
 
 	_, err := s.db.ExecContext(ctx, query,
-		key.ID, key.Name, key.Key, key.Description,
+		key.ID, key.Name, key.Key, userID, key.Description,
 		key.CreatedAt, key.LastUsedAt, key.ExpiresAt,
 	)
 	if err != nil {
@@ -50,14 +55,14 @@ func (s *SQLiteStorage) GetAPIKey(id string) (*model.APIKey, error) {
 	}
 
 	ctx := context.Background()
-	query := `SELECT id, name, key, description, created_at, last_used_at, expires_at 
+	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys WHERE id = ?`
 
 	var key model.APIKey
 	var lastUsedAt, expiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&key.ID, &key.Name, &key.Key, &key.Description,
+		&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
 		&key.CreatedAt, &lastUsedAt, &expiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -84,14 +89,14 @@ func (s *SQLiteStorage) GetAPIKeyByKey(keyStr string) (*model.APIKey, error) {
 	}
 
 	ctx := context.Background()
-	query := `SELECT id, name, key, description, created_at, last_used_at, expires_at 
+	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys WHERE key = ?`
 
 	var key model.APIKey
 	var lastUsedAt, expiresAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, keyStr).Scan(
-		&key.ID, &key.Name, &key.Key, &key.Description,
+		&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
 		&key.CreatedAt, &lastUsedAt, &expiresAt,
 	)
 	if err == sql.ErrNoRows {
@@ -114,13 +119,27 @@ func (s *SQLiteStorage) GetAPIKeyByKey(keyStr string) (*model.APIKey, error) {
 // ListAPIKeys retrieves all API keys matching the filter
 func (s *SQLiteStorage) ListAPIKeys(filter *model.APIKeyFilter) ([]model.APIKey, error) {
 	ctx := context.Background()
-	query := `SELECT id, name, key, description, created_at, last_used_at, expires_at 
+	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys`
-	var args []interface{}
+	var conditions []string
+	var args []any
 
-	if filter != nil && filter.Name != "" {
-		query += " WHERE name LIKE ?"
-		args = append(args, "%"+filter.Name+"%")
+	if filter != nil {
+		if filter.Name != "" {
+			conditions = append(conditions, "name LIKE ?")
+			args = append(args, "%"+filter.Name+"%")
+		}
+		if filter.UserID != "" {
+			conditions = append(conditions, "user_id = ?")
+			args = append(args, filter.UserID)
+		}
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + conditions[0]
+		for _, c := range conditions[1:] {
+			query += " AND " + c
+		}
 	}
 
 	query += " ORDER BY created_at DESC"
@@ -137,7 +156,7 @@ func (s *SQLiteStorage) ListAPIKeys(filter *model.APIKeyFilter) ([]model.APIKey,
 		var lastUsedAt, expiresAt sql.NullTime
 
 		if err := rows.Scan(
-			&key.ID, &key.Name, &key.Key, &key.Description,
+			&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
 			&key.CreatedAt, &lastUsedAt, &expiresAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan API key: %w", err)
