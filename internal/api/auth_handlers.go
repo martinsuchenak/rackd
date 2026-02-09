@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -61,8 +62,29 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	h.setSessionCookie(w, result.Session.Token)
 
-	response := model.LoginResponse{
-		User:      result.User,
+	userWithPerms, err := h.svc.Auth.GetCurrentUserWithPermissionsByID(r.Context(), result.User.ID)
+	if err != nil {
+		log.Warn("Failed to get user permissions for login response", "error", err, "user_id", result.User.ID)
+		userWithPerms = &model.CurrentUserResponse{
+			ID:          result.User.ID,
+			Username:    result.User.Username,
+			Email:       result.User.Email,
+			FullName:    result.User.FullName,
+			IsActive:    result.User.IsActive,
+			IsAdmin:     result.User.IsAdmin,
+			CreatedAt:   result.User.CreatedAt,
+			UpdatedAt:   result.User.UpdatedAt,
+			LastLoginAt: result.User.LastLoginAt,
+			Roles:       result.User.Roles,
+			Permissions: []model.Permission{},
+		}
+	}
+
+	response := struct {
+		User      model.CurrentUserResponse `json:"user"`
+		ExpiresAt time.Time                 `json:"expires_at"`
+	}{
+		User:      *userWithPerms,
 		ExpiresAt: result.Session.ExpiresAt,
 	}
 
@@ -89,7 +111,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
-	user, err := h.svc.Auth.GetCurrentUser(r.Context())
+	user, err := h.svc.Auth.GetCurrentUserWithPermissions(r.Context())
 	if err != nil {
 		h.handleServiceError(w, err)
 		return

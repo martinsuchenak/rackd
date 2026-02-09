@@ -35,6 +35,20 @@ type UserResponse struct {
 	Roles       []Role     `json:"roles,omitempty"`
 }
 
+type CurrentUserResponse struct {
+	ID          string       `json:"id"`
+	Username    string       `json:"username"`
+	Email       string       `json:"email,omitempty"`
+	FullName    string       `json:"full_name,omitempty"`
+	IsActive    bool         `json:"is_active"`
+	IsAdmin     bool         `json:"is_admin"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	LastLoginAt *time.Time   `json:"last_login_at,omitempty"`
+	Permissions []Permission `json:"permissions"`
+	Roles       []Role       `json:"roles"`
+}
+
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

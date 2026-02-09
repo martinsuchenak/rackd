@@ -94,3 +94,48 @@ func (s *AuthService) GetCurrentUser(ctx context.Context) (*model.UserResponse, 
 
 	return &resp, nil
 }
+
+func (s *AuthService) GetCurrentUserWithPermissions(ctx context.Context) (*model.CurrentUserResponse, error) {
+	caller := CallerFrom(ctx)
+	if caller == nil || caller.UserID == "" {
+		return nil, ErrUnauthenticated
+	}
+
+	return s.GetCurrentUserWithPermissionsByID(ctx, caller.UserID)
+}
+
+func (s *AuthService) GetCurrentUserWithPermissionsByID(ctx context.Context, userID string) (*model.CurrentUserResponse, error) {
+	user, err := s.store.GetUser(userID)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	roles, err := s.store.GetUserRoles(ctx, userID)
+	if err != nil {
+		log.Warn("Failed to get user roles", "error", err, "user_id", userID)
+		roles = []model.Role{}
+	}
+
+	permissions, err := s.store.GetUserPermissions(ctx, userID)
+	if err != nil {
+		log.Warn("Failed to get user permissions", "error", err, "user_id", userID)
+		permissions = []model.Permission{}
+	}
+
+	return &model.CurrentUserResponse{
+		ID:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		FullName:    user.FullName,
+		IsActive:    user.IsActive,
+		IsAdmin:     user.IsAdmin,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		LastLoginAt: user.LastLoginAt,
+		Roles:       roles,
+		Permissions: permissions,
+	}, nil
+}
