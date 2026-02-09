@@ -85,6 +85,14 @@ func (s *DatacenterService) GetDevices(ctx context.Context, datacenterID string)
 		return nil, err
 	}
 
+	// Verify datacenter exists before listing devices
+	if _, err := s.store.GetDatacenter(datacenterID); err != nil {
+		if errors.Is(err, storage.ErrDatacenterNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
 	return s.store.GetDatacenterDevices(datacenterID)
 }
 

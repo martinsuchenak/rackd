@@ -85,13 +85,22 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	device, err := h.store.GetDevice(id)
+	// Fetch through service layer so RBAC is enforced on the read too
+	var device *model.Device
+	var err error
+	if h.svc != nil && h.svc.Devices != nil {
+		device, err = h.svc.Devices.Get(r.Context(), id)
+	} else {
+		device, err = h.store.GetDevice(id)
+	}
 	if err != nil {
-		if errors.Is(err, storage.ErrDeviceNotFound) {
+		if h.svc != nil {
+			h.handleServiceError(w, err)
+		} else if errors.Is(err, storage.ErrDeviceNotFound) {
 			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
-			return
+		} else {
+			h.internalError(w, err)
 		}
-		h.internalError(w, err)
 		return
 	}
 

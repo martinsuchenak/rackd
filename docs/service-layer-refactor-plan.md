@@ -560,3 +560,164 @@ Continue working during migration. API handler tests that use real storage still
 2. **MCP**: Device/network operations via MCP with API key - verify RBAC is enforced (user with `viewer` role should get 403 on create/update/delete)
 3. **CLI**: `rackd audit list` works after migrating to AuditService
 4. **Build**: `go build ./...` and `go test ./...` pass after each phase
+
+## Migration Progress
+
+### Phase 1: Foundation — DONE
+
+All foundation files created and wired up:
+
+- [x] `internal/service/caller.go` — Caller type, WithCaller, CallerFrom, SystemContext
+- [x] `internal/service/errors.go` — error types, ValidationErrors (with `Unwrap()`)
+- [x] `internal/service/rbac.go` — requirePermission helper (API keys bypass RBAC)
+- [x] `internal/service/audit.go` — enrichAuditCtx helper
+- [x] `internal/service/services.go` — Services registry, NewServices constructor
+- [x] `internal/api/middleware.go` — Caller injected in both session and API key auth paths
+- [x] `internal/mcp/server.go` — Caller injected (API key auth) or SystemContext (no-auth mode)
+- [x] `internal/api/handlers.go` — `svc` field, `SetServices()`, `handleServiceError()`, `toValidationErrors()`
+- [x] `internal/server/server.go` — creates Services, passes to Handler and MCP Server
+
+### Phase 2: Simple CRUD Resources
+
+| # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
+|---|----------|-------------|--------------|--------|-----------|-------|--------|
+| 1 | **Devices** | `service/device.go` | `device_handlers.go` → `svc.Devices.*` | `wrapAuth` | `svc.Devices.*` | `authReq()` | **DONE** |
+| 2 | **Datacenters** | `service/datacenter.go` | `datacenter_handlers.go` → `svc.Datacenters.*` | `wrapAuth` | `svc.Datacenters.*` | `authReq()` | **DONE** |
+| 3 | **Networks** | `service/network.go` | `network_handlers.go` → `svc.Networks.*` | `wrapAuth` | `svc.Networks.*` | `authReq()` | **DONE** |
+| 4 | **Pools** | `service/pool.go` | `network_handlers.go` → `svc.Pools.*` | `wrapAuth` | `svc.Pools.GetNextIP()` | `authReq()` | **DONE** |
+| 5 | **Relationships** | `service/relationship.go` | `relationship_handlers.go` | `wrapPerm` | `s.store.*` | no auth | TODO |
+| 6 | **Bulk** | `service/bulk.go` | `device_handlers.go` (bulk section) | `wrapAuth` | N/A | `authReq()` | TODO |
+
+### Phase 3: Discovery — TODO
+
+| # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
+|---|----------|-------------|--------------|--------|-----------|-------|--------|
+| 7 | **Discovery** | `service/discovery.go` | `discovery_handlers.go` | `wrapPerm` | `s.store.*` | no auth | TODO |
+
+### Phase 4: User/Role Management — TODO
+
+| # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
+|---|----------|-------------|--------------|--------|-----------|-------|--------|
+| 8 | **Users** | `service/user.go` | `user_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+| 9 | **Roles** | `service/role.go` | `role_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+
+### Phase 5: Auth & Remaining — TODO
+
+| # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
+|---|----------|-------------|--------------|--------|-----------|-------|--------|
+| 10 | **Auth** | `service/auth.go` | `auth_handlers.go` | mixed | N/A | N/A | TODO |
+| 11 | **Audit** | `service/audit_svc.go` | `audit_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+| 12 | **API Keys** | `service/apikey.go` | `apikey_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+
+### Phase 6: Cleanup — TODO
+
+- [ ] Remove `wrapPerm` entirely (all RBAC in service layer)
+- [ ] Remove `Handler.store` field (all access via `Handler.svc`)
+- [ ] Remove `h.auditContext()` from API handlers
+- [ ] Remove `s.auditContext()` from MCP server
+- [ ] Remove `rbac_middleware.go`
+- [ ] Migrate `cmd/audit` to use AuditService with SystemContext
+
+## Lessons Learned (Phase 1 & 2 Review)
+
+These pitfalls were discovered during Phase 1/2 implementation. Apply these to all subsequent phases.
+
+### 1. Caller Injection: Cover ALL Auth Paths
+
+Both `AuthMiddleware` (API-key-only) and `AuthMiddlewareWithSessions` (session + API key) have **two separate auth paths** (session cookie, Bearer token). Each path must inject `Caller` into the context. It's easy to add Caller injection for the session path and forget the API key path (or vice versa).
+
+**Checklist for each auth middleware path:**
+
+- After successful session auth → inject `Caller{Type: CallerTypeUser, UserID: session.UserID, ...}`
+- After successful API key auth → inject `Caller{Type: CallerTypeAPIKey, UserID: key.ID, ...}`
+- Both must call `r = r.WithContext(service.WithCaller(r.Context(), caller))` before calling `next`
+
+### 2. API Key Callers Bypass RBAC
+
+API keys (`model.APIKey`) have no `UserID` field that maps to a user in the `users` table. This means `HasPermission(ctx, key.ID, ...)` would always return false. The current design bypasses RBAC for `CallerTypeAPIKey` callers in `requirePermission()`.
+
+**Do not** attempt to do RBAC lookups for API key callers until the `APIKey` model is extended with a `UserID` field.
+
+### 3. Route Wrapper: `wrapAuth` not `wrap` for Migrated Endpoints
+
+When migrating an endpoint from `wrapPerm` (middleware RBAC) to service-layer RBAC, the route must switch to `wrapAuth` (**always** requires auth), NOT `wrap` (auth only when `cfg.requireAuth` is set). Using `wrap` means unauthenticated requests bypass auth entirely when auth is not globally configured, resulting in no `Caller` in context and `ErrUnauthenticated` from the service layer.
+
+**Rule**: Every migrated endpoint uses `wrapAuth`. `wrap` is only for truly optional-auth endpoints (e.g., `/healthz`, `/metrics`).
+
+### 4. ValidationErrors Must Implement `Unwrap()`
+
+`service.ValidationErrors` must have an `Unwrap() error` method returning `service.ErrValidation` so that `errors.Is(err, service.ErrValidation)` works in `handleServiceError`. Without this, the switch/case in `handleServiceError` falls through to the `default` branch and returns 500 instead of 400.
+
+```go
+func (e ValidationErrors) Unwrap() error {
+    return ErrValidation
+}
+```
+
+### 5. Two ValidationErrors Types Need Conversion
+
+`api.ValidationErrors` (used by `writeValidationErrors`) and `service.ValidationErrors` are different types. The `toValidationErrors()` function must handle both:
+
+1. Direct `api.ValidationErrors` (from API-layer validation)
+2. `service.ValidationErrors` (from service layer) → convert field-by-field to `api.ValidationErrors`
+
+Use `errors.As(err, &svcErrs)` for the service type since it may be wrapped.
+
+### 6. MCP No-Auth Path Needs SystemContext
+
+When `requireAuth=false` in the MCP server, no API key auth runs, so no `Caller` is injected. Service methods called without a Caller get `ErrUnauthenticated`. The fix: inject `SystemContext("mcp")` when auth is not required, so service calls succeed with system-level access.
+
+```go
+if s.requireAuth {
+    // ... API key auth, inject CallerTypeAPIKey ...
+} else {
+    ctx = service.SystemContext(ctx, "mcp")
+}
+```
+
+### 7. Handler Reads Must Also Go Through Service
+
+When an update handler first reads the current entity (e.g., `updateDevice` fetches the device before applying patches), that read must also go through the service layer. Using `h.store.GetDevice(id)` directly bypasses RBAC and leaks entity existence to unauthorized callers.
+
+**Pattern for update handlers:**
+
+```go
+// Use service for the initial read too
+device, err := h.svc.Devices.Get(r.Context(), id)
+if err != nil {
+    h.handleServiceError(w, err)
+    return
+}
+// ... apply updates from request body ...
+if err := h.svc.Devices.Update(r.Context(), device); err != nil {
+    h.handleServiceError(w, err)
+    return
+}
+```
+
+### 8. Tests Must Provide Auth for `wrapAuth` Endpoints
+
+After switching routes from `wrap`/`wrapPerm` to `wrapAuth`, existing tests that don't provide authentication will get 401. Update test setup:
+
+1. `setupTestHandler` must create a test API key in the store and set up services on the handler
+2. Add an `authReq(req)` helper that adds `Authorization: Bearer <test-key>` to requests
+3. All device/bulk endpoint test requests must use `authReq()`
+4. Integration tests using `http.Post`/`http.Get` must switch to `authPost`/`authGet` helpers
+5. Consider adding a `CreateDevice_Unauthenticated` test that verifies 401 without auth
+
+### 9. Incremental Migration Checklist (Per Resource)
+
+Use this checklist when migrating each resource in Phases 2-5:
+
+- [ ] Create `internal/service/<resource>.go` with RBAC + validation + storage delegation
+- [ ] Each method calls `requirePermission(ctx, s.store, "<resource>", "<action>")` first
+- [ ] Each mutation method calls `enrichAuditCtx(ctx)` before passing to storage
+- [ ] `ValidationErrors` returned from service have `Unwrap()` → `ErrValidation`
+- [ ] Switch API route from `wrapPerm(h.<handler>, ...)` to `wrapAuth(h.<handler>)`
+- [ ] Refactor API handler to call `h.svc.<Resource>.<Method>()` and map errors via `handleServiceError`
+- [ ] Update handler reads (GET before PUT/PATCH) to also go through service
+- [ ] Refactor MCP tool to call `s.svc.<Resource>.<Method>()` instead of `s.store.<Method>()`
+- [ ] Update API handler tests: use `authReq()` for all requests to this resource
+- [ ] Update integration tests: use `authPost`/`authGet`/`authDo` for requests to this resource
+- [ ] Run `go build ./...` and `go test ./...` - all green
+- [ ] Manual test: API CRUD, MCP tool, verify 403 for unauthorized user

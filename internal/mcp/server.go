@@ -201,7 +201,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
 
-		// Inject caller context
+		// Inject caller context - API keys bypass RBAC (no user association)
 		caller := &service.Caller{
 			Type:     service.CallerTypeAPIKey,
 			UserID:   key.ID,
@@ -209,6 +209,10 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			Source:   "mcp",
 		}
 		r = r.WithContext(service.WithCaller(r.Context(), caller))
+	} else {
+		// When auth is not required, inject a system caller so service
+		// layer calls succeed (requirePermission bypasses RBAC for system callers)
+		r = r.WithContext(service.SystemContext(r.Context(), "mcp"))
 	}
 
 	s.mcpServer.HandleRequest(w, r)
@@ -331,7 +335,7 @@ func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolReques
 // Datacenter handlers
 
 func (s *Server) handleDatacenterList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
-	dcs, err := s.store.ListDatacenters(nil)
+	dcs, err := s.svc.Datacenters.List(ctx, nil)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -349,14 +353,12 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 		Description: req.StringOr("description", ""),
 	}
 
-	auditCtx := s.auditContext(ctx)
 	if id == "" {
-		dc.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.store.CreateDatacenter(auditCtx, dc); err != nil {
+		if err := s.svc.Datacenters.Create(ctx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.store.UpdateDatacenter(auditCtx, dc); err != nil {
+		if err := s.svc.Datacenters.Update(ctx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -370,7 +372,7 @@ func (s *Server) handleNetworkList(ctx context.Context, req *mcp.ToolRequest) (*
 	filter := &model.NetworkFilter{
 		DatacenterID: req.StringOr("datacenter_id", ""),
 	}
-	networks, err := s.store.ListNetworks(filter)
+	networks, err := s.svc.Networks.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -391,14 +393,12 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 		Description:  req.StringOr("description", ""),
 	}
 
-	auditCtx := s.auditContext(ctx)
 	if id == "" {
-		network.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.store.CreateNetwork(auditCtx, network); err != nil {
+		if err := s.svc.Networks.Create(ctx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.store.UpdateNetwork(auditCtx, network); err != nil {
+		if err := s.svc.Networks.Update(ctx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -410,7 +410,7 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 func (s *Server) handleGetNextIP(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	poolID, _ := req.String("pool_id")
-	ip, err := s.store.GetNextAvailableIP(poolID)
+	ip, err := s.svc.Pools.GetNextIP(ctx, poolID)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -24,7 +25,8 @@ func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(nil, store, false), store
+	svc := service.NewServices(store, nil, nil)
+	return NewServer(svc, store, false), store
 }
 
 func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
@@ -33,7 +35,8 @@ func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(nil, store, true), store
+	svc := service.NewServices(store, nil, nil)
+	return NewServer(svc, store, true), store
 }
 
 func TestNewServer(t *testing.T) {

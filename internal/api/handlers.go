@@ -145,38 +145,38 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		return handler
 	}
 
-	// Datacenter routes
-	mux.HandleFunc("GET /api/datacenters", wrapPerm(h.listDatacenters, "datacenters", "list"))
-	mux.HandleFunc("POST /api/datacenters", wrapPerm(h.createDatacenter, "datacenters", "create"))
-	mux.HandleFunc("GET /api/datacenters/{id}", wrapPerm(h.getDatacenter, "datacenters", "read"))
-	mux.HandleFunc("PUT /api/datacenters/{id}", wrapPerm(h.updateDatacenter, "datacenters", "update"))
-	mux.HandleFunc("DELETE /api/datacenters/{id}", wrapPerm(h.deleteDatacenter, "datacenters", "delete"))
-	mux.HandleFunc("GET /api/datacenters/{id}/devices", wrapPerm(h.getDatacenterDevices, "datacenters", "read"))
+	// Datacenter routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/datacenters", wrapAuth(h.listDatacenters))
+	mux.HandleFunc("POST /api/datacenters", wrapAuth(h.createDatacenter))
+	mux.HandleFunc("GET /api/datacenters/{id}", wrapAuth(h.getDatacenter))
+	mux.HandleFunc("PUT /api/datacenters/{id}", wrapAuth(h.updateDatacenter))
+	mux.HandleFunc("DELETE /api/datacenters/{id}", wrapAuth(h.deleteDatacenter))
+	mux.HandleFunc("GET /api/datacenters/{id}/devices", wrapAuth(h.getDatacenterDevices))
 
-	// Network routes
-	mux.HandleFunc("GET /api/networks", wrapPerm(h.listNetworks, "networks", "list"))
-	mux.HandleFunc("POST /api/networks", wrapPerm(h.createNetwork, "networks", "create"))
-	mux.HandleFunc("GET /api/networks/{id}", wrapPerm(h.getNetwork, "networks", "read"))
-	mux.HandleFunc("PUT /api/networks/{id}", wrapPerm(h.updateNetwork, "networks", "update"))
-	mux.HandleFunc("DELETE /api/networks/{id}", wrapPerm(h.deleteNetwork, "networks", "delete"))
-	mux.HandleFunc("GET /api/networks/{id}/devices", wrapPerm(h.getNetworkDevices, "networks", "read"))
-	mux.HandleFunc("GET /api/networks/{id}/utilization", wrapPerm(h.getNetworkUtilization, "networks", "read"))
-	mux.HandleFunc("GET /api/networks/{id}/pools", wrapPerm(h.listNetworkPools, "pools", "list"))
-	mux.HandleFunc("POST /api/networks/{id}/pools", wrapPerm(h.createNetworkPool, "pools", "create"))
+	// Network routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/networks", wrapAuth(h.listNetworks))
+	mux.HandleFunc("POST /api/networks", wrapAuth(h.createNetwork))
+	mux.HandleFunc("GET /api/networks/{id}", wrapAuth(h.getNetwork))
+	mux.HandleFunc("PUT /api/networks/{id}", wrapAuth(h.updateNetwork))
+	mux.HandleFunc("DELETE /api/networks/{id}", wrapAuth(h.deleteNetwork))
+	mux.HandleFunc("GET /api/networks/{id}/devices", wrapAuth(h.getNetworkDevices))
+	mux.HandleFunc("GET /api/networks/{id}/utilization", wrapAuth(h.getNetworkUtilization))
+	mux.HandleFunc("GET /api/networks/{id}/pools", wrapAuth(h.listNetworkPools))
+	mux.HandleFunc("POST /api/networks/{id}/pools", wrapAuth(h.createNetworkPool))
 
-	// Pool routes
-	mux.HandleFunc("GET /api/pools/{id}", wrapPerm(h.getNetworkPool, "pools", "read"))
-	mux.HandleFunc("PUT /api/pools/{id}", wrapPerm(h.updateNetworkPool, "pools", "update"))
-	mux.HandleFunc("DELETE /api/pools/{id}", wrapPerm(h.deleteNetworkPool, "pools", "delete"))
-	mux.HandleFunc("GET /api/pools/{id}/next-ip", wrapPerm(h.getNextIP, "pools", "read"))
-	mux.HandleFunc("GET /api/pools/{id}/heatmap", wrapPerm(h.getPoolHeatmap, "pools", "read"))
+	// Pool routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/pools/{id}", wrapAuth(h.getNetworkPool))
+	mux.HandleFunc("PUT /api/pools/{id}", wrapAuth(h.updateNetworkPool))
+	mux.HandleFunc("DELETE /api/pools/{id}", wrapAuth(h.deleteNetworkPool))
+	mux.HandleFunc("GET /api/pools/{id}/next-ip", wrapAuth(h.getNextIP))
+	mux.HandleFunc("GET /api/pools/{id}/heatmap", wrapAuth(h.getPoolHeatmap))
 
-	// Device routes
-	mux.HandleFunc("GET /api/devices", wrap(h.listDevices))
-	mux.HandleFunc("POST /api/devices", wrap(h.createDevice))
-	mux.HandleFunc("GET /api/devices/{id}", wrap(h.getDevice))
-	mux.HandleFunc("PUT /api/devices/{id}", wrap(h.updateDevice))
-	mux.HandleFunc("DELETE /api/devices/{id}", wrap(h.deleteDevice))
+	// Device routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/devices", wrapAuth(h.listDevices))
+	mux.HandleFunc("POST /api/devices", wrapAuth(h.createDevice))
+	mux.HandleFunc("GET /api/devices/{id}", wrapAuth(h.getDevice))
+	mux.HandleFunc("PUT /api/devices/{id}", wrapAuth(h.updateDevice))
+	mux.HandleFunc("DELETE /api/devices/{id}", wrapAuth(h.deleteDevice))
 
 	// Search routes
 	mux.HandleFunc("GET /api/search", wrapPerm(h.search, "search", "read"))
@@ -238,12 +238,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/keys/{id}", wrapPerm(h.getAPIKey, "apikeys", "read"))
 	mux.HandleFunc("DELETE /api/keys/{id}", wrapPerm(h.deleteAPIKey, "apikeys", "delete"))
 
-	// Bulk device operations
-	mux.HandleFunc("POST /api/devices/bulk", wrap(h.bulkCreateDevices))
-	mux.HandleFunc("PUT /api/devices/bulk", wrap(h.bulkUpdateDevices))
-	mux.HandleFunc("DELETE /api/devices/bulk", wrap(h.bulkDeleteDevices))
-	mux.HandleFunc("POST /api/devices/bulk/tags", wrap(h.bulkAddTags))
-	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrap(h.bulkRemoveTags))
+	// Bulk device operations (RBAC enforced in service layer)
+	mux.HandleFunc("POST /api/devices/bulk", wrapAuth(h.bulkCreateDevices))
+	mux.HandleFunc("PUT /api/devices/bulk", wrapAuth(h.bulkUpdateDevices))
+	mux.HandleFunc("DELETE /api/devices/bulk", wrapAuth(h.bulkDeleteDevices))
+	mux.HandleFunc("POST /api/devices/bulk/tags", wrapAuth(h.bulkAddTags))
+	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapAuth(h.bulkRemoveTags))
 
 	// Bulk network operations
 	mux.HandleFunc("POST /api/networks/bulk", wrapPerm(h.bulkCreateNetworks, "networks", "create"))
@@ -326,7 +326,9 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 	case errors.Is(err, service.ErrAlreadyExists):
 		h.writeError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
-	case errors.Is(err, service.ErrValidation), errors.Is(err, ValidationErrors{}):
+	case errors.Is(err, service.ErrIPNotAvailable):
+		h.writeError(w, http.StatusConflict, "IP_NOT_AVAILABLE", "No IP addresses available")
+	case errors.Is(err, service.ErrValidation):
 		h.writeValidationErrors(w, toValidationErrors(err))
 	case errors.Is(err, service.ErrSelfDelete):
 		h.writeError(w, http.StatusBadRequest, "CANNOT_DELETE_SELF", err.Error())
@@ -338,11 +340,18 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 }
 
 func toValidationErrors(err error) ValidationErrors {
+	// Check api.ValidationErrors
 	if verrs, ok := err.(ValidationErrors); ok {
 		return verrs
 	}
-	if verrs, ok := err.(*ValidationErrors); ok {
-		return *verrs
+	// Check service.ValidationErrors and convert
+	var svcErrs service.ValidationErrors
+	if errors.As(err, &svcErrs) {
+		result := make(ValidationErrors, len(svcErrs))
+		for i, e := range svcErrs {
+			result[i] = ValidationError{Field: e.Field, Message: e.Message}
+		}
+		return result
 	}
 	return ValidationErrors{{Field: "", Message: err.Error()}}
 }

@@ -93,6 +93,14 @@ func (s *NetworkService) GetDevices(ctx context.Context, networkID string) ([]mo
 		return nil, err
 	}
 
+	// Verify network exists before listing devices
+	if _, err := s.store.GetNetwork(networkID); err != nil {
+		if errors.Is(err, storage.ErrNetworkNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
 	return s.store.GetNetworkDevices(networkID)
 }
 
@@ -101,7 +109,14 @@ func (s *NetworkService) GetUtilization(ctx context.Context, networkID string) (
 		return nil, err
 	}
 
-	return s.store.GetNetworkUtilization(networkID)
+	utilization, err := s.store.GetNetworkUtilization(networkID)
+	if err != nil {
+		if errors.Is(err, storage.ErrNetworkNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return utilization, nil
 }
 
 func (s *NetworkService) Search(ctx context.Context, query string) ([]model.Network, error) {

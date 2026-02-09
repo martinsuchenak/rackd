@@ -13,6 +13,17 @@ func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DatacenterFilter{
 		Name: r.URL.Query().Get("name"),
 	}
+
+	if h.svc != nil && h.svc.Datacenters != nil {
+		dcs, err := h.svc.Datacenters.List(r.Context(), filter)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, dcs)
+		return
+	}
+
 	datacenters, err := h.store.ListDatacenters(filter)
 	if err != nil {
 		h.internalError(w, err)
@@ -27,6 +38,16 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
 		return
 	}
+
+	if h.svc != nil && h.svc.Datacenters != nil {
+		if err := h.svc.Datacenters.Create(r.Context(), &dc); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusCreated, dc)
+		return
+	}
+
 	if errs := ValidateDatacenter(&dc); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
@@ -40,6 +61,17 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.Datacenters != nil {
+		dc, err := h.svc.Datacenters.Get(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, dc)
+		return
+	}
+
 	dc, err := h.store.GetDatacenter(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
@@ -54,13 +86,23 @@ func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	dc, err := h.store.GetDatacenter(id)
+
+	// Fetch through service so RBAC is enforced on the read too
+	var dc *model.Datacenter
+	var err error
+	if h.svc != nil && h.svc.Datacenters != nil {
+		dc, err = h.svc.Datacenters.Get(r.Context(), id)
+	} else {
+		dc, err = h.store.GetDatacenter(id)
+	}
 	if err != nil {
-		if errors.Is(err, storage.ErrDatacenterNotFound) {
+		if h.svc != nil && h.svc.Datacenters != nil {
+			h.handleServiceError(w, err)
+		} else if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
-			return
+		} else {
+			h.internalError(w, err)
 		}
-		h.internalError(w, err)
 		return
 	}
 
@@ -80,20 +122,36 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 		dc.Description = description
 	}
 
-	if errs := ValidateDatacenter(dc); len(errs) > 0 {
-		h.writeValidationErrors(w, errs)
-		return
-	}
-
-	if err := h.store.UpdateDatacenter(h.auditContext(r), dc); err != nil {
-		h.internalError(w, err)
-		return
+	if h.svc != nil && h.svc.Datacenters != nil {
+		if err := h.svc.Datacenters.Update(r.Context(), dc); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+	} else {
+		if errs := ValidateDatacenter(dc); len(errs) > 0 {
+			h.writeValidationErrors(w, errs)
+			return
+		}
+		if err := h.store.UpdateDatacenter(h.auditContext(r), dc); err != nil {
+			h.internalError(w, err)
+			return
+		}
 	}
 	h.writeJSON(w, http.StatusOK, dc)
 }
 
 func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.Datacenters != nil {
+		if err := h.svc.Datacenters.Delete(r.Context(), id); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if err := h.store.DeleteDatacenter(h.auditContext(r), id); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
@@ -107,6 +165,17 @@ func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.Datacenters != nil {
+		devices, err := h.svc.Datacenters.GetDevices(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, devices)
+		return
+	}
+
 	if _, err := h.store.GetDatacenter(id); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			h.writeError(w, http.StatusNotFound, "DATACENTER_NOT_FOUND", "Datacenter not found")
@@ -130,11 +199,20 @@ func (h *Handler) searchDatacenters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.svc != nil && h.svc.Datacenters != nil {
+		dcs, err := h.svc.Datacenters.Search(r.Context(), query)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, dcs)
+		return
+	}
+
 	datacenters, err := h.store.SearchDatacenters(query)
 	if err != nil {
 		h.internalError(w, err)
 		return
 	}
-
 	h.writeJSON(w, http.StatusOK, datacenters)
 }

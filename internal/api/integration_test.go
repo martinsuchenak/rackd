@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -43,12 +44,20 @@ func (m *mockIntegrationScanner) CancelScan(scanID string) error {
 	return nil
 }
 
-// setupIntegrationServer creates a full server
+const integrationAPIKey = "integration-test-api-key"
+
+// setupIntegrationServer creates a full server with an API key for auth
 func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, storage.ExtendedStorage) {
 	t.Helper()
 	store, err := storage.NewSQLiteStorage(":memory:")
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
+	}
+
+	// Create API key for authenticated endpoints
+	apiKey := &model.APIKey{ID: "int-test-key", Name: "integration-key", Key: integrationAPIKey}
+	if err := store.CreateAPIKey(apiKey); err != nil {
+		t.Fatalf("failed to create test API key: %v", err)
 	}
 
 	var scanner discovery.Scanner
@@ -57,6 +66,7 @@ func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, s
 	}
 
 	h := NewHandler(store, scanner)
+	h.SetServices(service.NewServices(store, nil, scanner))
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -76,6 +86,33 @@ func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, s
 	return server, store
 }
 
+// authPost makes an authenticated POST request
+func authPost(url, contentType string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Authorization", "Bearer "+integrationAPIKey)
+	return http.DefaultClient.Do(req)
+}
+
+// authGet makes an authenticated GET request
+func authGet(url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+integrationAPIKey)
+	return http.DefaultClient.Do(req)
+}
+
+// authDo makes an authenticated request with a pre-built *http.Request
+func authDo(req *http.Request) (*http.Response, error) {
+	req.Header.Set("Authorization", "Bearer "+integrationAPIKey)
+	return http.DefaultClient.Do(req)
+}
+
 func TestFullDeviceWorkflow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -83,9 +120,9 @@ func TestFullDeviceWorkflow(t *testing.T) {
 
 	server, _ := setupIntegrationServer(t, false)
 
-	// 1. Create datacenter
+	// 1. Create datacenter (requires auth)
 	dcBody := `{"name":"Integration DC","location":"Test Location"}`
-	resp, err := http.Post(server.URL+"/api/datacenters", "application/json", bytes.NewBufferString(dcBody))
+	resp, err := authPost(server.URL+"/api/datacenters", "application/json", bytes.NewBufferString(dcBody))
 	if err != nil {
 		t.Fatalf("create datacenter request failed: %v", err)
 	}
@@ -100,7 +137,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 
 	// 2. Create network
 	netBody := `{"name":"Integration Network","subnet":"10.0.0.0/24","datacenter_id":"` + dc.ID + `"}`
-	resp, err = http.Post(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
+	resp, err = authPost(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
 	if err != nil {
 		t.Fatalf("create network request failed: %v", err)
 	}
@@ -113,9 +150,9 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	var network model.Network
 	json.NewDecoder(resp.Body).Decode(&network)
 
-	// 3. Create device with address
+	// 3. Create device with address (requires auth)
 	deviceBody := `{"name":"integration-server","make_model":"Dell R640","datacenter_id":"` + dc.ID + `","addresses":[{"ip":"10.0.0.10","type":"ipv4","network_id":"` + network.ID + `"}],"tags":["web","prod"]}`
-	resp, err = http.Post(server.URL+"/api/devices", "application/json", bytes.NewBufferString(deviceBody))
+	resp, err = authPost(server.URL+"/api/devices", "application/json", bytes.NewBufferString(deviceBody))
 	if err != nil {
 		t.Fatalf("create device request failed: %v", err)
 	}
@@ -132,7 +169,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	}
 
 	// 4. Get device
-	resp, err = http.Get(server.URL + "/api/devices/" + device.ID)
+	resp, err = authGet(server.URL + "/api/devices/" + device.ID)
 	if err != nil {
 		t.Fatalf("get device request failed: %v", err)
 	}
@@ -151,7 +188,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	updateBody := `{"name":"updated-server","make_model":"Dell R640","tags":["updated"]}`
 	req, _ := http.NewRequest("PUT", server.URL+"/api/devices/"+device.ID, bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = authDo(req)
 	if err != nil {
 		t.Fatalf("update device request failed: %v", err)
 	}
@@ -162,7 +199,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	}
 
 	// 6. List devices with filter
-	resp, err = http.Get(server.URL + "/api/devices?tags=updated")
+	resp, err = authGet(server.URL + "/api/devices?tags=updated")
 	if err != nil {
 		t.Fatalf("list devices request failed: %v", err)
 	}
@@ -189,7 +226,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 
 	// 8. Delete device
 	req, _ = http.NewRequest("DELETE", server.URL+"/api/devices/"+device.ID, nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = authDo(req)
 	if err != nil {
 		t.Fatalf("delete device request failed: %v", err)
 	}
@@ -199,7 +236,7 @@ func TestFullDeviceWorkflow(t *testing.T) {
 	}
 
 	// 9. Verify deletion
-	resp, err = http.Get(server.URL + "/api/devices/" + device.ID)
+	resp, err = authGet(server.URL + "/api/devices/" + device.ID)
 	if err != nil {
 		t.Fatalf("get deleted device request failed: %v", err)
 	}
@@ -225,7 +262,7 @@ func TestSecurityHeadersIntegration(t *testing.T) {
 
 	server, _ := setupIntegrationServer(t, false)
 
-	resp, err := http.Get(server.URL + "/api/devices")
+	resp, err := authGet(server.URL + "/api/devices")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -259,7 +296,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 
 	// 1. Create network
 	netBody := `{"name":"Discovery Network","subnet":"192.168.1.0/24"}`
-	resp, err := http.Post(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
+	resp, err := authPost(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
 	if err != nil {
 		t.Fatalf("create network failed: %v", err)
 	}
@@ -329,9 +366,9 @@ func TestRelationshipWorkflow(t *testing.T) {
 
 	server, _ := setupIntegrationServer(t, false)
 
-	// Create parent device
+	// Create parent device (requires auth)
 	parentBody := `{"name":"rack-01","make_model":"42U Rack"}`
-	resp, err := http.Post(server.URL+"/api/devices", "application/json", bytes.NewBufferString(parentBody))
+	resp, err := authPost(server.URL+"/api/devices", "application/json", bytes.NewBufferString(parentBody))
 	if err != nil {
 		t.Fatalf("create parent failed: %v", err)
 	}
@@ -340,9 +377,9 @@ func TestRelationshipWorkflow(t *testing.T) {
 	var parent model.Device
 	json.NewDecoder(resp.Body).Decode(&parent)
 
-	// Create child device
+	// Create child device (requires auth)
 	childBody := `{"name":"server-01","make_model":"Dell R640"}`
-	resp, err = http.Post(server.URL+"/api/devices", "application/json", bytes.NewBufferString(childBody))
+	resp, err = authPost(server.URL+"/api/devices", "application/json", bytes.NewBufferString(childBody))
 	if err != nil {
 		t.Fatalf("create child failed: %v", err)
 	}
@@ -416,7 +453,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 
 	// Create network
 	netBody := `{"name":"Pool Network","subnet":"172.16.0.0/24"}`
-	resp, err := http.Post(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
+	resp, err := authPost(server.URL+"/api/networks", "application/json", bytes.NewBufferString(netBody))
 	if err != nil {
 		t.Fatalf("create network failed: %v", err)
 	}
@@ -427,7 +464,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 
 	// Create pool
 	poolBody := `{"name":"DHCP Pool","network_id":"` + network.ID + `","start_ip":"172.16.0.100","end_ip":"172.16.0.200"}`
-	resp, err = http.Post(server.URL+"/api/networks/"+network.ID+"/pools", "application/json", bytes.NewBufferString(poolBody))
+	resp, err = authPost(server.URL+"/api/networks/"+network.ID+"/pools", "application/json", bytes.NewBufferString(poolBody))
 	if err != nil {
 		t.Fatalf("create pool failed: %v", err)
 	}
@@ -441,7 +478,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&pool)
 
 	// Get next available IP
-	resp, err = http.Get(server.URL + "/api/pools/" + pool.ID + "/next-ip")
+	resp, err = authGet(server.URL + "/api/pools/" + pool.ID + "/next-ip")
 	if err != nil {
 		t.Fatalf("get next IP failed: %v", err)
 	}
@@ -457,7 +494,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 	}
 
 	// Get pool heatmap
-	resp, err = http.Get(server.URL + "/api/pools/" + pool.ID + "/heatmap")
+	resp, err = authGet(server.URL + "/api/pools/" + pool.ID + "/heatmap")
 	if err != nil {
 		t.Fatalf("get heatmap failed: %v", err)
 	}
@@ -467,7 +504,7 @@ func TestNetworkPoolWorkflow(t *testing.T) {
 	}
 
 	// Get network utilization
-	resp, err = http.Get(server.URL + "/api/networks/" + network.ID + "/utilization")
+	resp, err = authGet(server.URL + "/api/networks/" + network.ID + "/utilization")
 	if err != nil {
 		t.Fatalf("get utilization failed: %v", err)
 	}

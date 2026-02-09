@@ -13,6 +13,7 @@ var (
 	ErrUnauthenticated = errors.New("unauthenticated")
 	ErrSystemRole      = errors.New("cannot modify system role")
 	ErrSelfDelete      = errors.New("cannot delete own account")
+	ErrIPNotAvailable  = errors.New("no IP addresses available")
 )
 
 type ValidationError struct {
@@ -35,4 +36,9 @@ func (e ValidationErrors) Error() string {
 		msgs = append(msgs, err.Error())
 	}
 	return fmt.Sprintf("validation error: %s", msgs)
+}
+
+// Unwrap returns ErrValidation so errors.Is(err, ErrValidation) works.
+func (e ValidationErrors) Unwrap() error {
+	return ErrValidation
 }

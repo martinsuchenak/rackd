@@ -9,8 +9,12 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
+
+const testAPIKeyValue = "test-api-key-secret"
 
 func init() {
 	log.Init("console", "error", io.Discard)
@@ -22,7 +26,26 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewHandler(store, nil), store
+
+	// Create an API key so wrapAuth endpoints can authenticate
+	apiKey := &model.APIKey{
+		ID:   "test-key-id",
+		Name: "test-key",
+		Key:  testAPIKeyValue,
+	}
+	if err := store.CreateAPIKey(apiKey); err != nil {
+		t.Fatalf("failed to create test API key: %v", err)
+	}
+
+	h := NewHandler(store, nil)
+	h.SetServices(service.NewServices(store, nil, nil))
+	return h, store
+}
+
+// authReq adds the test API key Bearer token to a request
+func authReq(req *http.Request) *http.Request {
+	req.Header.Set("Authorization", "Bearer "+testAPIKeyValue)
+	return req
 }
 
 func TestDatacenterHandlers(t *testing.T) {
@@ -34,7 +57,7 @@ func TestDatacenterHandlers(t *testing.T) {
 
 	t.Run("CreateDatacenter", func(t *testing.T) {
 		body := `{"name":"DC1","location":"NYC","description":"Test DC"}`
-		req := httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -46,7 +69,7 @@ func TestDatacenterHandlers(t *testing.T) {
 
 	t.Run("CreateDatacenter_MissingName", func(t *testing.T) {
 		body := `{"location":"NYC"}`
-		req := httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -57,7 +80,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateDatacenter_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -66,8 +89,20 @@ func TestDatacenterHandlers(t *testing.T) {
 		}
 	})
 
+	t.Run("CreateDatacenter_Unauthenticated", func(t *testing.T) {
+		body := `{"name":"DC-noauth"}`
+		req := httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("expected %d, got %d", http.StatusUnauthorized, w.Code)
+		}
+	})
+
 	t.Run("ListDatacenters", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/datacenters", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/datacenters", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -77,7 +112,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDatacenter_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/datacenters/nonexistent", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/datacenters/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -90,7 +125,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	var dcID string
 	t.Run("CreateAndGet", func(t *testing.T) {
 		body := `{"name":"DC2","location":"LA"}`
-		req := httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/datacenters", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -99,7 +134,7 @@ func TestDatacenterHandlers(t *testing.T) {
 		json.Unmarshal(w.Body.Bytes(), &resp)
 		dcID = resp["id"].(string)
 
-		req = httptest.NewRequest("GET", "/api/datacenters/"+dcID, nil)
+		req = authReq(httptest.NewRequest("GET", "/api/datacenters/"+dcID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -110,7 +145,7 @@ func TestDatacenterHandlers(t *testing.T) {
 
 	t.Run("UpdateDatacenter", func(t *testing.T) {
 		body := `{"name":"DC2-Updated"}`
-		req := httptest.NewRequest("PUT", "/api/datacenters/"+dcID, bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("PUT", "/api/datacenters/"+dcID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -122,7 +157,7 @@ func TestDatacenterHandlers(t *testing.T) {
 
 	t.Run("UpdateDatacenter_NotFound", func(t *testing.T) {
 		body := `{"name":"Updated"}`
-		req := httptest.NewRequest("PUT", "/api/datacenters/nonexistent", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("PUT", "/api/datacenters/nonexistent", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -132,7 +167,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("UpdateDatacenter_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("PUT", "/api/datacenters/"+dcID, bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("PUT", "/api/datacenters/"+dcID, bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -142,7 +177,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDatacenterDevices", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/datacenters/"+dcID+"/devices", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/datacenters/"+dcID+"/devices", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -152,7 +187,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDatacenterDevices_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/datacenters/nonexistent/devices", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/datacenters/nonexistent/devices", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -162,7 +197,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteDatacenter", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/datacenters/"+dcID, nil)
+		req := authReq(httptest.NewRequest("DELETE", "/api/datacenters/"+dcID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -172,7 +207,7 @@ func TestDatacenterHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteDatacenter_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/datacenters/nonexistent", nil)
+		req := authReq(httptest.NewRequest("DELETE", "/api/datacenters/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

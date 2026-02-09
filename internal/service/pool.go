@@ -99,8 +99,11 @@ func (s *PoolService) GetNextIP(ctx context.Context, poolID string) (string, err
 
 	ip, err := s.store.GetNextAvailableIP(poolID)
 	if err != nil {
-		if errors.Is(err, storage.ErrIPNotAvailable) {
+		if errors.Is(err, storage.ErrPoolNotFound) {
 			return "", ErrNotFound
+		}
+		if errors.Is(err, storage.ErrIPNotAvailable) {
+			return "", ErrIPNotAvailable
 		}
 		return "", err
 	}
@@ -120,5 +123,12 @@ func (s *PoolService) GetHeatmap(ctx context.Context, poolID string) ([]storage.
 		return nil, err
 	}
 
-	return s.store.GetPoolHeatmap(poolID)
+	heatmap, err := s.store.GetPoolHeatmap(poolID)
+	if err != nil {
+		if errors.Is(err, storage.ErrPoolNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return heatmap, nil
 }

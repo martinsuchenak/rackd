@@ -100,6 +100,16 @@ func AuthMiddleware(store storage.APIKeyStorage, next http.HandlerFunc) http.Han
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
+				// API keys are not associated with users, so they bypass RBAC
+				// (CallerTypeAPIKey is treated as system-level access in requirePermission)
+				caller := &service.Caller{
+					Type:      service.CallerTypeAPIKey,
+					UserID:    key.ID,
+					Username:  key.Name,
+					IPAddress: getClientIP(r, false),
+					Source:    "api",
+				}
+				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return
 			}
@@ -164,6 +174,15 @@ func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *aut
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
+				// API keys are not associated with users, so they bypass RBAC
+				caller := &service.Caller{
+					Type:      service.CallerTypeAPIKey,
+					UserID:    key.ID,
+					Username:  key.Name,
+					IPAddress: getClientIP(r, false),
+					Source:    "api",
+				}
+				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return
 			}
