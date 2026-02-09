@@ -104,6 +104,23 @@ export class RackdAPI {
         } catch {
           // Use default error
         }
+
+        // Handle 403 Forbidden with user-friendly toast message
+        if (response.status === 403) {
+          const message = "You don't have permission to perform this action";
+          // Dispatch event for toast notification
+          window.dispatchEvent(new CustomEvent('toast:permission-denied', { detail: { message } }));
+          throw new RackdAPIError('FORBIDDEN', message, error.details);
+        }
+
+        // Handle 401 Unauthorized
+        if (response.status === 401) {
+          // Redirect to login if not already there
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }
+
         throw new RackdAPIError(error.code, error.message, error.details);
       }
 

@@ -20,6 +20,7 @@ import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } fro
 import { login } from './components/login';
 import { usersList } from './components/users';
 import { userMenu } from './components/user-menu';
+import { toastComponent } from './components/toast';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -310,6 +311,15 @@ async function init(): Promise<void> {
 
   // Permissions store (accessible as $store.permissions in all components)
   initPermissionsStore();
+
+  // Toast store for notifications (accessible as $store.toast in all components)
+  const toast = toastComponent();
+  Alpine.store('toast', toast);
+
+  // Listen for permission denied events from API client
+  window.addEventListener('toast:permission-denied', (event: any) => {
+    toast.error(event.detail.message);
+  });
 
   // Register pages for credentials, profiles, scheduled scans
   window.rackdRegisterPage('/credentials', credentialsPageTemplate);

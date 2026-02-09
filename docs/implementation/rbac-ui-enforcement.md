@@ -1,6 +1,6 @@
 # RBAC UI Enforcement Plan
 
-## Status: IN_PROGRESS (Phase 1: COMPLETED, Phase 2: COMPLETED, Phase 3: COMPLETED, Phase 4: COMPLETED, Phase 5: COMPLETED)
+## Status: IN_PROGRESS (Phase 1: COMPLETED, Phase 2: COMPLETED, Phase 3: COMPLETED, Phase 4: COMPLETED, Phase 5: COMPLETED, Phase 6: COMPLETED)
 
 ## Problem
 
@@ -325,40 +325,67 @@ Route permission map:
 - Test browser back/forward navigation respects permission checks
 - Test "Go to Dashboard" button navigates correctly
 
-### Phase 6: Error Handling and Feedback
+### Phase 6: Error Handling and Feedback - **COMPLETED**
+
+**Implementation Notes:**
+
+- Created `webui/src/components/toast.ts` with a toast notification component that supports success, error, warning, and info messages
+- Enhanced `webui/src/core/api.ts` to:
+  - Handle 403 Forbidden responses by dispatching a `toast:permission-denied` event
+  - Handle 401 Unauthorized responses by redirecting to login
+- Toast notifications appear in the top-right corner with smooth enter/leave animations
+- Different toast types have distinct colors and icons for better UX
+- Toast notifications persist for configurable duration (default: 5s for info/success, 6s for warning, 7s for error)
+- Users can manually dismiss toast notifications with the close button
+- Toast component registered as Alpine store (`$store.toast`) for easy access across all components
 
 **Frontend Changes:**
 
-`webui/src/core/api-client.ts`:
-- Enhance error handling for 403 responses
-- Show user-friendly message: "You don't have permission to perform this action"
+`webui/src/components/toast.ts`:
+- ✅ Created toast component with `show()`, `success()`, `error()`, `warning()`, `info()` methods
+- ✅ Added `remove()` and `clear()` methods for managing notifications
+- ✅ Exported `showPermissionDenied()` helper for non-Alpine contexts
 
-`webui/src/core/toast.ts` (or create):
-- Add toast/notification component for error messages
-- Show permission denied messages in toast
+`webui/src/core/api.ts`:
+- ✅ Enhanced `request()` method to handle 403 Forbidden responses
+- ✅ Dispatches `toast:permission-denied` custom event with user-friendly message
+- ✅ Handles 401 Unauthorized by redirecting to login (if not already there)
+
+`webui/src/app.ts`:
+- ✅ Imported `toastComponent` from `./components/toast`
+- ✅ Registered toast as Alpine store: `Alpine.store('toast', toastComponent())`
+- ✅ Added event listener for `toast:permission-denied` events to show error toast
 
 `webui/src/index.html`:
-- Add 403 Forbidden page template with:
-  - Clear message about insufficient permissions
-  - Link to contact admin or go back
-  - Suggestion to check with admin for access
+- ✅ Added toast notification container with fixed positioning (top-right corner)
+- ✅ Toast container uses Alpine.js transitions for smooth animations
+- ✅ Different toast types (success, error, warning, info) have distinct colors and icons
+- ✅ Close button allows manual dismissal of notifications
+- ✅ Accessible with proper ARIA attributes (`role="alert"`, `aria-live`)
 
-**Example 403 page:**
-```html
-<template x-for="403">
-  <div class="error-page">
-    <h1>Access Denied</h1>
-    <p>You don't have permission to access this resource.</p>
-    <p>Required permission: <span x-text="requiredPermission"></span></p>
-    <a href="/">Go Home</a>
-  </div>
-</template>
+**Example Toast Implementation:**
+```typescript
+// Show permission denied toast
+Alpine.store('toast').error("You don't have permission to perform this action");
+
+// Show success toast
+Alpine.store('toast').success("Operation completed successfully");
+
+// Show warning toast
+Alpine.store('toast').warning("This action may have consequences");
+
+// Show info toast
+Alpine.store('toast').info("New feature available");
 ```
 
 **Verification:**
+- ✅ Build passes (Go + WebUI)
+- ✅ All tests pass
 - Test API 403 errors show user-friendly toast message
-- Test 403 page displays correctly
+- Test 403 page displays correctly (from Phase 5)
 - Test navigation back from 403 page works
+- Test toast notifications dismiss correctly on timeout
+- Test toast notifications dismiss correctly when clicking close button
 
 ### Phase 7: Polish and Edge Cases
 
@@ -403,9 +430,10 @@ Route permission map:
 | File | Changes |
 |------|---------|
 | `webui/src/core/types.ts` | Add Permission types, update NavItem |
-| `webui/src/api/client.ts` | Add `getUserPermissions()` method |
-| `webui/src/app.ts` | Add permission state, helpers, route guards |
+| `webui/src/core/api.ts` | Add 403/401 error handling with toast notifications |
+| `webui/src/app.ts` | Add permission state, helpers, route guards, toast store registration |
 | `webui/src/components/nav.ts` | Filter nav items by permissions |
+| `webui/src/components/toast.ts` | **NEW** - Toast notification component |
 | `webui/src/components/devices.ts` | Add action button guards |
 | `webui/src/components/networks.ts` | Add action button guards |
 | `webui/src/components/datacenters.ts` | Add action button guards |
@@ -415,7 +443,7 @@ Route permission map:
 | `webui/src/components/scheduled-scans.ts` | Add action button guards |
 | `webui/src/components/users.ts` | Add component-level and action guards |
 | `webui/src/components/roles.ts` | Add component-level and action guards |
-| `webui/src/index.html` | Add 403 page template |
+| `webui/src/index.html` | Add toast notification container, access denied template |
 
 ## Testing Strategy
 
@@ -448,13 +476,13 @@ Legend: R=Read, W=Write, D=Delete, Hidden=Not in nav
 
 ## Rollout Plan
 
-1. **Phase 1**: Enhanced `/api/auth/me` response (backend only, no UI changes)
-2. **Phase 2**: UI permission state (no visible changes)
-3. **Phase 3**: Navigation filtering (first visible change)
-4. **Phase 4**: Action button guards (biggest UX change)
-5. **Phase 5**: Form/route guards (security hardening)
-6. **Phase 6**: Error handling (UX polish)
-7. **Phase 7**: Polish (final touches)
+1. **Phase 1**: Enhanced `/api/auth/me` response (backend only, no UI changes) - ✅ COMPLETED
+2. **Phase 2**: UI permission state (no visible changes) - ✅ COMPLETED
+3. **Phase 3**: Navigation filtering (first visible change) - ✅ COMPLETED
+4. **Phase 4**: Action button guards (biggest UX change) - ✅ COMPLETED
+5. **Phase 5**: Form/route guards (security hardening) - ✅ COMPLETED
+6. **Phase 6**: Error handling (UX polish) - ✅ COMPLETED
+7. **Phase 7**: Polish (final touches) - IN PROGRESS
 
 Each phase should be tested thoroughly before proceeding to the next.
 
