@@ -317,7 +317,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 		return nil, mcp.NewToolErrorInvalidParams("type must be one of: contains, connected_to, depends_on")
 	}
 
-	if err := s.store.AddRelationship(s.auditContext(ctx), parentID, childID, relType, notes); err != nil {
+	if err := s.svc.Relationships.Add(ctx, parentID, childID, relType, notes); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil
@@ -325,7 +325,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 
 func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	rels, err := s.store.GetRelationships(id)
+	rels, err := s.svc.Relationships.Get(ctx, id)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}

@@ -28,7 +28,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_Contains", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `","type":"contains"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -40,7 +40,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_ConnectedTo", func(t *testing.T) {
 		body := `{"child_id":"` + device3.ID + `","type":"connected_to"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -52,7 +52,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_DependsOn", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `","type":"depends_on"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device3.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device3.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -64,7 +64,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_InvalidType", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `","type":"invalid"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -76,7 +76,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_MissingChildID", func(t *testing.T) {
 		body := `{"type":"contains"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -88,7 +88,7 @@ func TestRelationshipHandlers(t *testing.T) {
 
 	t.Run("AddRelationship_MissingType", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `"}`
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -99,7 +99,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("AddRelationship_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("POST", "/api/devices/"+device1.ID+"/relationships", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -109,7 +109,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("GetRelationships", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/relationships", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/relationships", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -125,7 +125,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("GetRelatedDevices_Contains", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related?type=contains", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related?type=contains", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -135,7 +135,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("GetRelatedDevices_ConnectedTo", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related?type=connected_to", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related?type=connected_to", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -145,7 +145,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("GetRelatedDevices_NoFilter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/devices/"+device1.ID+"/related", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -155,7 +155,7 @@ func TestRelationshipHandlers(t *testing.T) {
 	})
 
 	t.Run("RemoveRelationship", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/devices/"+device1.ID+"/relationships/"+device2.ID+"/contains", nil)
+		req := authReq(httptest.NewRequest("DELETE", "/api/devices/"+device1.ID+"/relationships/"+device2.ID+"/contains", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

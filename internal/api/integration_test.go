@@ -390,7 +390,7 @@ func TestRelationshipWorkflow(t *testing.T) {
 
 	// Add relationship
 	relBody := `{"child_id":"` + child.ID + `","type":"contains"}`
-	resp, err = http.Post(server.URL+"/api/devices/"+parent.ID+"/relationships", "application/json", bytes.NewBufferString(relBody))
+	resp, err = authPost(server.URL+"/api/devices/"+parent.ID+"/relationships", "application/json", bytes.NewBufferString(relBody))
 	if err != nil {
 		t.Fatalf("add relationship failed: %v", err)
 	}
@@ -401,7 +401,7 @@ func TestRelationshipWorkflow(t *testing.T) {
 	}
 
 	// Get relationships
-	resp, err = http.Get(server.URL + "/api/devices/" + parent.ID + "/relationships")
+	resp, err = authGet(server.URL + "/api/devices/" + parent.ID + "/relationships")
 	if err != nil {
 		t.Fatalf("get relationships failed: %v", err)
 	}
@@ -417,7 +417,7 @@ func TestRelationshipWorkflow(t *testing.T) {
 	}
 
 	// Get related devices
-	resp, err = http.Get(server.URL + "/api/devices/" + parent.ID + "/related?type=contains")
+	resp, err = authGet(server.URL + "/api/devices/" + parent.ID + "/related?type=contains")
 	if err != nil {
 		t.Fatalf("get related failed: %v", err)
 	}
@@ -434,7 +434,7 @@ func TestRelationshipWorkflow(t *testing.T) {
 
 	// Delete relationship
 	req, _ := http.NewRequest("DELETE", server.URL+"/api/devices/"+parent.ID+"/relationships/"+child.ID+"/contains", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = authDo(req)
 	if err != nil {
 		t.Fatalf("delete relationship failed: %v", err)
 	}

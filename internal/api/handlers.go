@@ -181,13 +181,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	// Search routes
 	mux.HandleFunc("GET /api/search", wrapPerm(h.search, "search", "read"))
 
-	// Relationship routes
-	mux.HandleFunc("GET /api/relationships", wrapPerm(h.listAllRelationships, "relationships", "list"))
-	mux.HandleFunc("POST /api/devices/{id}/relationships", wrapPerm(h.addRelationship, "relationships", "create"))
-	mux.HandleFunc("GET /api/devices/{id}/relationships", wrapPerm(h.getRelationships, "relationships", "read"))
-	mux.HandleFunc("GET /api/devices/{id}/related", wrapPerm(h.getRelatedDevices, "relationships", "read"))
-	mux.HandleFunc("PATCH /api/devices/{id}/relationships/{child_id}/{type}", wrapPerm(h.updateRelationshipNotes, "relationships", "update"))
-	mux.HandleFunc("DELETE /api/devices/{id}/relationships/{child_id}/{type}", wrapPerm(h.removeRelationship, "relationships", "delete"))
+	// Relationship routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/relationships", wrapAuth(h.listAllRelationships))
+	mux.HandleFunc("POST /api/devices/{id}/relationships", wrapAuth(h.addRelationship))
+	mux.HandleFunc("GET /api/devices/{id}/relationships", wrapAuth(h.getRelationships))
+	mux.HandleFunc("GET /api/devices/{id}/related", wrapAuth(h.getRelatedDevices))
+	mux.HandleFunc("PATCH /api/devices/{id}/relationships/{child_id}/{type}", wrapAuth(h.updateRelationshipNotes))
+	mux.HandleFunc("DELETE /api/devices/{id}/relationships/{child_id}/{type}", wrapAuth(h.removeRelationship))
 
 	// Discovery routes
 	mux.HandleFunc("POST /api/discovery/networks/{id}/scan", wrapPerm(h.startScan, "discovery", "create"))
@@ -245,9 +245,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/devices/bulk/tags", wrapAuth(h.bulkAddTags))
 	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapAuth(h.bulkRemoveTags))
 
-	// Bulk network operations
-	mux.HandleFunc("POST /api/networks/bulk", wrapPerm(h.bulkCreateNetworks, "networks", "create"))
-	mux.HandleFunc("DELETE /api/networks/bulk", wrapPerm(h.bulkDeleteNetworks, "networks", "delete"))
+	// Bulk network operations (RBAC enforced in service layer)
+	mux.HandleFunc("POST /api/networks/bulk", wrapAuth(h.bulkCreateNetworks))
+	mux.HandleFunc("DELETE /api/networks/bulk", wrapAuth(h.bulkDeleteNetworks))
 
 	// Audit log routes
 	mux.HandleFunc("GET /api/audit", wrapPerm(h.listAuditLogs, "audit", "list"))

@@ -513,13 +513,23 @@ func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 	var networks []*model.Network
 	if err := json.NewDecoder(r.Body).Decode(&networks); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.CreateNetworks(r.Context(), networks)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkCreateNetworks(h.auditContext(r), networks)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
 
@@ -533,13 +543,23 @@ func (h *Handler) bulkDeleteNetworks(w http.ResponseWriter, r *http.Request) {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.DeleteNetworks(r.Context(), req.IDs)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkDeleteNetworks(h.auditContext(r), req.IDs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
 

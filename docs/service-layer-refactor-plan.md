@@ -585,8 +585,8 @@ All foundation files created and wired up:
 | 2 | **Datacenters** | `service/datacenter.go` | `datacenter_handlers.go` → `svc.Datacenters.*` | `wrapAuth` | `svc.Datacenters.*` | `authReq()` | **DONE** |
 | 3 | **Networks** | `service/network.go` | `network_handlers.go` → `svc.Networks.*` | `wrapAuth` | `svc.Networks.*` | `authReq()` | **DONE** |
 | 4 | **Pools** | `service/pool.go` | `network_handlers.go` → `svc.Pools.*` | `wrapAuth` | `svc.Pools.GetNextIP()` | `authReq()` | **DONE** |
-| 5 | **Relationships** | `service/relationship.go` | `relationship_handlers.go` | `wrapPerm` | `s.store.*` | no auth | TODO |
-| 6 | **Bulk** | `service/bulk.go` | `device_handlers.go` (bulk section) | `wrapAuth` | N/A | `authReq()` | TODO |
+| 5 | **Relationships** | `service/relationship.go` | `relationship_handlers.go` → `svc.Relationships.*` | `wrapAuth` | `svc.Relationships.*` | `authReq()` | **DONE** |
+| 6 | **Bulk** | `service/bulk.go` | `device_handlers.go` → `svc.Bulk.*`, `network_handlers.go` → `svc.Bulk.*` | `wrapAuth` | N/A | `authReq()` | **DONE** |
 
 ### Phase 3: Discovery — TODO
 
