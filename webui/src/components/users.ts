@@ -276,6 +276,11 @@ export function usersList() {
         this.userRolesCache.delete(this.selectedUser.id);
         this.selectedUser.roles = await this.loadUserRoles(this.selectedUser.id);
         await this.loadUsers();
+
+        // Refresh permissions if user is modifying their own roles
+        if (this.currentUser && this.currentUser.id === this.selectedUser.id) {
+          window.dispatchEvent(new Event('permissions:refresh'));
+        }
       } catch (err) {
         if (err instanceof RackdAPIError) {
           this.error = err.message;
@@ -299,6 +304,11 @@ export function usersList() {
         this.userRolesCache.delete(this.selectedUser.id);
         this.selectedUser.roles = await this.loadUserRoles(this.selectedUser.id);
         await this.loadUsers();
+
+        // Refresh permissions if user is modifying their own roles
+        if (this.currentUser && this.currentUser.id === this.selectedUser.id) {
+          window.dispatchEvent(new Event('permissions:refresh'));
+        }
       } catch (err) {
         if (err instanceof RackdAPIError) {
           this.error = err.message;

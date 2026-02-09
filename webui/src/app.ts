@@ -264,8 +264,15 @@ async function init(): Promise<void> {
   // Fetch config (session cookie is sent automatically)
   try {
     window.rackdConfig = await api.getConfig();
-  } catch {
+  } catch (error) {
+    console.error('Failed to load config:', error);
     window.rackdConfig = { edition: 'oss', features: [], nav_items: [] };
+    // Show error toast if loading config fails
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('toast:error', {
+        detail: { message: 'Failed to load application configuration. Some features may not work correctly.' }
+      }));
+    }, 100);
   }
 
   // Auth guard: redirect to login if not authenticated (and not already on login page)
@@ -312,6 +319,28 @@ async function init(): Promise<void> {
   // Permissions store (accessible as $store.permissions in all components)
   initPermissionsStore();
 
+  // Add method to refresh permissions (for role changes)
+  Alpine.effect(() => {
+    window.addEventListener('permissions:refresh', async () => {
+      try {
+        const config = await api.getConfig();
+        window.rackdConfig = config;
+        // Reinitialize permissions store with updated data
+        const permissionsStore = Alpine.store('permissions');
+        if (permissionsStore) {
+          const userPermissions: Permission[] = (config.user?.permissions ?? []) as any;
+          const userRoles: Role[] = (config.user?.roles ?? []) as any;
+          permissionsStore.permissions = userPermissions;
+          permissionsStore.roles = userRoles;
+          Alpine.store('toast')?.success('Permissions refreshed successfully');
+        }
+      } catch (error) {
+        console.error('Failed to refresh permissions:', error);
+        Alpine.store('toast')?.error('Failed to refresh permissions. Please reload the page.');
+      }
+    });
+  });
+
   // Toast store for notifications (accessible as $store.toast in all components)
   const toast = toastComponent();
   Alpine.store('toast', toast);
@@ -319,6 +348,16 @@ async function init(): Promise<void> {
   // Listen for permission denied events from API client
   window.addEventListener('toast:permission-denied', (event: any) => {
     toast.error(event.detail.message);
+  });
+
+  // Listen for general error events
+  window.addEventListener('toast:error', (event: any) => {
+    toast.error(event.detail.message);
+  });
+
+  // Listen for success events
+  window.addEventListener('toast:success', (event: any) => {
+    toast.success(event.detail.message);
   });
 
   // Register pages for credentials, profiles, scheduled scans

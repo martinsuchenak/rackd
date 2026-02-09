@@ -1,6 +1,6 @@
 // User Menu Component for Rackd Web UI
 
-import type { User, UpdateUserRequest } from '../core/types';
+import type { User, UpdateUserRequest, Permission, Role } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 
 export function userMenu() {
@@ -8,6 +8,7 @@ export function userMenu() {
     open: false,
     showEditModal: false,
     showPasswordModal: false,
+    showPermissionsModal: false,
     saving: false,
     currentUser: null as User | null,
     validationErrors: {} as Record<string, string>,
@@ -31,7 +32,30 @@ export function userMenu() {
     },
 
     get isAdmin(): boolean {
-      return window.rackdConfig?.user?.roles?.includes('admin') || false;
+      return window.rackdConfig?.user?.is_admin || false;
+    },
+
+    get userRoles(): Role[] {
+      return (window.rackdConfig?.user?.roles || []) as any;
+    },
+
+    get roleNames(): string {
+      return this.userRoles.map((r: Role) => r.name).join(', ');
+    },
+
+    get userPermissions(): Permission[] {
+      return (window.rackdConfig?.user?.permissions || []) as any;
+    },
+
+    get groupedPermissions(): Record<string, Permission[]> {
+      const groups: Record<string, Permission[]> = {};
+      for (const perm of this.userPermissions) {
+        if (!groups[perm.resource]) {
+          groups[perm.resource] = [];
+        }
+        groups[perm.resource].push(perm);
+      }
+      return groups;
     },
 
     toggle(): void {
@@ -158,6 +182,19 @@ export function userMenu() {
         // Continue with redirect even if server call fails
       }
       window.location.href = '/login';
+    },
+
+    openPermissionsModal(): void {
+      this.open = false;
+      this.showPermissionsModal = true;
+    },
+
+    closePermissionsModal(): void {
+      this.showPermissionsModal = false;
+    },
+
+    formatPermissionName(perm: Permission): string {
+      return `${perm.resource}:${perm.action}`;
     },
   };
 }
