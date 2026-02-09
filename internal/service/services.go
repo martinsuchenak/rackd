@@ -2,23 +2,27 @@ package service
 
 import (
 	"github.com/martinsuchenak/rackd/internal/auth"
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 type Services struct {
-	Devices       *DeviceService
-	Datacenters   *DatacenterService
-	Networks      *NetworkService
-	Pools         *PoolService
-	Relationships *RelationshipService
-	Discovery     *DiscoveryService
-	Users         *UserService
-	Roles         *RoleService
-	Auth          *AuthService
-	Audit         *AuditService
-	APIKeys       *APIKeyService
-	Bulk          *BulkService
+	Devices        *DeviceService
+	Datacenters    *DatacenterService
+	Networks       *NetworkService
+	Pools          *PoolService
+	Relationships  *RelationshipService
+	Discovery      *DiscoveryService
+	Users          *UserService
+	Roles          *RoleService
+	Auth           *AuthService
+	Audit          *AuditService
+	APIKeys        *APIKeyService
+	Bulk           *BulkService
+	Credentials    *CredentialService
+	ScanProfiles   *ScanProfileService
+	ScheduledScans *ScheduledScanService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -36,4 +40,16 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		APIKeys:       NewAPIKeyService(store),
 		Bulk:          NewBulkService(store),
 	}
+}
+
+func (s *Services) SetCredentialsStorage(store credentials.Storage) {
+	s.Credentials = NewCredentialService(store, s.Users.store)
+}
+
+func (s *Services) SetProfileStorage(store storage.ProfileStorage) {
+	s.ScanProfiles = NewScanProfileService(store, s.Users.store)
+}
+
+func (s *Services) SetScheduledScanStorage(store storage.ScheduledScanStorage) {
+	s.ScheduledScans = NewScheduledScanService(store, s.Users.store)
 }

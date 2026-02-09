@@ -130,9 +130,71 @@ func requirePermission(ctx, checker, resource, action) error {
 
 API key management UI — show UserID/username in key list, filter by current user.
 
-## Phase 3: Service Layer for Credentials, Profiles, Scheduled Scans (optional, future)
+## Phase 3: Service Layer for Credentials, Profiles, Scheduled Scans
 
-These currently use direct storage access (`h.credStore`, `h.profileStore`, `h.scheduledStore`). Phase 1 adds auth. A future phase could add RBAC permissions (e.g., `credentials:create`, `profiles:list`) and move to the service layer pattern. Not in scope for this plan.
+### Status: DONE
+
+Move credentials, scan profiles, and scheduled scans from direct storage access to the service layer pattern with RBAC enforcement.
+
+### New Service Files
+
+`internal/service/credential.go`:
+- Create `CredentialService` with `List()`, `Create()`, `Get()`, `Update()`, `Delete()` methods
+- Service constructor accepts `credentials.Storage` and `PermissionChecker` (for RBAC)
+- All methods use `requirePermission(ctx, s.rbac, "credentials", "...")` for RBAC checks
+- Storage errors converted to service errors (`ErrNotFound`, `ValidationErrors`)
+
+`internal/service/scanprofile.go`:
+- Create `ScanProfileService` with `List()`, `Create()`, `Get()`, `Update()`, `Delete()` methods
+- Service constructor accepts `storage.ProfileStorage` and `PermissionChecker` (for RBAC)
+- All methods use `requirePermission(ctx, s.rbac, "scan-profiles", "...")` for RBAC checks
+- Storage errors converted to service errors
+
+`internal/service/scheduledscan.go`:
+- Create `ScheduledScanService` with `List()`, `Create()`, `Get()`, `Update()`, `Delete()` methods
+- Service constructor accepts `storage.ScheduledScanStorage` and `PermissionChecker` (for RBAC)
+- All methods use `requirePermission(ctx, s.rbac, "scheduled-scans", "...")` for RBAC checks
+- Storage errors converted to service errors
+
+### Service Registry Updates
+
+`internal/service/services.go`:
+- Add `Credentials *CredentialService`, `ScanProfiles *ScanProfileService`, `ScheduledScans *ScheduledScanService` to `Services` struct
+- Add setter methods `SetCredentialsStorage()`, `SetProfileStorage()`, `SetScheduledScanStorage()` for optional storage dependencies
+- Setter methods pass `s.Users.store` (which implements `PermissionChecker`) to service constructors for RBAC checks
+
+### Handler Updates
+
+`internal/api/credentials_handlers.go`:
+- Update all handlers to call `h.svc.Credentials.*()` instead of `h.credStore.*()`
+- Use `h.handleServiceError()` for consistent error handling
+
+`internal/api/profiles_handlers.go`:
+- Update all handlers to call `h.svc.ScanProfiles.*()` instead of `h.profileStore.*()`
+- Use `h.handleServiceError()` for consistent error handling
+
+`internal/api/scheduled_handlers.go`:
+- Update all handlers to call `h.svc.ScheduledScans.*()` instead of `h.scheduledStore.*()`
+- Use `h.handleServiceError()` for consistent error handling
+
+### Server Initialization Updates
+
+`internal/server/server.go`:
+- Call `services.SetCredentialsStorage(credStore)` after creating services
+- Call `services.SetProfileStorage(profileStore)` after creating services
+- Call `services.SetScheduledScanStorage(scheduledStore)` after creating services
+
+### RBAC Permissions
+
+Permissions were already added in `migrateAddRBACMissingPermissionsUp`:
+- `credential:*` (list, create, read, update, delete)
+- `scan-profile:*` (list, create, read, update, delete)
+- `scheduled-scan:*` (list, create, read, update, delete)
+
+These are granted to:
+- `admin` role: all permissions
+- `operator` role: list, create, read, update (no delete)
+- `viewer` role: list, read only
 
 ## Implementation Order
 
@@ -142,6 +204,7 @@ These currently use direct storage access (`h.credStore`, `h.profileStore`, `h.s
 4. **Phase 2d**: Auth middleware resolves API key owner to User caller
 5. **Phase 2e**: Remove RBAC bypass for API keys
 6. **Phase 2f-g**: Handler and UI updates
+7. **Phase 3**: Service layers for credentials, scan profiles, scheduled scans with RBAC enforcement
 
 ## Files Modified Summary
 
@@ -149,7 +212,7 @@ These currently use direct storage access (`h.credStore`, `h.profileStore`, `h.s
 |------|--------|
 | `internal/api/handlers.go` | `wrap()` → `wrapAuth()` for credentials/profiles/scheduled/metrics routes |
 | `internal/model/apikey.go` | Add `UserID` field to `APIKey`, `APIKeyResponse`, `APIKeyFilter` |
-| `internal/storage/migrations.go` | New migration adding `user_id` column + index |
+| `internal/storage/migrations.go` | New migration adding `user_id` column + index; new permissions for credentials/profiles/scheduled scans |
 | `internal/storage/` (SQLite impl) | Persist/filter `user_id` in API key CRUD |
 | `internal/storage/storage.go` | Update `APIKeyStorage` interface if needed |
 | `internal/service/apikey.go` | Ownership logic: set UserID on create, filter on list, verify on delete |
@@ -157,6 +220,14 @@ These currently use direct storage access (`h.credStore`, `h.profileStore`, `h.s
 | `internal/api/middleware.go` | Resolve API key UserID → User caller with RBAC |
 | `internal/mcp/server.go` | Same API key owner resolution |
 | `internal/api/apikey_handlers.go` | Adapt to service ownership logic |
+| `internal/service/credential.go` | New `CredentialService` with RBAC enforcement |
+| `internal/service/scanprofile.go` | New `ScanProfileService` with RBAC enforcement |
+| `internal/service/scheduledscan.go` | New `ScheduledScanService` with RBAC enforcement |
+| `internal/service/services.go` | Add new services and setter methods |
+| `internal/api/credentials_handlers.go` | Use service layer instead of direct storage access |
+| `internal/api/profiles_handlers.go` | Use service layer instead of direct storage access |
+| `internal/api/scheduled_handlers.go` | Use service layer instead of direct storage access |
+| `internal/server/server.go` | Call service setters after creating services |
 
 ## Verification
 
@@ -165,3 +236,4 @@ These currently use direct storage access (`h.credStore`, `h.profileStore`, `h.s
 3. **Phase 1 test**: Unauthenticated requests to `/api/credentials`, `/api/scan-profiles`, `/api/scheduled-scans`, `/metrics` return 401
 4. **Phase 2 test**: Create API key as user A → key has `user_id` = A. Use key to call API → RBAC checks run against user A's roles. User B cannot list/delete user A's keys (unless admin).
 5. **Legacy keys test**: Existing keys without `user_id` continue to work (bypass RBAC as before, log deprecation warning)
+6. **Phase 3 test**: User with only viewer role can list/read credentials/profiles/scheduled scans but cannot create/update/delete. User with operator role can create/update but not delete. Admin has full access.

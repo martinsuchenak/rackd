@@ -71,6 +71,11 @@ func RunWithAdvancedFeatures(
 	// Create services registry
 	services := service.NewServices(store, sessionManager, scanner)
 
+	// Set optional services with their storage types
+	services.SetCredentialsStorage(credStore)
+	services.SetProfileStorage(profileStore)
+	services.SetScheduledScanStorage(scheduledStore)
+
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
