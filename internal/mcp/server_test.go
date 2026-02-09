@@ -2,17 +2,45 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
+
+type mockDiscoveryScanner struct {
+	store storage.ExtendedStorage
+}
+
+func (m *mockDiscoveryScanner) Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error) {
+	scan := &model.DiscoveryScan{
+		ID:         uuid.Must(uuid.NewV7()).String(),
+		NetworkID:  network.ID,
+		Status:     model.ScanStatusRunning,
+		ScanType:   scanType,
+		TotalHosts: 256,
+	}
+	if err := m.store.CreateDiscoveryScan(context.Background(), scan); err != nil {
+		return nil, err
+	}
+	return scan, nil
+}
+
+func (m *mockDiscoveryScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
+	return m.store.GetDiscoveryScan(scanID)
+}
+
+func (m *mockDiscoveryScanner) CancelScan(scanID string) error {
+	return nil
+}
 
 func init() {
 	// Initialize logger for tests
@@ -25,7 +53,8 @@ func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	svc := service.NewServices(store, nil, nil)
+	scanner := &mockDiscoveryScanner{store: store}
+	svc := service.NewServices(store, nil, scanner)
 	return NewServer(svc, store, false), store
 }
 
@@ -35,7 +64,8 @@ func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	svc := service.NewServices(store, nil, nil)
+	scanner := &mockDiscoveryScanner{store: store}
+	svc := service.NewServices(store, nil, scanner)
 	return NewServer(svc, store, true), store
 }
 

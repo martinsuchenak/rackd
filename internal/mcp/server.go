@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/paularlott/mcp"
 
 	"github.com/martinsuchenak/rackd/internal/audit"
@@ -427,16 +426,8 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 		scanType = model.ScanTypeQuick
 	}
 
-	now := time.Now()
-	scan := &model.DiscoveryScan{
-		ID:        uuid.Must(uuid.NewV7()).String(),
-		NetworkID: networkID,
-		Status:    model.ScanStatusPending,
-		ScanType:  scanType,
-		StartedAt: &now,
-	}
-
-	if err := s.store.CreateDiscoveryScan(s.auditContext(ctx), scan); err != nil {
+	scan, err := s.svc.Discovery.StartScan(ctx, networkID, scanType)
+	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
@@ -445,7 +436,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 
 func (s *Server) handleListDiscovered(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	networkID := req.StringOr("network_id", "")
-	devices, err := s.store.ListDiscoveredDevices(networkID)
+	devices, err := s.svc.Discovery.ListDevices(ctx, networkID)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -456,34 +447,18 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 	discoveredID, _ := req.String("discovered_id")
 	name, _ := req.String("name")
 
-	discovered, err := s.store.GetDiscoveredDevice(discoveredID)
+	device := &model.Device{
+		Name:    name,
+		Tags:    []string{},
+		Domains: []string{},
+	}
+
+	promoted, err := s.svc.Discovery.PromoteDevice(ctx, discoveredID, device)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
-	device := &model.Device{
-		ID:   uuid.Must(uuid.NewV7()).String(),
-		Name: name,
-		Addresses: []model.Address{
-			{IP: discovered.IP, Type: "ipv4"},
-		},
-		Tags:    []string{},
-		Domains: []string{},
-	}
-	if discovered.Hostname != "" {
-		device.Domains = append(device.Domains, discovered.Hostname)
-	}
-
-	auditCtx := s.auditContext(ctx)
-	if err := s.store.CreateDevice(auditCtx, device); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
-	}
-
-	if err := s.store.PromoteDiscoveredDevice(auditCtx, discoveredID, device.ID); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
-	}
-
-	return mcp.NewToolResponseJSON(device), nil
+	return mcp.NewToolResponseJSON(promoted), nil
 }
 
 // toJSON is a helper for JSON serialization

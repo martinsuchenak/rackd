@@ -307,7 +307,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 
 	// 2. Create discovery rule
 	ruleBody := `{"network_id":"` + network.ID + `","enabled":true,"scan_type":"quick","interval_hours":24}`
-	resp, err = http.Post(server.URL+"/api/discovery/rules", "application/json", bytes.NewBufferString(ruleBody))
+	resp, err = authPost(server.URL+"/api/discovery/rules", "application/json", bytes.NewBufferString(ruleBody))
 	if err != nil {
 		t.Fatalf("create rule failed: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 	}
 
 	// 3. List discovery rules
-	resp, err = http.Get(server.URL + "/api/discovery/rules")
+	resp, err = authGet(server.URL + "/api/discovery/rules")
 	if err != nil {
 		t.Fatalf("list rules failed: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 
 	// 4. Start scan
 	scanBody := `{"scan_type":"quick"}`
-	resp, err = http.Post(server.URL+"/api/discovery/networks/"+network.ID+"/scan", "application/json", bytes.NewBufferString(scanBody))
+	resp, err = authPost(server.URL+"/api/discovery/networks/"+network.ID+"/scan", "application/json", bytes.NewBufferString(scanBody))
 	if err != nil {
 		t.Fatalf("start scan failed: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestDiscoveryWorkflow(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&scan)
 
 	// 5. Get scan status
-	resp, err = http.Get(server.URL + "/api/discovery/scans/" + scan.ID)
+	resp, err = authGet(server.URL + "/api/discovery/scans/" + scan.ID)
 	if err != nil {
 		t.Fatalf("get scan failed: %v", err)
 	}

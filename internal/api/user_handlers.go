@@ -19,6 +19,26 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		Email:    email,
 	}
 
+	if h.svc != nil && h.svc.Users != nil {
+		users, err := h.svc.Users.List(r.Context(), filter)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		responses := make([]model.UserResponse, len(users))
+		for i, user := range users {
+			resp := user.ToResponse()
+			if roles, err := h.store.GetUserRoles(r.Context(), user.ID); err == nil {
+				resp.Roles = roles
+			}
+			responses[i] = resp
+		}
+
+		h.writeJSON(w, http.StatusOK, responses)
+		return
+	}
+
 	users, err := h.store.ListUsers(filter)
 	if err != nil {
 		h.internalError(w, err)
@@ -40,6 +60,16 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if h.svc != nil && h.svc.Users != nil {
+		resp, err := h.svc.Users.Get(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, resp)
+		return
+	}
+
 	user, err := h.store.GetUser(id)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
@@ -59,6 +89,18 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Users != nil {
+		resp, err := h.svc.Users.Create(r.Context(), &req)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("User created", "username", req.Username, "id", resp.ID)
+		h.writeJSON(w, http.StatusCreated, resp)
 		return
 	}
 
@@ -123,17 +165,28 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-
-	user, err := h.store.GetUser(id)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
-		return
-	}
-
 	var req model.UpdateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Users != nil {
+		resp, err := h.svc.Users.Update(r.Context(), id, &req)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("User updated", "id", id)
+		h.writeJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	user, err := h.store.GetUser(id)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
 		return
 	}
 
@@ -171,6 +224,17 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if h.svc != nil && h.svc.Users != nil {
+		if err := h.svc.Users.Delete(r.Context(), id); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("User deleted", "id", id)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	user, err := h.store.GetUser(id)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
@@ -201,17 +265,29 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-
-	user, err := h.store.GetUser(id)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
-		return
-	}
-
 	var req model.ChangePasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Users != nil {
+		if err := h.svc.Users.ChangePassword(r.Context(), id, &req); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		h.sessionManager.InvalidateUserSessions(id)
+		log.Info("Password changed", "user_id", id)
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	user, err := h.store.GetUser(id)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "User not found")
 		return
 	}
 

@@ -588,18 +588,18 @@ All foundation files created and wired up:
 | 5 | **Relationships** | `service/relationship.go` | `relationship_handlers.go` → `svc.Relationships.*` | `wrapAuth` | `svc.Relationships.*` | `authReq()` | **DONE** |
 | 6 | **Bulk** | `service/bulk.go` | `device_handlers.go` → `svc.Bulk.*`, `network_handlers.go` → `svc.Bulk.*` | `wrapAuth` | N/A | `authReq()` | **DONE** |
 
-### Phase 3: Discovery — TODO
+### Phase 3: Discovery — DONE
 
 | # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
 |---|----------|-------------|--------------|--------|-----------|-------|--------|
-| 7 | **Discovery** | `service/discovery.go` | `discovery_handlers.go` | `wrapPerm` | `s.store.*` | no auth | TODO |
+| 7 | **Discovery** | `service/discovery.go` | `discovery_handlers.go` → `svc.Discovery.*` | `wrapAuth` | `svc.Discovery.*` | `authReq()` | **DONE** |
 
-### Phase 4: User/Role Management — TODO
+### Phase 4: User/Role Management — DONE
 
 | # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
 |---|----------|-------------|--------------|--------|-----------|-------|--------|
-| 8 | **Users** | `service/user.go` | `user_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
-| 9 | **Roles** | `service/role.go` | `role_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+| 8 | **Users** | `service/user.go` | `user_handlers.go` → `svc.Users.*` | `wrapAuth` | N/A | N/A | **DONE** |
+| 9 | **Roles** | `service/role.go` | `role_handlers.go` → `svc.Roles.*` | `wrapAuth` | N/A | N/A | **DONE** |
 
 ### Phase 5: Auth & Remaining — TODO
 

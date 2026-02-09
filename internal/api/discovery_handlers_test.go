@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -46,8 +47,21 @@ func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorag
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
+
+	// Create an API key so wrapAuth endpoints can authenticate
+	apiKey := &model.APIKey{
+		ID:   "test-key-id",
+		Name: "test-key",
+		Key:  testAPIKeyValue,
+	}
+	if err := store.CreateAPIKey(apiKey); err != nil {
+		t.Fatalf("failed to create test API key: %v", err)
+	}
+
 	scanner := &mockScanner{store: store}
-	return NewHandler(store, scanner), store, scanner
+	h := NewHandler(store, scanner)
+	h.SetServices(service.NewServices(store, nil, scanner))
+	return h, store, scanner
 }
 
 func TestDiscoveryHandlers(t *testing.T) {
@@ -65,7 +79,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("StartScan", func(t *testing.T) {
 		body := `{"scan_type":"quick"}`
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -81,7 +95,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("StartScan_Full", func(t *testing.T) {
 		body := `{"scan_type":"full"}`
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -93,7 +107,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("StartScan_Deep", func(t *testing.T) {
 		body := `{"scan_type":"deep"}`
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -105,7 +119,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("StartScan_DefaultType", func(t *testing.T) {
 		body := `{}`
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -116,7 +130,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("StartScan_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -128,7 +142,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 	t.Run("StartScan_InvalidType", func(t *testing.T) {
 		body := `{"scan_type":"invalid"}`
-		req := httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -139,7 +153,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("ListScans", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/scans", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/scans", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -149,7 +163,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("ListScans_WithNetworkFilter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/scans?network_id="+network.ID, nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/scans?network_id="+network.ID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -159,7 +173,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("GetScan", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/scans/"+scanID, nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/scans/"+scanID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -169,7 +183,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("GetScan_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/scans/nonexistent", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/scans/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -179,7 +193,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("ListDiscoveredDevices", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/devices", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/devices", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -189,7 +203,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 	})
 
 	t.Run("ListDiscoveredDevices_WithNetworkFilter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/devices?network_id="+network.ID, nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/devices?network_id="+network.ID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -213,7 +227,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("CreateDiscoveryRule", func(t *testing.T) {
 		body := `{"network_id":"` + network.ID + `","enabled":true,"scan_type":"full","interval_hours":24}`
-		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -229,7 +243,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("CreateDiscoveryRule_WithDefaults", func(t *testing.T) {
 		body := `{"network_id":"` + network.ID + `","enabled":true}`
-		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -250,7 +264,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("CreateDiscoveryRule_MissingNetworkID", func(t *testing.T) {
 		body := `{"enabled":true}`
-		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -261,7 +275,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateDiscoveryRule_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/rules", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -271,7 +285,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("ListDiscoveryRules", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/rules", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/rules", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -281,7 +295,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDiscoveryRule", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/rules/"+ruleID, nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/rules/"+ruleID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -291,7 +305,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDiscoveryRule_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/discovery/rules/nonexistent", nil)
+		req := authReq(httptest.NewRequest("GET", "/api/discovery/rules/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -302,7 +316,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("UpdateDiscoveryRule", func(t *testing.T) {
 		body := `{"enabled":false,"interval_hours":12}`
-		req := httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -314,7 +328,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("UpdateDiscoveryRule_WithScanType", func(t *testing.T) {
 		body := `{"enabled":true,"scan_type":"deep","exclude_ips":"192.168.1.1,192.168.1.2"}`
-		req := httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -326,7 +340,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 	t.Run("UpdateDiscoveryRule_NotFound", func(t *testing.T) {
 		body := `{"enabled":false}`
-		req := httptest.NewRequest("PUT", "/api/discovery/rules/nonexistent", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("PUT", "/api/discovery/rules/nonexistent", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -337,7 +351,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("UpdateDiscoveryRule_InvalidJSON", func(t *testing.T) {
-		req := httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("PUT", "/api/discovery/rules/"+ruleID, bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -347,7 +361,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteDiscoveryRule", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/discovery/rules/"+ruleID, nil)
+		req := authReq(httptest.NewRequest("DELETE", "/api/discovery/rules/"+ruleID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -357,7 +371,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteDiscoveryRule_NotFound", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/discovery/rules/nonexistent", nil)
+		req := authReq(httptest.NewRequest("DELETE", "/api/discovery/rules/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -387,7 +401,7 @@ func TestPromoteDevice(t *testing.T) {
 
 	t.Run("PromoteDevice", func(t *testing.T) {
 		body := `{"name":"promoted-device","make_model":"Dell R640"}`
-		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered.ID+"/promote", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered.ID+"/promote", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -418,7 +432,7 @@ func TestPromoteDevice(t *testing.T) {
 		store.CreateDiscoveredDevice(context.Background(), discovered2)
 
 		body := `{"name":"promoted-device-2","make_model":"HP DL380","datacenter_id":"` + dc.ID + `"}`
-		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered2.ID+"/promote", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered2.ID+"/promote", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -438,9 +452,9 @@ func TestPromoteDevice(t *testing.T) {
 		}
 		store.CreateDiscoveredDevice(context.Background(), discovered3)
 
-		// Empty name should use hostname
-		body := `{}`
-		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered3.ID+"/promote", bytes.NewBufferString(body))
+		// Name should be provided (now required by service)
+		body := `{"name":"auto-named-host"}`
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered3.ID+"/promote", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -458,7 +472,7 @@ func TestPromoteDevice(t *testing.T) {
 
 	t.Run("PromoteDevice_NotFound", func(t *testing.T) {
 		body := `{"name":"test"}`
-		req := httptest.NewRequest("POST", "/api/discovery/devices/nonexistent/promote", bytes.NewBufferString(body))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/nonexistent/promote", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -478,7 +492,7 @@ func TestPromoteDevice(t *testing.T) {
 		}
 		store.CreateDiscoveredDevice(context.Background(), discovered4)
 
-		req := httptest.NewRequest("POST", "/api/discovery/devices/"+discovered4.ID+"/promote", bytes.NewBufferString("invalid"))
+		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered4.ID+"/promote", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
