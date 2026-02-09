@@ -15,16 +15,18 @@ import (
 )
 
 type UnifiedScanner struct {
-	storage       storage.DiscoveryStorage
-	netStorage    storage.NetworkStorage
-	credStore     credentials.Storage
-	scans         map[string]*model.DiscoveryScan
-	cancelFuncs   map[string]context.CancelFunc
-	arpScanner    *ARPScanner
-	snmpScanner   *SNMPScanner
-	sshScanner    *SSHScanner
-	bannerGrabber *BannerGrabber
-	mu            sync.RWMutex
+	storage         storage.DiscoveryStorage
+	netStorage      storage.NetworkStorage
+	credStore       credentials.Storage
+	scans           map[string]*model.DiscoveryScan
+	cancelFuncs     map[string]context.CancelFunc
+	arpScanner      *ARPScanner
+	snmpScanner     *SNMPScanner
+	sshScanner      *SSHScanner
+	bannerGrabber   *BannerGrabber
+	osFingerprinter *OSFingerprinter
+	ouiDatabase     *OUIDatabase
+	mu              sync.RWMutex
 }
 
 func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkStorage, credStore credentials.Storage, timeout time.Duration) *UnifiedScanner {
@@ -32,15 +34,17 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 	arpScanner.LoadARPTable()
 
 	return &UnifiedScanner{
-		storage:       store,
-		netStorage:    netStore,
-		credStore:     credStore,
-		scans:         make(map[string]*model.DiscoveryScan),
-		cancelFuncs:   make(map[string]context.CancelFunc),
-		arpScanner:    arpScanner,
-		snmpScanner:   NewSNMPScanner(credStore, timeout),
-		sshScanner:    NewSSHScanner(credStore, timeout),
-		bannerGrabber: NewBannerGrabber(2 * time.Second),
+		storage:         store,
+		netStorage:      netStore,
+		credStore:       credStore,
+		scans:           make(map[string]*model.DiscoveryScan),
+		cancelFuncs:     make(map[string]context.CancelFunc),
+		arpScanner:      arpScanner,
+		snmpScanner:     NewSNMPScanner(credStore, timeout),
+		sshScanner:      NewSSHScanner(credStore, timeout),
+		bannerGrabber:   NewBannerGrabber(2 * time.Second),
+		osFingerprinter: NewOSFingerprinter(2 * time.Second),
+		ouiDatabase:     NewOUIDatabase(),
 	}
 }
 
@@ -289,6 +293,22 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 			Service:  banner.Service,
 			Version:  banner.Version,
 		})
+	}
+
+	// OS fingerprinting (optional, for deep scans)
+	if opts.ScanType == model.ScanTypeDeep && device.OSGuess == "" {
+		fp := s.osFingerprinter.Fingerprint(ip)
+		if fp.OSFamily != OSTypeUnknown {
+			device.OSGuess = GetOSTypeFromFamily(fp.OSFamily)
+			if fp.Confidence > device.Confidence {
+				device.Confidence = fp.Confidence
+			}
+		}
+	}
+
+	// Vendor lookup from MAC address
+	if device.MACAddress != "" && device.Vendor == "" {
+		device.Vendor = s.ouiDatabase.Lookup(device.MACAddress)
 	}
 
 	return device
