@@ -147,30 +147,12 @@ func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) e
 		return err
 	}
 
-	role, err := s.store.GetRole(ctx, roleID)
-	if err != nil {
-		return err
-	}
-
-	if role.IsSystem {
-		return ErrSystemRole
-	}
-
 	return s.store.AssignRoleToUser(ctx, userID, roleID)
 }
 
 func (s *RoleService) RevokeFromUser(ctx context.Context, userID, roleID string) error {
 	if err := requirePermission(ctx, s.store, "roles", "update"); err != nil {
 		return err
-	}
-
-	role, err := s.store.GetRole(ctx, roleID)
-	if err != nil {
-		return err
-	}
-
-	if role.IsSystem {
-		return ErrSystemRole
 	}
 
 	return s.store.RemoveRoleFromUser(ctx, userID, roleID)
