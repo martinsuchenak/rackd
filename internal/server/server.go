@@ -55,15 +55,12 @@ func RunWithAdvancedFeatures(
 		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
 	}
 
-	scanner := discovery.NewScanner(store, cfg)
+	scanner := discovery.NewUnifiedScanner(store, store, credStore, 30*time.Second)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 
-	// Initialize advanced discovery service
-	advancedDiscovery := discovery.NewAdvancedDiscoveryService(store, store, credStore, 30*time.Second)
-
-	// Initialize scheduled scan worker
-	scheduledWorker := worker.NewScheduledScanWorker(scheduledStore, profileStore, advancedDiscovery)
+	// Initialize scheduled scan worker (unified scanner supports both basic and advanced scans)
+	scheduledWorker := worker.NewScheduledScanWorker(scheduledStore, profileStore, scanner)
 	if err := scheduledWorker.Start(); err != nil {
 		log.Error("Failed to start scheduled scan worker", "error", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 )
@@ -68,5 +69,46 @@ func (s *ARPScanner) loadLinuxARP() error {
 }
 
 func (s *ARPScanner) loadDarwinARP() error {
-	return fmt.Errorf("darwin ARP scanning not yet implemented")
+	cmd := exec.Command("arp", "-a")
+	output, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+
+		var ip, mac string
+		if strings.Contains(line, "(") && strings.Contains(line, ")") {
+			for i := 0; i < len(fields); i++ {
+				if strings.HasPrefix(fields[i], "(") && strings.HasSuffix(fields[i], ")") {
+					ip = strings.Trim(fields[i], "()")
+					if i > 0 {
+						mac = fields[i-1]
+					}
+					break
+				}
+			}
+		} else {
+			if len(fields) >= 4 {
+				ip = strings.Trim(fields[1], "()")
+				mac = fields[3]
+			}
+		}
+
+		if ip != "" && mac != "" && mac != "00:00:00:00:00:00" && mac != "(incomplete)" {
+			s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+		}
+	}
+
+	return nil
 }

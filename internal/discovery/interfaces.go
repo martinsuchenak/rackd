@@ -12,3 +12,10 @@ type Scanner interface {
 	GetScanStatus(scanID string) (*model.DiscoveryScan, error)
 	CancelScan(scanID string) error
 }
+
+// AdvancedScanner interface for profile-based and credential-based discovery
+type AdvancedScanner interface {
+	Scanner
+	GetNetwork(id string) (*model.Network, error)
+	ScanAdvanced(ctx context.Context, network *model.Network, profile *model.ScanProfile, snmpCredID, sshCredID string) (*model.DiscoveryScan, error)
+}

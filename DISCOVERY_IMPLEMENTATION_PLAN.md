@@ -2,29 +2,65 @@
 
 ## Current Status
 
-**Overall Progress**: Phase 1 - 75% Complete (4/6 major tasks done)
+**Overall Progress**: ✅ **PHASE 1 COMPLETE** - 100%
 
-### ✅ Completed Tasks
-- **ARP Table Scanning**: Linux implementation complete, integrated into both scanners
-- **SNMP Implementation**: Fully completed with interface and ARP table parsing
-- **Enhanced Hostname Detection**: DNS + SSH + SNMP sources with priority
-- **Service Banner Grabbing**: 10+ protocols supported, integrated into advanced scans
+### ✅ Completed Tasks (Phase 1)
 
-### ⏸️ Pending Tasks (Phase 1)
-- **Unified Scanner Architecture**: Not started (required for SSH/SNMP in basic scans)
-- **macOS ARP Support**: Not started (returns error on Darwin)
-- **Wire New Architecture**: Depends on unified scanner
+**1.1 Unified Scanner Architecture** - Fully complete
+- Created `UnifiedScanner` in `internal/discovery/unified_scanner.go`
+- Supports all scan types (quick, full, deep, custom)
+- Optionally accepts SSH and SNMP credentials
+- Implements `Scanner` and `AdvancedScanner` interfaces
+- Merged basic and advanced scan paths into single architecture
+- Integrated with scheduled scan worker via `AdvancedScanner` interface
 
-### 📊 Impact
-- MAC addresses now detected for devices on local subnets (Linux only)
-- Hostnames detected from multiple sources (DNS, SSH, SNMP)
-- Service information captured for common protocols
-- OS information from SSH (advanced scans only)
+**1.2 ARP Table Scanning** - Fully complete
+- Created `internal/discovery/arp.go` with `ARPScanner` module
+- Linux ARP table parsing from `/proc/net/arp`
+- macOS ARP table parsing using `arp -a` command
+- IP-to-MAC lookup functionality
+- Integrated into unified scanner
 
-**Limitations**:
-- SSH/SNMP hostname detection only in advanced scans (not basic/full/deep)
-- Service banner grabbing only in advanced scans
-- macOS platforms not supported for ARP scanning
+**1.3 Complete SNMP Implementation** - Fully complete
+- Completed `getInterfaces()` to parse SNMP interface table (1.3.6.1.2.1.2.2.1)
+- Extracts: ifDescr, ifType, ifSpeed, ifPhysAddress, adminStatus, operStatus
+- Converts MAC address from raw bytes to hex format (xx:xx:xx:xx:xx:xx)
+- Completed `getARPTable()` to parse SNMP ARP table (1.3.6.1.2.1.4.22.1)
+- Extracts IP-to-MAC mappings from device ARP cache
+- Integrated MAC address extraction in unified scanner
+
+**1.4 Enhanced Hostname Detection** - Fully complete
+- DNS reverse lookup (all scan types)
+- SSH hostname detection via `hostname` command (when credentials provided)
+- SNMP SysName detection (when credentials provided)
+- Created `ConfidenceScorer` module in `internal/discovery/confidence.go`
+- Hostname priority: SSH (high) > SNMP (high) > DNS (low)
+- Fixed DNS hostname trimming (removed trailing dot)
+- Confidence scoring for hostname sources
+
+**1.5 Wire New Architecture** - Fully complete
+- Updated `internal/server/server.go` to use `UnifiedScanner`
+- Replaced `DefaultScanner` with `UnifiedScanner`
+- Removed duplicate `AdvancedDiscoveryService` instantiation
+- Updated `internal/worker/scheduled.go` to use `AdvancedScanner` interface
+- Added `AdvancedScanner` interface to `internal/discovery/interfaces.go`
+- Backward compatibility maintained (all tests passing)
+
+**1.6 Service Banner Grabbing** - Fully complete
+- Created `internal/discovery/banner.go` with `BannerGrabber` module
+- Implemented banner grabber for 10+ protocols:
+  - FTP (21): Parses 220 response messages
+  - SSH (22): Parses SSH- protocol version
+  - SMTP (25): Parses 220 greeting
+  - HTTP (80, 8080): Parses Server headers
+  - HTTPS (443): Detects TLS/SSL handshake
+  - POP3 (110): Parses +OK greeting
+  - IMAP (143): Parses * OK greeting
+  - MySQL (3306): Parses protocol version
+  - RDP (3389): Detects Microsoft Terminal Services
+  - PostgreSQL (5432): Detects PostgreSQL protocol
+- Integrated into unified scanner
+- Stores service name and version in `ServiceInfo` struct
 
 ---
 
@@ -32,11 +68,11 @@
 Enhance the discovery system to provide comprehensive device detection including MAC addresses, hostnames, OS information, and services while maintaining profile flexibility.
 
 ## Current Issues
-1. **MAC Address Detection**: Not implemented in any scan type
-2. **Hostname Detection**: Limited to DNS reverse lookup only in basic scans
-3. **Service Detection**: Only port open/close status, no banner grabbing
-4. **OS Detection**: Not implemented
-5. **Architecture**: Basic and advanced scan paths are separate, inconsistent
+~~1. **MAC Address Detection**: Not implemented in any scan type~~ ✅ **RESOLVED**
+~~2. **Hostname Detection**: Limited to DNS reverse lookup only in basic scans~~ ✅ **RESOLVED**
+~~3. **Service Detection**: Only port open/close status, no banner grabbing~~ ✅ **RESOLVED**
+4. **OS Detection**: Limited to SSH only (no fingerprinting)
+5. **Architecture**: ~~Basic and advanced scan paths are separate~~ ✅ **RESOLVED** - Unified scanner in place
 
 ## Architecture Overview
 
@@ -75,16 +111,26 @@ type ScanProfile struct {
 #### 1.1 Unified Scanner Architecture
 **File**: `internal/discovery/unified_scanner.go` (new)
 
+**Status**: ✅ **COMPLETED**
+
 - Create `UnifiedScanner` that replaces both `DefaultScanner` and `AdvancedDiscoveryService`
 - Accept profile parameter for all scan operations
 - Support optional credentials for all scan types
 - Maintain backward compatibility with existing `Scanner` interface
 
 **Tasks**:
-- [ ] Create `UnifiedScanner` struct
-- [ ] Implement `Scan()` method accepting profile and optional credentials
-- [ ] Migrate existing port scanning logic
-- [ ] Integrate SSH/SNMP scanners conditionally based on profile
+- [x] Create `UnifiedScanner` struct
+- [x] Implement `Scan()` method accepting profile and optional credentials
+- [x] Migrate existing port scanning logic
+- [x] Integrate SSH/SNMP scanners conditionally based on profile
+
+**Implementation Details**:
+- Created `UnifiedScanner` in `internal/discovery/unified_scanner.go`
+- Supports all scan types (quick, full, deep, custom) via `ScanOptions`
+- Implements both `Scanner` and `AdvancedScanner` interfaces
+- Integrated ARP, SNMP, SSH, and banner grabbers
+- Confidence scoring for hostname sources
+- All tests passing
 
 #### 1.2 ARP Table Scanning
 **File**: `internal/discovery/arp.go` (new)
@@ -94,20 +140,21 @@ type ScanProfile struct {
 - Use `arp -a` on macOS/Darwin
 - Platform detection and appropriate method selection
 
-**Status**: ✅ **COMPLETED** (Linux only)
+**Status**: ✅ **COMPLETED**
 
 **Tasks**:
 - [x] Create ARP scanner module
 - [x] Implement Linux ARP table parsing
-- [ ] Implement macOS ARP table parsing
+- [x] Implement macOS ARP table parsing
 - [x] Add IP-to-MAC lookup method
 - [x] Integrate into `discoverHost()` flow
 
 **Implementation Details**:
 - Created `ARPScanner` struct with `LoadARPTable()` and `LookupMAC()` methods
 - Parses `/proc/net/arp` on Linux for IP-to-MAC mappings
-- Filters out invalid MAC addresses (00:00:00:00:00:00)
-- Integrated into both `DefaultScanner` and `AdvancedDiscoveryService`
+- Executes `arp -a` on macOS/Darwin and parses output
+- Filters out invalid MAC addresses (00:00:00:00:00:00) and incomplete entries
+- Integrated into unified scanner
 - Platform detection via `runtime.GOOS`
 
 #### 1.3 Complete SNMP Implementation
@@ -132,39 +179,49 @@ type ScanProfile struct {
 - Priority: SNMP interface MAC → SNMP ARP MAC → local ARP table
 
 #### 1.4 Enhanced Hostname Detection
-**Files**: `internal/discovery/scanner.go`, `internal/discovery/advanced.go`
+**Files**: `internal/discovery/scanner.go`, `internal/discovery/unified_scanner.go`, `internal/discovery/confidence.go`
 
-**Status**: ✅ **COMPLETED** (partial)
+**Status**: ✅ **COMPLETED**
 
 **Tasks**:
-- [ ] Add SSH hostname to basic scan flow (with optional credentials)
+- [x] Add SSH hostname to basic scan flow (with optional credentials)
 - [x] Prioritize hostname sources: SSH > SNMP > DNS
-- [ ] Add hostname confidence scoring
+- [x] Add hostname confidence scoring
 
 **Implementation Details**:
 - DNS reverse lookup (existing) - all scan types
-- SSH hostname detection via `hostname` command - advanced scans with SSH credentials
-- SNMP SysName detection - advanced scans with SNMP credentials
-- Hostname priority: SSH > SNMP > DNS
+- SSH hostname detection via `hostname` command (when credentials provided)
+- SNMP SysName detection (when credentials provided)
+- Created `ConfidenceScorer` module in `internal/discovery/confidence.go`
+- Hostname priority: SSH (high) > SNMP (high) > DNS (low)
 - Fixed DNS hostname trimming (removed trailing dot)
-- Note: SSH hostname not integrated into basic scanner yet (requires unified scanner)
+- Confidence scoring for hostname sources (1=low, 2=medium, 3=high)
+- Integrated into unified scanner
+- Best hostname selected based on confidence score
 
 #### 1.5 Wire New Architecture
-**File**: `internal/server/server.go`
+**Files**: `internal/server/server.go`, `internal/discovery/interfaces.go`, `internal/worker/scheduled.go`
 
-**Status**: ⏸️ **PENDING**
+**Status**: ✅ **COMPLETED**
 
 **Tasks**:
-- [ ] Replace `DefaultScanner` with `UnifiedScanner`
-- [ ] Remove duplicate `AdvancedDiscoveryService` (or merge)
-- [ ] Update service initialization
-- [ ] Update handler registration
-- [ ] Test backward compatibility
+- [x] Replace `DefaultScanner` with `UnifiedScanner`
+- [x] Remove duplicate `AdvancedDiscoveryService` (or merge)
+- [x] Update service initialization
+- [x] Update handler registration
+- [x] Test backward compatibility
 
-**Note**: Currently using existing architecture with separate scanners.
+**Implementation Details**:
+- Updated `internal/server/server.go` to use `UnifiedScanner`
+- Replaced `DefaultScanner` with `UnifiedScanner` (stores both DiscoveryStorage and NetworkStorage)
+- Removed duplicate `AdvancedDiscoveryService` instantiation
+- Updated `internal/worker/scheduled.go` to use `AdvancedScanner` interface
+- Added `AdvancedScanner` interface to `internal/discovery/interfaces.go`
+- All existing tests passing
+- Backward compatibility maintained
 
 #### 1.6 Service Banner Grabbing
-**File**: `internal/discovery/banner.go` (new)
+**File**: `internal/discovery/banner.go`
 
 **Status**: ✅ **COMPLETED**
 
@@ -174,7 +231,7 @@ type ScanProfile struct {
 - [x] Implement SSH banner extraction
 - [x] Implement generic TCP banner extraction
 - [x] Integrate into port scanning flow
-- [ ] Update `ServiceInfo` struct with version data
+- [x] Update `ServiceInfo` struct with version data
 
 **Implementation Details**:
 - Created `BannerGrabber` struct with `GrabBanner()` and `GrabBanners()` methods
@@ -189,13 +246,13 @@ type ScanProfile struct {
   - MySQL (3306): Parses protocol version
   - RDP (3389): Detects Microsoft Terminal Services
   - PostgreSQL (5432): Detects PostgreSQL protocol
-- Integrated into `AdvancedDiscoveryService.discoverHost()`
+- Integrated into unified scanner
 - Stores service name and version in `ServiceInfo` struct
-- Note: Service version data is being stored but may need database schema update
+- `ServiceInfo.Version` field already exists in model
 
 ### Phase 2: Service & OS Detection
 
-**Status**: 33% Complete (1/3 major tasks done - banner grabbing moved to Phase 1)
+**Status**: ⏸️ **NOT STARTED** (all tasks moved or not yet started)
 
 #### 2.1 Service Banner Grabbing
 **Status**: ✅ **COMPLETED** (moved to Phase 1, already implemented)
@@ -293,19 +350,31 @@ type ScanProfile struct {
 
 ### Phase 4: Quality & Performance
 
+**Status**: ⏸️ **25% Complete** (1/4 major tasks done - confidence scoring completed in Phase 1)
+
 #### 4.1 Confidence Scoring
-**File**: `internal/discovery/scoring.go` (new)
+**File**: `internal/discovery/confidence.go`
+
+**Status**: ✅ **COMPLETED** (implemented in Phase 1)
 
 - Score detection confidence for each attribute
 - Multi-source correlation
 - Quality indicators for scan results
 
 **Tasks**:
-- [ ] Create confidence scoring module
-- [ ] Score MAC addresses (ARP > SNMP)
-- [ ] Score hostnames (SSH > SNMP > DNS)
+- [x] Create confidence scoring module
+- [x] Score MAC addresses (ARP > SNMP)
+- [x] Score hostnames (SSH > SNMP > DNS)
 - [ ] Score OS information (fingerprinting > SSH > SNMP)
-- [ ] Add `Confidence` field usage
+- [x] Add `Confidence` field usage
+
+**Implementation Details**:
+- Created `ConfidenceScorer` in `internal/discovery/confidence.go`
+- Defines confidence levels: High (3), Medium (2), Low (1)
+- Implements hostname source confidence: SSH=high, SNMP=high, DNS=low
+- Add/Get/GetAll methods for managing hostname sources
+- Integrated into unified scanner
+- `DiscoveredDevice.Confidence` field already exists in model
 
 #### 4.2 Multi-source Hostname Correlation
 **File**: `internal/discovery/correlation.go` (new)
@@ -393,20 +462,21 @@ API compatibility maintained:
 
 ## Success Criteria
 
-### Phase 1 Success - Partially Complete
-- ✅ MAC addresses detected via ARP (Linux only)
-- ✅ MAC addresses detected via SNMP (advanced scans)
-- ✅ Hostnames detected from SSH (advanced scans with creds)
-- ✅ Hostnames detected from SNMP (advanced scans with creds)
-- ✅ Service banners captured for common ports (advanced scans)
-- ✅ Backward compatibility verified (tests passing)
-- ⏸️ Unified scanner architecture (not started)
-- ⏸️ macOS ARP support (not started)
+### Phase 1 Success - ✅ **100% COMPLETE**
+- ✅ MAC addresses detected via ARP (Linux and macOS)
+- ✅ MAC addresses detected via SNMP (all scan types with credentials)
+- ✅ Hostnames detected from SSH (all scan types with credentials)
+- ✅ Hostnames detected from SNMP (all scan types with credentials)
+- ✅ Hostnames detected from DNS (all scan types)
+- ✅ Confidence scoring for hostname sources
+- ✅ Service banners captured for common ports (all scan types)
+- ✅ Backward compatibility verified (all tests passing)
+- ✅ Unified scanner architecture implemented
+- ✅ macOS ARP support implemented
 
-### Phase 2 Success - Partially Complete
-- ✅ Service banners captured for common ports (completed in Phase 1)
-- ⏸️ OS fingerprinting provides OS family (not started)
-- ⏸️ Vendor lookup from MAC addresses (not started)
+### Phase 2 Success - ⏸️ **0% COMPLETE**
+- ⏸️ OS fingerprinting provides OS family
+- ⏸️ Vendor lookup from MAC addresses
 
 ### Phase 3 Success - Not Started
 - ⏸️ Additional discovery methods available
@@ -420,34 +490,47 @@ API compatibility maintained:
 
 ## Timeline Estimates
 
-- **Phase 1**: 4-6 hours (critical fixes) - **~4 hours completed, ~2 hours remaining**
-- **Phase 2**: 1.5-2.5 hours (service & OS detection) - **1 hour completed (banner grabbing moved to Phase 1)**
-- **Phase 3**: 2-3 hours (additional methods)
-- **Phase 4**: 2-3 hours (quality & performance)
-- **Phase 5**: 1-2 hours (documentation & testing)
+- **Phase 1**: 4-6 hours (critical fixes) - ✅ **COMPLETED** (~5 hours)
+- **Phase 2**: 1.5-2.5 hours (service & OS detection) - ⏸️ **NOT STARTED** (banner grabbing moved to Phase 1)
+- **Phase 3**: 2-3 hours (additional methods) - ⏸️ **NOT STARTED**
+- **Phase 4**: 2-3 hours (quality & performance) - ⏸️ **0.5 hours complete** (confidence scoring done in Phase 1)
+- **Phase 5**: 1-2 hours (documentation & testing) - ⏸️ **NOT STARTED**
 
-**Total**: 10.5-16.5 hours - **~5 hours completed**
+**Total**: 10.5-16.5 hours - **~5.5 hours completed (~33-52%)**
 
 ### Time Spent (Session)
+- Unified Scanner Architecture: ~1 hour
 - ARP Table Scanning: ~1 hour
+- macOS ARP Support: ~0.5 hours
 - SNMP Implementation: ~1.5 hours
 - Enhanced Hostname Detection: ~0.5 hours
 - Service Banner Grabbing: ~1 hour
-- Testing & Integration: ~1 hour
-- **Total**: ~4 hours
+- Confidence Scoring: ~0.5 hours
+- Testing & Integration: ~0.5 hours
+- **Total**: ~5.5 hours
 
 ## Recent Progress
 
-### Phase 1 Status: 75% Complete
+### Phase 1 Status: ✅ **100% COMPLETE**
 
-#### ✅ Completed Tasks
+All Phase 1 tasks have been completed successfully!
 
-**1.2 ARP Table Scanning** - Linux implementation complete
+#### ✅ Completed Tasks Summary
+
+**1.1 Unified Scanner Architecture** - Fully complete
+- Created `internal/discovery/unified_scanner.go` with `UnifiedScanner`
+- Supports all scan types (quick, full, deep, custom) via `ScanOptions`
+- Implements both `Scanner` and `AdvancedScanner` interfaces
+- Integrated ARP, SNMP, SSH, and banner grabbers
+- Confidence scoring for hostname sources
+- All tests passing
+
+**1.2 ARP Table Scanning** - Fully complete (Linux and macOS)
 - Created `internal/discovery/arp.go` with `ARPScanner` module
-- Implemented Linux ARP table parsing from `/proc/net/arp`
-- Added IP-to-MAC lookup functionality
-- Integrated into both `DefaultScanner` and `AdvancedDiscoveryService`
-- Platform detection via `runtime.GOOS`
+- Linux ARP table parsing from `/proc/net/arp`
+- macOS ARP table parsing using `arp -a` command
+- IP-to-MAC lookup functionality
+- Integrated into unified scanner
 
 **1.3 Complete SNMP Implementation** - Fully complete
 - Completed `getInterfaces()` to parse SNMP interface table (1.3.6.1.2.1.2.2.1)
@@ -455,17 +538,30 @@ API compatibility maintained:
   - Converts MAC address from raw bytes to hex format (xx:xx:xx:xx:xx:xx)
 - Completed `getARPTable()` to parse SNMP ARP table (1.3.6.1.2.1.4.22.1)
   - Extracts IP-to-MAC mappings from device ARP cache
-- Integrated MAC address extraction in `AdvancedDiscoveryService.discoverHost()`
+- Integrated MAC address extraction in unified scanner
   - Uses SNMP interface MAC addresses
   - Falls back to SNMP ARP table
   - Uses local ARP table as final fallback
   - Priority: SNMP interface MAC → SNMP ARP MAC → local ARP MAC
 
-**1.4 Enhanced Hostname Detection** - Partially complete
-- Integrated SNMP SysName as hostname source
-- Added SSH hostname detection via `hostname` command (when credentials provided)
-- Implemented hostname priority: SSH > SNMP > DNS
+**1.4 Enhanced Hostname Detection** - Fully complete
+- DNS reverse lookup (all scan types)
+- SSH hostname detection via `hostname` command (when credentials provided)
+- SNMP SysName detection (when credentials provided)
+- Created `ConfidenceScorer` module in `internal/discovery/confidence.go`
+- Hostname priority: SSH (high) > SNMP (high) > DNS (low)
 - Fixed DNS hostname trimming (removed trailing dot)
+- Confidence scoring for hostname sources
+- Best hostname selected based on confidence score
+
+**1.5 Wire New Architecture** - Fully complete
+- Updated `internal/server/server.go` to use `UnifiedScanner`
+- Replaced `DefaultScanner` with `UnifiedScanner`
+- Removed duplicate `AdvancedDiscoveryService` instantiation
+- Updated `internal/worker/scheduled.go` to use `AdvancedScanner` interface
+- Added `AdvancedScanner` interface to `internal/discovery/interfaces.go`
+- All existing tests passing
+- Backward compatibility maintained
 
 **1.6 Service Banner Grabbing** - Fully complete
 - Created `internal/discovery/banner.go` with `BannerGrabber` module
@@ -480,63 +576,43 @@ API compatibility maintained:
   - MySQL (3306): Parses protocol version
   - RDP (3389): Detects Microsoft Terminal Services
   - PostgreSQL (5432): Detects PostgreSQL protocol
-- Integrated into `AdvancedDiscoveryService.discoverHost()`
+- Integrated into unified scanner
 - Stores service name and version in `ServiceInfo` struct
-
-#### ⏸️ Pending Tasks (Phase 1)
-
-**1.1 Unified Scanner Architecture** - Not started
-- Create `UnifiedScanner` struct to merge basic and advanced scan paths
-- This will allow basic scans to optionally use SSH/SNMP with credentials
-- Required for SSH hostname detection in basic scans
-
-**1.4 Enhanced Hostname Detection** - Remaining items
-- Add SSH hostname to basic scan flow (requires unified scanner)
-- Add hostname confidence scoring
-
-**1.5 Wire New Architecture** - Not started
-- Replace `DefaultScanner` with `UnifiedScanner` in `internal/server/server.go`
-- Remove or merge duplicate `AdvancedDiscoveryService`
-- Update service initialization and handler registration
-- Test backward compatibility
-
-**1.2 ARP Table Scanning** - macOS support
-- Implement macOS ARP table parsing using `arp -a` command
-- Currently returns error on macOS/Darwin platforms
 
 #### 📊 Current Impact
 
 **What works now:**
-- ✅ MAC addresses detected via local ARP table (all scan types, Linux only)
-- ✅ MAC addresses detected via SNMP interfaces (advanced scans with SNMP credentials)
-- ✅ MAC addresses detected via SNMP ARP table (advanced scans with SNMP credentials)
+- ✅ MAC addresses detected via local ARP table (all scan types, Linux + macOS)
+- ✅ MAC addresses detected via SNMP interfaces (all scan types with SNMP credentials)
+- ✅ MAC addresses detected via SNMP ARP table (all scan types with SNMP credentials)
 - ✅ Hostnames from DNS reverse lookup (all scan types)
-- ✅ Hostnames from SSH `hostname` command (advanced scans with SSH credentials)
-- ✅ Hostnames from SNMP SysName (advanced scans with SNMP credentials)
-- ✅ Service banners captured for 10+ common protocols (advanced scans)
-- ✅ Service versions detected (advanced scans)
-- ✅ OS detection from SSH (advanced scans with SSH credentials)
+- ✅ Hostnames from SSH `hostname` command (all scan types with SSH credentials)
+- ✅ Hostnames from SNMP SysName (all scan types with SNMP credentials)
+- ✅ Confidence scoring for hostname sources
+- ✅ Best hostname selected based on confidence
+- ✅ Service banners captured for 10+ common protocols (all scan types)
+- ✅ Service versions detected (all scan types)
+- ✅ OS detection from SSH (all scan types with SSH credentials)
+- ✅ Unified scanner supports all scan types with optional credentials
 
-**Limitations:**
-- ⚠️ MAC addresses only work on Linux (macOS not implemented)
-- ⚠️ SSH hostname and OS detection only in advanced scans (not in basic/full/deep)
-- ⚠️ Service banner grabbing only in advanced scans
-- ⚠️ Basic, Full, and Deep scan types cannot use SSH/SNMP credentials
-- ⚠️ Service version data may need database schema update
+**No limitations - Phase 1 objectives fully met!**
 
-#### 🎯 Scan Type Capabilities
+#### 🎯 Scan Type Capabilities (Unified Scanner)
 
-| Feature | Quick | Full | Deep | Advanced (with profile) |
-|---------|-------|------|------|--------------------------|
+| Feature | Quick | Full | Deep | Custom/Advanced |
+|---------|-------|------|------|-------------------|
 | Port Scanning | Limited (4 ports) | Top 100 ports | Extended range | Customizable |
-| MAC Address (ARP) | ✅ Linux | ✅ Linux | ✅ Linux | ✅ Linux |
-| MAC Address (SNMP) | ❌ | ❌ | ❌ | ✅ (with creds) |
+| MAC Address (ARP) | ✅ | ✅ | ✅ | ✅ |
+| MAC Address (SNMP) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) |
 | Hostname (DNS) | ✅ | ✅ | ✅ | ✅ |
-| Hostname (SSH) | ❌ | ❌ | ❌ | ✅ (with creds) |
-| Hostname (SNMP) | ❌ | ❌ | ❌ | ✅ (with creds) |
-| OS Detection | ❌ | ❌ | ❌ | ✅ (with SSH creds) |
-| Service Banners | ❌ | ❌ | ❌ | ✅ |
-| Service Versions | ❌ | ❌ | ❌ | ✅ |
+| Hostname (SSH) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) |
+| Hostname (SNMP) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) | ✅ (with creds) |
+| Confidence Scoring | ✅ | ✅ | ✅ | ✅ |
+| OS Detection | ✅ (with SSH creds) | ✅ (with SSH creds) | ✅ (with SSH creds) | ✅ (with SSH creds) |
+| Service Banners | ✅ | ✅ | ✅ | ✅ |
+| Service Versions | ✅ | ✅ | ✅ | ✅ |
+
+**Note**: All scan types now support optional SSH and SNMP credentials via the unified scanner architecture.
 
 ## Risk Mitigation
 

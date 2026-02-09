@@ -15,7 +15,7 @@ import (
 type ScheduledScanWorker struct {
 	scheduledStore   storage.ScheduledScanStorage
 	profileStore     storage.ProfileStorage
-	discoveryService *discovery.AdvancedDiscoveryService
+	discoveryService discovery.AdvancedScanner
 	cron             *cron.Cron
 	jobs             map[string]cron.EntryID
 	mu               sync.Mutex
@@ -26,7 +26,7 @@ type ScheduledScanWorker struct {
 func NewScheduledScanWorker(
 	scheduledStore storage.ScheduledScanStorage,
 	profileStore storage.ProfileStorage,
-	discoveryService *discovery.AdvancedDiscoveryService,
+	discoveryService discovery.AdvancedScanner,
 ) *ScheduledScanWorker {
 	// Create base context with audit info for scheduler operations
 	baseCtx := context.Background()
