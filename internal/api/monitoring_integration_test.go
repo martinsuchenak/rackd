@@ -5,24 +5,19 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 func TestMonitoringEndpoints(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	handler, store := setupTestHandler(t)
 	defer store.Close()
 
 	mux := http.NewServeMux()
-	handler := NewHandler(store, nil)
 	handler.RegisterRoutes(mux)
 
 	tests := []struct {
 		name           string
 		path           string
+		needsAuth      bool
 		expectedStatus int
 		checkBody      func(t *testing.T, body string)
 	}{
@@ -52,6 +47,7 @@ func TestMonitoringEndpoints(t *testing.T) {
 		{
 			name:           "Metrics endpoint",
 			path:           "/metrics",
+			needsAuth:      true,
 			expectedStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body string) {
 				expectedMetrics := []string{
@@ -67,11 +63,19 @@ func TestMonitoringEndpoints(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:           "Metrics endpoint unauthenticated",
+			path:           "/metrics",
+			expectedStatus: http.StatusUnauthorized,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.path, nil)
+			if tt.needsAuth {
+				req = authReq(req)
+			}
 			w := httptest.NewRecorder()
 
 			mux.ServeHTTP(w, req)

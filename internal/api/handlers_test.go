@@ -109,23 +109,9 @@ func TestParseIntParam(t *testing.T) {
 	}
 }
 
-func TestWithAuth(t *testing.T) {
-	opt := WithAuth()
-	cfg := &handlerConfig{}
-	opt(cfg)
-	if !cfg.requireAuth {
-		t.Error("expected requireAuth to be true")
-	}
-}
-
 func TestRegisterRoutes(t *testing.T) {
 	h := NewHandler(nil, nil)
 
-	// Test without auth
-	mux1 := http.NewServeMux()
-	h.RegisterRoutes(mux1)
-
-	// Test with auth - use separate mux
-	mux2 := http.NewServeMux()
-	h.RegisterRoutes(mux2, WithAuth())
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
 }

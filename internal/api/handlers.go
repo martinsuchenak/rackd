@@ -66,35 +66,7 @@ func (h *Handler) SetServices(svc *service.Services) {
 	h.svc = svc
 }
 
-type HandlerOption func(*handlerConfig)
-
-type handlerConfig struct {
-	requireAuth bool
-}
-
-func WithAuth() HandlerOption {
-	return func(c *handlerConfig) {
-		c.requireAuth = true
-	}
-}
-
-func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
-	cfg := &handlerConfig{}
-	for _, opt := range opts {
-		opt(cfg)
-	}
-
-	wrap := func(handler http.HandlerFunc) http.HandlerFunc {
-		handler = LimitBody(handler)
-		if cfg.requireAuth {
-			if h.sessionManager != nil {
-				return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
-			}
-			return AuthMiddleware(h.store, handler)
-		}
-		return handler
-	}
-
+func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	wrapAuth := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = LimitBody(handler)
 		if h.sessionManager != nil {
@@ -162,29 +134,29 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 
 	// Credentials routes (if storage is configured)
 	if h.credStore != nil {
-		mux.HandleFunc("GET /api/credentials", wrap(h.listCredentials))
-		mux.HandleFunc("POST /api/credentials", wrap(h.createCredential))
-		mux.HandleFunc("GET /api/credentials/{id}", wrap(h.getCredential))
-		mux.HandleFunc("PUT /api/credentials/{id}", wrap(h.updateCredential))
-		mux.HandleFunc("DELETE /api/credentials/{id}", wrap(h.deleteCredential))
+		mux.HandleFunc("GET /api/credentials", wrapAuth(h.listCredentials))
+		mux.HandleFunc("POST /api/credentials", wrapAuth(h.createCredential))
+		mux.HandleFunc("GET /api/credentials/{id}", wrapAuth(h.getCredential))
+		mux.HandleFunc("PUT /api/credentials/{id}", wrapAuth(h.updateCredential))
+		mux.HandleFunc("DELETE /api/credentials/{id}", wrapAuth(h.deleteCredential))
 	}
 
 	// Scan Profiles routes (if storage is configured)
 	if h.profileStore != nil {
-		mux.HandleFunc("GET /api/scan-profiles", wrap(h.listProfiles))
-		mux.HandleFunc("POST /api/scan-profiles", wrap(h.createProfile))
-		mux.HandleFunc("GET /api/scan-profiles/{id}", wrap(h.getProfile))
-		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrap(h.updateProfile))
-		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrap(h.deleteProfile))
+		mux.HandleFunc("GET /api/scan-profiles", wrapAuth(h.listProfiles))
+		mux.HandleFunc("POST /api/scan-profiles", wrapAuth(h.createProfile))
+		mux.HandleFunc("GET /api/scan-profiles/{id}", wrapAuth(h.getProfile))
+		mux.HandleFunc("PUT /api/scan-profiles/{id}", wrapAuth(h.updateProfile))
+		mux.HandleFunc("DELETE /api/scan-profiles/{id}", wrapAuth(h.deleteProfile))
 	}
 
 	// Scheduled Scans routes (if storage is configured)
 	if h.scheduledStore != nil {
-		mux.HandleFunc("GET /api/scheduled-scans", wrap(h.listScheduledScans))
-		mux.HandleFunc("POST /api/scheduled-scans", wrap(h.createScheduledScan))
-		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrap(h.getScheduledScan))
-		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrap(h.updateScheduledScan))
-		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrap(h.deleteScheduledScan))
+		mux.HandleFunc("GET /api/scheduled-scans", wrapAuth(h.listScheduledScans))
+		mux.HandleFunc("POST /api/scheduled-scans", wrapAuth(h.createScheduledScan))
+		mux.HandleFunc("GET /api/scheduled-scans/{id}", wrapAuth(h.getScheduledScan))
+		mux.HandleFunc("PUT /api/scheduled-scans/{id}", wrapAuth(h.updateScheduledScan))
+		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrapAuth(h.deleteScheduledScan))
 	}
 
 	// API Key routes (RBAC enforced in service layer)
@@ -247,7 +219,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /readyz", h.readyz)
 
 	// Metrics route (requires auth)
-	mux.HandleFunc("GET /metrics", wrap(h.metricsHandler))
+	mux.HandleFunc("GET /metrics", wrapAuth(h.metricsHandler))
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

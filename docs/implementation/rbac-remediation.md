@@ -12,7 +12,7 @@
 
 Simply change credentials, scan profiles, scheduled scans, and metrics routes from `wrap()` to `wrapAuth()`.
 
-### Status: TODO
+### Status: DONE
 
 ### Files Modified
 - `internal/api/handlers.go` — Lines 164-188 and 250: change `wrap(` to `wrapAuth(` for:
