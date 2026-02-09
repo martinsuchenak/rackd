@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -27,6 +29,7 @@ type Handler struct {
 	cookieSecure     bool
 	sessionTTL       time.Duration
 	trustProxy       bool
+	svc              *service.Services
 }
 
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
@@ -60,6 +63,10 @@ func (h *Handler) SetCookieConfig(secure bool, sessionTTL time.Duration) {
 
 func (h *Handler) SetTrustProxy(trustProxy bool) {
 	h.trustProxy = trustProxy
+}
+
+func (h *Handler) SetServices(svc *service.Services) {
+	h.svc = svc
 }
 
 func (h *Handler) auditContext(r *http.Request) context.Context {
@@ -165,11 +172,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("GET /api/pools/{id}/heatmap", wrapPerm(h.getPoolHeatmap, "pools", "read"))
 
 	// Device routes
-	mux.HandleFunc("GET /api/devices", wrapPerm(h.listDevices, "devices", "list"))
-	mux.HandleFunc("POST /api/devices", wrapPerm(h.createDevice, "devices", "create"))
-	mux.HandleFunc("GET /api/devices/{id}", wrapPerm(h.getDevice, "devices", "read"))
-	mux.HandleFunc("PUT /api/devices/{id}", wrapPerm(h.updateDevice, "devices", "update"))
-	mux.HandleFunc("DELETE /api/devices/{id}", wrapPerm(h.deleteDevice, "devices", "delete"))
+	mux.HandleFunc("GET /api/devices", wrap(h.listDevices))
+	mux.HandleFunc("POST /api/devices", wrap(h.createDevice))
+	mux.HandleFunc("GET /api/devices/{id}", wrap(h.getDevice))
+	mux.HandleFunc("PUT /api/devices/{id}", wrap(h.updateDevice))
+	mux.HandleFunc("DELETE /api/devices/{id}", wrap(h.deleteDevice))
 
 	// Search routes
 	mux.HandleFunc("GET /api/search", wrapPerm(h.search, "search", "read"))
@@ -232,11 +239,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("DELETE /api/keys/{id}", wrapPerm(h.deleteAPIKey, "apikeys", "delete"))
 
 	// Bulk device operations
-	mux.HandleFunc("POST /api/devices/bulk", wrapPerm(h.bulkCreateDevices, "devices", "create"))
-	mux.HandleFunc("PUT /api/devices/bulk", wrapPerm(h.bulkUpdateDevices, "devices", "update"))
-	mux.HandleFunc("DELETE /api/devices/bulk", wrapPerm(h.bulkDeleteDevices, "devices", "delete"))
-	mux.HandleFunc("POST /api/devices/bulk/tags", wrapPerm(h.bulkAddTags, "devices", "update"))
-	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapPerm(h.bulkRemoveTags, "devices", "update"))
+	mux.HandleFunc("POST /api/devices/bulk", wrap(h.bulkCreateDevices))
+	mux.HandleFunc("PUT /api/devices/bulk", wrap(h.bulkUpdateDevices))
+	mux.HandleFunc("DELETE /api/devices/bulk", wrap(h.bulkDeleteDevices))
+	mux.HandleFunc("POST /api/devices/bulk/tags", wrap(h.bulkAddTags))
+	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrap(h.bulkRemoveTags))
 
 	// Bulk network operations
 	mux.HandleFunc("POST /api/networks/bulk", wrapPerm(h.bulkCreateNetworks, "networks", "create"))
@@ -303,6 +310,41 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, code, message st
 func (h *Handler) internalError(w http.ResponseWriter, err error) {
 	log.Error("Internal server error", "error", err)
 	h.writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal Server Error")
+}
+
+func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+
+	switch {
+	case errors.Is(err, service.ErrNotFound):
+		h.writeError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+	case errors.Is(err, service.ErrForbidden):
+		h.writeError(w, http.StatusForbidden, "FORBIDDEN", "Forbidden")
+	case errors.Is(err, service.ErrUnauthenticated):
+		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+	case errors.Is(err, service.ErrAlreadyExists):
+		h.writeError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
+	case errors.Is(err, service.ErrValidation), errors.Is(err, ValidationErrors{}):
+		h.writeValidationErrors(w, toValidationErrors(err))
+	case errors.Is(err, service.ErrSelfDelete):
+		h.writeError(w, http.StatusBadRequest, "CANNOT_DELETE_SELF", err.Error())
+	case errors.Is(err, service.ErrSystemRole):
+		h.writeError(w, http.StatusBadRequest, "SYSTEM_ROLE", err.Error())
+	default:
+		h.internalError(w, err)
+	}
+}
+
+func toValidationErrors(err error) ValidationErrors {
+	if verrs, ok := err.(ValidationErrors); ok {
+		return verrs
+	}
+	if verrs, ok := err.(*ValidationErrors); ok {
+		return *verrs
+	}
+	return ValidationErrors{{Field: "", Message: err.Error()}}
 }
 
 func (h *Handler) writeValidationErrors(w http.ResponseWriter, errs ValidationErrors) {

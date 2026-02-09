@@ -24,7 +24,7 @@ func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(store, false), store
+	return NewServer(nil, store, false), store
 }
 
 func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
@@ -33,7 +33,7 @@ func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	return NewServer(store, true), store
+	return NewServer(nil, store, true), store
 }
 
 func TestNewServer(t *testing.T) {

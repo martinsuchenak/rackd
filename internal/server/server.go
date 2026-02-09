@@ -16,6 +16,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/mcp"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/internal/worker"
@@ -67,6 +68,9 @@ func RunWithAdvancedFeatures(
 		log.Error("Failed to start scheduled scan worker", "error", err)
 	}
 
+	// Create services registry
+	services := service.NewServices(store, sessionManager, scanner)
+
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
@@ -76,11 +80,12 @@ func RunWithAdvancedFeatures(
 	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
 	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
 	handler.SetTrustProxy(cfg.TrustProxy)
+	handler.SetServices(services)
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
 	handler.RegisterRoutes(mux)
 
 	// MCP server
-	mcpServer := mcp.NewServer(store, false)
+	mcpServer := mcp.NewServer(services, store, false)
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config with nav items for new features
@@ -170,16 +175,20 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 
+	// Create services registry
+	services := service.NewServices(store, sessionManager, scanner)
+
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
 	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
 	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
 	handler.SetTrustProxy(cfg.TrustProxy)
+	handler.SetServices(services)
 	handler.RegisterRoutes(mux)
 
 	// MCP server
-	mcpServer := mcp.NewServer(store, false)
+	mcpServer := mcp.NewServer(services, store, false)
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config

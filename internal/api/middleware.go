@@ -11,6 +11,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/metrics"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
@@ -121,6 +122,14 @@ func AuthMiddlewareWithSessions(store storage.APIKeyStorage, sessionManager *aut
 					sessionManager.RefreshSession(cookie.Value)
 					log.Trace("Auth successful (session cookie)", "path", r.URL.Path, "username", session.Username)
 					r = r.WithContext(context.WithValue(r.Context(), SessionContextKey, session))
+					caller := &service.Caller{
+						Type:      service.CallerTypeUser,
+						UserID:    session.UserID,
+						Username:  session.Username,
+						IPAddress: getClientIP(r, false),
+						Source:    "api",
+					}
+					r = r.WithContext(service.WithCaller(r.Context(), caller))
 					next(w, r)
 					return
 				}

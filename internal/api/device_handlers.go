@@ -15,6 +15,15 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		NetworkID:    r.URL.Query().Get("network_id"),
 	}
+	if h.svc != nil && h.svc.Devices != nil {
+		devices, err := h.svc.Devices.List(r.Context(), filter)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, devices)
+		return
+	}
 	devices, err := h.store.ListDevices(filter)
 	if err != nil {
 		h.internalError(w, err)
@@ -33,15 +42,34 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.writeValidationErrors(w, errs)
 		return
 	}
-	if err := h.store.CreateDevice(h.auditContext(r), &device); err != nil {
-		h.internalError(w, err)
-		return
+
+	if h.svc != nil && h.svc.Devices != nil {
+		if err := h.svc.Devices.Create(r.Context(), &device); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+	} else {
+		if err := h.store.CreateDevice(h.auditContext(r), &device); err != nil {
+			h.internalError(w, err)
+			return
+		}
 	}
 	h.writeJSON(w, http.StatusCreated, device)
 }
 
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.Devices != nil {
+		device, err := h.svc.Devices.Get(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, device)
+		return
+	}
+
 	device, err := h.store.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
@@ -56,6 +84,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
 	device, err := h.store.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
@@ -111,22 +140,37 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.UpdateDevice(h.auditContext(r), device); err != nil {
-		h.internalError(w, err)
-		return
+	if h.svc != nil && h.svc.Devices != nil {
+		if err := h.svc.Devices.Update(r.Context(), device); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+	} else {
+		if err := h.store.UpdateDevice(h.auditContext(r), device); err != nil {
+			h.internalError(w, err)
+			return
+		}
 	}
 	h.writeJSON(w, http.StatusOK, device)
 }
 
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.store.DeleteDevice(h.auditContext(r), id); err != nil {
-		if errors.Is(err, storage.ErrDeviceNotFound) {
-			h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
+
+	if h.svc != nil && h.svc.Devices != nil {
+		if err := h.svc.Devices.Delete(r.Context(), id); err != nil {
+			h.handleServiceError(w, err)
 			return
 		}
-		h.internalError(w, err)
-		return
+	} else {
+		if err := h.store.DeleteDevice(h.auditContext(r), id); err != nil {
+			if errors.Is(err, storage.ErrDeviceNotFound) {
+				h.writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Device not found")
+				return
+			}
+			h.internalError(w, err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -141,6 +185,17 @@ func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter must be 256 characters or less")
 		return
 	}
+
+	if h.svc != nil && h.svc.Devices != nil {
+		devices, err := h.svc.Devices.Search(r.Context(), query)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, devices)
+		return
+	}
+
 	devices, err := h.store.SearchDevices(query)
 	if err != nil {
 		h.internalError(w, err)
@@ -192,100 +247,135 @@ func toAddressSlice(arr []any) []model.Address {
 	return result
 }
 
-// bulkCreateDevices handles POST /api/devices/bulk
 func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 	var devices []*model.Device
 	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.CreateDevices(r.Context(), devices)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkCreateDevices(h.auditContext(r), devices)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	h.writeJSON(w, http.StatusOK, result)
 }
 
-// bulkUpdateDevices handles PUT /api/devices/bulk
 func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
 	var devices []*model.Device
 	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.UpdateDevices(r.Context(), devices)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkUpdateDevices(h.auditContext(r), devices)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	h.writeJSON(w, http.StatusOK, result)
 }
 
-// bulkDeleteDevices handles DELETE /api/devices/bulk
 func (h *Handler) bulkDeleteDevices(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.DeleteDevices(r.Context(), req.IDs)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkDeleteDevices(h.auditContext(r), req.IDs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	h.writeJSON(w, http.StatusOK, result)
 }
 
-// bulkAddTags handles POST /api/devices/bulk/tags
 func (h *Handler) bulkAddTags(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DeviceIDs []string `json:"device_ids"`
 		Tags      []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.AddTags(r.Context(), req.DeviceIDs, req.Tags)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkAddTags(h.auditContext(r), req.DeviceIDs, req.Tags)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	h.writeJSON(w, http.StatusOK, result)
 }
 
-// bulkRemoveTags handles DELETE /api/devices/bulk/tags
 func (h *Handler) bulkRemoveTags(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DeviceIDs []string `json:"device_ids"`
 		Tags      []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	if h.svc != nil && h.svc.Bulk != nil {
+		result, err := h.svc.Bulk.RemoveTags(r.Context(), req.DeviceIDs, req.Tags)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, result)
 		return
 	}
 
 	result, err := h.store.BulkRemoveTags(h.auditContext(r), req.DeviceIDs, req.Tags)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.internalError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	h.writeJSON(w, http.StatusOK, result)
 }

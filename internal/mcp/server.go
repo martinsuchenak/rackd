@@ -13,19 +13,22 @@ import (
 	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 type Server struct {
 	mcpServer   *mcp.Server
-	storage     storage.ExtendedStorage
+	svc         *service.Services
+	store       storage.ExtendedStorage
 	requireAuth bool
 }
 
-func NewServer(store storage.ExtendedStorage, requireAuth bool) *Server {
+func NewServer(services *service.Services, store storage.ExtendedStorage, requireAuth bool) *Server {
 	s := &Server{
 		mcpServer:   mcp.NewServer("rackd", "1.0.0"),
-		storage:     store,
+		svc:         services,
+		store:       store,
 		requireAuth: requireAuth,
 	}
 	s.registerTools()
@@ -177,7 +180,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(auth, "Bearer ")
 
 		// Try API key authentication
-		key, err := s.storage.GetAPIKeyByKey(token)
+		key, err := s.store.GetAPIKeyByKey(token)
 		if err != nil {
 			log.Debug("MCP auth failed: invalid API key")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -193,10 +196,19 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 		// Update last used (async)
 		go func() {
-			s.storage.UpdateAPIKeyLastUsed(key.ID, time.Now())
+			s.store.UpdateAPIKeyLastUsed(key.ID, time.Now())
 		}()
 
 		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
+
+		// Inject caller context
+		caller := &service.Caller{
+			Type:     service.CallerTypeAPIKey,
+			UserID:   key.ID,
+			Username: key.Name,
+			Source:   "mcp",
+		}
+		r = r.WithContext(service.WithCaller(r.Context(), caller))
 	}
 
 	s.mcpServer.HandleRequest(w, r)
@@ -238,14 +250,12 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 		}
 	}
 
-	auditCtx := s.auditContext(ctx)
 	if id == "" {
-		device.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDevice(auditCtx, device); err != nil {
+		if err := s.svc.Devices.Create(ctx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDevice(auditCtx, device); err != nil {
+		if err := s.svc.Devices.Update(ctx, device); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -255,7 +265,7 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 
 func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	device, err := s.storage.GetDevice(id)
+	device, err := s.svc.Devices.Get(ctx, id)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -265,7 +275,7 @@ func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mc
 func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	query := req.StringOr("query", "")
 	if query != "" {
-		devices, err := s.storage.SearchDevices(query)
+		devices, err := s.svc.Devices.Search(ctx, query)
 		if err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
@@ -276,7 +286,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 		Tags:         req.StringSliceOr("tags", nil),
 		DatacenterID: req.StringOr("datacenter_id", ""),
 	}
-	devices, err := s.storage.ListDevices(filter)
+	devices, err := s.svc.Devices.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -285,7 +295,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 
 func (s *Server) handleDeviceDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	if err := s.storage.DeleteDevice(s.auditContext(ctx), id); err != nil {
+	if err := s.svc.Devices.Delete(ctx, id); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
@@ -303,7 +313,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 		return nil, mcp.NewToolErrorInvalidParams("type must be one of: contains, connected_to, depends_on")
 	}
 
-	if err := s.storage.AddRelationship(s.auditContext(ctx), parentID, childID, relType, notes); err != nil {
+	if err := s.store.AddRelationship(s.auditContext(ctx), parentID, childID, relType, notes); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil
@@ -311,7 +321,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 
 func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	rels, err := s.storage.GetRelationships(id)
+	rels, err := s.store.GetRelationships(id)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -321,7 +331,7 @@ func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolReques
 // Datacenter handlers
 
 func (s *Server) handleDatacenterList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
-	dcs, err := s.storage.ListDatacenters(nil)
+	dcs, err := s.store.ListDatacenters(nil)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -342,11 +352,11 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 	auditCtx := s.auditContext(ctx)
 	if id == "" {
 		dc.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateDatacenter(auditCtx, dc); err != nil {
+		if err := s.store.CreateDatacenter(auditCtx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateDatacenter(auditCtx, dc); err != nil {
+		if err := s.store.UpdateDatacenter(auditCtx, dc); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -360,7 +370,7 @@ func (s *Server) handleNetworkList(ctx context.Context, req *mcp.ToolRequest) (*
 	filter := &model.NetworkFilter{
 		DatacenterID: req.StringOr("datacenter_id", ""),
 	}
-	networks, err := s.storage.ListNetworks(filter)
+	networks, err := s.store.ListNetworks(filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -384,11 +394,11 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 	auditCtx := s.auditContext(ctx)
 	if id == "" {
 		network.ID = uuid.Must(uuid.NewV7()).String()
-		if err := s.storage.CreateNetwork(auditCtx, network); err != nil {
+		if err := s.store.CreateNetwork(auditCtx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	} else {
-		if err := s.storage.UpdateNetwork(auditCtx, network); err != nil {
+		if err := s.store.UpdateNetwork(auditCtx, network); err != nil {
 			return nil, mcp.NewToolErrorInternal(err.Error())
 		}
 	}
@@ -400,7 +410,7 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 func (s *Server) handleGetNextIP(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	poolID, _ := req.String("pool_id")
-	ip, err := s.storage.GetNextAvailableIP(poolID)
+	ip, err := s.store.GetNextAvailableIP(poolID)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -426,7 +436,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 		StartedAt: &now,
 	}
 
-	if err := s.storage.CreateDiscoveryScan(s.auditContext(ctx), scan); err != nil {
+	if err := s.store.CreateDiscoveryScan(s.auditContext(ctx), scan); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
@@ -435,7 +445,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 
 func (s *Server) handleListDiscovered(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	networkID := req.StringOr("network_id", "")
-	devices, err := s.storage.ListDiscoveredDevices(networkID)
+	devices, err := s.store.ListDiscoveredDevices(networkID)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -446,7 +456,7 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 	discoveredID, _ := req.String("discovered_id")
 	name, _ := req.String("name")
 
-	discovered, err := s.storage.GetDiscoveredDevice(discoveredID)
+	discovered, err := s.store.GetDiscoveredDevice(discoveredID)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
@@ -465,11 +475,11 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 	}
 
 	auditCtx := s.auditContext(ctx)
-	if err := s.storage.CreateDevice(auditCtx, device); err != nil {
+	if err := s.store.CreateDevice(auditCtx, device); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
-	if err := s.storage.PromoteDiscoveredDevice(auditCtx, discoveredID, device.ID); err != nil {
+	if err := s.store.PromoteDiscoveredDevice(auditCtx, discoveredID, device.ID); err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
 
