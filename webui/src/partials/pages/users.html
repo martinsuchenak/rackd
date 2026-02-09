@@ -3,7 +3,7 @@
   <div x-data="usersList()" x-init="await init()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Users</h1>
-      <button @click="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+      <button x-show="$store.permissions.canCreate('users')" @click="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
         Add User
       </button>
     </div>
@@ -70,10 +70,10 @@
               <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="user.last_login_at ? formatDate(user.last_login_at) : 'Never'"></td>
                <td class="px-6 py-4 text-right">
                  <div class="inline-flex gap-1">
-                   <button @click="openEditModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + user.username">Edit</button>
-                   <button x-show="currentUser?.id === user.id || currentUser?.is_admin" @click="openRoleManager(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Manage roles for ' + user.username">Roles</button>
-                   <button @click="openPasswordModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Change password for ' + user.username">Password</button>
-                   <button @click="openDeleteModal(user)" x-show="currentUser?.is_admin || currentUser?.id !== user.id" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + user.username">Delete</button>
+                   <button x-show="$store.permissions.canUpdate('users')" @click="openEditModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + user.username">Edit</button>
+                   <button x-show="$store.permissions.canList('roles')" @click="openRoleManager(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Manage roles for ' + user.username">Roles</button>
+                   <button x-show="$store.permissions.canUpdate('users')" @click="openPasswordModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Change password for ' + user.username">Password</button>
+                   <button x-show="$store.permissions.canDelete('users') && currentUser?.id !== user.id" @click="openDeleteModal(user)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + user.username">Delete</button>
                  </div>
                </td>
             </tr>
@@ -273,7 +273,7 @@
         <h2 id="role-manager-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Manage Roles</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Managing roles for user <span class="font-semibold text-gray-900 dark:text-gray-50" x-text="selectedUser?.username"></span>
-          <span x-show="!currentUser?.is_admin" class="block mt-1 italic">Note: You can only view roles. Contact an administrator to make changes.</span>
+          <span x-show="!$store.permissions.canUpdate('roles')" class="block mt-1 italic">Note: You can only view roles. Contact an administrator to make changes.</span>
         </p>
         <div class="space-y-4">
           <div>
@@ -286,8 +286,8 @@
                     <span x-show="role.is_system" class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200" x-text="role.name"></span>
                     <span class="text-sm text-gray-600 dark:text-gray-400" x-text="role.description || 'No description'"></span>
                   </div>
-                  <div x-show="currentUser?.is_admin">
-                    <button @click="grantRole(role)" 
+                  <div x-show="$store.permissions.canUpdate('roles')">
+                    <button @click="grantRole(role)"
                             x-show="!hasRole(role)"
                             :disabled="roleSaving"
                             class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 cursor-pointer transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500">
@@ -300,10 +300,10 @@
                       Revoke
                     </button>
                   </div>
-                  <div x-show="!currentUser?.is_admin && hasRole(role)">
+                  <div x-show="!$store.permissions.canUpdate('roles') && hasRole(role)">
                     <span class="px-2 py-1 text-xs rounded-md bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200">Assigned</span>
                   </div>
-                  <div x-show="!currentUser?.is_admin && !hasRole(role)">
+                  <div x-show="!$store.permissions.canUpdate('roles') && !hasRole(role)">
                     <span class="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200">Not assigned</span>
                   </div>
                 </div>

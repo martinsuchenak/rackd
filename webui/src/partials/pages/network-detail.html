@@ -8,8 +8,8 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="network?.name"></h1>
       </div>
       <div class="flex gap-2">
-        <button @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Edit</button>
-        <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Delete</button>
+        <button x-show="$store.permissions.canUpdate('networks')" @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Edit</button>
+        <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Delete</button>
       </div>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
@@ -32,7 +32,7 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">IP Pools</h2>
-        <button @click="openAddPoolModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Add Pool</button>
+        <button x-show="$store.permissions.canCreate('networks')" @click="openAddPoolModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Add Pool</button>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -60,8 +60,8 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <button @click="openEditPoolModal(pool)" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline mr-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Edit pool ' + pool.name">Edit</button>
-                  <button @click="confirmDeletePool(pool)" class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Delete pool ' + pool.name">Delete</button>
+                  <button x-show="$store.permissions.canUpdate('networks')" @click="openEditPoolModal(pool)" class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline mr-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Edit pool ' + pool.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('networks')" @click="confirmDeletePool(pool)" class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" :aria-label="'Delete pool ' + pool.name">Delete</button>
                 </td>
               </tr>
             </template>

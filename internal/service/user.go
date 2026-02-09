@@ -124,8 +124,13 @@ func (s *UserService) Get(ctx context.Context, id string) (*model.UserResponse, 
 }
 
 func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUserRequest) (*model.UserResponse, error) {
-	if err := requirePermission(ctx, s.store, "users", "update"); err != nil {
-		return nil, err
+	caller := CallerFrom(ctx)
+	isSelf := caller != nil && caller.UserID == id
+
+	if !isSelf {
+		if err := requirePermission(ctx, s.store, "users", "update"); err != nil {
+			return nil, err
+		}
 	}
 
 	user, err := s.store.GetUser(id)
@@ -142,10 +147,11 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 	if req.FullName != "" {
 		user.FullName = req.FullName
 	}
-	if req.IsActive != nil {
+	// Privileged fields require users:update permission
+	if req.IsActive != nil && !isSelf {
 		user.IsActive = *req.IsActive
 	}
-	if req.IsAdmin != nil {
+	if req.IsAdmin != nil && !isSelf {
 		user.IsAdmin = *req.IsAdmin
 	}
 	user.UpdatedAt = time.Now()

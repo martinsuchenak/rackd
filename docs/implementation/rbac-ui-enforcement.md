@@ -1,6 +1,6 @@
 # RBAC UI Enforcement Plan
 
-## Status: IN_PROGRESS (Phase 2: COMPLETED, Phase 3: IN_PROGRESS)
+## Status: IN_PROGRESS (Phase 1: COMPLETED, Phase 2: COMPLETED, Phase 3: COMPLETED, Phase 4: COMPLETED)
 
 ## Problem
 
@@ -31,12 +31,12 @@ The UI currently exposes all features, buttons, forms, and navigation items to a
 
 ## Phases
 
-### Phase 1: Enhanced `/api/auth/me` Response
+### Phase 1: Enhanced `/api/auth/me` Response - **COMPLETED**
 
 **Backend Changes:**
 
 `internal/model/user.go`:
-- Add `CurrentUserResponse` struct that extends `User` with permissions and roles:
+- ✅ Add `CurrentUserResponse` struct that extends `User` with permissions and roles:
 ```go
 type CurrentUserResponse struct {
     ID           string              `json:"id"`
@@ -53,14 +53,14 @@ type CurrentUserResponse struct {
 }
 ```
 
-`internal/service/user.go`:
-- Add `GetCurrentUserWithPermissions(ctx context.Context) (*model.CurrentUserResponse, error)` method
-- Fetches current user, their roles, and all permissions from those roles
-- Returns consolidated response
+`internal/service/auth.go`:
+- ✅ Add `GetCurrentUserWithPermissions()` and `GetCurrentUserWithPermissionsByID()` methods
+- ✅ Fetches current user, their roles, and all permissions from those roles
+- ✅ Returns consolidated response
 
 `internal/api/auth_handlers.go`:
-- Update `login()` handler to return enhanced user object with permissions
-- Update `getCurrentUser()` handler to return `CurrentUserResponse` instead of plain `User`
+- ✅ Update `login()` handler to return enhanced user object with permissions
+- ✅ Update `getCurrentUser()` handler to return `CurrentUserResponse` instead of plain `User`
 
 **API Response:**
 ```json
@@ -86,9 +86,9 @@ type CurrentUserResponse struct {
 ```
 
 **Verification:**
-- Test `/api/auth/me` returns permissions and roles for each role type
-- Test login returns enhanced user object with permissions
-- Test unauthorized access returns 401
+- ✅ Test `/api/auth/me` returns permissions and roles for each role type
+- ✅ Test login returns enhanced user object with permissions
+- ✅ Test unauthorized access returns 401
 
 ### Phase 2: UI Permission State - **COMPLETED**
 
@@ -170,7 +170,7 @@ Alpine.data('permissions', () => ({
 - ✅ Test helper functions return correct booleans
 - ✅ Test empty permissions state
 
-### Phase 3: Navigation Filtering - **IN_PROGRESS**
+### Phase 3: Navigation Filtering - **COMPLETED**
 
 **Backend Changes:**
 
@@ -207,48 +207,73 @@ Alpine.data('permissions', () => ({
 - ✅ Update to fetch user permissions from config
 - ✅ Filter items using permissions: check if user has all required permissions
 
-### Phase 4: Action Button Guards
+### Phase 4: Action Button Guards - **COMPLETED**
+
+**Implementation Notes:**
+
+- Converted `permissions` from `Alpine.data` to `Alpine.store` so it's accessible as `$store.permissions` in all components
+- Permissions are initialized from `window.rackdConfig.user.permissions` (loaded from `/api/config`)
+- All action buttons now use `x-show="$store.permissions.canCreate/canUpdate/canDelete('resource')"` guards
 
 **Frontend Changes:**
 
-For each component, add `x-show` and `x-disabled` directives based on permissions:
+`webui/src/app.ts`:
+- ✅ Converted `permissions()` function from `Alpine.data` to `Alpine.store('permissions', ...)` via `initPermissionsStore()`
+- ✅ Store initialized from `window.rackdConfig.user.permissions` (no extra API call needed)
 
-`webui/src/components/devices.ts`:
-- "Add Device" button: `x-show="permissions.canCreate('devices')"`
-- "Edit" button: `x-show="permissions.canUpdate('devices')"`
-- "Delete" button: `x-show="permissions.canDelete('devices')"`
+`webui/src/partials/pages/devices.html`:
+- ✅ "Add Device" button: `x-show="$store.permissions.canCreate('devices')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('devices')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('devices')"`
 
-`webui/src/components/networks.ts`:
-- "Add Network" button: `x-show="permissions.canCreate('networks')"`
-- "Edit" button: `x-show="permissions.canUpdate('networks')"`
-- "Delete" button: `x-show="permissions.canDelete('networks')"`
+`webui/src/partials/pages/networks.html`:
+- ✅ "Add Network" button: `x-show="$store.permissions.canCreate('networks')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('networks')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('networks')"`
 
-`webui/src/components/datacenters.ts`:
-- Similar guards for datacenter actions
+`webui/src/partials/pages/datacenters.html`:
+- ✅ "Add Datacenter" button: `x-show="$store.permissions.canCreate('datacenters')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('datacenters')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('datacenters')"`
 
-`webui/src/components/discovery.ts`:
-- "Start Scan" button: `x-show="permissions.canCreate('discovery')"`
+`webui/src/partials/pages/discovery.html`:
+- ✅ "New Scan" button: `x-show="$store.permissions.canCreate('discovery')"`
+- ✅ "Delete Old" button: combined with existing status check
+- ✅ "Delete" scan button: combined with existing status check
+- ✅ "Delete All" devices button: combined with existing count check
+- ✅ "Promote" button: `x-show="$store.permissions.canCreate('devices')"` (promotes to device)
+- ✅ "Delete" device button: `x-show="$store.permissions.canDelete('discovery')"`
 
 `webui/src/components/credentials.ts`:
-- Guard credential CRUD operations
+- ✅ "Add Credential" button: `x-show="$store.permissions.canCreate('credentials')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('credentials')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('credentials')"`
 
 `webui/src/components/profiles.ts`:
-- Guard profile CRUD operations
+- ✅ "Add Profile" button: `x-show="$store.permissions.canCreate('scan_profiles')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('scan_profiles')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('scan_profiles')"`
 
 `webui/src/components/scheduled-scans.ts`:
-- Guard scheduled scan CRUD operations
+- ✅ "Add Schedule" button: `x-show="$store.permissions.canCreate('scheduled_scans')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('scheduled_scans')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('scheduled_scans')"`
 
-`webui/src/components/users.ts`:
-- Entire component: `x-show="permissions.canList('users')"`
-- "Add User" button: `x-show="permissions.canCreate('users')"`
-- "Edit User" button: `x-show="permissions.canUpdate('users')"`
+`webui/src/partials/pages/users.html`:
+- ✅ "Add User" button: `x-show="$store.permissions.canCreate('users')"`
+- ✅ "Edit" button: `x-show="$store.permissions.canUpdate('users')"`
+- ✅ "Roles" button: `x-show="$store.permissions.canList('roles')"`
+- ✅ "Password" button: `x-show="$store.permissions.canUpdate('users')"`
+- ✅ "Delete" button: `x-show="$store.permissions.canDelete('users') && currentUser?.id !== user.id"`
+- ✅ Role Manager Grant/Revoke: replaced `currentUser?.is_admin` with `$store.permissions.canUpdate('roles')`
 
-`webui/src/components/roles.ts`:
-- Entire component: `x-show="permissions.canList('roles')"`
-- "Add Role" button: `x-show="permissions.canCreate('roles')"`
-- Guard role management operations
+`webui/src/partials/pages/roles.html`:
+- ✅ "Edit" button: combined `!role.is_system` with `$store.permissions.canUpdate('roles')`
+- Note: "Add Role" button is missing from the page header (pre-existing issue)
 
 **Verification:**
+- ✅ All builds pass (Go + WebUI)
+- ✅ All tests pass
 - Test each page with admin user - all actions visible
 - Test each page with operator user - create/update visible, delete hidden
 - Test each page with viewer user - only list/read visible

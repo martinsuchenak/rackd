@@ -177,7 +177,7 @@ export function profilesPageTemplate(): string {
     <div x-data="profileList">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Scan Profiles</h1>
-        <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer transition-colors" aria-label="Add new scan profile">
+        <button x-show="$store.permissions.canCreate('scan_profiles')" @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer transition-colors" aria-label="Add new scan profile">
           Add Profile
         </button>
       </div>
@@ -202,7 +202,8 @@ export function profilesPageTemplate(): string {
             <template x-for="profile in profiles" :key="profile.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <button @click="openEditModal(profile)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="profile.name" :aria-label="'Edit profile: ' + profile.name"></button>
+                  <button x-show="$store.permissions.canUpdate('scan_profiles')" @click="openEditModal(profile)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="profile.name" :aria-label="'Edit profile: ' + profile.name"></button>
+                  <span x-show="!$store.permissions.canUpdate('scan_profiles')" class="font-medium text-gray-900 dark:text-white" x-text="profile.name"></span>
                   <div class="text-sm text-gray-600 dark:text-gray-400" x-text="profile.description || ''"></div>
                 </td>
                 <td class="px-6 py-4">
@@ -227,8 +228,8 @@ export function profilesPageTemplate(): string {
                   <div x-text="profile.max_workers + ' workers'"></div>
                 </td>
                 <td class="px-6 py-4 text-right space-x-3">
-                  <button @click="openEditModal(profile)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + profile.name">Edit</button>
-                  <button @click="confirmDelete(profile)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + profile.name">Delete</button>
+                  <button x-show="$store.permissions.canUpdate('scan_profiles')" @click="openEditModal(profile)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + profile.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('scan_profiles')" @click="confirmDelete(profile)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + profile.name">Delete</button>
                 </td>
               </tr>
             </template>

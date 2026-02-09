@@ -10,7 +10,7 @@
           <p class="text-sm text-gray-500 dark:text-gray-400" x-show="network">Network: <span x-text="network?.name"></span></p>
         </div>
       </div>
-      <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+      <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

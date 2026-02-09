@@ -51,7 +51,7 @@
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button @click="openEditModal(role)" x-show="!role.is_system" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]" :aria-label="'Edit ' + role.name">Edit</button>
+                  <button @click="openEditModal(role)" x-show="!role.is_system && $store.permissions.canUpdate('roles')" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px]" :aria-label="'Edit ' + role.name">Edit</button>
                 </div>
               </td>
             </tr>

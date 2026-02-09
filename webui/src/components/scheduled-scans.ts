@@ -205,7 +205,7 @@ export function scheduledScansPageTemplate(): string {
     <div x-data="scheduledScansList">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Scheduled Scans</h1>
-        <button @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer transition-colors" aria-label="Add new scheduled scan">
+        <button x-show="$store.permissions.canCreate('scheduled_scans')" @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer transition-colors" aria-label="Add new scheduled scan">
           Add Schedule
         </button>
       </div>
@@ -231,25 +231,30 @@ export function scheduledScansPageTemplate(): string {
             <template x-for="scan in scans" :key="scan.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <button @click="openEditModal(scan)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="scan.name" :aria-label="'Edit schedule: ' + scan.name"></button>
+                  <button x-show="$store.permissions.canUpdate('scheduled_scans')" @click="openEditModal(scan)" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left" x-text="scan.name" :aria-label="'Edit schedule: ' + scan.name"></button>
+                  <span x-show="!$store.permissions.canUpdate('scheduled_scans')" class="font-medium text-gray-900 dark:text-white" x-text="scan.name"></span>
                   <div class="text-sm text-gray-600 dark:text-gray-400" x-text="scan.description || ''"></div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="getNetworkName(scan.network_id)"></td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="getProfileName(scan.profile_id)"></td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 font-mono" x-text="scan.cron_expression"></td>
                 <td class="px-6 py-4">
-                  <button @click="toggleEnabled(scan)"
+                  <button x-show="$store.permissions.canUpdate('scheduled_scans')" @click="toggleEnabled(scan)"
                           class="px-2 py-1 text-xs font-medium rounded-full border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
                           :class="scan.enabled ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'"
                           :aria-label="(scan.enabled ? 'Disable' : 'Enable') + ' schedule: ' + scan.name"
                           :aria-pressed="scan.enabled">
                     <span x-text="scan.enabled ? 'Enabled' : 'Disabled'"></span>
                   </button>
+                  <span x-show="!$store.permissions.canUpdate('scheduled_scans')"
+                        class="px-2 py-1 text-xs font-medium rounded-full border"
+                        :class="scan.enabled ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'"
+                        x-text="scan.enabled ? 'Enabled' : 'Disabled'"></span>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300" x-text="formatDate(scan.next_run_at)"></td>
                 <td class="px-6 py-4 text-right space-x-3">
-                  <button @click="openEditModal(scan)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + scan.name">Edit</button>
-                  <button @click="confirmDelete(scan)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + scan.name">Delete</button>
+                  <button x-show="$store.permissions.canUpdate('scheduled_scans')" @click="openEditModal(scan)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Edit ' + scan.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('scheduled_scans')" @click="confirmDelete(scan)" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors" :aria-label="'Delete ' + scan.name">Delete</button>
                 </td>
               </tr>
             </template>

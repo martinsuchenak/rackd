@@ -8,8 +8,8 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="device?.name"></h1>
       </div>
       <div class="flex gap-2">
-        <button @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Edit</button>
-        <button @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Delete</button>
+        <button x-show="$store.permissions.canUpdate('devices')" @click="openEditModal()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Edit</button>
+        <button x-show="$store.permissions.canDelete('devices')" @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Delete</button>
       </div>
     </div>
 
@@ -96,7 +96,7 @@
           Relationships
           <span x-show="relationships.length > 0" class="ml-2 px-2 py-0.5 text-sm font-normal bg-gray-200 dark:bg-gray-700 rounded-full" x-text="relationships.length"></span>
         </h2>
-        <button @click="openRelationshipModal()" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors">Add Relationship</button>
+        <button x-show="$store.permissions.canUpdate('devices')" @click="openRelationshipModal()" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors">Add Relationship</button>
       </div>
       <!-- Filters and Sort -->
       <div x-show="relationships.length > 0" class="flex gap-2 mb-4">
@@ -138,13 +138,13 @@
                 </div>
                 <div x-show="!(editingRelationship?.parent_id === rel.parent_id && editingRelationship?.child_id === rel.child_id && editingRelationship?.type === rel.type)" class="mt-1">
                   <p x-show="rel.notes" class="text-sm text-gray-600 dark:text-gray-400 italic" x-text="rel.notes"></p>
-                  <button @click="startEditNotes(rel)" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 mt-1">
+                  <button x-show="$store.permissions.canUpdate('devices')" @click="startEditNotes(rel)" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 mt-1">
                     <span x-show="!rel.notes">Add note</span>
                     <span x-show="rel.notes">Edit note</span>
                   </button>
                 </div>
               </div>
-              <button @click="removeRelationship(rel)" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ml-2">Remove</button>
+              <button x-show="$store.permissions.canUpdate('devices')" @click="removeRelationship(rel)" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors ml-2">Remove</button>
             </div>
           </div>
         </template>

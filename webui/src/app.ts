@@ -94,7 +94,7 @@ function router() {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
 
-    // Nav items from config
+    // Nav items from config, filtered by user permissions
     get navItems() {
       const base = [
         { label: 'Devices', path: '/devices', order: 10 },
@@ -103,7 +103,18 @@ function router() {
         { label: 'Discovery', path: '/discovery', order: 40 },
       ];
       const dynamic = window.rackdConfig?.nav_items ?? [];
-      return [...base, ...dynamic].sort((a, b) => a.order - b.order);
+      const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
+      const userPermissions = window.rackdConfig?.user?.permissions ?? [];
+      return allItems.filter((item: any) => {
+        if (!item.required_permissions || item.required_permissions.length === 0) {
+          return true;
+        }
+        return item.required_permissions.every((req: any) =>
+          userPermissions.some((perm: any) =>
+            perm.resource === req.resource && perm.action === req.action
+          )
+        );
+      });
     },
 
     // Check if current route is an extension page
@@ -167,64 +178,52 @@ function themeToggle() {
   };
 }
 
-// Permissions component for checking user permissions
-function permissions() {
-  return {
-    permissions: [] as Permission[],
-    roles: [] as Role[],
-    loaded: false,
+// Permissions store for checking user permissions (accessible as $store.permissions in all components)
+function initPermissionsStore() {
+  const userPermissions: Permission[] = (window.rackdConfig?.user?.permissions ?? []) as any;
+  const userRoles: Role[] = (window.rackdConfig?.user?.roles ?? []) as any;
 
-    async init() {
-      await this.load();
-    },
-
-    async load() {
-      try {
-        const user = await api.getCurrentUser();
-        this.permissions = user.permissions;
-        this.roles = user.roles || [];
-        this.loaded = true;
-      } catch {
-        this.permissions = [];
-        this.roles = [];
-        this.loaded = true;
-      }
-    },
+  const store = {
+    permissions: userPermissions,
+    roles: userRoles,
+    loaded: true,
 
     can(resource: string, action: string): boolean {
-      return this.permissions.some((p: Permission) =>
+      return store.permissions.some((p: Permission) =>
         p.resource === resource && p.action === action
       );
     },
 
     canList(resource: string): boolean {
-      return this.can(resource, 'list');
+      return store.can(resource, 'list');
     },
 
     canRead(resource: string): boolean {
-      return this.can(resource, 'read');
+      return store.can(resource, 'read');
     },
 
     canCreate(resource: string): boolean {
-      return this.can(resource, 'create');
+      return store.can(resource, 'create');
     },
 
     canUpdate(resource: string): boolean {
-      return this.can(resource, 'update');
+      return store.can(resource, 'update');
     },
 
     canDelete(resource: string): boolean {
-      return this.can(resource, 'delete');
+      return store.can(resource, 'delete');
     },
 
     hasAnyPermission(resource: string, ...actions: string[]): boolean {
-      return actions.some((action) => this.can(resource, action));
+      return actions.some((action) => store.can(resource, action));
     },
 
     hasAllPermissions(resource: string, ...actions: string[]): boolean {
-      return actions.every((action) => this.can(resource, action));
+      return actions.every((action) => store.can(resource, action));
     },
   };
+
+  Alpine.store('permissions', store);
 }
 
 
@@ -280,8 +279,8 @@ async function init(): Promise<void> {
   Alpine.data('usersList', usersList);
   Alpine.data('userMenu', userMenu);
 
-  // Permissions
-  Alpine.data('permissions', permissions);
+  // Permissions store (accessible as $store.permissions in all components)
+  initPermissionsStore();
 
   // Register pages for credentials, profiles, scheduled scans
   window.rackdRegisterPage('/credentials', credentialsPageTemplate);
