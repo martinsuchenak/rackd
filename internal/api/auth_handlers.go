@@ -52,6 +52,26 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.svc != nil && h.svc.Auth != nil {
+		result, err := h.svc.Auth.Login(r.Context(), req.Username, req.Password)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("User logged in", "username", req.Username, "user_id", result.User.ID)
+
+		h.setSessionCookie(w, result.Session.Token)
+
+		response := model.LoginResponse{
+			User:      result.User,
+			ExpiresAt: result.Session.ExpiresAt,
+		}
+
+		h.writeJSON(w, http.StatusOK, response)
+		return
+	}
+
 	user, err := h.store.GetUserByUsername(req.Username)
 	if err != nil {
 		log.Warn("Login failed: user not found", "username", req.Username)
@@ -71,7 +91,6 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Derive admin status from RBAC roles instead of the legacy IsAdmin field
 	isAdmin, _ := h.store.HasPermission(r.Context(), user.ID, "users", "create")
 
 	session, err := h.sessionManager.CreateSession(user.ID, user.Username, isAdmin)
@@ -98,7 +117,26 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	session, ok := r.Context().Value(SessionContextKey).(*auth.Session)
+	if h.svc != nil && h.svc.Auth != nil {
+		session, ok := r.Context().Value(contextKey(SessionContextKey)).(*auth.Session)
+		if !ok || session == nil {
+			h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+			return
+		}
+
+		if err := h.svc.Auth.Logout(r.Context(), session.Token); err != nil {
+			log.Warn("Failed to invalidate session", "error", err)
+		}
+
+		h.clearSessionCookie(w)
+
+		log.Info("User logged out", "username", session.Username, "user_id", session.UserID)
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	session, ok := r.Context().Value(contextKey(SessionContextKey)).(*auth.Session)
 	if !ok || session == nil {
 		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 		return
@@ -116,7 +154,18 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getCurrentUser(w http.ResponseWriter, r *http.Request) {
-	session, ok := r.Context().Value(SessionContextKey).(*auth.Session)
+	if h.svc != nil && h.svc.Auth != nil {
+		user, err := h.svc.Auth.GetCurrentUser(r.Context())
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		h.writeJSON(w, http.StatusOK, user)
+		return
+	}
+
+	session, ok := r.Context().Value(contextKey(SessionContextKey)).(*auth.Session)
 	if !ok || session == nil {
 		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 		return

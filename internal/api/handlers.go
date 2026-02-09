@@ -232,11 +232,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 		mux.HandleFunc("DELETE /api/scheduled-scans/{id}", wrapPerm(h.deleteScheduledScan, "scheduled-scans", "delete"))
 	}
 
-	// API Key routes
-	mux.HandleFunc("GET /api/keys", wrapPerm(h.listAPIKeys, "apikeys", "list"))
-	mux.HandleFunc("POST /api/keys", wrapPerm(h.createAPIKey, "apikeys", "create"))
-	mux.HandleFunc("GET /api/keys/{id}", wrapPerm(h.getAPIKey, "apikeys", "read"))
-	mux.HandleFunc("DELETE /api/keys/{id}", wrapPerm(h.deleteAPIKey, "apikeys", "delete"))
+	// API Key routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/keys", wrapAuth(h.listAPIKeys))
+	mux.HandleFunc("POST /api/keys", wrapAuth(h.createAPIKey))
+	mux.HandleFunc("GET /api/keys/{id}", wrapAuth(h.getAPIKey))
+	mux.HandleFunc("DELETE /api/keys/{id}", wrapAuth(h.deleteAPIKey))
 
 	// Bulk device operations (RBAC enforced in service layer)
 	mux.HandleFunc("POST /api/devices/bulk", wrapAuth(h.bulkCreateDevices))
@@ -249,10 +249,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, opts ...HandlerOption) {
 	mux.HandleFunc("POST /api/networks/bulk", wrapAuth(h.bulkCreateNetworks))
 	mux.HandleFunc("DELETE /api/networks/bulk", wrapAuth(h.bulkDeleteNetworks))
 
-	// Audit log routes
-	mux.HandleFunc("GET /api/audit", wrapPerm(h.listAuditLogs, "audit", "list"))
-	mux.HandleFunc("GET /api/audit/export", wrapPerm(h.exportAuditLogs, "audit", "list"))
-	mux.HandleFunc("GET /api/audit/{id}", wrapPerm(h.getAuditLog, "audit", "list"))
+	// Audit log routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/audit", wrapAuth(h.listAuditLogs))
+	mux.HandleFunc("GET /api/audit/export", wrapAuth(h.exportAuditLogs))
+	mux.HandleFunc("GET /api/audit/{id}", wrapAuth(h.getAuditLog))
 
 	// Auth routes (no auth required for login)
 	loginHandler := LimitBody(h.login)

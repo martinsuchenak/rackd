@@ -10,10 +10,25 @@ import (
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
-// listAPIKeys lists all API keys
 func (h *Handler) listAPIKeys(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	filter := &model.APIKeyFilter{Name: name}
+
+	if h.svc != nil && h.svc.APIKeys != nil {
+		keys, err := h.svc.APIKeys.List(r.Context(), filter)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		responses := make([]model.APIKeyResponse, len(keys))
+		for i, key := range keys {
+			responses[i] = key.ToResponse()
+		}
+
+		h.writeJSON(w, http.StatusOK, responses)
+		return
+	}
 
 	keys, err := h.store.ListAPIKeys(filter)
 	if err != nil {
@@ -21,7 +36,6 @@ func (h *Handler) listAPIKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to response format (hide keys)
 	responses := make([]model.APIKeyResponse, len(keys))
 	for i, key := range keys {
 		responses[i] = key.ToResponse()
@@ -30,7 +44,6 @@ func (h *Handler) listAPIKeys(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, responses)
 }
 
-// createAPIKey creates a new API key
 func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name        string     `json:"name"`
@@ -43,12 +56,29 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.svc != nil && h.svc.APIKeys != nil {
+		key, err := h.svc.APIKeys.Create(r.Context(), &model.APIKey{
+			Name:        req.Name,
+			Description: req.Description,
+			ExpiresAt:   req.ExpiresAt,
+		})
+
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("API key created", "name", req.Name, "id", key)
+
+		h.writeJSON(w, http.StatusCreated, key)
+		return
+	}
+
 	if req.Name == "" {
 		h.writeError(w, http.StatusBadRequest, "MISSING_NAME", "Name is required")
 		return
 	}
 
-	// Generate API key
 	keyStr, err := auth.GenerateKey()
 	if err != nil {
 		h.internalError(w, err)
@@ -70,13 +100,22 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("API key created", "name", key.Name, "id", key.ID)
 
-	// Return the full key (including the actual key) only on creation
 	h.writeJSON(w, http.StatusCreated, key)
 }
 
-// getAPIKey retrieves an API key by ID
 func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.APIKeys != nil {
+		key, err := h.svc.APIKeys.Get(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		h.writeJSON(w, http.StatusOK, key.ToResponse())
+		return
+	}
 
 	key, err := h.store.GetAPIKey(id)
 	if err != nil {
@@ -84,13 +123,23 @@ func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return response format (hide key)
 	h.writeJSON(w, http.StatusOK, key.ToResponse())
 }
 
-// deleteAPIKey deletes an API key
 func (h *Handler) deleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	if h.svc != nil && h.svc.APIKeys != nil {
+		if err := h.svc.APIKeys.Delete(r.Context(), id); err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		log.Info("API key deleted", "id", id)
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	if err := h.store.DeleteAPIKey(id); err != nil {
 		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "API key not found")
@@ -98,5 +147,6 @@ func (h *Handler) deleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("API key deleted", "id", id)
+
 	w.WriteHeader(http.StatusNoContent)
 }

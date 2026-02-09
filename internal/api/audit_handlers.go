@@ -43,29 +43,43 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if h.svc != nil && h.svc.Audit != nil {
+		logs, err := h.svc.Audit.List(r.Context(), filter)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, logs)
+		return
+	}
+
 	logs, err := h.store.ListAuditLogs(filter)
 	if err != nil {
 		h.internalError(w, err)
 		return
 	}
-
 	h.writeJSON(w, http.StatusOK, logs)
 }
 
 // getAuditLog handles GET /api/audit/{id}
 func (h *Handler) getAuditLog(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "Audit log ID is required")
+
+	if h.svc != nil && h.svc.Audit != nil {
+		log, err := h.svc.Audit.Get(r.Context(), id)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+		h.writeJSON(w, http.StatusOK, log)
 		return
 	}
 
 	log, err := h.store.GetAuditLog(id)
 	if err != nil {
-		h.internalError(w, err)
+		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "Audit log not found")
 		return
 	}
-
 	h.writeJSON(w, http.StatusOK, log)
 }
 
@@ -93,6 +107,31 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 		if t, err := time.Parse(time.RFC3339, end); err == nil {
 			filter.EndTime = &t
 		}
+	}
+
+	if h.svc != nil && h.svc.Audit != nil {
+		data, err := h.svc.Audit.Export(r.Context(), filter, format)
+		if err != nil {
+			h.handleServiceError(w, err)
+			return
+		}
+
+		var contentType string
+		var filename string
+
+		switch format {
+		case "csv":
+			contentType = "text/csv"
+			filename = "audit-logs.csv"
+		default:
+			contentType = "application/json"
+			filename = "audit-logs.json"
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		w.Write(data)
+		return
 	}
 
 	logs, err := h.store.ListAuditLogs(filter)

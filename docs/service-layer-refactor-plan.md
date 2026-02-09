@@ -601,13 +601,13 @@ All foundation files created and wired up:
 | 8 | **Users** | `service/user.go` | `user_handlers.go` → `svc.Users.*` | `wrapAuth` | N/A | N/A | **DONE** |
 | 9 | **Roles** | `service/role.go` | `role_handlers.go` → `svc.Roles.*` | `wrapAuth` | N/A | N/A | **DONE** |
 
-### Phase 5: Auth & Remaining — TODO
+### Phase 5: Auth & Remaining — DONE
 
 | # | Resource | Service file | API handlers | Routes | MCP tools | Tests | Status |
 |---|----------|-------------|--------------|--------|-----------|-------|--------|
-| 10 | **Auth** | `service/auth.go` | `auth_handlers.go` | mixed | N/A | N/A | TODO |
-| 11 | **Audit** | `service/audit_svc.go` | `audit_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
-| 12 | **API Keys** | `service/apikey.go` | `apikey_handlers.go` | `wrapPerm` | N/A | no auth | TODO |
+| 10 | **Auth** | `service/auth.go` | `auth_handlers.go` → `svc.Auth.*` | `wrapAuth` (except login) | N/A | N/A | **DONE** |
+| 11 | **Audit** | `service/audit_svc.go` | `audit_handlers.go` → `svc.Audit.*` | `wrapAuth` | N/A | N/A | **DONE** |
+| 12 | **API Keys** | `service/apikey.go` | `apikey_handlers.go` → `svc.APIKeys.*` | `wrapAuth` | N/A | N/A | **DONE** |
 
 ### Phase 6: Cleanup — TODO
 
