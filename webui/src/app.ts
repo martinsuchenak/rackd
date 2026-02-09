@@ -88,11 +88,37 @@ window.rackdRegisterScanType = (type: ScanType) => {
 window.rackdExtensionPages = extensionPages;
 window.rackdScanTypes = [...baseScanTypes];
 
+// Route permission requirements - maps route prefixes to required permissions
+const routePermissions: { prefix: string; resource: string; action: string }[] = [
+  { prefix: '/users', resource: 'users', action: 'list' },
+  { prefix: '/roles', resource: 'roles', action: 'list' },
+  { prefix: '/devices', resource: 'devices', action: 'list' },
+  { prefix: '/networks', resource: 'networks', action: 'list' },
+  { prefix: '/pools', resource: 'networks', action: 'list' },
+  { prefix: '/datacenters', resource: 'datacenters', action: 'list' },
+  { prefix: '/discovery', resource: 'discovery', action: 'list' },
+];
+
+function checkRoutePermission(path: string): boolean {
+  const cleanPath = path.split('?')[0];
+  const userPermissions = (window.rackdConfig?.user?.permissions ?? []) as any[];
+  for (const rule of routePermissions) {
+    if (cleanPath === rule.prefix || cleanPath.startsWith(rule.prefix + '/') || cleanPath.startsWith(rule.prefix + '?')) {
+      return userPermissions.some(
+        (p: any) => p.resource === rule.resource && p.action === rule.action
+      );
+    }
+  }
+  // No permission rule = allow (dashboard, login, etc.)
+  return true;
+}
+
 // Router component for SPA navigation
 function router() {
   return {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
+    accessDenied: false,
 
     // Nav items from config, filtered by user permissions
     get navItems() {
@@ -130,9 +156,11 @@ function router() {
     },
 
     init() {
+      this.accessDenied = !checkRoutePermission(this.route);
       updatePageTitle(this.route);
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
+        this.accessDenied = !checkRoutePermission(this.route);
         updatePageTitle(this.route);
       });
     },
@@ -141,6 +169,7 @@ function router() {
       if (path !== this.route) {
         history.pushState({}, '', path);
         this.route = path;
+        this.accessDenied = !checkRoutePermission(path);
         updatePageTitle(path);
         this.sidebarOpen = false;
       }

@@ -1,6 +1,6 @@
 # RBAC UI Enforcement Plan
 
-## Status: IN_PROGRESS (Phase 1: COMPLETED, Phase 2: COMPLETED, Phase 3: COMPLETED, Phase 4: COMPLETED)
+## Status: IN_PROGRESS (Phase 1: COMPLETED, Phase 2: COMPLETED, Phase 3: COMPLETED, Phase 4: COMPLETED, Phase 5: COMPLETED)
 
 ## Problem
 
@@ -279,67 +279,51 @@ Alpine.data('permissions', () => ({
 - Test each page with viewer user - only list/read visible
 - Test users/roles pages with non-admin user - entire page hidden or redirect
 
-### Phase 5: Form Guards and Route Protection
+### Phase 5: Route Protection - **COMPLETED**
+
+**Implementation Notes:**
+
+- Added `routePermissions` map in `app.ts` that maps route prefixes to required `resource:action` permissions
+- Added `checkRoutePermission(path)` function that checks user permissions against the route map
+- Router tracks `accessDenied` state, updated on every navigation (navigate, popstate, init)
+- Access denied page shows centered card with icon, message, and "Go to Dashboard" button
+- Routes without permission rules (dashboard, login) are always allowed
+- Self-service profile update: `UserService.Update` now allows users to edit their own email/full_name without `users:update` permission (privileged fields like `is_active`/`is_admin` still require the permission)
 
 **Frontend Changes:**
 
 `webui/src/app.ts`:
-- Add route guard function that checks permissions before allowing navigation
-- On route change, check if user has permission for that resource
-- Redirect to home or show 403 if denied
+- ✅ Added `routePermissions` array mapping route prefixes to required permissions
+- ✅ Added `checkRoutePermission(path)` function
+- ✅ Router `accessDenied` state tracked and updated on `init()`, `navigate()`, and `popstate`
+
+Route permission map:
+| Route prefix | Required permission |
+|---|---|
+| `/users` | `users:list` |
+| `/roles` | `roles:list` |
+| `/devices` | `devices:list` |
+| `/networks` | `networks:list` |
+| `/pools` | `networks:list` |
+| `/datacenters` | `datacenters:list` |
+| `/discovery` | `discovery:list` |
 
 `webui/src/index.html`:
-- Add 403 page template for permission denied
+- ✅ Added access denied template with icon, message, and dashboard link
+- ✅ Wrapped all page includes in `<template x-if="!accessDenied">` to prevent rendering
 
-`webui/src/components/*.ts`:
-- For detail pages (e.g., `/devices/detail`): check `canRead('devices')` on load
-- For create forms: check `canCreate('resource')` on load
-- For edit forms: check `canUpdate('resource')` on load
-- Show "Access Denied" message if permission check fails
+**Backend Changes:**
 
-**Route protection example:**
-```typescript
-function checkRoutePermission(path: string): boolean {
-  const resource = getRouteResource(path);
-  const action = getRouteAction(path);
-
-  if (resource === 'users' && !permissions.canList('users')) {
-    return false;
-  }
-  // ... other routes
-  return true;
-}
-
-// In Alpine data
-beforeEnterRoute(path: string) {
-  if (!checkRoutePermission(path)) {
-    window.location.href = '/403';
-  }
-}
-```
-
-**Form guard example:**
-```typescript
-// In devices.ts
-init() {
-  if (this.isEditMode && !permissions.canUpdate('devices')) {
-    this.error = 'You do not have permission to edit devices';
-    this.loading = false;
-    return;
-  }
-  if (!this.isEditMode && !permissions.canCreate('devices')) {
-    this.error = 'You do not have permission to create devices';
-    this.loading = false;
-    return;
-  }
-  // ... continue loading
-}
-```
+`internal/service/user.go`:
+- ✅ `Update()` now allows self-updates (email, full_name) without `users:update` permission
+- ✅ Privileged fields (`is_active`, `is_admin`) silently ignored for self-updates
 
 **Verification:**
-- Test direct URL access to `/users` with non-admin user -> redirect/403
-- Test direct URL access to `/devices/add` with read-only user -> redirect/403
-- Test direct URL access to `/devices/edit?id=X` with read-only user -> redirect/403
+- ✅ Build passes (Go + WebUI)
+- Test direct URL access to `/users` with viewer user -> shows access denied page
+- Test direct URL access to `/roles` with viewer user -> shows access denied page
+- Test browser back/forward navigation respects permission checks
+- Test "Go to Dashboard" button navigates correctly
 
 ### Phase 6: Error Handling and Feedback
 
