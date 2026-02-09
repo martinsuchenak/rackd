@@ -26,6 +26,9 @@ type UnifiedScanner struct {
 	bannerGrabber   *BannerGrabber
 	osFingerprinter *OSFingerprinter
 	ouiDatabase     *OUIDatabase
+	netbiosScanner  *NetBIOSScanner
+	mdnsScanner     *mDNSScanner
+	lldpScanner     *LLDPScanner
 	mu              sync.RWMutex
 }
 
@@ -45,6 +48,9 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 		bannerGrabber:   NewBannerGrabber(2 * time.Second),
 		osFingerprinter: NewOSFingerprinter(2 * time.Second),
 		ouiDatabase:     NewOUIDatabase(),
+		netbiosScanner:  NewNetBIOSScanner(5 * time.Second),
+		mdnsScanner:     NewmDNSScanner(5 * time.Second),
+		lldpScanner:     NewLLDPScanner(5 * time.Second),
 	}
 }
 
@@ -172,7 +178,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			device := s.discoverHostWithOptions(ctx, ip, network.ID, opts)
+			device := s.discoverHostWithOptions(ctx, ip, network.ID, network.Subnet, opts)
 			if device != nil {
 				existing, _ := s.storage.GetDiscoveredDeviceByIP(network.ID, ip)
 				if existing != nil {
@@ -207,7 +213,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	s.cleanupCompletedScans()
 }
 
-func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, opts *ScanOptions) *model.DiscoveredDevice {
+func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, subnet string, opts *ScanOptions) *model.DiscoveredDevice {
 	if !s.isHostAlive(ip, opts.getPorts()) {
 		return nil
 	}
@@ -302,6 +308,44 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 			device.OSGuess = GetOSTypeFromFamily(fp.OSFamily)
 			if fp.Confidence > device.Confidence {
 				device.Confidence = fp.Confidence
+			}
+		}
+	}
+
+	// NetBIOS discovery (for Windows devices)
+	if opts.ScanType == model.ScanTypeFull || opts.ScanType == model.ScanTypeDeep {
+		if netbiosResults, err := s.netbiosScanner.Discover(ctx, subnet); err == nil {
+			for _, nb := range netbiosResults {
+				if nb.IP == ip && nb.Hostname != "" {
+					scorer.Add(nb.Hostname, "netbios", 2)
+					if device.OSGuess == "" {
+						device.OSGuess = "Windows"
+					}
+				}
+			}
+			bestHostname, confidence := scorer.GetBest()
+			if bestHostname != "" {
+				device.Hostname = bestHostname
+				device.Confidence = confidence
+			}
+		}
+	}
+
+	// mDNS/Bonjour discovery
+	if opts.ScanType == model.ScanTypeFull || opts.ScanType == model.ScanTypeDeep {
+		if mdnsResults, err := s.mdnsScanner.Discover(ctx, subnet); err == nil {
+			for _, md := range mdnsResults {
+				if md.IP == ip && md.Hostname != "" {
+					scorer.Add(md.Hostname, "mdns", 2)
+					if device.OSGuess == "" && strings.Contains(strings.ToLower(md.Type), "apple") {
+						device.OSGuess = "macOS"
+					}
+				}
+			}
+			bestHostname, confidence := scorer.GetBest()
+			if bestHostname != "" {
+				device.Hostname = bestHostname
+				device.Confidence = confidence
 			}
 		}
 	}
