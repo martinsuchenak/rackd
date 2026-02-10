@@ -8,10 +8,10 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 
 | Phase | Remaining | Status |
 |-------|-----------|--------|
-| **Phase 3: Multi-User** | 3 of 5 | 🚧 In Progress |
+| **Phase 3: Multi-User** | 2 of 6 | 🚧 In Progress |
 | **Phase 4: Advanced** | 10 of 10 | 🔮 Future |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **16** | |
+| **Total remaining** | **15** | |
 
 ### Completed (not listed here)
 
@@ -19,6 +19,8 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 2**: Export/Import, Bulk Operations, Rate Limiting, Audit Trail, UI/UX Enhancements
 - **Phase 3.1**: User Management (users, sessions, bcrypt, login UI, CLI, bootstrap via env vars)
 - **Phase 3.2**: RBAC (roles, permissions, service-layer enforcement, default roles, UI, CLI)
+- **Phase 3.3**: SSO/OIDC — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (implement when requested)
+- **Phase 3.4**: PostgreSQL — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (SQLite handles the scale)
 
 ## Architecture Reference
 
@@ -50,67 +52,79 @@ webui/src/
 
 ## Phase 3: Multi-User (remaining)
 
-### 3.3 SSO/OIDC Integration
+### 3.6 MCP OAuth 2.1 Authorization
 
-**Effort**: 5-7 days | **Priority**: MEDIUM
+**Effort**: 5-7 days | **Priority**: HIGH (next up)
 
-**What**: Enterprise authentication via OpenID Connect
+**What**: OAuth 2.1 authorization for the MCP server endpoint, ensuring MCP operations are performed as the correct user with proper RBAC enforcement. Also upgrades paularlott/mcp from v0.9.2 to v0.11.1.
+
+**Why top priority**: Currently MCP auth uses a manual API key check in `HandleRequest()`. This doesn't follow the MCP authorization spec and means MCP clients like Claude Desktop have no standard way to authenticate. With OAuth, any spec-compliant MCP client can authenticate via the user's existing Rackd account and inherit their RBAC permissions.
+
+**MCP Auth Spec Requirements** (2025-11-25):
+- MCP server acts as an OAuth 2.1 **Resource Server** (validates access tokens)
+- Separate **Authorization Server** issues tokens (can be built into Rackd since we own the user database)
+- **Protected Resource Metadata** (RFC 9728) for client discovery
+- Returns `401` with `WWW-Authenticate` header when unauthorized
 
 **Tasks**:
-- [ ] OIDC client implementation
-- [ ] OAuth2 authorization code flow
-- [ ] SSO configuration (issuer URL, client ID/secret, scopes)
-- [ ] SSO login UI (provider buttons on login page)
-- [ ] Support multiple providers (Google, Okta, Azure AD)
-- [ ] User auto-provisioning from SSO claims
-- [ ] Role mapping from SSO groups/claims
-- [ ] SSO CLI configuration commands
+- [ ] Upgrade `github.com/paularlott/mcp` from v0.9.2 to v0.11.1
+- [ ] OAuth 2.1 Authorization Server:
+  - [ ] `GET /oauth/authorize` — Authorization endpoint (renders login/consent page)
+  - [ ] `POST /oauth/token` — Token endpoint (issues access + refresh tokens)
+  - [ ] `POST /oauth/revoke` — Token revocation
+  - [ ] Authorization Code grant with PKCE (for public clients like Claude Desktop)
+  - [ ] Client Credentials grant (for service-to-service)
+- [ ] OAuth token model and storage (access tokens, refresh tokens, authorization codes)
+- [ ] Token scoping tied to user's RBAC permissions
+- [ ] Protected Resource Metadata endpoint:
+  - [ ] `GET /.well-known/oauth-protected-resource` (RFC 9728)
+  - [ ] Points MCP clients to the authorization server endpoints
+- [ ] Token validation middleware for MCP endpoint (replace current manual API key check)
+- [ ] OAuth client registration (store client_id/redirect_uri pairs)
+- [ ] OAuth client management UI (register/revoke MCP clients)
+- [ ] Consent screen UI (user approves MCP client access)
+- [ ] Tests for full OAuth flow (authorize → token → MCP call → RBAC check)
 
-**Dependencies**: User Management, RBAC (both complete)
+**Current auth flow** (to be replaced):
+```
+MCP client → Bearer API-key → HandleRequest() validates manually → system/API key caller
+```
+
+**New auth flow**:
+```
+MCP client → discovers /.well-known/oauth-protected-resource
+           → redirects user to /oauth/authorize (login + consent)
+           → receives authorization code
+           → exchanges code for access token at /oauth/token
+           → Bearer access-token → MCP endpoint validates token → user caller with RBAC
+```
 
 **Configuration**:
 ```bash
-OIDC_ENABLED=true
-OIDC_ISSUER_URL=https://accounts.google.com
-OIDC_CLIENT_ID=xxx
-OIDC_CLIENT_SECRET=xxx
-OIDC_REDIRECT_URL=http://localhost:8080/api/auth/oidc/callback
-OIDC_SCOPES=openid,profile,email
+MCP_OAUTH_ENABLED=true                    # Enable OAuth for MCP (default: false)
+MCP_OAUTH_ACCESS_TOKEN_TTL=1h             # Access token lifetime
+MCP_OAUTH_REFRESH_TOKEN_TTL=30d           # Refresh token lifetime
+MCP_OAUTH_AUTHORIZATION_CODE_TTL=10m      # Auth code lifetime
 ```
 
 **Files to Create**:
-- `internal/auth/oidc.go` — OIDC client, token validation, claim extraction
-- `internal/service/oidc.go` — SSO user provisioning, role mapping logic
-- `internal/api/sso_handlers.go` — `/api/auth/oidc/login`, `/api/auth/oidc/callback`
-- `webui/src/components/sso-login.ts` — SSO provider buttons on login page
-- `cmd/sso/sso.go` — CLI commands for SSO configuration
+- `internal/model/oauth.go` — OAuthClient, OAuthToken, OAuthAuthorizationCode models
+- `internal/storage/oauth_sqlite.go` — Token/client/code storage
+- `internal/auth/oauth.go` — Token generation, validation, PKCE verification
+- `internal/service/oauth.go` — OAuth flow orchestration, consent logic
+- `internal/api/oauth_handlers.go` — `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`
+- `internal/api/resource_metadata_handler.go` — `/.well-known/oauth-protected-resource`
+- `webui/src/components/oauth-consent.ts` — Consent screen
+- `webui/src/components/oauth-clients.ts` — Client management UI
 
-### 3.4 PostgreSQL Storage Backend
+**Files to Modify**:
+- `internal/mcp/server.go` — Replace manual API key auth with OAuth token validation
+- `internal/api/handlers.go` — Register OAuth + metadata routes
+- `go.mod` — Upgrade paularlott/mcp to v0.11.1
 
-**Effort**: 10-14 days | **Priority**: MEDIUM
-
-**What**: Scale beyond SQLite for larger deployments
-
-**Tasks**:
-- [ ] PostgreSQL storage adapter implementing all storage interfaces
-- [ ] Connection pooling (pgxpool)
-- [ ] PostgreSQL-specific migrations (adapt from SQLite)
-- [ ] Database selection via config
-- [ ] Migration tool (SQLite to PostgreSQL)
-- [ ] Integration tests with PostgreSQL
-- [ ] Documentation
-
-**Configuration**:
-```bash
-RACKD_DATABASE_TYPE=postgres  # or sqlite (default)
-RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
-```
-
-**Files to Create**:
-- `internal/storage/postgres.go` — PostgresStorage struct, connection pool, interface impl
-- `internal/storage/postgres_migrations.go` — PostgreSQL migration runner
-- `internal/storage/postgres_device.go` (and per-entity files)
-- `internal/storage/postgres_test.go` — Integration tests
+**Backward Compatibility**:
+- When `MCP_OAUTH_ENABLED=false` (default), existing API key auth continues to work
+- When enabled, both OAuth tokens and API keys are accepted during transition period
 
 ### 3.5 Webhook System
 
@@ -394,8 +408,8 @@ SMTP_FROM=rackd@example.com
 ## Success Criteria (remaining)
 
 ### Phase 3
-- [ ] SSO works with major providers
-- [ ] PostgreSQL supports 10,000+ devices
+- [ ] MCP clients authenticate via OAuth 2.1 with PKCE
+- [ ] MCP operations enforced under the authenticating user's RBAC permissions
 
 ### Phase 4
 - [ ] Notifications delivered within 30s of trigger event
@@ -408,7 +422,6 @@ SMTP_FROM=rackd@example.com
 ### Phase 5
 - [ ] API p95 latency <200ms
 - [ ] Database queries <50ms
-- [ ] Support 50,000+ devices (with PostgreSQL)
 - [ ] Cache hit rate >80%
 
 ---
@@ -418,5 +431,5 @@ SMTP_FROM=rackd@example.com
 - All features include tests, documentation, CLI, API, and UI where applicable
 - All features include MCP tools where applicable
 - New features follow the service-layer pattern: model -> storage -> service (with RBAC) -> API handler
-- PostgreSQL is optional (SQLite remains default)
 - Webhook system is optional (can be skipped)
+- See [FUTURE_FEATURES.md](FUTURE_FEATURES.md) for ideas not yet planned (SSO, PostgreSQL, etc.)

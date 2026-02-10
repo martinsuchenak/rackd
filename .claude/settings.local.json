@@ -24,7 +24,8 @@
       "Bash(/tmp/rackd server:*)",
       "Bash(echo:*)",
       "Bash(pkill:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
   "spinnerVerbs": {

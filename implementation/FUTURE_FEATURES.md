@@ -6,6 +6,39 @@ Ideas and improvements that are not yet planned for implementation. These may be
 
 ---
 
+## SSO/OIDC Integration
+
+**Effort**: 5-7 days
+
+Enterprise authentication via OpenID Connect. Only needed when integrating into environments with mandatory SSO policies.
+
+- OIDC client implementation (authorization code flow)
+- SSO configuration (issuer URL, client ID/secret, scopes)
+- SSO login UI (provider buttons on login page)
+- Support multiple providers (Google, Okta, Azure AD)
+- User auto-provisioning from SSO claims
+- Role mapping from SSO groups/claims
+- Configuration: `OIDC_ENABLED`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`
+
+**Dependencies**: User Management, RBAC (both complete)
+
+---
+
+## PostgreSQL Storage Backend
+
+**Effort**: 10-14 days
+
+Alternative storage backend for horizontal scaling. SQLite with WAL mode comfortably handles 100K+ rows and is sufficient for most deployments. Only consider PostgreSQL if you need multiple server instances writing simultaneously.
+
+- PostgreSQL storage adapter implementing all storage interfaces
+- Connection pooling (pgxpool)
+- PostgreSQL-specific migrations
+- Database selection via config (`RACKD_DATABASE_TYPE=postgres`)
+- Migration tool (SQLite to PostgreSQL)
+- The existing storage interface pattern makes this possible without changing business logic
+
+---
+
 ## IP Address Reservation & Planning
 
 **Effort**: 2-3 days
