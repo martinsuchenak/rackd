@@ -29,6 +29,7 @@ type UnifiedScanner struct {
 	netbiosScanner  *NetBIOSScanner
 	mdnsScanner     *mDNSScanner
 	lldpScanner     *LLDPScanner
+	adaptiveScanner *AdaptiveScanner
 	mu              sync.RWMutex
 }
 
@@ -51,6 +52,7 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 		netbiosScanner:  NewNetBIOSScanner(5 * time.Second),
 		mdnsScanner:     NewmDNSScanner(5 * time.Second),
 		lldpScanner:     NewLLDPScanner(5 * time.Second),
+		adaptiveScanner: NewAdaptiveScanner(timeout, 10),
 	}
 }
 
@@ -125,24 +127,42 @@ func (s *UnifiedScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, err
 
 func (s *UnifiedScanner) CancelScan(scanID string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	scan, ok := s.scans[scanID]
 	if !ok {
+		s.mu.Unlock()
 		return ErrScanNotFound
 	}
 
+	// Accept cancellation for pending or running scans
 	if scan.Status != model.ScanStatusRunning && scan.Status != model.ScanStatusPending {
+		s.mu.Unlock()
 		return ErrScanNotRunning
 	}
 
 	cancel, ok := s.cancelFuncs[scanID]
 	if !ok {
+		s.mu.Unlock()
 		return ErrScanNotFound
 	}
 
+	// Mark as failed with completed timestamp
+	scan.Status = model.ScanStatusFailed
+	scan.ErrorMessage = "scan cancelled"
+	now := time.Now()
+	scan.CompletedAt = &now
+
+	s.mu.Unlock()
+
+	// Cancel the context to stop running goroutines
 	cancel()
+
+	// Delete cancelFunc to prevent double-cancellation
+	s.mu.Lock()
 	delete(s.cancelFuncs, scanID)
+	s.mu.Unlock()
+
+	// Persist status to database
+	s.storage.UpdateDiscoveryScan(context.Background(), scan)
 
 	return nil
 }
@@ -156,10 +176,14 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	ips := expandCIDR(ipNet)
 	scan.TotalHosts = len(ips)
 
-	semaphore := make(chan struct{}, 10)
+	params := s.adaptiveScanner.CalculateParameters(network.Subnet, opts.ScanType)
+	semaphore := make(chan struct{}, params.Workers)
 	var wg sync.WaitGroup
 	var foundCount int
 	var mu sync.Mutex
+
+	// Refresh ARP table before scanning to get recent MAC addresses
+	s.arpScanner.Refresh()
 
 	for i, ip := range ips {
 		select {
@@ -178,7 +202,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			device := s.discoverHostWithOptions(ctx, ip, network.ID, network.Subnet, opts)
+			device := s.discoverHostWithOptions(ctx, ip, network.ID, network.Subnet, opts, params.Timeout)
 			if device != nil {
 				existing, _ := s.storage.GetDiscoveredDeviceByIP(network.ID, ip)
 				if existing != nil {
@@ -213,8 +237,15 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	s.cleanupCompletedScans()
 }
 
-func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, subnet string, opts *ScanOptions) *model.DiscoveredDevice {
-	if !s.isHostAlive(ip, opts.getPorts()) {
+func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, subnet string, opts *ScanOptions, timeout time.Duration) *model.DiscoveredDevice {
+	// Check context at the very start
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	if !s.isHostAlive(ip, opts.getPorts(), timeout) {
 		return nil
 	}
 
@@ -236,6 +267,12 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 
 	scorer := NewConfidenceScorer()
 
+	// Check context before DNS lookup
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
 	names, err := net.LookupAddr(ip)
 	if err == nil && len(names) > 0 {
 		hostname := strings.TrimSuffix(names[0], ".")
@@ -243,6 +280,11 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 	}
 
 	if opts.SSHCredID != "" {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
 		if sshResult, err := s.sshScanner.Scan(ctx, ip, opts.SSHCredID); err == nil {
 			if sshResult.Hostname != "" {
 				scorer.Add(sshResult.Hostname, "ssh", GetHostnameSourceConfidence("ssh"))
@@ -256,6 +298,11 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 	}
 
 	if opts.SNMPCredID != "" {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
 		if snmpResult, err := s.snmpScanner.Scan(ctx, ip, opts.SNMPCredID); err == nil {
 			if snmpResult.SysName != "" {
 				scorer.Add(snmpResult.SysName, "snmp", GetHostnameSourceConfidence("snmp"))
@@ -264,7 +311,7 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 
 			if device.MACAddress == "" {
 				for _, iface := range snmpResult.Interfaces {
-					if iface.MAC != "" && iface.MAC != "00:00:00:00:00:00" {
+					if iface.MAC != "" && iface.MAC != "00:00:00:00:00:00:00" {
 						device.MACAddress = iface.MAC
 						break
 					}
@@ -273,7 +320,7 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 
 			if device.MACAddress == "" {
 				for _, entry := range snmpResult.ARPEntries {
-					if entry.MAC != "" && entry.MAC != "00:00:00:00:00:00" {
+					if entry.MAC != "" && entry.MAC != "00:00:00:00:00:00:00" {
 						device.MACAddress = entry.MAC
 						break
 					}
@@ -288,7 +335,7 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		device.Confidence = confidence
 	}
 
-	ports := s.scanPorts(ip, opts.getPorts())
+	ports := s.scanPorts(ip, opts.getPorts(), timeout)
 	device.OpenPorts = ports
 
 	banners := s.bannerGrabber.GrabBanners(ip, ports)
@@ -316,10 +363,23 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 	if opts.ScanType == model.ScanTypeFull || opts.ScanType == model.ScanTypeDeep {
 		if netbiosResults, err := s.netbiosScanner.Discover(ctx, subnet); err == nil {
 			for _, nb := range netbiosResults {
-				if nb.IP == ip && nb.Hostname != "" {
-					scorer.Add(nb.Hostname, "netbios", 2)
-					if device.OSGuess == "" {
-						device.OSGuess = "Windows"
+				// Only use NetBIOS results that match the exact IP we're scanning
+				// Also validate hostname looks like a valid NetBIOS name (not just special chars)
+				if nb.IP == ip && nb.Hostname != "" && len(nb.Hostname) >= 3 && len(nb.Hostname) <= 15 {
+					// NetBIOS names are typically 15 chars or less, alphanumeric/hyphen
+					hasValidChars := true
+					for _, c := range nb.Hostname {
+						if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+							hasValidChars = false
+							break
+						}
+					}
+					if hasValidChars {
+						scorer.Add(nb.Hostname, "netbios", 2)
+						// Only set OS guess if we got a valid NetBIOS hostname and no OS already detected
+						if device.OSGuess == "" {
+							device.OSGuess = "Windows"
+						}
 					}
 				}
 			}
@@ -358,12 +418,12 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 	return device
 }
 
-func (s *UnifiedScanner) isHostAlive(ip string, ports []int) bool {
+func (s *UnifiedScanner) isHostAlive(ip string, ports []int, timeout time.Duration) bool {
 	if len(ports) == 0 {
 		ports = []int{22, 80, 443, 3389}
 	}
 	for _, port := range ports {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 2*time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
 		if err == nil {
 			conn.Close()
 			return true
@@ -372,13 +432,13 @@ func (s *UnifiedScanner) isHostAlive(ip string, ports []int) bool {
 	return false
 }
 
-func (s *UnifiedScanner) scanPorts(ip string, ports []int) []int {
+func (s *UnifiedScanner) scanPorts(ip string, ports []int, timeout time.Duration) []int {
 	if len(ports) == 0 {
 		ports = []int{22, 80, 443, 3389}
 	}
 	var open []int
 	for _, port := range ports {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
 		if err == nil {
 			conn.Close()
 			open = append(open, port)
@@ -392,7 +452,7 @@ func (s *UnifiedScanner) cleanupCompletedScans() {
 	defer s.mu.Unlock()
 	for id, scan := range s.scans {
 		if (scan.Status == model.ScanStatusCompleted || scan.Status == model.ScanStatusFailed) &&
-			scan.CompletedAt != nil && time.Since(*scan.CompletedAt) > time.Hour {
+			scan.CompletedAt != nil && time.Since(*scan.CompletedAt) > 2*time.Minute {
 			delete(s.scans, id)
 		}
 	}

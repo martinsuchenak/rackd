@@ -68,3 +68,58 @@ func GetHostnameSourceConfidence(source string) int {
 		return ConfidenceLow
 	}
 }
+
+type OSSource struct {
+	OS         string
+	Source     string
+	Confidence int
+}
+
+type OSConfidenceScorer struct {
+	sources []OSSource
+}
+
+func NewOSConfidenceScorer() *OSConfidenceScorer {
+	return &OSConfidenceScorer{
+		sources: []OSSource{},
+	}
+}
+
+func (s *OSConfidenceScorer) Add(os, source string, confidence int) {
+	if os == "" {
+		return
+	}
+	s.sources = append(s.sources, OSSource{
+		OS:         os,
+		Source:     source,
+		Confidence: confidence,
+	})
+}
+
+func (s *OSConfidenceScorer) GetBest() (string, int) {
+	if len(s.sources) == 0 {
+		return "", 0
+	}
+
+	best := s.sources[0]
+	for _, source := range s.sources {
+		if source.Confidence > best.Confidence {
+			best = source
+		}
+	}
+
+	return best.OS, best.Confidence
+}
+
+func GetOSSourceConfidence(source string) int {
+	switch source {
+	case "fingerprinting":
+		return ConfidenceHigh
+	case "ssh":
+		return ConfidenceMedium
+	case "snmp":
+		return ConfidenceLow
+	default:
+		return ConfidenceLow
+	}
+}

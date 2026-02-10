@@ -23,6 +23,7 @@ import type {
   Permission,
   Role,
   RoleFilter,
+  ScanProfile,
   SearchResult,
   ServiceInfo,
   UIConfig,
@@ -51,6 +52,7 @@ export type {
   NetworkUtilization,
   Permission,
   Role,
+  ScanProfile,
   ServiceInfo,
   UIConfig,
   UserInfo,
@@ -324,8 +326,11 @@ export class RackdAPI {
     return this.request<void>('DELETE', `/api/discovery/devices/${id}`);
   }
 
-  async promoteDevice(id: string, name: string): Promise<Device> {
-    return this.request<Device>('POST', `/api/discovery/devices/${id}/promote`, { name });
+  async promoteDevice(id: string, name: string, datacenterId?: string, makeModel?: string): Promise<Device> {
+    const body: any = { name };
+    if (datacenterId) body.datacenter_id = datacenterId;
+    if (makeModel) body.make_model = makeModel;
+    return this.request<Device>('POST', `/api/discovery/devices/${id}/promote`, body);
   }
 
   async deleteDiscoveredDevicesByNetwork(networkId: string): Promise<void> {
@@ -338,6 +343,27 @@ export class RackdAPI {
 
   async saveDiscoveryRule(networkId: string, rule: Partial<DiscoveryRule>): Promise<DiscoveryRule> {
     return this.request<DiscoveryRule>('POST', `/api/discovery/networks/${networkId}/rules`, rule);
+  }
+
+  // Scan Profiles
+  async listScanProfiles(): Promise<ScanProfile[]> {
+    return this.request<ScanProfile[]>('GET', '/api/scan-profiles');
+  }
+
+  async getScanProfile(id: string): Promise<ScanProfile> {
+    return this.request<ScanProfile>('GET', `/api/scan-profiles/${id}`);
+  }
+
+  async createScanProfile(profile: Partial<ScanProfile>): Promise<ScanProfile> {
+    return this.request<ScanProfile>('POST', '/api/scan-profiles', profile);
+  }
+
+  async updateScanProfile(id: string, profile: Partial<ScanProfile>): Promise<ScanProfile> {
+    return this.request<ScanProfile>('PUT', `/api/scan-profiles/${id}`, profile);
+  }
+
+  async deleteScanProfile(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/scan-profiles/${id}`);
   }
 
   // Auth

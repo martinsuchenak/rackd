@@ -90,7 +90,7 @@ func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 }
 
 func (s *LLDPScanner) parseLLDP(data []byte, addr net.Addr) *LLDPResult {
-	if len(data) < 2 {
+	if len(data) < 14 {
 		return nil
 	}
 

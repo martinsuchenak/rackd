@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/discovery"
@@ -82,6 +84,9 @@ func (s *DiscoveryService) CancelScan(ctx context.Context, id string) error {
 		if err := s.scanner.CancelScan(id); err != nil {
 			if err == discovery.ErrScanNotFound {
 				return ErrNotFound
+			}
+			if err == discovery.ErrScanNotRunning {
+				return ValidationErrors{{Field: "scan", Message: err.Error()}}
 			}
 			return err
 		}
@@ -170,15 +175,62 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		return nil, err
 	}
 
+	// Carry over all discovered device data to supported Device fields
 	device.ID = uuid.Must(uuid.NewV7()).String()
+
+	// Set IP address from discovered device
 	if device.Addresses == nil {
 		device.Addresses = []model.Address{{IP: discovered.IP, Type: "ipv4"}}
 	} else {
+		// Add discovered IP to existing addresses
 		device.Addresses = append(device.Addresses, model.Address{IP: discovered.IP, Type: "ipv4"})
 	}
 
-	if discovered.Hostname != "" && device.Domains == nil {
-		device.Domains = []string{discovered.Hostname}
+	// Set hostname from discovered device
+	if discovered.Hostname != "" && device.Hostname == "" {
+		device.Hostname = discovered.Hostname
+	}
+
+	// Set OS guess from discovered device
+	if discovered.OSGuess != "" && device.OS == "" {
+		device.OS = discovered.OSGuess
+	}
+
+	// Set vendor from discovered device (use MakeModel field)
+	if discovered.Vendor != "" && device.MakeModel == "" {
+		device.MakeModel = discovered.Vendor
+	}
+
+	// Store discovered device info in description for reference
+	if discovered.MACAddress != "" || len(discovered.Services) > 0 || len(discovered.OpenPorts) > 0 {
+		infoParts := []string{}
+		if discovered.MACAddress != "" {
+			infoParts = append(infoParts, fmt.Sprintf("MAC: %s", discovered.MACAddress))
+		}
+		if discovered.Vendor != "" {
+			infoParts = append(infoParts, fmt.Sprintf("Vendor: %s", discovered.Vendor))
+		}
+		if discovered.OSGuess != "" {
+			infoParts = append(infoParts, fmt.Sprintf("OS: %s", discovered.OSGuess))
+		}
+		if len(discovered.OpenPorts) > 0 {
+			infoParts = append(infoParts, fmt.Sprintf("Ports: %v", discovered.OpenPorts))
+		}
+		if len(discovered.Services) > 0 {
+			servicesInfo := make([]string, len(discovered.Services))
+			for i, svc := range discovered.Services {
+				if svc.Version != "" {
+					servicesInfo[i] = fmt.Sprintf("%s@%d (%s %s)", svc.Service, svc.Port, svc.Protocol, svc.Version)
+				} else {
+					servicesInfo[i] = fmt.Sprintf("%s@%d (%s)", svc.Service, svc.Port, svc.Protocol)
+				}
+			}
+			infoParts = append(infoParts, fmt.Sprintf("Services: %s", strings.Join(servicesInfo, ", ")))
+		}
+
+		if device.Description == "" {
+			device.Description = strings.Join(infoParts, " | ")
+		}
 	}
 
 	if err := s.store.CreateDevice(enrichAuditCtx(ctx), device); err != nil {

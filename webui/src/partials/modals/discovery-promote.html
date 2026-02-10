@@ -1,29 +1,150 @@
-<div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="promote-modal-title" @keydown.escape.window="showPromoteModal = false">
-  <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false" aria-hidden="true"></div>
-  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6" x-trap.inert.noscroll="showPromoteModal">
-    <button @click="showPromoteModal = false" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-    <h2 id="promote-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Promote to Device</h2>
-    <form @submit.prevent="doPromote()">
-      <div class="space-y-4">
-        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-          <div class="text-sm text-gray-800 dark:text-gray-200">IP Address</div>
-          <div class="font-medium text-gray-900 dark:text-gray-50" x-text="promoteDevice?.ip"></div>
-          <div class="text-sm text-gray-800 dark:text-gray-200 mt-2" x-show="promoteDevice?.hostname">Hostname: <span x-text="promoteDevice?.hostname"></span></div>
+<div x-show="showPromoteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/50" @click="showPromoteModal = false"></div>
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="p-6">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Promote to Device</h3>
+
+      <form @submit.prevent="doPromote()">
+        <div class="space-y-6">
+          <!-- Device Summary -->
+          <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md space-y-3">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">IP Address</div>
+                <div class="font-mono text-sm font-medium text-gray-900 dark:text-white" x-text="promoteDevice?.ip"></div>
+              </div>
+              <div x-show="promoteDevice?.mac_address">
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">MAC Address</div>
+                <div class="font-mono text-sm text-gray-700 dark:text-gray-300" x-text="promoteDevice?.mac_address"></div>
+              </div>
+            </div>
+
+            <div x-show="promoteDevice?.hostname" class="border-t border-gray-200 dark:border-gray-600 pt-3">
+              <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">Hostname</div>
+              <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="promoteDevice?.hostname"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 border-t border-gray-200 dark:border-gray-600 pt-3">
+              <div x-show="promoteDevice?.os_guess">
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">Operating System</div>
+                <div class="text-sm text-gray-700 dark:text-gray-300" x-text="promoteDevice?.os_guess"></div>
+              </div>
+              <div x-show="promoteDevice?.vendor">
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">Vendor</div>
+                <div class="text-sm text-gray-700 dark:text-gray-300" x-text="promoteDevice?.vendor"></div>
+              </div>
+            </div>
+
+            <!-- Open Ports -->
+            <template x-if="promoteDevice?.open_ports && promoteDevice?.open_ports.length > 0">
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Open Ports</div>
+                <div class="flex flex-wrap gap-1">
+                  <template x-for="port in promoteDevice?.open_ports" :key="port">
+                    <span class="px-2 py-1 text-xs font-mono rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" x-text="port"></span>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Services -->
+            <template x-if="promoteDevice?.services && promoteDevice?.services.length > 0">
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Detected Services</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <template x-for="svc in promoteDevice?.services" :key="svc.port + svc.service">
+                    <div class="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                      <div class="flex items-center gap-2">
+                        <span class="px-1.5 py-0.5 text-xs rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" x-text="svc.service"></span>
+                        <span class="text-sm text-gray-700 dark:text-gray-300" x-text="svc.protocol + '/' + svc.port"></span>
+                      </div>
+                      <template x-if="svc.version">
+                        <span class="text-xs text-gray-500 dark:text-gray-400" x-text="svc.version"></span>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Confidence & Timestamps -->
+            <div class="grid grid-cols-3 gap-4 border-t border-gray-200 dark:border-gray-600 pt-3">
+              <div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">Confidence</div>
+                <div class="flex items-center gap-2 mt-1">
+                  <div class="w-16 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                    <div class="h-full transition-all duration-300 rounded-full"
+                         :class="{
+                           'bg-green-500': (promoteDevice?.confidence || 0) >= 8,
+                           'bg-yellow-500': (promoteDevice?.confidence || 0) >= 5 && (promoteDevice?.confidence || 0) < 8,
+                           'bg-gray-500': (promoteDevice?.confidence || 0) < 5
+                         }"
+                         :style="'width: ' + ((promoteDevice?.confidence || 0) * 10) + '%'">
+                    </div>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white" x-text="(promoteDevice?.confidence || 0) + '/10'"></span>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">First Seen</div>
+                <div class="text-sm text-gray-700 dark:text-gray-300" x-text="formatDate(promoteDevice?.first_seen)"></div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 uppercase">Last Seen</div>
+                <div class="text-sm text-gray-700 dark:text-gray-300" x-text="formatDate(promoteDevice?.last_seen)"></div>
+              </div>
+            </div>
+
+            <!-- Promoted indicator -->
+            <template x-if="promoteDevice?.promoted_to_device_id">
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <div class="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span class="text-sm font-medium">Already promoted to device</span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Device Name Input -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device Name *</label>
+            <input type="text" x-model="promoteName" required
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Enter a name for this device">
+          </div>
+
+          <!-- Datacenter Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Datacenter</label>
+            <select x-model="promoteDatacenterId" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Select a datacenter (optional)</option>
+              <template x-for="dc in datacenters" :key="dc.id">
+                <option :value="dc.id" x-text="dc.name"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Make/Model -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make/Model</label>
+            <input type="text" x-model="promoteMakeModel"
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   :placeholder="promoteDevice?.vendor || 'e.g., Dell PowerEdge R640'">
+          </div>
         </div>
-        <div>
-          <label for="promote-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Device Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-          <input id="promote-name" type="text" x-model="promoteName" required aria-required="true" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+          <button type="submit" :disabled="promoting || !!promoteDevice?.promoted_to_device_id"
+                  class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span x-show="!promoting">Promote Device</span>
+            <span x-show="promoting">Promoting...</span>
+          </button>
         </div>
-      </div>
-      <div class="flex justify-end gap-3 mt-6">
-        <button type="button" @click="showPromoteModal = false" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-        <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
-          <span x-show="!promoting">Promote</span>
-          <span x-show="promoting">Promoting...</span>
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   </div>
 </div>

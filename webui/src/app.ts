@@ -17,6 +17,7 @@ import { discoveryList, scanForm, scanDetail, promoteForm } from './components/d
 import { credentialsList, credentialForm, credentialsPageTemplate } from './components/credentials';
 import { profileList, profileForm, profilesPageTemplate } from './components/profiles';
 import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } from './components/scheduled-scans';
+import { scanProfilesList } from './components/scan-profiles';
 import { login } from './components/login';
 import { usersList } from './components/users';
 import { userMenu } from './components/user-menu';
@@ -35,6 +36,7 @@ function updatePageTitle(route: string) {
     '/datacenters': 'Datacenters',
     '/datacenters/detail': 'Datacenter Details',
     '/discovery': 'Discovery',
+    '/scan-profiles': 'Scan Profiles',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -360,10 +362,12 @@ async function init(): Promise<void> {
     toast.success(event.detail.message);
   });
 
-  // Register pages for credentials, profiles, scheduled scans
+  // Register pages for credentials, scheduled scans (scan-profiles uses direct HTML include)
   window.rackdRegisterPage('/credentials', credentialsPageTemplate);
-  window.rackdRegisterPage('/scan-profiles', profilesPageTemplate);
   window.rackdRegisterPage('/scheduled-scans', scheduledScansPageTemplate);
+
+  // Register scan profiles component (page uses direct HTML include)
+  Alpine.data('scanProfilesList', scanProfilesList);
 
   // Register deep scan type
   window.rackdRegisterScanType({

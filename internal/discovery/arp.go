@@ -33,6 +33,11 @@ func (s *ARPScanner) LoadARPTable() error {
 	}
 }
 
+func (s *ARPScanner) Refresh() error {
+	s.entries = []ARPEntry{}
+	return s.LoadARPTable()
+}
+
 func (s *ARPScanner) LookupMAC(ip string) string {
 	for _, entry := range s.entries {
 		if entry.IP == ip {

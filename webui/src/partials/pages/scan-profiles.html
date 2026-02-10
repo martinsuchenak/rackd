@@ -1,0 +1,228 @@
+<!-- Scan Profiles -->
+<template x-if="route === '/scan-profiles'">
+  <div x-data="scanProfilesList" @beforeunload.window="destroy()">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Scan Profiles</h1>
+      <button @click="openCreateModal()"
+              x-show="$store.permissions.canCreate('scan-profiles')"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        New Profile
+      </button>
+    </div>
+
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+
+    <div x-show="loading" class="text-gray-500">Loading...</div>
+
+    <div x-show="!loading" class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div x-show="profiles.length === 0" class="p-8 text-center text-gray-500">
+        No scan profiles found. Create a profile to customize your discovery scans.
+      </div>
+
+      <div x-show="profiles.length > 0" class="divide-y divide-gray-200 dark:divide-gray-700">
+        <template x-for="p in profiles" :key="p.id">
+          <div class="p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50">
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="p.name"></h3>
+                <span class="px-2 py-1 text-xs font-medium rounded-full"
+                      :class="{
+                        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': p.scan_type === 'quick',
+                        'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400': p.scan_type === 'full',
+                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': p.scan_type === 'deep',
+                        'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400': p.scan_type === 'custom'
+                      }"
+                      x-text="p.scan_type.toUpperCase()">
+                </span>
+              </div>
+              <p x-show="p.description" class="text-sm text-gray-500 dark:text-gray-400 mt-1" x-text="p.description"></p>
+              <div class="flex flex-wrap gap-4 mt-2 text-sm">
+                <template x-if="p.scan_type === 'custom' && p.ports && p.ports.length > 0">
+                  <div class="text-gray-600 dark:text-gray-300">
+                    <span class="font-medium">Ports:</span>
+                    <span x-text="getPortsString(p)"></span>
+                  </div>
+                </template>
+                <template x-if="p.enable_snmp || p.enable_ssh">
+                  <div class="text-gray-600 dark:text-gray-300">
+                    <span class="font-medium">Services:</span>
+                    <template x-if="p.enable_snmp">SNMP</template>
+                    <template x-if="p.enable_ssh">
+                      <span x-show="p.enable_snmp">, </span>SSH
+                    </template>
+                  </div>
+                </template>
+                <div class="text-gray-600 dark:text-gray-300">
+                  <span class="font-medium">Timeout:</span>
+                  <span x-text="p.timeout_sec + 's'"></span>
+                </div>
+                <div class="text-gray-600 dark:text-gray-300">
+                  <span class="font-medium">Workers:</span>
+                  <span x-text="p.max_workers"></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+              <button @click="openEditModal(p)"
+                      x-show="$store.permissions.canUpdate('scan-profiles')"
+                      class="px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md">
+                Edit
+              </button>
+              <button @click="deleteProfile(p.id)"
+                      x-show="$store.permissions.canDelete('scan-profiles')"
+                      class="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md">
+                Delete
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/50" @click="showCreateModal = false"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Scan Profile</h3>
+        <form @submit.prevent="createProfile()">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name *</label>
+              <input type="text" x-model="formName" required
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Type</label>
+              <select x-model="formScanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="quick">Quick (default ports)</option>
+                <option value="full">Full (extended ports)</option>
+                <option value="deep">Deep (top 100 ports)</option>
+                <option value="custom">Custom (specify ports)</option>
+              </select>
+            </div>
+            <template x-if="formScanType === 'custom'">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ports (comma-separated)</label>
+                <input type="text" x-model="formPorts"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="22,80,443,3389">
+              </div>
+            </template>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" x-model="formEnableSNMP" class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                  Enable SNMP
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" x-model="formEnableSSH" class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                  Enable SSH
+                </label>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (seconds)</label>
+                <input type="number" x-model="formTimeoutSec" min="1" max="60"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Workers</label>
+                <input type="number" x-model="formMaxWorkers" min="1" max="100"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <textarea x-model="formDescription" rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Optional description of this profile"></textarea>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+            <button type="submit" :disabled="loading" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+              <span x-show="!loading">Create Profile</span>
+              <span x-show="loading">Creating...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/50" @click="showEditModal = false"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Scan Profile</h3>
+        <form @submit.prevent="updateProfile()">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name *</label>
+              <input type="text" x-model="formName" required
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scan Type</label>
+              <select x-model="formScanType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="quick">Quick (default ports)</option>
+                <option value="full">Full (extended ports)</option>
+                <option value="deep">Deep (top 100 ports)</option>
+                <option value="custom">Custom (specify ports)</option>
+              </select>
+            </div>
+            <template x-if="formScanType === 'custom'">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ports (comma-separated)</label>
+                <input type="text" x-model="formPorts"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="22,80,443,3389">
+              </div>
+            </template>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" x-model="formEnableSNMP" class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                  Enable SNMP
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" x-model="formEnableSSH" class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                  Enable SSH
+                </label>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (seconds)</label>
+                <input type="number" x-model="formTimeoutSec" min="1" max="60"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Workers</label>
+                <input type="number" x-model="formMaxWorkers" min="1" max="100"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <textarea x-model="formDescription" rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Optional description of this profile"></textarea>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="showEditModal = false; editingProfile = null" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+            <button type="submit" :disabled="loading" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+              <span x-show="!loading">Update Profile</span>
+              <span x-show="loading">Updating...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>

@@ -1,12 +1,13 @@
 // Discovery Components for Rackd Web UI
 
-import type { DiscoveredDevice, DiscoveryScan, Network } from '../core/types';
+import type { DiscoveredDevice, DiscoveryScan, Network, Datacenter, Device } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 
 interface DiscoveryListData {
   networks: Network[];
   scans: DiscoveryScan[];
   discoveredDevices: DiscoveredDevice[];
+  datacenters: Datacenter[];
   selectedNetworkId: string;
   loading: boolean;
   error: string;
@@ -15,11 +16,15 @@ interface DiscoveryListData {
   loadNetworks(): Promise<void>;
   loadScans(): Promise<void>;
   loadDiscoveredDevices(): Promise<void>;
+  loadDatacenters(): Promise<void>;
   selectNetwork(id: string): void;
   hasActiveScan(): boolean;
   startPolling(): void;
   stopPolling(): void;
   destroy(): void;
+  deviceFilter: string;
+  filteredDevices: DiscoveredDevice[];
+  formatDate(date: string): string;
 }
 
 export function discoveryList() {
@@ -27,10 +32,12 @@ export function discoveryList() {
     networks: [] as Network[],
     scans: [] as DiscoveryScan[],
     discoveredDevices: [] as DiscoveredDevice[],
+    datacenters: [] as Datacenter[],
     selectedNetworkId: '',
     loading: true,
     error: '',
     pollInterval: null as ReturnType<typeof setInterval> | null,
+    deviceFilter: '',
     // Scan modal
     showScanModal: false,
     scanNetworkId: '',
@@ -47,9 +54,25 @@ export function discoveryList() {
     showPromoteModal: false,
     promoteDevice: null as DiscoveredDevice | null,
     promoteName: '',
+    promoteDatacenterId: '',
+    promoteMakeModel: '',
     promoting: false,
     // Cancel scan state
     cancellingScans: new Set<string>(),
+    // Computed property for filtered devices
+    get filteredDevices() {
+      const filter = this.deviceFilter.toLowerCase().trim();
+      if (!filter) {
+        return this.discoveredDevices;
+      }
+      return this.discoveredDevices.filter(d =>
+        d.ip.toLowerCase().includes(filter) ||
+        (d.hostname && d.hostname.toLowerCase().includes(filter)) ||
+        (d.mac_address && d.mac_address.toLowerCase().includes(filter)) ||
+        (d.os_guess && d.os_guess.toLowerCase().includes(filter)) ||
+        (d.vendor && d.vendor.toLowerCase().includes(filter))
+      );
+    },
 
     openScanModal(): void {
       this.showScanModal = true;
@@ -61,6 +84,8 @@ export function discoveryList() {
     openPromoteModal(device: DiscoveredDevice): void {
       this.promoteDevice = device;
       this.promoteName = device.hostname || device.ip;
+      this.promoteDatacenterId = '';
+      this.promoteMakeModel = device.vendor || '';
       this.showPromoteModal = true;
       setTimeout(() => {
         (document.querySelector('[x-show="showPromoteModal"] input[type="text"]') as HTMLInputElement)?.focus();
@@ -68,9 +93,17 @@ export function discoveryList() {
     },
 
     async init(): Promise<void> {
-      await this.loadNetworks();
+      await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
       await Promise.all([this.loadScans(), this.loadDiscoveredDevices()]);
       if (this.hasActiveScan()) this.startPolling();
+    },
+
+    async loadDatacenters(): Promise<void> {
+      try {
+        this.datacenters = (await api.listDatacenters()) || [];
+      } catch {
+        this.datacenters = [];
+      }
     },
 
     async loadNetworks(): Promise<void> {
@@ -158,16 +191,39 @@ export function discoveryList() {
       this.promoting = true;
       this.error = '';
       try {
-        await api.promoteDevice(this.promoteDevice.id, this.promoteName.trim());
+        await api.promoteDevice(
+          this.promoteDevice.id,
+          this.promoteName.trim(),
+          this.promoteDatacenterId || undefined,
+          this.promoteMakeModel || undefined
+        );
         this.showPromoteModal = false;
         this.promoteDevice = null;
         this.promoteName = '';
+        this.promoteDatacenterId = '';
+        this.promoteMakeModel = '';
         await this.loadDiscoveredDevices();
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to promote device';
       } finally {
         this.promoting = false;
       }
+    },
+
+    formatDate(date: string | undefined): string {
+      if (!date) return '-';
+      const d = new Date(date);
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return d.toLocaleDateString();
     },
 
     async deleteDevice(deviceId: string): Promise<void> {

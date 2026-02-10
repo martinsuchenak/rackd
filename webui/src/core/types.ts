@@ -133,6 +133,20 @@ export interface DiscoveryRule {
   updated_at: string;
 }
 
+export interface ScanProfile {
+  id: string;
+  name: string;
+  scan_type: 'quick' | 'full' | 'deep' | 'custom';
+  ports?: number[];
+  enable_snmp?: boolean;
+  enable_ssh?: boolean;
+  timeout_sec: number;
+  max_workers: number;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DeviceRelationship {
   parent_id: string;
   child_id: string;
