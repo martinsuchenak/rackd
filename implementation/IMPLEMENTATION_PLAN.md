@@ -8,10 +8,10 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 
 | Phase | Remaining | Status |
 |-------|-----------|--------|
-| **Phase 3: Multi-User** | 2 of 6 | 🚧 In Progress |
+| **Phase 3: Multi-User** | 1 of 6 | 🚧 In Progress |
 | **Phase 4: Advanced** | 10 of 10 | 🔮 Future |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **15** | |
+| **Total remaining** | **14** | |
 
 ### Completed (not listed here)
 
@@ -21,6 +21,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 3.2**: RBAC (roles, permissions, service-layer enforcement, default roles, UI, CLI)
 - **Phase 3.3**: SSO/OIDC — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (implement when requested)
 - **Phase 3.4**: PostgreSQL — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (SQLite handles the scale)
+- **Phase 3.6**: MCP OAuth 2.1 Authorization (OAuth endpoints, PKCE, token validation, client management UI, consent screen)
 
 ## Architecture Reference
 
@@ -51,80 +52,6 @@ webui/src/
 ---
 
 ## Phase 3: Multi-User (remaining)
-
-### 3.6 MCP OAuth 2.1 Authorization
-
-**Effort**: 5-7 days | **Priority**: HIGH (next up)
-
-**What**: OAuth 2.1 authorization for the MCP server endpoint, ensuring MCP operations are performed as the correct user with proper RBAC enforcement. Also upgrades paularlott/mcp from v0.9.2 to v0.11.1.
-
-**Why top priority**: Currently MCP auth uses a manual API key check in `HandleRequest()`. This doesn't follow the MCP authorization spec and means MCP clients like Claude Desktop have no standard way to authenticate. With OAuth, any spec-compliant MCP client can authenticate via the user's existing Rackd account and inherit their RBAC permissions.
-
-**MCP Auth Spec Requirements** (2025-11-25):
-- MCP server acts as an OAuth 2.1 **Resource Server** (validates access tokens)
-- Separate **Authorization Server** issues tokens (can be built into Rackd since we own the user database)
-- **Protected Resource Metadata** (RFC 9728) for client discovery
-- Returns `401` with `WWW-Authenticate` header when unauthorized
-
-**Tasks**:
-- [ ] Upgrade `github.com/paularlott/mcp` from v0.9.2 to v0.11.1
-- [ ] OAuth 2.1 Authorization Server:
-  - [ ] `GET /mcp-oauth/authorize` — Authorization endpoint (renders login/consent page)
-  - [ ] `POST /mcp-oauth/token` — Token endpoint (issues access + refresh tokens)
-  - [ ] `POST /mcp-oauth/revoke` — Token revocation
-  - [ ] Authorization Code grant with PKCE (for public clients like Claude Desktop)
-  - [ ] Client Credentials grant (for service-to-service)
-- [ ] OAuth token model and storage (access tokens, refresh tokens, authorization codes)
-- [ ] Token scoping tied to user's RBAC permissions
-- [ ] Protected Resource Metadata endpoint:
-  - [ ] `GET /.well-known/oauth-protected-resource` (RFC 9728)
-  - [ ] Points MCP clients to the authorization server endpoints
-- [ ] Token validation middleware for MCP endpoint (replace current manual API key check)
-- [ ] OAuth client registration (store client_id/redirect_uri pairs)
-- [ ] OAuth client management UI (register/revoke MCP clients)
-- [ ] Consent screen UI (user approves MCP client access)
-- [ ] Tests for full OAuth flow (authorize → token → MCP call → RBAC check)
-
-**Current auth flow** (to be replaced):
-```
-MCP client → Bearer API-key → HandleRequest() validates manually → system/API key caller
-```
-
-**New auth flow**:
-```
-MCP client → discovers /.well-known/oauth-protected-resource
-           → redirects user to /oauth/authorize (login + consent)
-           → receives authorization code
-           → exchanges code for access token at /oauth/token
-           → Bearer access-token → MCP endpoint validates token → user caller with RBAC
-```
-
-**Configuration**:
-```bash
-MCP_OAUTH_ENABLED=true                    # Enable OAuth for MCP (default: false)
-MCP_OAUTH_ACCESS_TOKEN_TTL=1h             # Access token lifetime
-MCP_OAUTH_REFRESH_TOKEN_TTL=30d           # Refresh token lifetime
-MCP_OAUTH_AUTHORIZATION_CODE_TTL=10m      # Auth code lifetime
-```
-
-**Files to Create**:
-- `internal/model/oauth.go` — OAuthClient, OAuthToken, OAuthAuthorizationCode models
-- `internal/storage/oauth_sqlite.go` — Token/client/code storage
-- `internal/auth/oauth.go` — Token generation, validation, PKCE verification
-- `internal/service/oauth.go` — OAuth flow orchestration, consent logic
-- `internal/api/oauth_handlers.go` — `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`
-- `internal/api/resource_metadata_handler.go` — `/.well-known/oauth-protected-resource`
-- `webui/src/components/oauth-consent.ts` — Consent screen
-- `webui/src/components/oauth-clients.ts` — Client management UI
-
-**Files to Modify**:
-- `internal/mcp/server.go` — Replace manual API key auth with OAuth token validation
-- `internal/api/handlers.go` — Register OAuth + metadata routes
-- `go.mod` — Upgrade paularlott/mcp to v0.11.1
-
-**Backward Compatibility**:
-- When `MCP_OAUTH_ENABLED=false` (default), existing API key auth continues to work
-- When enabled, both OAuth tokens and API keys are accepted during transition period
 
 ### 3.5 Webhook System
 
@@ -408,8 +335,8 @@ SMTP_FROM=rackd@example.com
 ## Success Criteria (remaining)
 
 ### Phase 3
-- [ ] MCP clients authenticate via OAuth 2.1 with PKCE
-- [ ] MCP operations enforced under the authenticating user's RBAC permissions
+- [x] MCP clients authenticate via OAuth 2.1 with PKCE
+- [x] MCP operations enforced under the authenticating user's RBAC permissions
 
 ### Phase 4
 - [ ] Notifications delivered within 30s of trigger event
