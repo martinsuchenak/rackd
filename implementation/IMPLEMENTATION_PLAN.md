@@ -1,524 +1,130 @@
 # Rackd Implementation Plan
 
-**Last Updated**: 2026-02-06
+**Last Updated**: 2026-02-10
 
-This document tracks all planned features for Rackd, organized by priority and implementation status.
+Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phase 3 are complete.
 
-## Quick Status
+## Status
 
-| Phase | Features | Completed | Status |
-|-------|----------|-----------|--------|
-| **Phase 1: Core** | 4 | 4/4 (100%) | ✅ Complete |
- | **Phase 2: Production Ready** | 5 | 5/5 (100%) | ✅ Complete |
-| **Phase 3: Multi-User** | 5 | 1/5 (20%) | 🚧 In Progress |
-| **Phase 4: Advanced** | 7 | 0/7 (0%) | 🔮 Future |
-| **Phase 5: Scale** | 3 | 0/3 (0%) | 🔮 Future |
-| **Total** | **24** | **9/24 (38%)** | |
+| Phase | Remaining | Status |
+|-------|-----------|--------|
+| **Phase 3: Multi-User** | 3 of 5 | 🚧 In Progress |
+| **Phase 4: Advanced** | 10 of 10 | 🔮 Future |
+| **Phase 5: Scale** | 3 of 3 | 🔮 Future |
+| **Total remaining** | **16** | |
+
+### Completed (not listed here)
+
+- **Phase 1**: Full-Text Search, Metrics, Health Checks, API Key Auth
+- **Phase 2**: Export/Import, Bulk Operations, Rate Limiting, Audit Trail, UI/UX Enhancements
+- **Phase 3.1**: User Management (users, sessions, bcrypt, login UI, CLI, bootstrap via env vars)
+- **Phase 3.2**: RBAC (roles, permissions, service-layer enforcement, default roles, UI, CLI)
+
+## Architecture Reference
+
+```
+cmd/              CLI commands (github.com/paularlott/cli)
+internal/
+  model/          Data models
+  storage/        SQLite storage (implements interfaces from storage.go)
+  service/        Business logic + RBAC enforcement (requirePermission)
+  api/            HTTP handlers + route registration (handlers.go)
+  auth/           Session management, password hashing, RBAC checker
+  config/         Configuration
+  server/         HTTP server setup + middleware
+webui/src/
+  components/     TypeScript UI components
+  partials/pages/ HTML templates
+```
+
+**Route auth wrappers** (in `handlers.go`):
+- `wrap` — optional auth (respects `cfg.requireAuth`)
+- `wrapAuth` — always requires authenticated session
+- `wrapPerm` — auth + RBAC permission check (skips RBAC when auth not configured)
+
+**RBAC enforcement** happens at the service layer via `requirePermission(ctx, store, "resource", "action")`, not at the middleware level.
+
+**Convention for new features**: model + storage interface/impl + service + API handlers + CLI command + web UI component.
 
 ---
 
-## Phase 1: Core Features ✅ COMPLETE
-
-**Goal**: Essential features for basic IPAM functionality
-
-### 1.1 Full-Text Search ✅ COMPLETED (2026-02-03)
-
-**Effort**: 2-3 days | **Priority**: High
-
-**What**: Fast FTS5-powered search across devices, networks, and datacenters
-
-**Completed**:
-- ✅ FTS5 virtual tables for devices, networks, datacenters
-- ✅ Prefix matching (search "de" matches "Default")
-- ✅ Unified `/api/search` endpoint
-- ✅ Automatic index maintenance via triggers
-- ✅ Web UI integration
-
-**Files**: `internal/storage/migrations.go`, `internal/api/search_handlers.go`, `docs/fts.md`
-
-### 1.2 Metrics & Monitoring ✅ COMPLETED (2026-02-03)
-
-**Effort**: 2-3 days | **Priority**: High
-
-**What**: Prometheus-compatible metrics for observability
-
-**Completed**:
-- ✅ `/metrics` endpoint (Prometheus text format)
-- ✅ HTTP metrics (requests, duration, status codes)
-- ✅ Application metrics (device/network/datacenter counts)
-- ✅ Discovery metrics (scan count, duration)
-- ✅ Database metrics (queries, connections)
-- ✅ Runtime metrics (uptime, goroutines, memory)
-
-**Files**: `internal/metrics/`, `internal/api/metrics_handlers.go`, `docs/monitoring.md`
-
-### 1.3 Enhanced Health Checks ✅ COMPLETED (2026-02-03)
-
-**Effort**: 1 day | **Priority**: High
-
-**What**: Kubernetes-ready health endpoints
-
-**Completed**:
-- ✅ `/healthz` - Liveness probe
-- ✅ `/readyz` - Readiness probe with detailed checks
-- ✅ Database connectivity check
-- ✅ Scheduler status check
-- ✅ JSON status responses
-
-**Files**: `internal/api/health_handlers.go`
-
-### 1.4 API Key Authentication ✅ COMPLETED (2026-02-03)
-
-**Effort**: 2-3 days | **Priority**: High
-
-**What**: Secure API key management (foundation for user management)
-
-**Completed**:
-- ✅ API key CRUD (create, list, get, delete)
-- ✅ Secure 256-bit random key generation
-- ✅ Expiration support
-- ✅ Last-used tracking
-- ✅ CLI commands (`rackd apikey`)
-- ✅ REST API endpoints (`/api/keys`)
-- ✅ MCP server integration
-- ✅ Optional by default (no auth required)
-
-**Files**: `internal/auth/`, `internal/storage/apikey_sqlite.go`, `cmd/apikey/`, `docs/authentication.md`
-
----
-
-## Phase 2: Production Ready 📋 NEXT
-
-**Goal**: Features needed for production deployment
-
-### 2.1 Data Export/Import ✅ COMPLETED (2026-02-03)
-
-**Effort**: 2-3 days | **Priority**: HIGH
-
-**What**: Export/import data for backup and migration
-
-**Completed**:
-- ✅ Export devices to CSV/JSON
-- ✅ Export networks to CSV/JSON
-- ✅ Export datacenters to CSV/JSON
-- ✅ Export all data to JSON
-- ✅ Import devices from CSV/JSON
-- ✅ Import networks from CSV/JSON
-- ✅ Import datacenters from CSV/JSON
-- ✅ Format auto-detection from file extension
-- ✅ Dry-run mode for validation
-- ✅ CLI commands (`rackd export/import`)
-- ✅ Comprehensive tests (13 tests, all passing)
-
-**Features**:
-- Auto-detect format from file extension (.json/.csv)
-- `--dry-run` flag to validate without importing
-- `--format` flag to override auto-detection
-- `--output` flag for export (stdout if omitted)
-- Detailed import results (total, created, failed)
-- Error reporting for failed imports
-
-**Usage Examples**:
-```bash
-# Export
-rackd export devices --format json --output devices.json
-rackd export networks --format csv --output networks.csv
-rackd export all --output backup.json
-
-# Import
-rackd import devices --file devices.json
-rackd import networks --file networks.csv --dry-run
-rackd import datacenters --file datacenters.json
-```
-
-**Files Created**:
-- `internal/export/export.go` - Export functions
-- `internal/export/export_test.go` - Export tests (6 tests)
-- `internal/importdata/import.go` - Import functions
-- `internal/importdata/import_test.go` - Import tests (7 tests)
-- `cmd/export/export.go` - Export CLI commands
-- `cmd/import/import.go` - Import CLI commands
-
-### 2.2 Bulk Operations ✅ COMPLETED (2026-02-03)
-
-**Effort**: 3-4 days | **Priority**: HIGH
-
-**What**: Manage large numbers of devices/networks efficiently
-
-**Completed**:
-- ✅ Bulk device create/update/delete
-- ✅ Bulk tag add/remove
-- ✅ Bulk network create/delete
-- ✅ Transaction support (all-or-nothing)
-- ✅ Detailed result reporting (total, success, failed, errors)
-- ✅ API endpoints (`/api/bulk/*`)
-- ✅ Comprehensive tests (6 tests, all passing)
-
-**Features**:
-- All operations run in transactions for atomicity
-- Detailed error reporting per item
-- No deadlocks (direct SQL within transactions)
-- Result includes: total, success count, failed count, error messages
-
-**API Endpoints**:
-```
-POST   /api/devices/bulk          - Bulk create devices
-PUT    /api/devices/bulk          - Bulk update devices
-DELETE /api/devices/bulk          - Bulk delete devices (body: {"ids": [...]})
-POST   /api/devices/bulk/tags     - Bulk add tags (body: {"device_ids": [...], "tags": [...]})
-DELETE /api/devices/bulk/tags     - Bulk remove tags
-POST   /api/networks/bulk         - Bulk create networks
-DELETE /api/networks/bulk         - Bulk delete networks
-```
-
-**Files Created**:
-- `internal/storage/bulk.go` - Bulk operations implementation
-- `internal/storage/bulk_test.go` - Bulk operations tests (6 tests)
-
-**Files Modified**:
-- `internal/storage/storage.go` - Added BulkOperations interface
-- `internal/storage/sqlite.go` - Refactored to support transaction-based operations
-- `internal/api/handlers.go` - Registered bulk routes
-- `internal/api/device_handlers.go` - Added bulk device handlers
-- `internal/api/network_handlers.go` - Added bulk network handlers
-- `cmd/import/import.go` - Updated to use bulk endpoints for better performance
-
-### 2.3 API Rate Limiting ✅ COMPLETED (2026-02-03)
-
-**Effort**: 2 days | **Priority**: MEDIUM
-
-**What**: Prevent API abuse
-
-**Completed**:
-- ✅ Rate limiting middleware with token bucket algorithm
-- ✅ Per-IP rate limits
-- ✅ Per-API-key rate limits
-- ✅ Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
-- ✅ Configuration via environment variables (RATE_LIMIT_ENABLED, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW)
-- ✅ Localhost bypass (127.0.0.1, ::1 always allowed)
-- ✅ Comprehensive tests (8 tests, all passing)
-- ✅ Documentation (docs/ratelimit.md)
-
-**Features**:
-- Disabled by default (opt-in via RATE_LIMIT_ENABLED=true)
-- Token bucket algorithm with configurable window
-- Client identification by API key (preferred) or IP address
-- X-Forwarded-For and X-Real-IP header support
-- Automatic cleanup of inactive clients
-- HTTP 429 responses with Retry-After header
-
-**Configuration**:
-```bash
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=1m
-```
-
-**Files Created**:
-- `internal/api/ratelimit.go` - Rate limiter implementation
-- `internal/api/ratelimit_test.go` - Rate limiter tests (8 tests)
-- `docs/ratelimit.md` - Comprehensive documentation
-
-**Files Modified**:
-- `internal/config/config.go` - Added rate limit configuration
-- `internal/server/server.go` - Integrated rate limit middleware
-
-### 2.4 Change History/Audit Trail ✅ COMPLETED (2026-02-03)
-
-**Effort**: 4-5 days | **Priority**: HIGH
-
-**What**: Track all changes for compliance and troubleshooting
-
-**Completed**:
-- ✅ Audit log model and storage
-- ✅ Audit middleware (capture all changes)
-- ✅ Log CRUD operations with context
-- ✅ Log authentication events (via API key context)
-- ✅ API endpoints for querying audit log
-- ✅ Export audit log (JSON/CSV)
-- ✅ Retention policy configuration
-- ✅ CLI commands (list, export)
-- ✅ Comprehensive tests (6 tests, all passing)
-
-**Features**:
-- Disabled by default (opt-in via AUDIT_ENABLED=true)
-- Captures all mutating API operations (POST, PUT, DELETE)
-- Tracks user (API key), IP address, resource, action, status
-- Stores request body as changes (up to 10KB)
-- Automatic cleanup of old logs (configurable retention)
-- Pagination support for large result sets
-- Time-based filtering (start_time, end_time)
-- Resource and action filtering
-
-**Configuration**:
-```bash
-AUDIT_ENABLED=true
-AUDIT_RETENTION_DAYS=90
-```
-
-**API Endpoints**:
-```
-GET /api/audit                - List audit logs (with filters)
-GET /api/audit/{id}           - Get specific audit log
-GET /api/audit/export         - Export audit logs (JSON/CSV)
-```
-
-**CLI Commands**:
-```bash
-rackd audit list --resource device --limit 50
-rackd audit export --format json --output audit.json
-```
-
-**Files Created**:
-- `internal/model/audit.go` - Audit log model
-- `internal/storage/audit_sqlite.go` - SQLite implementation
-- `internal/storage/audit_test.go` - Audit tests (6 tests)
-- `internal/api/audit_middleware.go` - Audit middleware
-- `internal/api/audit_handlers.go` - API handlers
-- `cmd/audit/audit.go` - CLI commands
-
-**Files Modified**:
-- `internal/storage/storage.go` - Added AuditStorage interface
-- `internal/storage/migrations.go` - Added audit_logs table migration
-- `internal/api/handlers.go` - Registered audit routes
-- `internal/server/server.go` - Integrated audit middleware
-- `internal/config/config.go` - Added audit configuration
-- `main.go` - Registered audit CLI command
-
-**Why High Priority**:
-- Essential for compliance (SOC2, ISO27001)
-- Critical for troubleshooting
-- Foundation for multi-user environments
-- Should be implemented BEFORE full user management
-
-**Files to Create**:
-- `internal/model/audit.go`
-- `internal/storage/audit_sqlite.go`
-- `internal/api/audit_middleware.go`
-- `internal/api/audit_handlers.go`
-- `webui/src/components/audit.ts`
-- `docs/audit.md`
-
-### 2.5 UI/UX Enhancements ✅ COMPLETED (2026-02-03)
-
-**Effort**: 3-5 days | **Priority**: MEDIUM
-
-**What**: Improve data visibility and navigation in web UI
-
-**Completed**:
-- ✅ Device list: Added network and pool columns
-- ✅ Device list: Added filters for network and pool
-- ✅ Network/pool columns show clickable links to detail pages
-- ✅ Client-side filtering for network and pool
-- ✅ Network table: Added "Devices" button to view devices in network
-- ✅ Network detail: Added linked devices section (shows first 5, link to view all)
-- ✅ Pool detail: Added linked devices section (shows first 5, link to view all)
-- ✅ Pool heatmap: Made used IPs clickable to navigate to device
-
-**All Features Complete!**
-
-**Files Modified**:
-- `webui/src/components/devices.ts` - Added network/pool filters and helper methods
-- `webui/src/partials/pages/devices.html` - Added network/pool columns and filter dropdowns
-- `webui/src/components/networks.ts` - Added loadNetworkDevices method
-- `webui/src/partials/pages/networks.html` - Added "Devices" button in actions
-- `webui/src/partials/pages/network-detail.html` - Added devices section
-- `webui/src/components/pools.ts` - Added loadPoolDevices method
-- `webui/src/partials/pages/pool-detail.html` - Added devices section, made heatmap clickable
-
----
-
-## Phase 3: Multi-User Support 🔜 PLANNED
-
-**Goal**: Full user management and access control
-
-### 3.1 User Management ✅ COMPLETED (2026-02-06)
-
-**Effort**: 7-10 days | **Priority**: HIGH
-
-**What**: User accounts with passwords
-
-**Completed**:
-- ✅ User model and storage
-- ✅ User CRUD API
-- ✅ Password hashing (bcrypt)
-- ✅ Session management
-- ✅ Login/logout endpoints
-- ✅ User CLI commands
-- ✅ Environment variable bootstrapping for initial admin
-- ✅ Comprehensive tests (30 tests, all passing)
-- ✅ Web UI login page
-- ✅ Web UI users management page
-- ⏳ Make API keys REQUIRED (breaking change - requires careful deployment)
-
-**Dependencies**: Audit trail (should be in place first)
-
-**Files Created**:
-- ✅ `internal/model/user.go`
-- ✅ `internal/storage/user_sqlite.go`
-- ✅ `internal/storage/user_test.go` (12 tests, all passing)
-- ✅ `internal/storage/bootstrap.go` - Initial admin bootstrapping
-- ✅ `internal/storage/bootstrap_test.go` (7 tests, all passing)
-- ✅ `internal/auth/session.go`
-- ✅ `internal/auth/session_test.go` (8 tests, all passing)
-- ✅ `internal/auth/password.go`
-- ✅ `internal/auth/password_test.go` (3 tests, all passing)
-- ✅ `internal/api/auth_handlers.go`
-- ✅ `internal/api/user_handlers.go`
-- ✅ `webui/src/components/users.ts` - Users management UI
-- ✅ `webui/src/components/login.ts` - Login page
-- ✅ `webui/src/partials/pages/login.html` - Login template
-- ✅ `webui/src/partials/pages/users.html` - Users template
-- ✅ `cmd/user/user.go`
-- ✅ `docs/user-authentication.md` - Full documentation
-
-**API Endpoints**:
-```
-POST   /api/auth/login           - User login
-POST   /api/auth/logout          - User logout
-GET    /api/auth/me             - Get current user
-GET    /api/users               - List users
-POST   /api/users               - Create user
-GET    /api/users/{id}          - Get user
-PUT    /api/users/{id}          - Update user
-DELETE /api/users/{id}          - Delete user
-POST   /api/users/{id}/password - Change password
-```
-
-**CLI Commands**:
-```bash
-rackd user list              - List users
-rackd user create            - Create user
-rackd user update            - Update user
-rackd user delete            - Delete user
-rackd user password          - Change password
-```
-
-**Environment Variables**:
-```bash
-INITIAL_ADMIN_USERNAME=admin       # Required for initial admin
-INITIAL_ADMIN_PASSWORD=pass123    # Required for initial admin (min 8 chars)
-INITIAL_ADMIN_EMAIL=admin@local   # Optional (default: admin@localhost)
-INITIAL_ADMIN_FULL_NAME="Admin"   # Optional (default: System Administrator)
-SESSION_TTL=24h                    # Optional (default: 24h)
-```
-
-**Bootstrapping Flow**:
-1. Server checks if any users exist in database
-2. If no users exist:
-   - Checks for `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` env vars
-   - If both are set, creates initial admin user
-   - If not set, logs warning with instructions
-   - Server continues running (admin can be created via CLI)
-3. If users already exist, skips bootstrapping
-
-**Features**:
-- bcrypt password hashing with cost factor 12
-- Session tokens with configurable TTL
-- Automatic session expiration and cleanup
-- Password change with old password verification
-- User filtering (username, email, active status, admin status)
-- User activation/deactivation
-- Admin status management
-- Cannot delete own account
-- Password changes invalidate all sessions
-- Industry-standard environment variable bootstrapping for initial admin
-- Graceful handling when no initial admin is configured
-- Full web UI for user management and login
-
-### 3.2 Role-Based Access Control (RBAC)
-
-**Effort**: 5-7 days | **Priority**: HIGH
-
-**What**: Permissions and roles
-
-**Tasks**:
-- [ ] Role and permission models
-- [ ] RBAC storage
-- [ ] RBAC middleware
-- [ ] Default roles (admin, operator, viewer)
-- [ ] Permission checks on all endpoints
-- [ ] Role management UI
-- [ ] RBAC CLI commands
-
-**Dependencies**: User Management
-
-**Default Roles**:
-- `admin` - Full access
-- `operator` - Read/write devices, networks, discovery
-- `viewer` - Read-only access
-
-**Files to Create**:
-- `internal/model/role.go`
-- `internal/storage/rbac_sqlite.go`
-- `internal/auth/rbac.go`
-- `internal/api/rbac_middleware.go`
-- `internal/api/role_handlers.go`
-- `webui/src/components/roles.ts`
-- `cmd/role/role.go`
+## Phase 3: Multi-User (remaining)
 
 ### 3.3 SSO/OIDC Integration
 
 **Effort**: 5-7 days | **Priority**: MEDIUM
 
-**What**: Enterprise authentication
+**What**: Enterprise authentication via OpenID Connect
 
 **Tasks**:
 - [ ] OIDC client implementation
-- [ ] OAuth2 flow
-- [ ] SSO configuration
-- [ ] SSO login UI
+- [ ] OAuth2 authorization code flow
+- [ ] SSO configuration (issuer URL, client ID/secret, scopes)
+- [ ] SSO login UI (provider buttons on login page)
 - [ ] Support multiple providers (Google, Okta, Azure AD)
-- [ ] User provisioning from SSO
-- [ ] SSO CLI configuration
+- [ ] User auto-provisioning from SSO claims
+- [ ] Role mapping from SSO groups/claims
+- [ ] SSO CLI configuration commands
 
-**Dependencies**: User Management, RBAC
+**Dependencies**: User Management, RBAC (both complete)
+
+**Configuration**:
+```bash
+OIDC_ENABLED=true
+OIDC_ISSUER_URL=https://accounts.google.com
+OIDC_CLIENT_ID=xxx
+OIDC_CLIENT_SECRET=xxx
+OIDC_REDIRECT_URL=http://localhost:8080/api/auth/oidc/callback
+OIDC_SCOPES=openid,profile,email
+```
 
 **Files to Create**:
-- `internal/auth/oidc.go`
-- `internal/auth/oauth2.go`
-- `internal/api/sso_handlers.go`
-- `webui/src/components/sso-login.ts`
+- `internal/auth/oidc.go` — OIDC client, token validation, claim extraction
+- `internal/service/oidc.go` — SSO user provisioning, role mapping logic
+- `internal/api/sso_handlers.go` — `/api/auth/oidc/login`, `/api/auth/oidc/callback`
+- `webui/src/components/sso-login.ts` — SSO provider buttons on login page
+- `cmd/sso/sso.go` — CLI commands for SSO configuration
 
 ### 3.4 PostgreSQL Storage Backend
 
 **Effort**: 10-14 days | **Priority**: MEDIUM
 
-**What**: Scale beyond SQLite
+**What**: Scale beyond SQLite for larger deployments
 
 **Tasks**:
-- [ ] PostgreSQL storage adapter
-- [ ] Connection pooling
-- [ ] Implement all storage interfaces
-- [ ] PostgreSQL migrations
-- [ ] Database selection config
-- [ ] Migration tool (SQLite → PostgreSQL)
+- [ ] PostgreSQL storage adapter implementing all storage interfaces
+- [ ] Connection pooling (pgxpool)
+- [ ] PostgreSQL-specific migrations (adapt from SQLite)
+- [ ] Database selection via config
+- [ ] Migration tool (SQLite to PostgreSQL)
+- [ ] Integration tests with PostgreSQL
 - [ ] Documentation
 
 **Configuration**:
 ```bash
-RACKD_DATABASE_TYPE=postgres  # or sqlite
+RACKD_DATABASE_TYPE=postgres  # or sqlite (default)
 RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 ```
 
 **Files to Create**:
-- `internal/storage/postgres.go`
-- `internal/storage/postgres_migrations.go`
-- `internal/storage/postgres_*.go` (per entity)
+- `internal/storage/postgres.go` — PostgresStorage struct, connection pool, interface impl
+- `internal/storage/postgres_migrations.go` — PostgreSQL migration runner
+- `internal/storage/postgres_device.go` (and per-entity files)
+- `internal/storage/postgres_test.go` — Integration tests
 
 ### 3.5 Webhook System
 
 **Effort**: 5-7 days | **Priority**: LOW (Optional)
 
-**What**: Event notifications for automation
+**What**: Event notifications for external automation
 
 **Tasks**:
 - [ ] Webhook model and storage
-- [ ] Webhook CRUD API
-- [ ] Event dispatcher
-- [ ] Webhook delivery with retries
-- [ ] HMAC signature verification
-- [ ] Webhook UI page
+- [ ] Webhook CRUD API + service
+- [ ] Event dispatcher (publish/subscribe within app)
+- [ ] Webhook delivery with retries and backoff
+- [ ] HMAC signature verification for payloads
+- [ ] Webhook management UI
 - [ ] Webhook CLI commands
 - [ ] Webhook MCP tools
 
@@ -528,41 +134,136 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 - `discovery.scan.started`, `discovery.scan.completed`
 - `device.promoted`
 
-**Note**: Can be skipped if not doing heavy automation
+**Note**: Can be skipped if not doing heavy automation.
 
 **Files to Create**:
 - `internal/model/webhook.go`
 - `internal/storage/webhook_sqlite.go`
-- `internal/webhook/dispatcher.go`
-- `internal/webhook/delivery.go`
+- `internal/service/webhook.go` — CRUD + permission checks
+- `internal/webhook/dispatcher.go` — Event bus
+- `internal/webhook/delivery.go` — HTTP delivery with retries
 - `internal/api/webhook_handlers.go`
 - `webui/src/components/webhooks.ts`
 - `cmd/webhook/webhook.go`
 
 ---
 
-## Phase 4: Advanced Features 🔮 FUTURE
+## Phase 4: Advanced Features
 
 **Goal**: Advanced IPAM and integration features
 
-### 4.1 Network Topology Visualization
+### 4.1 Notifications & Alerting
+
+**Effort**: 4-5 days | **Priority**: HIGH
+
+**What**: Configurable notifications for infrastructure events via email, Slack, and Teams
+
+**Tasks**:
+- [ ] Notification channel model (email, Slack webhook, Teams webhook)
+- [ ] Notification channel storage + service
+- [ ] Channel CRUD API
+- [ ] Internal event bus (reusable by webhooks later)
+- [ ] Notification triggers with configurable thresholds:
+  - Pool utilization exceeds threshold (e.g., 80%)
+  - New device discovered
+  - Discovery scan failure
+  - IP conflict detected
+  - Device status change
+- [ ] Per-user notification preferences
+- [ ] Notification history/log
+- [ ] Notification management UI
+- [ ] Notification CLI commands
+- [ ] Email sender (SMTP)
+- [ ] Slack sender (incoming webhook)
+- [ ] Teams sender (incoming webhook)
+
+**Configuration**:
+```bash
+NOTIFICATIONS_ENABLED=true
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=alerts@example.com
+SMTP_PASSWORD=xxx
+SMTP_FROM=rackd@example.com
+```
+
+**Files to Create**:
+- `internal/model/notification.go` — Channel, trigger, and history models
+- `internal/storage/notification_sqlite.go`
+- `internal/service/notification.go` — CRUD + permission checks
+- `internal/notification/dispatcher.go` — Event bus + trigger evaluation
+- `internal/notification/email.go` — SMTP sender
+- `internal/notification/slack.go` — Slack webhook sender
+- `internal/notification/teams.go` — Teams webhook sender
+- `internal/api/notification_handlers.go`
+- `webui/src/components/notifications.ts`
+- `cmd/notification/notification.go`
+
+### 4.2 Device Lifecycle & Status Tracking
+
+**Effort**: 2-3 days | **Priority**: HIGH
+
+**What**: Track device lifecycle states with history and scheduled transitions
+
+**Tasks**:
+- [ ] Add `status` field to Device model (`planned`, `active`, `maintenance`, `decommissioned`)
+- [ ] Status change history (stored in audit trail or dedicated table)
+- [ ] Scheduled decommission date field
+- [ ] Filter/search devices by lifecycle status
+- [ ] Status badge in device list and detail UI
+- [ ] Status change dropdown in device detail UI
+- [ ] Dashboard widget: device count by status
+- [ ] CLI: `rackd device list --status active`
+
+**Files to Modify**:
+- `internal/model/device.go` — Add Status and DecommissionDate fields
+- `internal/storage/device_sqlite.go` — Migration + query filters
+- `internal/service/device.go` — Status validation, transition logic
+- `internal/api/device_handlers.go` — Accept status in create/update
+- `webui/src/components/devices.ts` — Status filter, badge, dropdown
+- `webui/src/components/dashboard.ts` — Status summary widget
+
+### 4.3 Dashboard Reporting & Trends
+
+**Effort**: 3-4 days | **Priority**: HIGH
+
+**What**: Enhanced dashboard with utilization trends, activity feeds, and summary stats
+
+**Tasks**:
+- [ ] Pool utilization snapshots (periodic storage of utilization %)
+- [ ] Utilization trend chart (sparkline or line chart over time)
+- [ ] Recently discovered devices feed
+- [ ] Network utilization summary (% used per subnet)
+- [ ] Stale device detection (devices not seen in discovery for X days)
+- [ ] Top-level stats: total devices, networks, pools, utilization
+- [ ] Dashboard API endpoint for aggregated stats
+- [ ] Configurable dashboard refresh interval
+
+**Files to Create/Modify**:
+- `internal/model/snapshot.go` — Utilization snapshot model
+- `internal/storage/snapshot_sqlite.go` — Snapshot storage + periodic writer
+- `internal/service/dashboard.go` — Aggregation queries, stale detection
+- `internal/api/dashboard_handlers.go` — `/api/dashboard` endpoint
+- `webui/src/components/dashboard.ts` — Trend charts, activity feed, stats cards
+
+### 4.4 Network Topology Visualization
 
 **Effort**: 7-10 days
 
-**What**: Visual network topology based on relationships
+**What**: Interactive visual network topology based on device relationships
 
 **Tasks**:
-- [ ] Topology data structure
+- [ ] Topology data structure (nodes, edges from relationships)
 - [ ] Topology API endpoint
 - [ ] Graph layout algorithm
 - [ ] Interactive visualization (Cytoscape.js or D3.js)
-- [ ] Zoom, pan, filter
+- [ ] Zoom, pan, filter controls
 - [ ] Export (PNG, SVG, JSON)
 - [ ] Real-time updates via WebSocket
 
-**Note**: Basic relationship graph already exists at `/devices/graph`
+**Note**: Basic relationship graph already exists at `/devices/graph`.
 
-### 4.2 DNS Integration
+### 4.5 DNS Integration
 
 **Effort**: 5-7 days
 
@@ -578,11 +279,11 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 - [ ] DNS configuration UI
 - [ ] DNS CLI commands
 
-### 4.3 DHCP Integration
+### 4.6 DHCP Integration
 
 **Effort**: 5-7 days
 
-**What**: DHCP server integration
+**What**: DHCP server integration for IP reservation
 
 **Tasks**:
 - [ ] DHCP provider interface
@@ -593,37 +294,37 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 - [ ] DHCP configuration UI
 - [ ] DHCP CLI commands
 
-### 4.4 Circuit Management
+### 4.7 Circuit Management
 
 **Effort**: 4-5 days
 
-**What**: Track network circuits
+**What**: Track network circuits (provider, circuit ID, capacity, endpoints)
 
 **Tasks**:
-- [ ] Circuit model (provider, circuit ID, capacity, endpoints)
-- [ ] Circuit storage
+- [ ] Circuit model
+- [ ] Circuit storage + service
 - [ ] Circuit CRUD API
 - [ ] Circuit UI page
 - [ ] Link circuits to devices
 - [ ] Circuit status tracking
 - [ ] Circuit CLI commands
 
-### 4.5 NAT Tracking
+### 4.8 NAT Tracking
 
 **Effort**: 3-4 days
 
-**What**: Track NAT mappings
+**What**: Track NAT mappings (external IP/port to internal IP/port)
 
 **Tasks**:
-- [ ] NAT mapping model (external IP/port, internal IP/port)
-- [ ] NAT storage
+- [ ] NAT mapping model
+- [ ] NAT storage + service
 - [ ] NAT CRUD API
 - [ ] NAT UI page
 - [ ] Link NAT to devices
 - [ ] NAT validation
 - [ ] NAT CLI commands
 
-### 4.6 IP Conflict Detection
+### 4.9 IP Conflict Detection
 
 **Effort**: 2-3 days
 
@@ -636,7 +337,7 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 - [ ] Conflict API endpoints
 - [ ] Automatic conflict checking on IP assignment
 
-### 4.7 Custom Fields/Metadata
+### 4.10 Custom Fields/Metadata
 
 **Effort**: 4-5 days
 
@@ -645,14 +346,14 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 **Tasks**:
 - [ ] Custom field model
 - [ ] Custom field storage (JSON or key-value)
-- [ ] Custom field CRUD API
+- [ ] Custom field CRUD API + service
 - [ ] Custom field UI
 - [ ] Custom field validation
 - [ ] Search/filter by custom fields
 
 ---
 
-## Phase 5: Scale & Performance 🔮 FUTURE
+## Phase 5: Scale & Performance
 
 **Goal**: Optimize for large deployments
 
@@ -690,57 +391,16 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 
 ---
 
-## Implementation Priorities
-
-### Immediate (Next 2 weeks)
-
-1. **Data Export/Import** (2-3 days) - Start here!
-2. **Bulk Operations** (3-4 days)
-3. **API Rate Limiting** (2 days)
-
-### Short-term (Next 1-2 months)
-
-4. **Change History/Audit Trail** (4-5 days)
-5. **User Management** (7-10 days)
-6. **RBAC** (5-7 days)
-
-### Medium-term (3-6 months)
-
-7. **SSO/OIDC** (5-7 days)
-8. **PostgreSQL Backend** (10-14 days)
-9. **Network Topology** (7-10 days)
-10. **DNS Integration** (5-7 days)
-11. **DHCP Integration** (5-7 days)
-
-### Long-term (6+ months)
-
-12. **Circuit Management** (4-5 days)
-13. **NAT Tracking** (3-4 days)
-14. **Performance Optimizations** (Ongoing)
-
----
-
-## Success Criteria
-
-### Phase 1 ✅
-- ✅ Search returns results in <100ms
-- ✅ Metrics endpoint responds in <50ms
-- ✅ Health checks respond in <10ms
-- ✅ API keys can be created and used
-
-### Phase 2
-- ✅ Can import 1000+ devices from CSV
-- ✅ Can export all data to JSON
-- ✅ Rate limiting prevents abuse
-- ✅ All changes are audited
+## Success Criteria (remaining)
 
 ### Phase 3
-- ✅ Users can log in with password
-- [ ] RBAC enforces permissions
 - [ ] SSO works with major providers
 - [ ] PostgreSQL supports 10,000+ devices
 
 ### Phase 4
+- [ ] Notifications delivered within 30s of trigger event
+- [ ] Device lifecycle transitions tracked with full history
+- [ ] Dashboard loads aggregated stats in <200ms
 - [ ] Topology renders 500+ devices smoothly
 - [ ] DNS/DHCP sync works reliably
 - [ ] Circuit/NAT tracking accurate
@@ -755,19 +415,8 @@ RACKD_POSTGRES_URL=postgres://user:pass@host:5432/rackd
 
 ## Notes
 
-- All features include tests, documentation, CLI, API, and UI (where applicable)
-- All features include MCP tools (where applicable)
+- All features include tests, documentation, CLI, API, and UI where applicable
+- All features include MCP tools where applicable
+- New features follow the service-layer pattern: model -> storage -> service (with RBAC) -> API handler
 - PostgreSQL is optional (SQLite remains default)
 - Webhook system is optional (can be skipped)
-- Focus on production-ready features before advanced features
-
----
-
-## Change Log
-
-- **2026-02-06**: Completed User Management (3.1) - Full implementation with web UI and CLI
-- **2026-02-06**: Added initial admin bootstrapping via environment variables (industry standard for deployments)
-- **2026-02-06**: Completed Phase 2 (Production Ready)
-- **2026-02-03**: Merged FEATURE_STATUS.md, reorganized by priority, completed Phase 1
-- **2026-02-03**: Added API Key Authentication (1.4)
-- **2026-02-03**: Completed Full-Text Search (1.1), Metrics (1.2), Health Checks (1.3)
