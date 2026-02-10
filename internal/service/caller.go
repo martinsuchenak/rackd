@@ -19,6 +19,7 @@ type Caller struct {
 	Username  string
 	IPAddress string
 	Source    string
+	Scopes    []string // OAuth token scopes; if non-nil, limits effective permissions
 }
 
 func (c *Caller) IsSystem() bool {

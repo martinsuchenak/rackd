@@ -23,6 +23,7 @@ type Services struct {
 	Credentials    *CredentialService
 	ScanProfiles   *ScanProfileService
 	ScheduledScans *ScheduledScanService
+	OAuth          *OAuthService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {

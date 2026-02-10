@@ -33,6 +33,12 @@ type Config struct {
 	InitialAdminPassword     string
 	InitialAdminEmail        string
 	InitialAdminFullName     string
+
+	// OAuth 2.1 for MCP
+	MCPOAuthEnabled         bool
+	MCPOAuthIssuerURL       string
+	MCPOAuthAccessTokenTTL  time.Duration
+	MCPOAuthRefreshTokenTTL time.Duration
 }
 
 var cfg Config
@@ -64,6 +70,11 @@ func Load() *Config {
 		InitialAdminPassword:   getEnv("INITIAL_ADMIN_PASSWORD", ""),
 		InitialAdminEmail:      getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),
 		InitialAdminFullName:   getEnv("INITIAL_ADMIN_FULL_NAME", "System Administrator"),
+
+		MCPOAuthEnabled:         getBoolEnv("MCP_OAUTH_ENABLED", false),
+		MCPOAuthIssuerURL:       getEnv("MCP_OAUTH_ISSUER_URL", ""),
+		MCPOAuthAccessTokenTTL:  getDurationEnv("MCP_OAUTH_ACCESS_TOKEN_TTL", 1*time.Hour),
+		MCPOAuthRefreshTokenTTL: getDurationEnv("MCP_OAUTH_REFRESH_TOKEN_TTL", 30*24*time.Hour),
 	}
 
 	return &cfg
@@ -113,6 +124,10 @@ func (c *Config) Validate() error {
 
 	if c.AuditEnabled && c.AuditRetentionDays <= 0 {
 		return fmt.Errorf("AUDIT_RETENTION_DAYS must be positive, got %d", c.AuditRetentionDays)
+	}
+
+	if c.MCPOAuthEnabled && c.MCPOAuthIssuerURL == "" {
+		return fmt.Errorf("MCP_OAUTH_ISSUER_URL is required when MCP_OAUTH_ENABLED is true")
 	}
 
 	return nil

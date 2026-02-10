@@ -1,0 +1,82 @@
+<div x-data="oauthConsent()" class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4">
+  <div class="max-w-md w-full space-y-8">
+    <!-- Loading -->
+    <template x-if="loading && !error">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-4 text-gray-600 dark:text-gray-400">Loading authorization request...</p>
+      </div>
+    </template>
+
+    <!-- Error -->
+    <template x-if="error">
+      <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <div class="flex items-center mb-4">
+          <svg class="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Authorization Error</h2>
+        </div>
+        <p class="text-gray-600 dark:text-gray-400" x-text="error"></p>
+      </div>
+    </template>
+
+    <!-- Consent Form -->
+    <template x-if="consentData && !error">
+      <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <!-- Header -->
+        <div class="text-center mb-6">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Authorize Application</h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Signed in as <span class="font-medium" x-text="consentData.user"></span>
+          </p>
+        </div>
+
+        <!-- Client Info -->
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+          <h3 class="font-semibold text-gray-900 dark:text-white text-lg" x-text="consentData.client_name"></h3>
+          <template x-if="consentData.client_uri">
+            <a :href="consentData.client_uri" target="_blank" class="text-sm text-blue-600 dark:text-blue-400 hover:underline" x-text="consentData.client_uri"></a>
+          </template>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            This application is requesting access to your Rackd account.
+          </p>
+        </div>
+
+        <!-- Requested Permissions -->
+        <div class="mb-6">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Requested permissions:</h4>
+          <ul class="space-y-1">
+            <template x-for="label in scopeLabels" :key="label">
+              <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                <svg class="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span x-text="label"></span>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex space-x-3">
+          <button
+            @click="deny()"
+            :disabled="loading"
+            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+          >
+            Deny
+          </button>
+          <button
+            @click="approve()"
+            :disabled="loading"
+            class="flex-1 px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          >
+            <span x-show="!loading">Authorize</span>
+            <span x-show="loading">Authorizing...</span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>

@@ -108,6 +108,12 @@ var migrations = []*Migration{
 		Up:      migrateAddAPIKeyUserIDUp,
 		Down:    migrateAddAPIKeyUserIDDown,
 	},
+	{
+		Version: "20260210100000",
+		Name:    "add_oauth_tables",
+		Up:      migrateAddOAuthTablesUp,
+		Down:    migrateAddOAuthTablesDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration

@@ -22,6 +22,8 @@ import { login } from './components/login';
 import { usersList } from './components/users';
 import { userMenu } from './components/user-menu';
 import { toastComponent } from './components/toast';
+import { oauthConsent } from './components/oauth-consent';
+import { oauthClients } from './components/oauth-clients';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -317,6 +319,10 @@ async function init(): Promise<void> {
   Alpine.data('login', login);
   Alpine.data('usersList', usersList);
   Alpine.data('userMenu', userMenu);
+
+  // OAuth
+  Alpine.data('oauthConsent', oauthConsent);
+  Alpine.data('oauthClients', oauthClients);
 
   // Permissions store (accessible as $store.permissions in all components)
   initPermissionsStore();

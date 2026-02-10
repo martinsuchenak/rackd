@@ -69,9 +69,9 @@ webui/src/
 **Tasks**:
 - [ ] Upgrade `github.com/paularlott/mcp` from v0.9.2 to v0.11.1
 - [ ] OAuth 2.1 Authorization Server:
-  - [ ] `GET /oauth/authorize` — Authorization endpoint (renders login/consent page)
-  - [ ] `POST /oauth/token` — Token endpoint (issues access + refresh tokens)
-  - [ ] `POST /oauth/revoke` — Token revocation
+  - [ ] `GET /mcp-oauth/authorize` — Authorization endpoint (renders login/consent page)
+  - [ ] `POST /mcp-oauth/token` — Token endpoint (issues access + refresh tokens)
+  - [ ] `POST /mcp-oauth/revoke` — Token revocation
   - [ ] Authorization Code grant with PKCE (for public clients like Claude Desktop)
   - [ ] Client Credentials grant (for service-to-service)
 - [ ] OAuth token model and storage (access tokens, refresh tokens, authorization codes)

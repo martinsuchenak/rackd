@@ -29,6 +29,23 @@ func requirePermission(ctx context.Context, checker PermissionChecker, resource,
 		return ErrUnauthenticated
 	}
 
+	// Check OAuth scope restriction: if scopes are set, the requested
+	// resource:action must be in the token's scope list.
+	if caller.Scopes != nil {
+		scopeKey := resource + ":" + action
+		found := false
+		for _, s := range caller.Scopes {
+			if s == scopeKey || s == "*" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Debug("RBAC: scope denied", "user_id", caller.UserID, "scope_key", scopeKey, "scopes", caller.Scopes)
+			return ErrForbidden
+		}
+	}
+
 	has, err := checker.HasPermission(ctx, caller.UserID, resource, action)
 	if err != nil {
 		log.Error("RBAC: permission check error", "error", err, "user_id", caller.UserID, "resource", resource, "action", action)

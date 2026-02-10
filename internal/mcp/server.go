@@ -16,10 +16,17 @@ import (
 )
 
 type Server struct {
-	mcpServer   *mcp.Server
-	svc         *service.Services
-	store       storage.ExtendedStorage
-	requireAuth bool
+	mcpServer    *mcp.Server
+	svc          *service.Services
+	store        storage.ExtendedStorage
+	requireAuth  bool
+	oauthService *service.OAuthService
+	oauthEnabled bool
+}
+
+func (s *Server) SetOAuthService(svc *service.OAuthService) {
+	s.oauthService = svc
+	s.oauthEnabled = svc != nil
 }
 
 func NewServer(services *service.Services, store storage.ExtendedStorage, requireAuth bool) *Server {
@@ -169,60 +176,78 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	log.Debug("MCP request received", "remote_addr", r.RemoteAddr)
 
 	if s.requireAuth {
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Debug("MCP auth failed: missing Bearer prefix")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			s.writeUnauthorized(w)
 			return
 		}
-		token := strings.TrimPrefix(auth, "Bearer ")
+		token := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Try API key authentication
-		key, err := s.store.GetAPIKeyByKey(token)
-		if err != nil {
-			log.Debug("MCP auth failed: invalid API key")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Check expiration
-		if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
-			log.Debug("MCP auth failed: expired API key", "key_name", key.Name)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Update last used (async)
-		go func() {
-			s.store.UpdateAPIKeyLastUsed(key.ID, time.Now())
-		}()
-
-		log.Trace("MCP auth successful (API key)", "key_name", key.Name)
-
-		// Resolve API key owner: if the key has a UserID, use the owner's
-		// identity so RBAC is enforced using their roles.
 		var caller *service.Caller
-		if key.UserID != "" {
-			user, err := s.store.GetUser(key.UserID)
-			if err == nil && user.IsActive {
+
+		// Strategy 1: Try OAuth token validation (if OAuth enabled)
+		if s.oauthService != nil {
+			oauthToken, err := s.oauthService.ValidateAccessToken(token)
+			if err == nil {
+				caller, err = s.oauthService.ResolveCallerFromOAuthToken(oauthToken, r.RemoteAddr)
+				if err != nil {
+					log.Debug("MCP OAuth auth failed: could not resolve caller", "error", err)
+					s.writeUnauthorized(w)
+					return
+				}
+				log.Trace("MCP auth successful (OAuth)", "user_id", caller.UserID)
+			}
+		}
+
+		// Strategy 2: Fall back to API key authentication
+		if caller == nil {
+			key, err := s.store.GetAPIKeyByKey(token)
+			if err != nil {
+				log.Debug("MCP auth failed: invalid token")
+				s.writeUnauthorized(w)
+				return
+			}
+
+			// Check expiration
+			if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
+				log.Debug("MCP auth failed: expired API key", "key_name", key.Name)
+				s.writeUnauthorized(w)
+				return
+			}
+
+			// Update last used (async)
+			go func() {
+				s.store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+			}()
+
+			log.Trace("MCP auth successful (API key)", "key_name", key.Name)
+
+			// Resolve API key owner: if the key has a UserID, use the owner's
+			// identity so RBAC is enforced using their roles.
+			if key.UserID != "" {
+				user, err := s.store.GetUser(key.UserID)
+				if err == nil && user.IsActive {
+					caller = &service.Caller{
+						Type:      service.CallerTypeUser,
+						UserID:    user.ID,
+						Username:  user.Username,
+						IPAddress: r.RemoteAddr,
+						Source:    "mcp",
+					}
+				}
+			}
+			if caller == nil {
+				// Legacy key (no user association)
 				caller = &service.Caller{
-					Type:      service.CallerTypeUser,
-					UserID:    user.ID,
-					Username:  user.Username,
-					IPAddress: r.RemoteAddr,
-					Source:    "mcp",
+					Type:     service.CallerTypeAPIKey,
+					UserID:   key.ID,
+					Username: key.Name,
+					Source:   "mcp",
 				}
 			}
 		}
-		if caller == nil {
-			// Legacy key (no user association)
-			caller = &service.Caller{
-				Type:     service.CallerTypeAPIKey,
-				UserID:   key.ID,
-				Username: key.Name,
-				Source:   "mcp",
-			}
-		}
+
 		r = r.WithContext(service.WithCaller(r.Context(), caller))
 	} else {
 		// When auth is not required, inject a system caller so service
@@ -231,6 +256,13 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mcpServer.HandleRequest(w, r)
+}
+
+func (s *Server) writeUnauthorized(w http.ResponseWriter) {
+	if s.oauthEnabled {
+		w.Header().Set("WWW-Authenticate", `Bearer resource_metadata="/.well-known/oauth-protected-resource"`)
+	}
+	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 }
 
 // Device handlers

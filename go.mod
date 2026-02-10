@@ -7,7 +7,7 @@ require (
 	github.com/gosnmp/gosnmp v1.43.2
 	github.com/paularlott/cli v0.7.2
 	github.com/paularlott/logger v0.3.0
-	github.com/paularlott/mcp v0.9.2
+	github.com/paularlott/mcp v0.11.1
 	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.47.0
 	modernc.org/sqlite v1.44.3

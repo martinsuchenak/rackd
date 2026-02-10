@@ -214,6 +214,24 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/users/{id}/roles", wrapAuth(h.getUserRoles))
 	mux.HandleFunc("GET /api/users/{id}/permissions", wrapAuth(h.getUserPermissions))
 
+	// OAuth 2.1 routes (conditional on OAuth service being configured)
+	if h.svc != nil && h.svc.OAuth != nil {
+		// Well-known metadata endpoints (no auth required)
+		mux.HandleFunc("GET /.well-known/oauth-protected-resource", LimitBody(h.oauthProtectedResource))
+		mux.HandleFunc("GET /.well-known/oauth-authorization-server", LimitBody(h.oauthAuthorizationServerMetadata))
+
+		// OAuth flow endpoints (no auth required per OAuth/MCP spec)
+		mux.HandleFunc("POST /mcp-oauth/register", LimitBody(h.oauthRegister))
+		mux.HandleFunc("GET /mcp-oauth/authorize", LimitBody(h.oauthAuthorize))
+		mux.HandleFunc("POST /mcp-oauth/authorize", LimitBody(h.oauthAuthorizeSubmit))
+		mux.HandleFunc("POST /mcp-oauth/token", LimitBody(h.oauthToken))
+		mux.HandleFunc("POST /mcp-oauth/revoke", LimitBody(h.oauthRevoke))
+
+		// OAuth client management (requires auth)
+		mux.HandleFunc("GET /api/oauth/clients", wrapAuth(h.oauthListClients))
+		mux.HandleFunc("DELETE /api/oauth/clients/{id}", wrapAuth(h.oauthDeleteClient))
+	}
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

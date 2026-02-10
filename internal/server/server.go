@@ -86,8 +86,21 @@ func RunWithAdvancedFeatures(
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
 	handler.RegisterRoutes(mux)
 
-	// MCP server
-	mcpServer := mcp.NewServer(services, store, false)
+	// OAuth setup (conditional)
+	if cfg.MCPOAuthEnabled {
+		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
+		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
+		oauthService.StartCleanup()
+		services.OAuth = oauthService
+		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
+	}
+
+	// MCP server (require auth when OAuth is enabled or session manager is configured)
+	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
+	mcpServer := mcp.NewServer(services, store, mcpRequireAuth)
+	if services.OAuth != nil {
+		mcpServer.SetOAuthService(services.OAuth)
+	}
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config with nav items for new features
@@ -189,8 +202,21 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	handler.SetServices(services)
 	handler.RegisterRoutes(mux)
 
-	// MCP server
-	mcpServer := mcp.NewServer(services, store, false)
+	// OAuth setup (conditional)
+	if cfg.MCPOAuthEnabled {
+		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
+		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
+		oauthService.StartCleanup()
+		services.OAuth = oauthService
+		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
+	}
+
+	// MCP server (require auth when OAuth is enabled or session manager is configured)
+	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
+	mcpServer := mcp.NewServer(services, store, mcpRequireAuth)
+	if services.OAuth != nil {
+		mcpServer.SetOAuthService(services.OAuth)
+	}
 	mux.HandleFunc("POST /mcp", mcpServer.HandleRequest)
 
 	// UI config

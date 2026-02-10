@@ -21,7 +21,14 @@ var (
 	ErrIPNotAvailable     = errors.New("no IP addresses available")
 	ErrIPConflict         = errors.New("IP address already in use")
 	ErrAuditLogNotFound   = errors.New("audit log not found")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrOAuthClientNotFound  = errors.New("oauth client not found")
+	ErrOAuthCodeNotFound    = errors.New("oauth authorization code not found")
+	ErrOAuthCodeExpired     = errors.New("oauth authorization code expired")
+	ErrOAuthCodeUsed        = errors.New("oauth authorization code already used")
+	ErrOAuthTokenNotFound   = errors.New("oauth token not found")
+	ErrOAuthTokenRevoked    = errors.New("oauth token revoked")
+	ErrOAuthTokenExpired    = errors.New("oauth token expired")
 )
 
 // DeviceStorage defines device persistence operations
@@ -135,6 +142,29 @@ type AuditStorage interface {
 	DeleteOldAuditLogs(olderThanDays int) error
 }
 
+// OAuthStorage defines OAuth 2.1 persistence operations
+type OAuthStorage interface {
+	// Clients
+	CreateOAuthClient(ctx context.Context, client *model.OAuthClient) error
+	GetOAuthClient(clientID string) (*model.OAuthClient, error)
+	ListOAuthClients(createdByUserID string) ([]model.OAuthClient, error)
+	DeleteOAuthClient(ctx context.Context, clientID string) error
+
+	// Authorization codes
+	CreateAuthorizationCode(ctx context.Context, code *model.OAuthAuthorizationCode) error
+	GetAuthorizationCode(codeHash string) (*model.OAuthAuthorizationCode, error)
+	MarkAuthorizationCodeUsed(codeHash string) error
+	CleanupExpiredCodes() error
+
+	// Tokens
+	CreateOAuthToken(ctx context.Context, token *model.OAuthToken) error
+	GetOAuthTokenByHash(tokenHash string) (*model.OAuthToken, error)
+	RevokeOAuthToken(tokenID string) error
+	RevokeOAuthTokensByClient(clientID string) error
+	RevokeOAuthTokensByUser(userID string) error
+	CleanupExpiredTokens() error
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -153,6 +183,7 @@ type ExtendedStorage interface {
 	AuditStorage
 	UserStorage
 	RBACStorage
+	OAuthStorage
 	Close() error
 	DB() *sql.DB
 }
