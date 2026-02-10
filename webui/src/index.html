@@ -7,6 +7,14 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/output.css">
   <style>[x-cloak] { display: none !important; }</style>
+  <script>
+    // Apply stored theme immediately to prevent flash of wrong theme
+    (function() {
+      var theme = localStorage.getItem('theme') || 'system';
+      var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) document.documentElement.classList.add('dark');
+    })();
+  </script>
 </head>
 <body class="min-h-screen">
   <!-- Skip link for accessibility -->

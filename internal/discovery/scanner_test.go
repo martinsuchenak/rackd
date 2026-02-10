@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -17,37 +16,16 @@ func init() {
 	log.Init("text", "error", io.Discard)
 }
 
-func newTestScanner(t *testing.T) (*DefaultScanner, storage.ExtendedStorage) {
+func newTestUnifiedScanner(t *testing.T) (*UnifiedScanner, storage.ExtendedStorage) {
 	store, err := storage.NewSQLiteStorage(":memory:")
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 
-	cfg := &config.Config{
-		DiscoveryMaxConcurrent: 5,
-		DiscoveryTimeout:       100 * time.Millisecond,
-	}
-
-	return NewScanner(store, cfg), store
+	return NewUnifiedScanner(store, store, nil, 100*time.Millisecond), store
 }
 
-func TestNewScanner(t *testing.T) {
-	scanner, store := newTestScanner(t)
-	defer store.Close()
-
-	if scanner == nil {
-		t.Fatal("Expected scanner to be created")
-	}
-	if scanner.storage == nil {
-		t.Error("Expected storage to be set")
-	}
-	if scanner.config == nil {
-		t.Error("Expected config to be set")
-	}
-	if scanner.scans == nil {
-		t.Error("Expected scans map to be initialized")
-	}
-}
+// Helper function tests
 
 func TestCountHosts(t *testing.T) {
 	tests := []struct {
@@ -140,8 +118,10 @@ func TestGetTop100Ports(t *testing.T) {
 	}
 }
 
+// UnifiedScanner tests
+
 func TestScan_InvalidCIDR(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 
 	network := &model.Network{
@@ -157,7 +137,7 @@ func TestScan_InvalidCIDR(t *testing.T) {
 }
 
 func TestScan_CreatesScanRecord(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 	ctx := context.Background()
 
@@ -185,7 +165,7 @@ func TestScan_CreatesScanRecord(t *testing.T) {
 }
 
 func TestGetScanStatus_FromCache(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 	ctx := context.Background()
 
@@ -208,7 +188,7 @@ func TestGetScanStatus_FromCache(t *testing.T) {
 }
 
 func TestGetScanStatus_FromStorage(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 	ctx := context.Background()
 
@@ -233,64 +213,8 @@ func TestGetScanStatus_FromStorage(t *testing.T) {
 	}
 }
 
-func TestScan_Cancellation(t *testing.T) {
-	scanner, store := newTestScanner(t)
-	defer store.Close()
-
-	network := &model.Network{
-		ID:     "net-1",
-		Name:   "Test",
-		Subnet: "10.0.0.0/24", // Large enough to test cancellation
-	}
-	store.CreateNetwork(context.Background(), network)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	scan, err := scanner.Scan(ctx, network, model.ScanTypeQuick)
-	if err != nil {
-		t.Fatalf("Scan failed: %v", err)
-	}
-
-	// Cancel immediately
-	cancel()
-
-	// Wait a bit for the scan to process cancellation
-	time.Sleep(200 * time.Millisecond)
-
-	status, _ := scanner.GetScanStatus(scan.ID)
-	// Status could be failed (cancelled) or still running depending on timing
-	if status.Status != model.ScanStatusFailed && status.Status != model.ScanStatusRunning && status.Status != model.ScanStatusCompleted {
-		t.Errorf("Unexpected status: %s", status.Status)
-	}
-}
-
-func TestDiscoverHost(t *testing.T) {
-	scanner, store := newTestScanner(t)
-	defer store.Close()
-
-	device := scanner.discoverHost("192.168.1.1", "net-1", model.ScanTypeQuick)
-
-	if device == nil {
-		t.Fatal("Expected device to be created")
-	}
-	if device.IP != "192.168.1.1" {
-		t.Errorf("Expected IP 192.168.1.1, got %s", device.IP)
-	}
-	if device.NetworkID != "net-1" {
-		t.Errorf("Expected NetworkID net-1, got %s", device.NetworkID)
-	}
-	if device.Status != "online" {
-		t.Errorf("Expected status online, got %s", device.Status)
-	}
-	if device.OpenPorts == nil {
-		t.Error("Expected OpenPorts to be initialized")
-	}
-	if device.Services == nil {
-		t.Error("Expected Services to be initialized")
-	}
-}
-
 func TestScan_SubnetTooLarge(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 
 	network := &model.Network{
@@ -306,7 +230,7 @@ func TestScan_SubnetTooLarge(t *testing.T) {
 }
 
 func TestScan_MaxAllowedSubnet(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 	ctx := context.Background()
 
@@ -327,11 +251,11 @@ func TestScan_MaxAllowedSubnet(t *testing.T) {
 }
 
 func TestCleanupCompletedScans(t *testing.T) {
-	scanner, store := newTestScanner(t)
+	scanner, store := newTestUnifiedScanner(t)
 	defer store.Close()
 
 	// Add a completed scan with old timestamp
-	oldTime := time.Now().Add(-2 * time.Hour)
+	oldTime := time.Now().Add(-5 * time.Minute)
 	scanner.mu.Lock()
 	scanner.scans["old-scan"] = &model.DiscoveryScan{
 		ID:          "old-scan",

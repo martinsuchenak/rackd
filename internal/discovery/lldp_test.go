@@ -114,8 +114,8 @@ func TestLLDPScanner_ParseMgmtIP(t *testing.T) {
 	scanner := NewLLDPScanner(5 * time.Second)
 	result := &LLDPResult{}
 
-	// Test IPv4
-	data := []byte{1, 192, 168, 1, 1}
+	// Test IPv4: addrLen=5, subtype=1(IPv4), then 4 IP bytes
+	data := []byte{5, 1, 192, 168, 1, 1}
 	scanner.parseMgmtIP(data, result)
 
 	if result.MgmtIP != "192.168.1.1" {

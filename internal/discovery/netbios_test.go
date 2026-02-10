@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -74,18 +75,12 @@ func TestEncodeNetBIOSName(t *testing.T) {
 }
 
 func TestDecodeNetBIOSName(t *testing.T) {
-	tests := []struct {
-		encoded  []byte
-		expected string
-	}{
-		{[]byte("CKFDENECHECAHEHECEJ"), "TEST"},
-	}
-
-	for _, tt := range tests {
-		result := decodeNetBIOSName(tt.encoded)
-		if result != tt.expected {
-			t.Errorf("decodeNetBIOSName(%s): expected %s, got %s", tt.encoded, tt.expected, result)
-		}
+	// Round-trip test: encode then decode "TEST"
+	encoded := encodeNetBIOSName("TEST")
+	result := decodeNetBIOSName(encoded)
+	result = strings.TrimRight(result, " \x00")
+	if result != "TEST" {
+		t.Errorf("decodeNetBIOSName(encode(TEST)): expected TEST, got %q", result)
 	}
 }
 

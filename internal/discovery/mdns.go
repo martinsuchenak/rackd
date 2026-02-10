@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -23,7 +24,16 @@ func NewmDNSScanner(timeout time.Duration) *mDNSScanner {
 }
 
 func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResult, error) {
-	conn, err := net.ListenPacket("udp4", "224.0.0.251:5353")
+	if network == "" {
+		return nil, fmt.Errorf("empty network")
+	}
+
+	_, _, err := net.ParseCIDR(network)
+	if err != nil {
+		return nil, fmt.Errorf("invalid network: %w", err)
+	}
+
+	conn, err := net.ListenPacket("udp4", ":0")
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +69,13 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 		}
 	}()
 
+	groupAddr := &net.UDPAddr{IP: net.ParseIP("224.0.0.251"), Port: 5353}
+	query := s.buildmDNSQuery("_services._dns-sd._udp.local")
+
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-
-		groupAddr := &net.UDPAddr{IP: net.ParseIP("224.0.0.251"), Port: 5353}
-		query := s.buildmDNSQuery("_services._dns-sd._udp.local")
 
 		for i := 0; i < 2; i++ {
 			select {
@@ -161,7 +171,6 @@ func (s *mDNSScanner) parsemDNSResponse(data []byte, addr net.Addr) []mDNSResult
 		}
 
 		rrType := binary.BigEndian.Uint16(data[offset : offset+2])
-		rrClass := binary.BigEndian.Uint16(data[offset+2 : offset+4])
 		_ = binary.BigEndian.Uint32(data[offset+4 : offset+8])
 		rdLen := binary.BigEndian.Uint16(data[offset+8 : offset+10])
 		offset += 10
@@ -170,25 +179,12 @@ func (s *mDNSScanner) parsemDNSResponse(data []byte, addr net.Addr) []mDNSResult
 			break
 		}
 
-		if rrClass == 0x0001 {
-			if rrType == 0x0001 {
-				if int(rdLen) == 4 {
-					ip := net.IP(data[offset : offset+4]).String()
-					hostname := s.extractHostname(name)
-					if hostname != "" {
-						serviceType := s.getServiceType(name)
-						results = append(results, mDNSResult{
-							Hostname: hostname,
-							Type:     serviceType,
-							IP:       ip,
-						})
-					}
-				}
-			} else if rrType == 0x000C {
-				target, _ := s.parseName(data, offset)
-				hostname := s.extractHostname(target)
+		switch rrType {
+		case 0x0001: // A record
+			if int(rdLen) == 4 {
+				ip := net.IP(data[offset : offset+4]).String()
+				hostname := s.extractHostname(name)
 				if hostname != "" {
-					ip := s.extractIPFromAddr(addr)
 					serviceType := s.getServiceType(name)
 					results = append(results, mDNSResult{
 						Hostname: hostname,
@@ -196,6 +192,18 @@ func (s *mDNSScanner) parsemDNSResponse(data []byte, addr net.Addr) []mDNSResult
 						IP:       ip,
 					})
 				}
+			}
+		case 0x000C: // PTR record
+			target, _ := s.parseName(data, offset)
+			hostname := s.extractHostname(target)
+			if hostname != "" {
+				ip := s.extractIPFromAddr(addr)
+				serviceType := s.getServiceType(name)
+				results = append(results, mDNSResult{
+					Hostname: hostname,
+					Type:     serviceType,
+					IP:       ip,
+				})
 			}
 		}
 
@@ -211,6 +219,10 @@ func (s *mDNSScanner) parseName(data []byte, offset int) (string, int) {
 	}
 
 	var name strings.Builder
+	// finalOffset tracks where the caller should continue reading.
+	// Set on the first pointer jump and not updated after.
+	finalOffset := -1
+	currentOffset := offset
 	jumps := 0
 
 	for {
@@ -218,52 +230,60 @@ func (s *mDNSScanner) parseName(data []byte, offset int) (string, int) {
 			break
 		}
 
-		if offset >= len(data) {
+		if currentOffset >= len(data) {
 			break
 		}
 
-		labelLen := int(data[offset])
+		labelLen := int(data[currentOffset])
 
 		if labelLen == 0 {
-			offset++
+			currentOffset++
 			break
 		}
 
 		if labelLen&0xC0 == 0xC0 {
-			if offset+1 >= len(data) {
+			if currentOffset+1 >= len(data) {
 				break
 			}
-			pointer := int(binary.BigEndian.Uint16(data[offset:offset+2]) & 0x3FFF)
-			offset += 2
+			if finalOffset < 0 {
+				finalOffset = currentOffset + 2
+			}
+			pointer := int(binary.BigEndian.Uint16(data[currentOffset:currentOffset+2]) & 0x3FFF)
 			jumps++
-			offset = pointer
+			currentOffset = pointer
 			continue
 		}
 
-		offset++
-		if offset+labelLen > len(data) {
+		currentOffset++
+		if currentOffset+labelLen > len(data) {
 			break
 		}
 
 		if name.Len() > 0 {
 			name.WriteByte('.')
 		}
-		name.Write(data[offset : offset+labelLen])
-		offset += labelLen
+		name.Write(data[currentOffset : currentOffset+labelLen])
+		currentOffset += labelLen
 	}
 
-	return name.String(), offset
+	if finalOffset >= 0 {
+		return name.String(), finalOffset
+	}
+	return name.String(), currentOffset
 }
 
 func (s *mDNSScanner) extractHostname(name string) string {
 	name = strings.TrimSuffix(name, ".local.")
+	name = strings.TrimSuffix(name, ".local")
 	name = strings.TrimSuffix(name, "._tcp.")
+	name = strings.TrimSuffix(name, "._tcp")
 	name = strings.TrimSuffix(name, "._udp.")
+	name = strings.TrimSuffix(name, "._udp")
 	name = strings.TrimSpace(name)
 
 	parts := strings.Split(name, ".")
 	for _, part := range parts {
-		if !strings.HasPrefix(part, "_") {
+		if !strings.HasPrefix(part, "_") && part != "" {
 			return part
 		}
 	}
@@ -272,52 +292,48 @@ func (s *mDNSScanner) extractHostname(name string) string {
 }
 
 func (s *mDNSScanner) getServiceType(name string) string {
-	if strings.Contains(name, "._airplay.") || strings.Contains(name, "._raop.") {
+	lower := strings.ToLower(name)
+
+	if strings.Contains(lower, "_airplay") || strings.Contains(lower, "_raop") {
 		return "Apple TV/AirPlay"
 	}
-	if strings.Contains(name, "._afpovertcp.") {
+	if strings.Contains(lower, "_afpovertcp") {
 		return "File Sharing (AFP)"
 	}
-	if strings.Contains(name, "._smb._tcp.") {
+	if strings.Contains(lower, "_smb") {
 		return "File Sharing (SMB)"
 	}
-	if strings.Contains(name, "._ssh._tcp.") {
+	if strings.Contains(lower, "_ssh") {
 		return "SSH"
 	}
-	if strings.Contains(name, "._http._tcp.") || strings.Contains(name, "._https._tcp.") {
+	if strings.Contains(lower, "_http") || strings.Contains(lower, "_https") {
 		return "Web Server"
 	}
-	if strings.Contains(name, "._printer._tcp.") {
-		return "Printer"
-	}
-	if strings.Contains(name, "._ipp._tcp.") {
-		return "Printer (IPP)"
-	}
-	if strings.Contains(name, "._ippusb._tcp.") {
+	if strings.Contains(lower, "_ippusb") {
 		return "Printer (USB)"
 	}
-	if strings.Contains(name, "._chromecast._tcp.") {
+	if strings.Contains(lower, "_ipp") {
+		return "Printer (IPP)"
+	}
+	if strings.Contains(lower, "_printer") {
+		return "Printer"
+	}
+	if strings.Contains(lower, "_chromecast") {
 		return "Chromecast"
 	}
-	if strings.Contains(name, "._googlecast._tcp.") {
+	if strings.Contains(lower, "_googlecast") {
 		return "Google Cast"
 	}
-	if strings.Contains(name, "._spotify-connect._tcp.") {
+	if strings.Contains(lower, "_spotify-connect") {
 		return "Spotify Connect"
 	}
-	if strings.Contains(name, "._hap._tcp.") {
+	if strings.Contains(lower, "_hap") || strings.Contains(lower, "_homekit") {
 		return "HomeKit"
 	}
-	if strings.Contains(name, "_homekit._tcp.") {
-		return "HomeKit"
-	}
-	if strings.Contains(name, "._raop._tcp.") {
-		return "AirPlay Receiver"
-	}
-	if strings.Contains(name, "._device-info._tcp.") {
+	if strings.Contains(lower, "_device-info") {
 		return "Apple Device"
 	}
-	if strings.Contains(name, "._services._dns-sd._udp.") {
+	if strings.Contains(lower, "_services._dns-sd") {
 		return "Service Discovery"
 	}
 	return "Unknown"

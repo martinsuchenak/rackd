@@ -173,7 +173,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
 	}
 
-	scanner := discovery.NewScanner(store, cfg)
+	scanner := discovery.NewUnifiedScanner(store, store, nil, 30*time.Second)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 

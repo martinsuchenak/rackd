@@ -27,6 +27,9 @@ func NewLLDPScanner(timeout time.Duration) *LLDPScanner {
 	return &LLDPScanner{timeout: timeout}
 }
 
+// Discover listens for LLDP frames. Note: LLDP operates at Layer 2 (Ethernet),
+// so this implementation can only capture LLDP data that has been bridged to UDP
+// or in environments where raw Ethernet frames are accessible via UDP.
 func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 	conn, err := net.ListenPacket("udp4", ":0")
 	if err != nil {
@@ -59,25 +62,6 @@ func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 		}
 	}()
 
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, iface := range ifaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		if s.hasMulticast(iface) {
-			multicastAddr := &net.UDPAddr{IP: net.ParseIP("01:80:c2:00:00:0e"), Port: 0}
-			if c, err := net.DialUDP("udp4", &net.UDPAddr{IP: nil, Port: 0}, multicastAddr); err == nil {
-				c.SetDeadline(time.Now().Add(s.timeout))
-				c.Close()
-			}
-		}
-	}
-
 	time.Sleep(s.timeout)
 	close(resultChan)
 
@@ -109,10 +93,14 @@ func (s *LLDPScanner) parseLLDP(data []byte, addr net.Addr) *LLDPResult {
 	result := &LLDPResult{}
 	offset := 14
 
-	for offset+4 <= len(data) {
+	for offset+2 <= len(data) {
 		tlvType := (data[offset] >> 1) & 0x7F
 		tlvLen := int(binary.BigEndian.Uint16(data[offset:offset+2]) & 0x01FF)
 		offset += 2
+
+		if tlvLen == 0 && tlvType == 0 {
+			break // End of LLDPDU
+		}
 
 		if offset+tlvLen > len(data) {
 			break
@@ -142,7 +130,9 @@ func (s *LLDPScanner) parseLLDP(data []byte, addr net.Addr) *LLDPResult {
 		return nil
 	}
 
-	result.MgmtIP = s.extractIPFromAddr(addr)
+	if result.MgmtIP == "" {
+		result.MgmtIP = s.extractIPFromAddr(addr)
+	}
 
 	return result
 }
@@ -152,29 +142,27 @@ func (s *LLDPScanner) parseChassisID(data []byte, result *LLDPResult) {
 		return
 	}
 
-	chassisType := data[0]
-	chassisID := string(data[1:])
+	chassisSubtype := data[0]
+	payload := data[1:]
 
-	switch chassisType {
-	case 1:
+	switch chassisSubtype {
+	case 4, 7: // MAC Address subtypes
 		result.ChassisType = "MAC"
-	case 2:
+		if len(payload) >= 6 {
+			result.ChassisID = fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+				payload[0], payload[1], payload[2], payload[3], payload[4], payload[5])
+		}
+	case 5: // Network Address
 		result.ChassisType = "Network Address"
-	case 3:
-		result.ChassisType = "Interface Name"
-	case 4:
-		result.ChassisType = "Interface Alias"
-	case 5:
-		result.ChassisType = "Chassis Component"
-	case 6:
-		result.ChassisType = "Port Component"
-	case 7:
-		result.ChassisType = "MAC Address"
+		if len(payload) >= 5 && payload[0] == 1 { // IPv4
+			result.ChassisID = net.IP(payload[1:5]).String()
+		} else {
+			result.ChassisID = string(payload)
+		}
 	default:
-		result.ChassisType = fmt.Sprintf("Type %d", chassisType)
+		result.ChassisType = fmt.Sprintf("Type %d", chassisSubtype)
+		result.ChassisID = string(payload)
 	}
-
-	result.ChassisID = chassisID
 }
 
 func (s *LLDPScanner) parsePortID(data []byte, result *LLDPResult) {
@@ -182,26 +170,17 @@ func (s *LLDPScanner) parsePortID(data []byte, result *LLDPResult) {
 		return
 	}
 
-	portType := data[0]
-	portID := string(data[1:])
+	portSubtype := data[0]
+	payload := data[1:]
 
-	switch portType {
-	case 1:
-		result.PortID = portID
-	case 2:
-		result.PortID = portID
-	case 3:
-		result.PortID = portID
-	case 4:
-		result.PortID = portID
-	case 5:
-		result.PortID = portID
-	case 6:
-		result.PortID = portID
-	case 7:
-		result.PortID = portID
-	default:
-		result.PortID = portID
+	switch portSubtype {
+	case 3: // MAC Address
+		if len(payload) >= 6 {
+			result.PortID = fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+				payload[0], payload[1], payload[2], payload[3], payload[4], payload[5])
+		}
+	default: // Interface name, alias, etc.
+		result.PortID = string(payload)
 	}
 }
 
@@ -218,37 +197,27 @@ func (s *LLDPScanner) parseSystemDesc(data []byte, result *LLDPResult) {
 }
 
 func (s *LLDPScanner) parseMgmtIP(data []byte, result *LLDPResult) {
-	if len(data) < 1 {
+	if len(data) < 2 {
 		return
 	}
 
-	addrFamily := data[0]
-	if addrFamily == 1 && len(data) >= 5 {
-		ip := net.IP(data[1:5]).String()
-		if result.MgmtIP == "" {
-			result.MgmtIP = ip
-		}
-	} else if addrFamily == 2 && len(data) >= 17 {
-		ip := net.IP(data[1:17]).String()
-		if result.MgmtIP == "" {
-			result.MgmtIP = ip
-		}
+	addrLen := int(data[0])
+	if addrLen < 2 || len(data) < 1+addrLen {
+		return
 	}
-}
 
-func (s *LLDPScanner) hasMulticast(iface net.Interface) bool {
-	addrs, err := iface.MulticastAddrs()
-	if err != nil {
-		return false
-	}
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok {
-			if ipnet.IP.To4() != nil {
-				return true
-			}
+	addrSubtype := data[1]
+	if addrSubtype == 1 && addrLen >= 5 { // IPv4
+		ip := net.IP(data[2:6]).String()
+		if result.MgmtIP == "" {
+			result.MgmtIP = ip
+		}
+	} else if addrSubtype == 2 && addrLen >= 17 { // IPv6
+		ip := net.IP(data[2:18]).String()
+		if result.MgmtIP == "" {
+			result.MgmtIP = ip
 		}
 	}
-	return false
 }
 
 func (s *LLDPScanner) extractIPFromAddr(addr net.Addr) string {

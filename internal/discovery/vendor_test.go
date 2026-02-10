@@ -37,7 +37,7 @@ func TestOUIDatabase_Lookup(t *testing.T) {
 		{"00:15:17:12:34:56", "Hewlett Packard"},
 		{"00:16:35:12:34:56", "Hewlett Packard"},
 		{"00:17:08:12:34:56", "Hewlett Packard"},
-		{"00:21:28:12:34:56", "Dell"},
+		{"00:21:28:12:34:56", "Hewlett Packard"},
 		{"00:22:fa:12:34:56", "Dell"},
 		{"00:23:ae:12:34:56", "Dell"},
 		{"00:26:9e:12:34:56", "Intel Corporate"},

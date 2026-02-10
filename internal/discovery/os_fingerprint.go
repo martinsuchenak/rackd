@@ -1,8 +1,11 @@
 package discovery
 
 import (
-	"fmt"
 	"net"
+	"os/exec"
+	"regexp"
+	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -36,142 +39,98 @@ func (f *OSFingerprinter) Fingerprint(ip string) *OSFingerprint {
 		Confidence: ConfidenceLow,
 	}
 
+	// Validate IP
+	if ip == "" || net.ParseIP(ip) == nil {
+		return fp
+	}
+
 	ttl := f.measureTTL(ip)
 	fp.TTL = ttl
 
-	windowSize := f.measureWindowSize(ip)
-	fp.WindowSize = windowSize
-
-	fp.OSFamily = f.classifyOS(ttl, windowSize)
-	fp.Confidence = f.calculateConfidence(ttl, windowSize)
+	fp.OSFamily = f.classifyOS(ttl)
+	fp.Confidence = f.calculateConfidence(ttl)
 
 	return fp
 }
 
+// measureTTL uses ping to determine the TTL of a remote host.
 func (f *OSFingerprinter) measureTTL(ip string) uint8 {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:80", ip), f.timeout)
+	timeoutSec := int(f.timeout.Seconds())
+	if timeoutSec < 1 {
+		timeoutSec = 1
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("ping", "-c", "1", "-t", strconv.Itoa(timeoutSec), ip)
+	default: // linux and others
+		cmd = exec.Command("ping", "-c", "1", "-W", strconv.Itoa(timeoutSec), ip)
+	}
+
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return 0
 	}
-	defer conn.Close()
 
-	var buf [1]byte
-	conn.SetReadDeadline(time.Now().Add(f.timeout))
-	conn.SetWriteDeadline(time.Now().Add(f.timeout))
-
-	n, err := conn.Read(buf[:])
-	if err != nil || n == 0 {
-		return 0
-	}
-
-	localAddr := conn.LocalAddr().(*net.TCPAddr)
-	_, ipNet, _ := net.ParseCIDR(localAddr.String() + "/32")
-	return ipNet.IP[8]
+	return parseTTLFromPing(string(output))
 }
 
-func (f *OSFingerprinter) measureTTLFromICMP(ip string) uint8 {
-	conn, err := net.DialTimeout("ip4:icmp", ip, f.timeout)
-	if err != nil {
+var ttlRegex = regexp.MustCompile(`(?i)ttl=(\d+)`)
+
+func parseTTLFromPing(output string) uint8 {
+	matches := ttlRegex.FindStringSubmatch(output)
+	if len(matches) < 2 {
 		return 0
 	}
-	defer conn.Close()
 
-	return 0
+	ttl, err := strconv.Atoi(matches[1])
+	if err != nil || ttl < 0 || ttl > 255 {
+		return 0
+	}
+
+	return uint8(ttl)
 }
 
-func (f *OSFingerprinter) measureWindowSize(ip string) uint16 {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:22", ip), f.timeout)
-	if err != nil {
-		return 0
-	}
-	defer conn.Close()
-
-	conn.SetReadDeadline(time.Now().Add(f.timeout))
-	conn.SetWriteDeadline(time.Now().Add(f.timeout))
-
-	buf := make([]byte, 32)
-	n, err := conn.Read(buf)
-	if err != nil || n < 20 {
-		return 0
-	}
-
-	if n >= 20 {
-		return uint16(buf[18])<<8 | uint16(buf[19])
-	}
-
-	return 0
-}
-
-func (f *OSFingerprinter) classifyOS(ttl uint8, windowSize uint16) string {
-	if ttl == 0 && windowSize == 0 {
+func (f *OSFingerprinter) classifyOS(ttl uint8) string {
+	if ttl == 0 {
 		return OSTypeUnknown
 	}
 
-	switch ttl {
-	case 64:
-		if windowSize >= 5800 && windowSize <= 65535 {
-			return OSTypeLinux
-		}
-		if windowSize >= 8192 && windowSize <= 65535 {
-			return OSTypeMacOS
-		}
-		return OSTypeLinux
-	case 128:
-		if windowSize >= 8192 && windowSize <= 65535 {
-			return OSTypeWindows
-		}
-		if windowSize >= 5792 && windowSize <= 65535 {
-			return OSTypeLinux
-		}
+	// TTL ranges: Linux/macOS typically start at 64, Windows at 128, network devices at 255
+	// Observed TTL may be lower due to hops, so we use ranges
+	switch {
+	case ttl <= 64:
+		return OSTypeLinux // or macOS — both use initial TTL 64
+	case ttl <= 128:
 		return OSTypeWindows
-	case 255:
+	case ttl <= 255:
 		return OSTypeNetwork
 	default:
-		if windowSize >= 8192 {
-			return OSTypeWindows
-		}
-		if windowSize >= 5800 {
-			return OSTypeLinux
-		}
 		return OSTypeUnknown
 	}
 }
 
-func (f *OSFingerprinter) calculateConfidence(ttl uint8, windowSize uint16) int {
-	if ttl == 0 || windowSize == 0 {
+func (f *OSFingerprinter) calculateConfidence(ttl uint8) int {
+	if ttl == 0 {
 		return ConfidenceLow
 	}
 
-	confidence := 0
-
+	// Exact initial TTL values give higher confidence
 	switch ttl {
 	case 64:
-		confidence += 2
-	case 128:
-		confidence += 2
-	case 255:
-		confidence += 2
-	default:
-		confidence += 1
-	}
-
-	if windowSize >= 8192 {
-		confidence += 1
-	} else if windowSize >= 5800 {
-		confidence += 1
-	}
-
-	if confidence >= 4 {
 		return ConfidenceHigh
-	} else if confidence >= 3 {
+	case 128:
+		return ConfidenceHigh
+	case 255:
+		return ConfidenceHigh
+	default:
 		return ConfidenceMedium
-	} else {
-		return ConfidenceLow
 	}
 }
 
 func (f *OSFingerprinter) GetOSFamily(ttl uint8, windowSize uint16) string {
-	return f.classifyOS(ttl, windowSize)
+	return f.classifyOS(ttl)
 }
 
 func GetOSTypeFromFamily(family string) string {

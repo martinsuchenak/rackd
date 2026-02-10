@@ -59,8 +59,8 @@ func TestMDNSScanner_BuildmDNSQuery(t *testing.T) {
 func TestMDNSScanner_Parsename(t *testing.T) {
 	scanner := NewmDNSScanner(5 * time.Second)
 
-	// Test simple name
-	data := []byte("\x03_test\x07_example\x03_com\x00")
+	// Test simple name: \x04test\x07example\x03com\x00
+	data := []byte{4, 't', 'e', 's', 't', 7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0}
 	name, offset := scanner.parseName(data, 0)
 	if name != "test.example.com" {
 		t.Errorf("Expected test.example.com, got %s", name)

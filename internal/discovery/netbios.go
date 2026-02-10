@@ -64,10 +64,9 @@ func (s *NetBIOSScanner) Discover(ctx context.Context, network string) ([]NetBIO
 				continue
 			}
 
-			ctx, cancel := context.WithTimeout(ctx, s.timeout)
-			defer cancel()
-
-			devices, err := s.scanNetwork(ctx, bcastAddr, ipAddr)
+			scanCtx, cancel := context.WithTimeout(ctx, s.timeout)
+			devices, err := s.scanNetwork(scanCtx, bcastAddr)
+			cancel()
 			if err != nil {
 				continue
 			}
@@ -79,7 +78,7 @@ func (s *NetBIOSScanner) Discover(ctx context.Context, network string) ([]NetBIO
 	return results, nil
 }
 
-func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast, localIP net.IP) ([]NetBIOSResult, error) {
+func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast net.IP) ([]NetBIOSResult, error) {
 	conn, err := net.ListenPacket("udp4", ":0")
 	if err != nil {
 		return nil, err
@@ -144,34 +143,42 @@ cleanup:
 func (s *NetBIOSScanner) buildNBNSQuery() []byte {
 	buf := new(bytes.Buffer)
 
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
-	binary.Write(buf, binary.BigEndian, uint16(0x0100))
-	binary.Write(buf, binary.BigEndian, uint16(0x0001))
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
+	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Transaction ID
+	binary.Write(buf, binary.BigEndian, uint16(0x0100)) // Flags: recursion desired
+	binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Questions
+	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Answer RRs
+	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Authority RRs
+	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Additional RRs
 
 	name := "*"
 	encodedName := encodeNetBIOSName(name)
+	buf.WriteByte(byte(len(encodedName))) // Name length
 	buf.Write(encodedName)
 
-	binary.Write(buf, binary.BigEndian, uint8(0x00))
-	binary.Write(buf, binary.BigEndian, uint8(0x00))
-	binary.Write(buf, binary.BigEndian, uint16(0x0021))
-	binary.Write(buf, binary.BigEndian, uint16(0x0001))
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
-	binary.Write(buf, binary.BigEndian, uint16(0x0A20))
-	binary.Write(buf, binary.BigEndian, uint16(0x0000))
+	buf.WriteByte(0x00)                                  // Name terminator
+	binary.Write(buf, binary.BigEndian, uint16(0x0021)) // Type: NBSTAT
+	binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Class: IN
 
 	return buf.Bytes()
 }
 
 func encodeNetBIOSName(name string) []byte {
-	encoded := make([]byte, 32)
+	// NetBIOS names are 16 bytes: up to 15 char name + 1 byte suffix (0x00)
+	// Padded with spaces (0x20)
+	padded := make([]byte, 16)
+	for i := range padded {
+		padded[i] = 0x20 // space padding
+	}
 	for i := 0; i < len(name) && i < 15; i++ {
-		c := byte(name[i])
-		encoded[i*2] = ((c >> 4) & 0x0F) + 'A'
-		encoded[i*2+1] = (c & 0x0F) + 'A'
+		padded[i] = name[i]
+	}
+	padded[15] = 0x00 // name suffix
+
+	// Each byte is encoded as two bytes: high nibble + 'A', low nibble + 'A'
+	encoded := make([]byte, 32)
+	for i := 0; i < 16; i++ {
+		encoded[i*2] = ((padded[i] >> 4) & 0x0F) + 'A'
+		encoded[i*2+1] = (padded[i] & 0x0F) + 'A'
 	}
 	return encoded
 }
@@ -191,6 +198,10 @@ func (s *NetBIOSScanner) parseNBNSResponse(data []byte) string {
 		nameLen = 32
 	}
 
+	if 13+nameLen > len(data) {
+		return ""
+	}
+
 	encodedName := data[13 : 13+nameLen]
 	name := decodeNetBIOSName(encodedName)
 
@@ -207,6 +218,9 @@ func (s *NetBIOSScanner) parseNBNSResponse(data []byte) string {
 func decodeNetBIOSName(encoded []byte) string {
 	var decoded strings.Builder
 	for i := 0; i+1 < len(encoded); i += 2 {
+		if encoded[i] < 'A' || encoded[i+1] < 'A' {
+			continue
+		}
 		high := (encoded[i] - 'A') << 4
 		low := encoded[i+1] - 'A'
 		c := high | low

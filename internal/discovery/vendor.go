@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"strings"
 	"sync"
 )
 
@@ -31,7 +32,7 @@ func (db *OUIDatabase) loadCommonOUIs() {
 		"00:10:db": "Dell",
 		"00:11:43": "Cisco",
 		"00:11:95": "Broadcom",
-		"00:12:3f": "Intel",
+		"00:12:3f": "Intel Corporate",
 		"00:13:20": "Cisco",
 		"00:14:22": "Dell",
 		"00:14:5e": "Dell",
@@ -84,6 +85,7 @@ func (db *OUIDatabase) loadCommonOUIs() {
 		"00:25:b3": "Hewlett Packard",
 		"00:26:55": "Hewlett Packard",
 		"00:26:9a": "Hewlett Packard",
+		"00:23:ae": "Dell",
 		"00:26:b9": "Hewlett Packard",
 		"00:50:56": "VMware",
 		"00:60:08": "Apple",
@@ -152,7 +154,7 @@ func (db *OUIDatabase) Lookup(mac string) string {
 		return ""
 	}
 
-	oui := mac[:8]
+	oui := strings.ToLower(mac[:8])
 
 	db.mu.RLock()
 	defer db.mu.RUnlock()

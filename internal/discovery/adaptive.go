@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -184,6 +185,7 @@ type ScanMetrics struct {
 }
 
 type MetricsCollector struct {
+	mu        sync.Mutex
 	latencies []time.Duration
 }
 
@@ -194,6 +196,8 @@ func NewMetricsCollector() *MetricsCollector {
 }
 
 func (m *MetricsCollector) RecordLatency(latency time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.latencies = append(m.latencies, latency)
 	if len(m.latencies) > 100 {
 		m.latencies = m.latencies[1:]
@@ -201,6 +205,8 @@ func (m *MetricsCollector) RecordLatency(latency time.Duration) {
 }
 
 func (m *MetricsCollector) AverageLatency() time.Duration {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if len(m.latencies) == 0 {
 		return 0
 	}
@@ -231,6 +237,7 @@ func (m *MetricsCollector) CalculateMetrics(totalHosts, scannedHosts, foundHosts
 }
 
 type ResultCache struct {
+	mu    sync.RWMutex
 	cache map[string]*CachedResult
 }
 
@@ -247,6 +254,9 @@ func NewResultCache() *ResultCache {
 }
 
 func (c *ResultCache) Get(key string) (interface{}, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	result, ok := c.cache[key]
 	if !ok {
 		return nil, false
@@ -261,6 +271,8 @@ func (c *ResultCache) Get(key string) (interface{}, bool) {
 }
 
 func (c *ResultCache) Set(key string, device interface{}, ttl time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.cache[key] = &CachedResult{
 		Device:    device,
 		Timestamp: time.Now(),
@@ -269,10 +281,14 @@ func (c *ResultCache) Set(key string, device interface{}, ttl time.Duration) {
 }
 
 func (c *ResultCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.cache = make(map[string]*CachedResult)
 }
 
 func (c *ResultCache) PurgeExpired() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	now := time.Now()
 	for key, result := range c.cache {
 		if now.Sub(result.Timestamp) > result.TTL {

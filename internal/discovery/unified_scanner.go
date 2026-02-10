@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -30,6 +31,8 @@ type UnifiedScanner struct {
 	mdnsScanner     *mDNSScanner
 	lldpScanner     *LLDPScanner
 	adaptiveScanner *AdaptiveScanner
+	correlator      *HostnameCorrelator
+	classifier      *DeviceTypeClassifier
 	mu              sync.RWMutex
 }
 
@@ -53,6 +56,8 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 		mdnsScanner:     NewmDNSScanner(5 * time.Second),
 		lldpScanner:     NewLLDPScanner(5 * time.Second),
 		adaptiveScanner: NewAdaptiveScanner(timeout, 10),
+		correlator:      NewHostnameCorrelator(),
+		classifier:      NewDeviceTypeClassifier(),
 	}
 }
 
@@ -91,6 +96,12 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 		return nil, err
 	}
 
+	// Validate subnet size
+	ones, bits := ipNet.Mask.Size()
+	if bits-ones > MaxSubnetBits {
+		return nil, ErrSubnetTooLarge
+	}
+
 	scan := &model.DiscoveryScan{
 		ID:         uuid.Must(uuid.NewV7()).String(),
 		NetworkID:  network.ID,
@@ -103,6 +114,8 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 		return nil, err
 	}
 
+	// Use a detached context for the background scan goroutine so it outlives
+	// the HTTP request. Cancellation is handled explicitly via CancelScan().
 	ctxCancellable, cancel := context.WithCancel(context.Background())
 
 	s.mu.Lock()
@@ -162,16 +175,76 @@ func (s *UnifiedScanner) CancelScan(scanID string) error {
 	s.mu.Unlock()
 
 	// Persist status to database
-	s.storage.UpdateDiscoveryScan(context.Background(), scan)
+	if err := s.storage.UpdateDiscoveryScan(context.Background(), scan); err != nil {
+		log.Printf("discovery: failed to update cancelled scan %s: %v", scanID, err)
+	}
 
 	return nil
+}
+
+// networkScanResults holds results from per-network broadcast scans run once before the per-host loop.
+type networkScanResults struct {
+	netbios map[string][]NetBIOSResult // keyed by IP
+	mdns    map[string][]mDNSResult    // keyed by IP
+	lldp    map[string]*LLDPResult     // keyed by mgmt IP
+}
+
+func (s *UnifiedScanner) runNetworkScans(ctx context.Context, subnet string, scanType string) *networkScanResults {
+	results := &networkScanResults{
+		netbios: make(map[string][]NetBIOSResult),
+		mdns:    make(map[string][]mDNSResult),
+		lldp:    make(map[string]*LLDPResult),
+	}
+
+	if scanType != model.ScanTypeFull && scanType != model.ScanTypeDeep {
+		return results
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if nbResults, err := s.netbiosScanner.Discover(ctx, subnet); err == nil {
+			for _, nb := range nbResults {
+				results.netbios[nb.IP] = append(results.netbios[nb.IP], nb)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if mdnsResults, err := s.mdnsScanner.Discover(ctx, subnet); err == nil {
+			for _, md := range mdnsResults {
+				results.mdns[md.IP] = append(results.mdns[md.IP], md)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if lldpResults, err := s.lldpScanner.Discover(ctx); err == nil {
+			for i := range lldpResults {
+				if lldpResults[i].MgmtIP != "" {
+					results.lldp[lldpResults[i].MgmtIP] = &lldpResults[i]
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+	return results
 }
 
 func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.DiscoveryScan, network *model.Network, ipNet *net.IPNet, opts *ScanOptions) {
 	now := time.Now()
 	scan.Status = model.ScanStatusRunning
 	scan.StartedAt = &now
-	s.storage.UpdateDiscoveryScan(ctx, scan)
+	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
+		log.Printf("discovery: failed to update scan status: %v", err)
+	}
 
 	ips := expandCIDR(ipNet)
 	scan.TotalHosts = len(ips)
@@ -180,17 +253,22 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	semaphore := make(chan struct{}, params.Workers)
 	var wg sync.WaitGroup
 	var foundCount int
-	var mu sync.Mutex
+	var scanMu sync.Mutex
 
 	// Refresh ARP table before scanning to get recent MAC addresses
 	s.arpScanner.Refresh()
+
+	// Run per-network broadcast scans once (NetBIOS, mDNS, LLDP)
+	netResults := s.runNetworkScans(ctx, network.Subnet, opts.ScanType)
 
 	for i, ip := range ips {
 		select {
 		case <-ctx.Done():
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled"
-			s.storage.UpdateDiscoveryScan(ctx, scan)
+			if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
+				log.Printf("discovery: failed to update cancelled scan: %v", err)
+			}
 			return
 		default:
 		}
@@ -202,28 +280,35 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			device := s.discoverHostWithOptions(ctx, ip, network.ID, network.Subnet, opts, params.Timeout)
+			device := s.discoverHostWithOptions(ctx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
 				existing, _ := s.storage.GetDiscoveredDeviceByIP(network.ID, ip)
 				if existing != nil {
 					device.ID = existing.ID
 					device.FirstSeen = existing.FirstSeen
-					s.storage.UpdateDiscoveredDevice(ctx, device)
+					if err := s.storage.UpdateDiscoveredDevice(ctx, device); err != nil {
+						log.Printf("discovery: failed to update device %s: %v", ip, err)
+					}
 				} else {
-					s.storage.CreateDiscoveredDevice(ctx, device)
+					if err := s.storage.CreateDiscoveredDevice(ctx, device); err != nil {
+						log.Printf("discovery: failed to create device %s: %v", ip, err)
+					}
 				}
 
-				mu.Lock()
+				scanMu.Lock()
 				foundCount++
-				mu.Unlock()
+				scanMu.Unlock()
 			}
 
-			mu.Lock()
+			scanMu.Lock()
 			scan.ScannedHosts = index + 1
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
-			mu.Unlock()
-			s.storage.UpdateDiscoveryScan(ctx, scan)
+			// Copy scan state under lock to avoid race with concurrent reads
+			scanCopy := *scan
+			scanMu.Unlock()
+
+			_ = s.storage.UpdateDiscoveryScan(ctx, &scanCopy)
 		}(ip, i)
 	}
 
@@ -232,12 +317,14 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	completedAt := time.Now()
 	scan.Status = model.ScanStatusCompleted
 	scan.CompletedAt = &completedAt
-	s.storage.UpdateDiscoveryScan(ctx, scan)
+	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
+		log.Printf("discovery: failed to update completed scan: %v", err)
+	}
 
 	s.cleanupCompletedScans()
 }
 
-func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, subnet string, opts *ScanOptions, timeout time.Duration) *model.DiscoveredDevice {
+func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, opts *ScanOptions, timeout time.Duration, netResults *networkScanResults) *model.DiscoveredDevice {
 	// Check context at the very start
 	select {
 	case <-ctx.Done():
@@ -245,7 +332,9 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 	default:
 	}
 
-	if !s.isHostAlive(ip, opts.getPorts(), timeout) {
+	// Combined alive check + port scan: scan ports once and reuse results
+	ports := s.scanPorts(ip, opts.getPorts(), timeout)
+	if len(ports) == 0 {
 		return nil
 	}
 
@@ -257,6 +346,7 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		Status:    "online",
 		FirstSeen: now,
 		LastSeen:  now,
+		OpenPorts: ports,
 		Services:  []model.ServiceInfo{},
 	}
 
@@ -329,14 +419,65 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		}
 	}
 
-	bestHostname, confidence := scorer.GetBest()
-	if bestHostname != "" {
-		device.Hostname = bestHostname
-		device.Confidence = confidence
+	// Use pre-collected NetBIOS results (per-network scan already done)
+	if netResults != nil {
+		if nbResults, ok := netResults.netbios[ip]; ok {
+			for _, nb := range nbResults {
+				if nb.Hostname != "" && len(nb.Hostname) >= 3 && len(nb.Hostname) <= 15 {
+					hasValidChars := true
+					for _, c := range nb.Hostname {
+						if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+							hasValidChars = false
+							break
+						}
+					}
+					if hasValidChars {
+						scorer.Add(nb.Hostname, "netbios", GetHostnameSourceConfidence("netbios"))
+						if device.OSGuess == "" {
+							device.OSGuess = "Windows"
+						}
+					}
+				}
+			}
+		}
+
+		// Use pre-collected mDNS results
+		if mdResults, ok := netResults.mdns[ip]; ok {
+			for _, md := range mdResults {
+				if md.Hostname != "" {
+					scorer.Add(md.Hostname, "mdns", GetHostnameSourceConfidence("mdns"))
+					if device.OSGuess == "" && strings.Contains(strings.ToLower(md.Type), "apple") {
+						device.OSGuess = "macOS"
+					}
+				}
+			}
+		}
+
+		// Use pre-collected LLDP results
+		if lldpResult, ok := netResults.lldp[ip]; ok {
+			if lldpResult.SystemName != "" {
+				scorer.Add(lldpResult.SystemName, "lldp", GetHostnameSourceConfidence("snmp"))
+			}
+		}
 	}
 
-	ports := s.scanPorts(ip, opts.getPorts(), timeout)
-	device.OpenPorts = ports
+	// Use HostnameCorrelator for best hostname selection
+	allSources := scorer.GetAll()
+	if len(allSources) > 0 {
+		conflict := s.correlator.Correlate(allSources)
+		if conflict != nil && conflict.Recommended != "" {
+			device.Hostname = conflict.Recommended
+			_, confidence := scorer.GetBest()
+			device.Confidence = confidence
+		}
+	}
+
+	// Check context before banner grabbing
+	select {
+	case <-ctx.Done():
+		return device
+	default:
+	}
 
 	banners := s.bannerGrabber.GrabBanners(ip, ports)
 	for _, banner := range banners {
@@ -348,8 +489,13 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		})
 	}
 
-	// OS fingerprinting (optional, for deep scans)
+	// OS fingerprinting (for deep scans only, when no OS detected yet)
 	if opts.ScanType == model.ScanTypeDeep && device.OSGuess == "" {
+		select {
+		case <-ctx.Done():
+			return device
+		default:
+		}
 		fp := s.osFingerprinter.Fingerprint(ip)
 		if fp.OSFamily != OSTypeUnknown {
 			device.OSGuess = GetOSTypeFromFamily(fp.OSFamily)
@@ -359,77 +505,31 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		}
 	}
 
-	// NetBIOS discovery (for Windows devices)
-	if opts.ScanType == model.ScanTypeFull || opts.ScanType == model.ScanTypeDeep {
-		if netbiosResults, err := s.netbiosScanner.Discover(ctx, subnet); err == nil {
-			for _, nb := range netbiosResults {
-				// Only use NetBIOS results that match the exact IP we're scanning
-				// Also validate hostname looks like a valid NetBIOS name (not just special chars)
-				if nb.IP == ip && nb.Hostname != "" && len(nb.Hostname) >= 3 && len(nb.Hostname) <= 15 {
-					// NetBIOS names are typically 15 chars or less, alphanumeric/hyphen
-					hasValidChars := true
-					for _, c := range nb.Hostname {
-						if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
-							hasValidChars = false
-							break
-						}
-					}
-					if hasValidChars {
-						scorer.Add(nb.Hostname, "netbios", 2)
-						// Only set OS guess if we got a valid NetBIOS hostname and no OS already detected
-						if device.OSGuess == "" {
-							device.OSGuess = "Windows"
-						}
-					}
-				}
-			}
-			bestHostname, confidence := scorer.GetBest()
-			if bestHostname != "" {
-				device.Hostname = bestHostname
-				device.Confidence = confidence
-			}
-		}
-	}
-
-	// mDNS/Bonjour discovery
-	if opts.ScanType == model.ScanTypeFull || opts.ScanType == model.ScanTypeDeep {
-		if mdnsResults, err := s.mdnsScanner.Discover(ctx, subnet); err == nil {
-			for _, md := range mdnsResults {
-				if md.IP == ip && md.Hostname != "" {
-					scorer.Add(md.Hostname, "mdns", 2)
-					if device.OSGuess == "" && strings.Contains(strings.ToLower(md.Type), "apple") {
-						device.OSGuess = "macOS"
-					}
-				}
-			}
-			bestHostname, confidence := scorer.GetBest()
-			if bestHostname != "" {
-				device.Hostname = bestHostname
-				device.Confidence = confidence
-			}
-		}
-	}
-
 	// Vendor lookup from MAC address
 	if device.MACAddress != "" && device.Vendor == "" {
 		device.Vendor = s.ouiDatabase.Lookup(device.MACAddress)
 	}
 
-	return device
-}
+	// Device type classification
+	deviceInfo := &DeviceInfo{
+		OS:     device.OSGuess,
+		Vendor: device.Vendor,
+		Ports:  device.OpenPorts,
+	}
+	for _, svc := range device.Services {
+		deviceInfo.Services = append(deviceInfo.Services, ServiceInfo{
+			Port:     svc.Port,
+			Protocol: svc.Protocol,
+			Service:  svc.Service,
+			Version:  svc.Version,
+		})
+	}
+	deviceType := s.classifier.Classify(deviceInfo)
+	if deviceType != DeviceTypeUnknown {
+		device.Status = "online:" + string(deviceType)
+	}
 
-func (s *UnifiedScanner) isHostAlive(ip string, ports []int, timeout time.Duration) bool {
-	if len(ports) == 0 {
-		ports = []int{22, 80, 443, 3389}
-	}
-	for _, port := range ports {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
-		if err == nil {
-			conn.Close()
-			return true
-		}
-	}
-	return false
+	return device
 }
 
 func (s *UnifiedScanner) scanPorts(ip string, ports []int, timeout time.Duration) []int {
