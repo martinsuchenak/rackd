@@ -38,7 +38,8 @@ type UnifiedScanner struct {
 
 func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkStorage, credStore credentials.Storage, timeout time.Duration) *UnifiedScanner {
 	arpScanner := NewARPScanner()
-	arpScanner.LoadARPTable()
+	// Load ARP table asynchronously to avoid blocking server startup
+	go arpScanner.LoadARPTable()
 
 	return &UnifiedScanner{
 		storage:         store,

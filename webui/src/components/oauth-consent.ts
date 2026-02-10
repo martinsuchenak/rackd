@@ -23,6 +23,9 @@ export function oauthConsent() {
         const params = new URLSearchParams(window.location.search);
         const response = await fetch('/mcp-oauth/authorize?' + params.toString(), {
           credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+          },
         });
 
         if (response.status === 302 || response.redirected) {

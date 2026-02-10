@@ -5,11 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
+	"github.com/martinsuchenak/rackd/internal/ui"
 )
 
 // oauthRegister handles RFC 7591 Dynamic Client Registration.
@@ -42,13 +44,30 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 
 // oauthAuthorize handles the authorization endpoint.
 // GET /mcp-oauth/authorize
+// This endpoint serves JSON consent data for the SPA.
+// Browser requests should go through the SPA (served by UI handler).
 func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
+	// Check if this is a direct browser navigation (wants HTML)
+	// vs SPA fetch request (has credentials: same-origin which sends cookies)
+	accept := r.Header.Get("Accept")
+	isBrowserNavigation := (strings.Contains(accept, "text/html") || accept == "*/*" || accept == "") &&
+		r.Header.Get("X-Requested-With") == "" &&
+		!strings.Contains(accept, "application/json")
+
+	// For direct browser navigation, serve the SPA HTML
+	// The SPA will then fetch this endpoint to get the consent data
+	if isBrowserNavigation {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(ui.IndexHTML())
+		return
+	}
+
 	// User must be logged in via session cookie
 	session := h.getSessionFromCookie(r)
 	if session == nil {
 		// Redirect to login with return URL
 		returnURL := r.URL.String()
-		http.Redirect(w, r, "/?login=true&redirect="+url.QueryEscape(returnURL), http.StatusFound)
+		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(returnURL), http.StatusFound)
 		return
 	}
 

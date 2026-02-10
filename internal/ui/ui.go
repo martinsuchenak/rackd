@@ -10,6 +10,13 @@ import (
 //go:embed assets/*
 var assets embed.FS
 
+// IndexHTML returns the index.html content for SPA routing
+func IndexHTML() []byte {
+	sub, _ := fs.Sub(assets, "assets")
+	data, _ := fs.ReadFile(sub, "index.html")
+	return data
+}
+
 // RegisterRoutes serves the embedded UI assets with SPA fallback
 func RegisterRoutes(mux *http.ServeMux) {
 	sub, _ := fs.Sub(assets, "assets")

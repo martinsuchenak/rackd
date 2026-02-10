@@ -73,6 +73,15 @@ func RunWithAdvancedFeatures(
 	services.SetProfileStorage(profileStore)
 	services.SetScheduledScanStorage(scheduledStore)
 
+	// OAuth setup (conditional) - must be before RegisterRoutes
+	if cfg.MCPOAuthEnabled {
+		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
+		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
+		oauthService.StartCleanup()
+		services.OAuth = oauthService
+		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
+	}
+
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
@@ -85,15 +94,6 @@ func RunWithAdvancedFeatures(
 	handler.SetServices(services)
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
 	handler.RegisterRoutes(mux)
-
-	// OAuth setup (conditional)
-	if cfg.MCPOAuthEnabled {
-		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
-		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
-		oauthService.StartCleanup()
-		services.OAuth = oauthService
-		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
-	}
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)
 	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
@@ -193,6 +193,15 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	// Create services registry
 	services := service.NewServices(store, sessionManager, scanner)
 
+	// OAuth setup (conditional) - must be before RegisterRoutes
+	if cfg.MCPOAuthEnabled {
+		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
+		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
+		oauthService.StartCleanup()
+		services.OAuth = oauthService
+		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
+	}
+
 	// API routes
 	handler := api.NewHandler(store, scanner)
 	handler.SetSessionManager(sessionManager)
@@ -201,15 +210,6 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	handler.SetTrustProxy(cfg.TrustProxy)
 	handler.SetServices(services)
 	handler.RegisterRoutes(mux)
-
-	// OAuth setup (conditional)
-	if cfg.MCPOAuthEnabled {
-		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
-		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
-		oauthService.StartCleanup()
-		services.OAuth = oauthService
-		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
-	}
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)
 	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil

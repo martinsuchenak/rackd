@@ -24,21 +24,21 @@
 
   <div x-data="router">
     <!-- Login page (full screen, no chrome) -->
-    <template x-if="route === '/login'">
+    <template x-if="route.startsWith('/login')">
       <div>
         <include src="partials/pages/login.html"></include>
       </div>
     </template>
 
     <!-- OAuth consent page (full screen, no chrome) -->
-    <template x-if="route === '/mcp-oauth/authorize'">
+    <template x-if="route.startsWith('/mcp-oauth/authorize')">
       <div>
         <include src="partials/pages/oauth-consent.html"></include>
       </div>
     </template>
 
     <!-- Main app layout (hidden on login and OAuth consent) -->
-    <template x-if="route !== '/login' && route !== '/mcp-oauth/authorize'">
+    <template x-if="!route.startsWith('/login') && !route.startsWith('/mcp-oauth/authorize')">
       <div>
     <!-- Sidebar -->
     <aside class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"

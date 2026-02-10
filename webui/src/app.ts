@@ -279,8 +279,9 @@ async function init(): Promise<void> {
     }, 100);
   }
 
-  // Auth guard: redirect to login if not authenticated (and not already on login page)
-  if (!window.rackdConfig?.user && window.location.pathname !== '/login') {
+  // Auth guard: redirect to login if not authenticated (and not already on login page or OAuth consent)
+  const isPublicRoute = window.location.pathname === '/login' || window.location.pathname.startsWith('/mcp-oauth/authorize');
+  if (!window.rackdConfig?.user && !isPublicRoute) {
     window.location.href = '/login';
     return;
   }
@@ -290,6 +291,7 @@ async function init(): Promise<void> {
   Alpine.data('nav', nav);
   Alpine.data('globalSearch', globalSearch);
   Alpine.data('themeToggle', themeToggle);
+  Alpine.data('toast', toastComponent); // Register toast as data component for x-data="toast"
   Alpine.data('deviceList', deviceList);
   Alpine.data('deviceDetail', deviceDetail);
   Alpine.data('deviceForm', deviceForm);

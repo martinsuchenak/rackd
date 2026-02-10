@@ -8,17 +8,70 @@ MCP is an open protocol that enables AI assistants and automation tools to inter
 
 ## Authentication
 
-The MCP server supports optional Bearer token authentication:
+Rackd supports two authentication methods for the MCP endpoint:
+
+### API Key Authentication
+
+The simplest method - create an API key via the web UI or CLI and use it as a Bearer token:
 
 ```bash
-# Start server with authentication
-rackd server --mcp-token "your-secret-token"
-
-# Client requests must include Authorization header
-Authorization: Bearer your-secret-token
+Authorization: Bearer <api-key>
 ```
 
+API keys inherit the permissions of the user who created them.
+
+### OAuth 2.1 Authentication (Recommended for MCP Clients)
+
+For spec-compliant MCP clients (like Claude Desktop), Rackd implements OAuth 2.1 with PKCE. This allows users to authenticate via their existing Rackd account.
+
+**Configuration:**
+
+```bash
+MCP_OAUTH_ENABLED=true                    # Enable OAuth for MCP (default: false)
+MCP_OAUTH_ISSUER_URL=http://localhost:8080  # Base URL of your Rackd server
+MCP_OAUTH_ACCESS_TOKEN_TTL=1h             # Access token lifetime (default: 1h)
+MCP_OAUTH_REFRESH_TOKEN_TTL=720h          # Refresh token lifetime (default: 30 days)
+```
+
+**OAuth Flow:**
+
+1. MCP client discovers endpoints via `GET /.well-known/oauth-protected-resource`
+2. Client redirects user to `/mcp-oauth/authorize` with PKCE challenge
+3. User logs in and approves access on the consent screen
+4. Client exchanges authorization code for tokens at `/mcp-oauth/token`
+5. Client uses access token as Bearer token for MCP requests
+
+**OAuth Endpoints:**
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /.well-known/oauth-protected-resource` | RFC 9728 Protected Resource Metadata |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 Authorization Server Metadata |
+| `POST /mcp-oauth/register` | Dynamic client registration |
+| `GET /mcp-oauth/authorize` | Authorization endpoint (shows login/consent) |
+| `POST /mcp-oauth/token` | Token endpoint (issues access/refresh tokens) |
+| `POST /mcp-oauth/revoke` | Token revocation |
+
+**Supported Grant Types:**
+- `authorization_code` with PKCE (for public clients like Claude Desktop)
+- `client_credentials` (for service-to-service)
+- `refresh_token` (for token renewal)
+
+**Backward Compatibility:**
+
+When OAuth is enabled, both OAuth tokens and API keys are accepted. This allows a gradual migration.
+
 ## Available Tools
+
+### Search
+
+#### search
+Search across devices, networks, and datacenters using full-text search.
+
+**Parameters:**
+- `query` (string, required): Search query
+
+**Returns:** Object with `devices`, `networks`, and `datacenters` arrays.
 
 ### Device Management
 
@@ -106,6 +159,12 @@ List all datacenters.
 
 **Parameters:** None
 
+#### datacenter_get
+Get a datacenter by ID.
+
+**Parameters:**
+- `id` (string, required): Datacenter ID
+
 #### datacenter_save
 Create or update a datacenter.
 
@@ -115,6 +174,12 @@ Create or update a datacenter.
 - `location` (string): Physical location
 - `description` (string): Description
 
+#### datacenter_delete
+Delete a datacenter.
+
+**Parameters:**
+- `id` (string, required): Datacenter ID
+
 ### Network Management
 
 #### network_list
@@ -122,6 +187,12 @@ List all networks.
 
 **Parameters:**
 - `datacenter_id` (string): Filter by datacenter
+
+#### network_get
+Get a network by ID.
+
+**Parameters:**
+- `id` (string, required): Network ID
 
 #### network_save
 Create or update a network.
@@ -134,7 +205,19 @@ Create or update a network.
 - `vlan_id` (number): VLAN ID
 - `description` (string): Description
 
+#### network_delete
+Delete a network.
+
+**Parameters:**
+- `id` (string, required): Network ID
+
 ### IP Pool Management
+
+#### pool_list
+List IP pools for a network.
+
+**Parameters:**
+- `network_id` (string, required): Network ID
 
 #### pool_get_next_ip
 Get the next available IP address from a pool.
@@ -166,9 +249,9 @@ Promote a discovered device to inventory.
 
 ## Integration Examples
 
-### Claude Desktop
+### Claude Desktop (with OAuth)
 
-Add to your Claude Desktop MCP configuration:
+When OAuth is enabled, Claude Desktop can authenticate via the standard MCP OAuth flow. Add to your Claude Desktop MCP configuration:
 
 ```json
 {
@@ -177,7 +260,30 @@ Add to your Claude Desktop MCP configuration:
       "command": "rackd",
       "args": ["mcp"],
       "env": {
-        "RACKD_MCP_TOKEN": "your-secret-token"
+        "RACKD_URL": "http://localhost:8080"
+      }
+    }
+  }
+}
+```
+
+Claude Desktop will automatically:
+1. Discover OAuth endpoints via `/.well-known/oauth-protected-resource`
+2. Open a browser for you to log in to Rackd
+3. Store and refresh tokens automatically
+
+### Claude Desktop (with API Key)
+
+For simpler setups without OAuth, use an API key:
+
+```json
+{
+  "mcpServers": {
+    "rackd": {
+      "command": "rackd",
+      "args": ["mcp"],
+      "env": {
+        "RACKD_API_KEY": "your-api-key"
       }
     }
   }
@@ -275,8 +381,20 @@ Common error codes:
 
 ## Security Considerations
 
-- Use strong, randomly generated bearer tokens
+- **OAuth (recommended)**: Users authenticate with their own credentials; tokens are scoped to their RBAC permissions
+- **API Keys**: Use strong, randomly generated keys; keys inherit creator's permissions
 - Run MCP server on localhost or secure networks only
-- Regularly rotate authentication tokens
+- Use HTTPS in production (set `MCP_OAUTH_ISSUER_URL` to your HTTPS URL)
+- Regularly rotate API keys and review OAuth client registrations
 - Monitor MCP access logs for suspicious activity
 - Consider rate limiting for production deployments
+
+## Managing OAuth Clients
+
+Registered OAuth clients can be viewed and revoked in the web UI at `/oauth-clients`. Each client shows:
+- Client name and ID
+- Redirect URIs
+- Client type (public/confidential)
+- Registration date
+
+Deleting a client revokes all its active tokens.
