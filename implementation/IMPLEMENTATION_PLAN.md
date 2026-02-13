@@ -1,6 +1,6 @@
 # Rackd Implementation Plan
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-13
 
 Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phase 3 are complete.
 
@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 1 of 6 | 🚧 In Progress |
-| **Phase 4: Advanced** | 10 of 10 | 🔮 Future |
+| **Phase 4: Advanced** | 11 of 11 | 🔮 Future |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **14** | |
+| **Total remaining** | **15** | |
 
 ### Completed (not listed here)
 
@@ -62,8 +62,7 @@ webui/src/
 **Tasks**:
 - [ ] Webhook model and storage
 - [ ] Webhook CRUD API + service
-- [ ] Event dispatcher (publish/subscribe within app)
-- [ ] Webhook delivery with retries and backoff
+- [ ] Webhook delivery with retries and backoff (subscribes to event bus from Notifications)
 - [ ] HMAC signature verification for payloads
 - [ ] Webhook management UI
 - [ ] Webhook CLI commands
@@ -267,9 +266,9 @@ SMTP_FROM=rackd@example.com
 
 ### 4.9 IP Conflict Detection
 
-**Effort**: 2-3 days
+**Effort**: 2-3 days | **Priority**: HIGH
 
-**What**: Detect and warn about IP conflicts
+**What**: Detect and warn about IP conflicts (core IPAM integrity)
 
 **Tasks**:
 - [ ] Duplicate IP detection
@@ -291,6 +290,31 @@ SMTP_FROM=rackd@example.com
 - [ ] Custom field UI
 - [ ] Custom field validation
 - [ ] Search/filter by custom fields
+
+### 4.11 IP Address Reservation & Planning
+
+**Effort**: 2-3 days | **Priority**: HIGH
+
+**What**: Reserve IPs before assignment for planning phases
+
+**Tasks**:
+- [ ] Reservation model (IP, purpose, reserved_by, expires_at)
+- [ ] Reservation storage + service
+- [ ] Reserve IPs without assigning to a device
+- [ ] Reservation expiration (auto-release if not claimed within X days)
+- [ ] Reservation notes/purpose field
+- [ ] Reserve for a specific user
+- [ ] API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
+- [ ] Show reservations in pool heatmap (different color from assigned IPs)
+- [ ] Reservation CLI commands
+
+**Files to Create/Modify**:
+- `internal/model/reservation.go` — Reservation model
+- `internal/storage/reservation_sqlite.go` — Reservation storage
+- `internal/service/reservation.go` — CRUD + expiration logic
+- `internal/api/reservation_handlers.go` — Reservation endpoints
+- `webui/src/components/pools.ts` — Reservation UI in pool view
+- `cmd/reservation/reservation.go` — CLI commands
 
 ---
 

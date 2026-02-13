@@ -1,6 +1,6 @@
 # Rackd Future Feature Ideas
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-13
 
 Ideas and improvements that are not yet planned for implementation. These may be promoted to the main [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) when prioritized.
 
@@ -36,21 +36,6 @@ Alternative storage backend for horizontal scaling. SQLite with WAL mode comfort
 - Database selection via config (`RACKD_DATABASE_TYPE=postgres`)
 - Migration tool (SQLite to PostgreSQL)
 - The existing storage interface pattern makes this possible without changing business logic
-
----
-
-## IP Address Reservation & Planning
-
-**Effort**: 2-3 days
-
-Pools support next-IP allocation, but there's no reservation workflow for planning phases.
-
-- Reserve IPs before assignment (mark as "reserved" without assigning to a device)
-- Reservation expiration (auto-release if not claimed within X days)
-- Reservation notes/purpose field
-- Reserve for a specific user or team
-- API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
-- Show reservations in pool heatmap (different color from assigned IPs)
 
 ---
 
