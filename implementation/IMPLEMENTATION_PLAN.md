@@ -8,8 +8,8 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 
 | Phase | Remaining | Status |
 |-------|-----------|--------|
-| **Phase 3: Multi-User** | 1 of 6 | 🚧 In Progress |
-| **Phase 4: Advanced** | 11 of 11 | 🔮 Future |
+| **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
+| **Phase 4: Advanced** | 12 of 12 | 🔮 Future |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
 | **Total remaining** | **15** | |
 
@@ -21,6 +21,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 3.2**: RBAC (roles, permissions, service-layer enforcement, default roles, UI, CLI)
 - **Phase 3.3**: SSO/OIDC — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (implement when requested)
 - **Phase 3.4**: PostgreSQL — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (SQLite handles the scale)
+- **Phase 3.5**: Webhook System — moved to Phase 4.7 (depends on Notifications event bus)
 - **Phase 3.6**: MCP OAuth 2.1 Authorization (OAuth endpoints, PKCE, token validation, client management UI, consent screen)
 
 ## Architecture Reference
@@ -51,48 +52,113 @@ webui/src/
 
 ---
 
-## Phase 3: Multi-User (remaining)
-
-### 3.5 Webhook System
-
-**Effort**: 5-7 days | **Priority**: LOW (Optional)
-
-**What**: Event notifications for external automation
-
-**Tasks**:
-- [ ] Webhook model and storage
-- [ ] Webhook CRUD API + service
-- [ ] Webhook delivery with retries and backoff (subscribes to event bus from Notifications)
-- [ ] HMAC signature verification for payloads
-- [ ] Webhook management UI
-- [ ] Webhook CLI commands
-- [ ] Webhook MCP tools
-
-**Events**:
-- `device.created`, `device.updated`, `device.deleted`
-- `network.created`, `network.updated`, `network.deleted`
-- `discovery.scan.started`, `discovery.scan.completed`
-- `device.promoted`
-
-**Note**: Can be skipped if not doing heavy automation.
-
-**Files to Create**:
-- `internal/model/webhook.go`
-- `internal/storage/webhook_sqlite.go`
-- `internal/service/webhook.go` — CRUD + permission checks
-- `internal/webhook/dispatcher.go` — Event bus
-- `internal/webhook/delivery.go` — HTTP delivery with retries
-- `internal/api/webhook_handlers.go`
-- `webui/src/components/webhooks.ts`
-- `cmd/webhook/webhook.go`
-
----
-
 ## Phase 4: Advanced Features
 
 **Goal**: Advanced IPAM and integration features
 
-### 4.1 Notifications & Alerting
+### 4.1 IP Conflict Detection
+
+**Effort**: 2-3 days | **Priority**: HIGH
+
+**What**: Detect and warn about IP conflicts (core IPAM integrity)
+
+**Tasks**:
+- [ ] Duplicate IP detection
+- [ ] Overlapping subnet detection
+- [ ] Conflict resolution UI
+- [ ] Conflict API endpoints
+- [ ] Automatic conflict checking on IP assignment
+
+### 4.2 IP Address Reservation & Planning
+
+**Effort**: 2-3 days | **Priority**: HIGH
+
+**What**: Reserve IPs before assignment for planning phases
+
+**Tasks**:
+- [ ] Reservation model (IP, purpose, reserved_by, expires_at)
+- [ ] Reservation storage + service
+- [ ] Reserve IPs without assigning to a device
+- [ ] Reservation expiration (auto-release if not claimed within X days)
+- [ ] Reservation notes/purpose field
+- [ ] Reserve for a specific user
+- [ ] API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
+- [ ] Show reservations in pool heatmap (different color from assigned IPs)
+- [ ] Reservation CLI commands
+
+**Files to Create/Modify**:
+- `internal/model/reservation.go` — Reservation model
+- `internal/storage/reservation_sqlite.go` — Reservation storage
+- `internal/service/reservation.go` — CRUD + expiration logic
+- `internal/api/reservation_handlers.go` — Reservation endpoints
+- `webui/src/components/pools.ts` — Reservation UI in pool view
+- `cmd/reservation/reservation.go` — CLI commands
+
+### 4.3 Device Lifecycle & Status Tracking
+
+**Effort**: 2-3 days | **Priority**: HIGH
+
+**What**: Track device lifecycle states with history and scheduled transitions
+
+**Tasks**:
+- [ ] Add `status` field to Device model (`planned`, `active`, `maintenance`, `decommissioned`)
+- [ ] Status change history (stored in audit trail or dedicated table)
+- [ ] Scheduled decommission date field
+- [ ] Filter/search devices by lifecycle status
+- [ ] Status badge in device list and detail UI
+- [ ] Status change dropdown in device detail UI
+- [ ] Dashboard widget: device count by status
+- [ ] CLI: `rackd device list --status active`
+
+**Files to Modify**:
+- `internal/model/device.go` — Add Status and DecommissionDate fields
+- `internal/storage/device_sqlite.go` — Migration + query filters
+- `internal/service/device.go` — Status validation, transition logic
+- `internal/api/device_handlers.go` — Accept status in create/update
+- `webui/src/components/devices.ts` — Status filter, badge, dropdown
+- `webui/src/components/dashboard.ts` — Status summary widget
+
+### 4.4 Dashboard Reporting & Trends
+
+**Effort**: 3-4 days | **Priority**: HIGH
+
+**What**: Enhanced dashboard with utilization trends, activity feeds, and summary stats
+
+**Tasks**:
+- [ ] Pool utilization snapshots (periodic storage of utilization %)
+- [ ] Utilization trend chart (sparkline or line chart over time)
+- [ ] Recently discovered devices feed
+- [ ] Network utilization summary (% used per subnet)
+- [ ] Stale device detection (devices not seen in discovery for X days)
+- [ ] Top-level stats: total devices, networks, pools, utilization
+- [ ] Dashboard API endpoint for aggregated stats
+- [ ] Configurable dashboard refresh interval
+
+**Files to Create/Modify**:
+- `internal/model/snapshot.go` — Utilization snapshot model
+- `internal/storage/snapshot_sqlite.go` — Snapshot storage + periodic writer
+- `internal/service/dashboard.go` — Aggregation queries, stale detection
+- `internal/api/dashboard_handlers.go` — `/api/dashboard` endpoint
+- `webui/src/components/dashboard.ts` — Trend charts, activity feed, stats cards
+
+### 4.5 Network Topology Visualization
+
+**Effort**: 7-10 days
+
+**What**: Interactive visual network topology based on device relationships
+
+**Tasks**:
+- [ ] Topology data structure (nodes, edges from relationships)
+- [ ] Topology API endpoint
+- [ ] Graph layout algorithm
+- [ ] Interactive visualization (Cytoscape.js or D3.js)
+- [ ] Zoom, pan, filter controls
+- [ ] Export (PNG, SVG, JSON)
+- [ ] Real-time updates via WebSocket
+
+**Note**: Basic relationship graph already exists at `/devices/graph`.
+
+### 4.6 Notifications & Alerting
 
 **Effort**: 4-5 days | **Priority**: HIGH
 
@@ -102,7 +168,7 @@ webui/src/
 - [ ] Notification channel model (email, Slack webhook, Teams webhook)
 - [ ] Notification channel storage + service
 - [ ] Channel CRUD API
-- [ ] Internal event bus (reusable by webhooks later)
+- [ ] Internal event bus (reusable by webhooks)
 - [ ] Notification triggers with configurable thresholds:
   - Pool utilization exceeds threshold (e.g., 80%)
   - New device discovered
@@ -139,71 +205,39 @@ SMTP_FROM=rackd@example.com
 - `webui/src/components/notifications.ts`
 - `cmd/notification/notification.go`
 
-### 4.2 Device Lifecycle & Status Tracking
+### 4.7 Webhook System
 
-**Effort**: 2-3 days | **Priority**: HIGH
+**Effort**: 5-7 days | **Priority**: LOW (Optional)
 
-**What**: Track device lifecycle states with history and scheduled transitions
-
-**Tasks**:
-- [ ] Add `status` field to Device model (`planned`, `active`, `maintenance`, `decommissioned`)
-- [ ] Status change history (stored in audit trail or dedicated table)
-- [ ] Scheduled decommission date field
-- [ ] Filter/search devices by lifecycle status
-- [ ] Status badge in device list and detail UI
-- [ ] Status change dropdown in device detail UI
-- [ ] Dashboard widget: device count by status
-- [ ] CLI: `rackd device list --status active`
-
-**Files to Modify**:
-- `internal/model/device.go` — Add Status and DecommissionDate fields
-- `internal/storage/device_sqlite.go` — Migration + query filters
-- `internal/service/device.go` — Status validation, transition logic
-- `internal/api/device_handlers.go` — Accept status in create/update
-- `webui/src/components/devices.ts` — Status filter, badge, dropdown
-- `webui/src/components/dashboard.ts` — Status summary widget
-
-### 4.3 Dashboard Reporting & Trends
-
-**Effort**: 3-4 days | **Priority**: HIGH
-
-**What**: Enhanced dashboard with utilization trends, activity feeds, and summary stats
+**What**: Event notifications for external automation
 
 **Tasks**:
-- [ ] Pool utilization snapshots (periodic storage of utilization %)
-- [ ] Utilization trend chart (sparkline or line chart over time)
-- [ ] Recently discovered devices feed
-- [ ] Network utilization summary (% used per subnet)
-- [ ] Stale device detection (devices not seen in discovery for X days)
-- [ ] Top-level stats: total devices, networks, pools, utilization
-- [ ] Dashboard API endpoint for aggregated stats
-- [ ] Configurable dashboard refresh interval
+- [ ] Webhook model and storage
+- [ ] Webhook CRUD API + service
+- [ ] Webhook delivery with retries and backoff (subscribes to event bus from Notifications)
+- [ ] HMAC signature verification for payloads
+- [ ] Webhook management UI
+- [ ] Webhook CLI commands
+- [ ] Webhook MCP tools
 
-**Files to Create/Modify**:
-- `internal/model/snapshot.go` — Utilization snapshot model
-- `internal/storage/snapshot_sqlite.go` — Snapshot storage + periodic writer
-- `internal/service/dashboard.go` — Aggregation queries, stale detection
-- `internal/api/dashboard_handlers.go` — `/api/dashboard` endpoint
-- `webui/src/components/dashboard.ts` — Trend charts, activity feed, stats cards
+**Events**:
+- `device.created`, `device.updated`, `device.deleted`
+- `network.created`, `network.updated`, `network.deleted`
+- `discovery.scan.started`, `discovery.scan.completed`
+- `device.promoted`
 
-### 4.4 Network Topology Visualization
+**Note**: Can be skipped if not doing heavy automation. Depends on Notifications (4.6) for event bus.
 
-**Effort**: 7-10 days
+**Files to Create**:
+- `internal/model/webhook.go`
+- `internal/storage/webhook_sqlite.go`
+- `internal/service/webhook.go` — CRUD + permission checks
+- `internal/webhook/delivery.go` — HTTP delivery with retries
+- `internal/api/webhook_handlers.go`
+- `webui/src/components/webhooks.ts`
+- `cmd/webhook/webhook.go`
 
-**What**: Interactive visual network topology based on device relationships
-
-**Tasks**:
-- [ ] Topology data structure (nodes, edges from relationships)
-- [ ] Topology API endpoint
-- [ ] Graph layout algorithm
-- [ ] Interactive visualization (Cytoscape.js or D3.js)
-- [ ] Zoom, pan, filter controls
-- [ ] Export (PNG, SVG, JSON)
-- [ ] Real-time updates via WebSocket
-
-**Note**: Basic relationship graph already exists at `/devices/graph`.
-
-### 4.5 DNS Integration
+### 4.8 DNS Integration
 
 **Effort**: 5-7 days
 
@@ -219,7 +253,7 @@ SMTP_FROM=rackd@example.com
 - [ ] DNS configuration UI
 - [ ] DNS CLI commands
 
-### 4.6 DHCP Integration
+### 4.9 DHCP Integration
 
 **Effort**: 5-7 days
 
@@ -234,7 +268,7 @@ SMTP_FROM=rackd@example.com
 - [ ] DHCP configuration UI
 - [ ] DHCP CLI commands
 
-### 4.7 Circuit Management
+### 4.10 Circuit Management
 
 **Effort**: 4-5 days
 
@@ -249,7 +283,7 @@ SMTP_FROM=rackd@example.com
 - [ ] Circuit status tracking
 - [ ] Circuit CLI commands
 
-### 4.8 NAT Tracking
+### 4.11 NAT Tracking
 
 **Effort**: 3-4 days
 
@@ -264,20 +298,7 @@ SMTP_FROM=rackd@example.com
 - [ ] NAT validation
 - [ ] NAT CLI commands
 
-### 4.9 IP Conflict Detection
-
-**Effort**: 2-3 days | **Priority**: HIGH
-
-**What**: Detect and warn about IP conflicts (core IPAM integrity)
-
-**Tasks**:
-- [ ] Duplicate IP detection
-- [ ] Overlapping subnet detection
-- [ ] Conflict resolution UI
-- [ ] Conflict API endpoints
-- [ ] Automatic conflict checking on IP assignment
-
-### 4.10 Custom Fields/Metadata
+### 4.12 Custom Fields/Metadata
 
 **Effort**: 4-5 days
 
@@ -290,31 +311,6 @@ SMTP_FROM=rackd@example.com
 - [ ] Custom field UI
 - [ ] Custom field validation
 - [ ] Search/filter by custom fields
-
-### 4.11 IP Address Reservation & Planning
-
-**Effort**: 2-3 days | **Priority**: HIGH
-
-**What**: Reserve IPs before assignment for planning phases
-
-**Tasks**:
-- [ ] Reservation model (IP, purpose, reserved_by, expires_at)
-- [ ] Reservation storage + service
-- [ ] Reserve IPs without assigning to a device
-- [ ] Reservation expiration (auto-release if not claimed within X days)
-- [ ] Reservation notes/purpose field
-- [ ] Reserve for a specific user
-- [ ] API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
-- [ ] Show reservations in pool heatmap (different color from assigned IPs)
-- [ ] Reservation CLI commands
-
-**Files to Create/Modify**:
-- `internal/model/reservation.go` — Reservation model
-- `internal/storage/reservation_sqlite.go` — Reservation storage
-- `internal/service/reservation.go` — CRUD + expiration logic
-- `internal/api/reservation_handlers.go` — Reservation endpoints
-- `webui/src/components/pools.ts` — Reservation UI in pool view
-- `cmd/reservation/reservation.go` — CLI commands
 
 ---
 
@@ -363,10 +359,13 @@ SMTP_FROM=rackd@example.com
 - [x] MCP operations enforced under the authenticating user's RBAC permissions
 
 ### Phase 4
-- [ ] Notifications delivered within 30s of trigger event
+- [ ] IP conflicts detected and flagged before assignment
+- [ ] IP reservations expire automatically
 - [ ] Device lifecycle transitions tracked with full history
 - [ ] Dashboard loads aggregated stats in <200ms
 - [ ] Topology renders 500+ devices smoothly
+- [ ] Notifications delivered within 30s of trigger event
+- [ ] Webhooks deliver with retry and HMAC verification
 - [ ] DNS/DHCP sync works reliably
 - [ ] Circuit/NAT tracking accurate
 
@@ -382,5 +381,4 @@ SMTP_FROM=rackd@example.com
 - All features include tests, documentation, CLI, API, and UI where applicable
 - All features include MCP tools where applicable
 - New features follow the service-layer pattern: model -> storage -> service (with RBAC) -> API handler
-- Webhook system is optional (can be skipped)
 - See [FUTURE_FEATURES.md](FUTURE_FEATURES.md) for ideas not yet planned (SSO, PostgreSQL, etc.)
