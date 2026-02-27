@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -12,6 +13,8 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 		Tags:         parseArrayParam(r, "tags"),
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		NetworkID:    r.URL.Query().Get("network_id"),
+		PoolID:       r.URL.Query().Get("pool_id"),
+		Status:       model.DeviceStatus(r.URL.Query().Get("status")),
 	}
 	devices, err := h.svc.Devices.List(r.Context(), filter)
 	if err != nil {
@@ -88,6 +91,15 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if location, ok := updates["location"].(string); ok {
 		device.Location = location
+	}
+	if status, ok := updates["status"].(string); ok {
+		device.Status = model.DeviceStatus(status)
+	}
+	if decommissionDate, ok := updates["decommission_date"].(string); ok && decommissionDate != "" {
+		t, err := time.Parse(time.RFC3339, decommissionDate)
+		if err == nil {
+			device.DecommissionDate = &t
+		}
 	}
 	if tags, ok := updates["tags"].([]any); ok {
 		device.Tags = toStringSlice(tags)
@@ -263,5 +275,26 @@ func (h *Handler) bulkRemoveTags(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	h.writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) getDeviceStatusCounts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.svc.Devices.GetStatusCounts(r.Context())
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	// Ensure all status keys are present with 0 if no devices
+	result := map[string]int{
+		"planned":       0,
+		"active":        0,
+		"maintenance":   0,
+		"decommissioned": 0,
+	}
+	for status, count := range counts {
+		result[string(status)] = count
+	}
+
 	h.writeJSON(w, http.StatusOK, result)
 }

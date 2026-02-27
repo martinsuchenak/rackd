@@ -10,6 +10,8 @@ export interface Address {
   pool_id?: string;
 }
 
+export type DeviceStatus = 'planned' | 'active' | 'maintenance' | 'decommissioned';
+
 export interface Device {
   id: string;
   name: string;
@@ -20,6 +22,10 @@ export interface Device {
   datacenter_id?: string;
   username?: string;
   location?: string;
+  status: DeviceStatus;
+  decommission_date?: string;
+  status_changed_at?: string;
+  status_changed_by?: string;
   tags: string[];
   addresses: Address[];
   domains: string[];
@@ -31,6 +37,15 @@ export interface DeviceFilter {
   tags?: string[];
   datacenter_id?: string;
   network_id?: string;
+  pool_id?: string;
+  status?: DeviceStatus;
+}
+
+export interface DeviceStatusCounts {
+  planned: number;
+  active: number;
+  maintenance: number;
+  decommissioned: number;
 }
 
 export interface Datacenter {

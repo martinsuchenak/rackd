@@ -40,6 +40,7 @@ export function deviceList() {
     allPools: [] as NetworkPool[],
     networkFilter: '',
     poolFilter: '',
+    statusFilter: '',
     loading: true,
     error: '',
     search: '',
@@ -62,6 +63,7 @@ export function deviceList() {
       datacenter_id: '',
       username: '',
       location: '',
+      status: 'active' as 'planned' | 'active' | 'maintenance' | 'decommissioned',
       tags: [] as string[],
       addresses: [] as Address[],
       domains: [] as string[],
@@ -103,10 +105,12 @@ export function deviceList() {
       const params = new URLSearchParams(window.location.search);
       const networkParam = params.get('network');
       const poolParam = params.get('pool');
-      
+      const statusParam = params.get('status');
+
       if (networkParam) this.networkFilter = networkParam;
       if (poolParam) this.poolFilter = poolParam;
-      
+      if (statusParam) this.statusFilter = statusParam;
+
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
       await this.loadAllPools();
       
@@ -190,23 +194,33 @@ export function deviceList() {
         if (this.search) {
           devices = (await api.searchDevices(this.search)) || [];
         } else {
-          devices = (await api.listDevices(this.filter)) || [];
+          // Build filter with status
+          const filter: DeviceFilter = { ...this.filter };
+          if (this.statusFilter) {
+            filter.status = this.statusFilter as any;
+          }
+          devices = (await api.listDevices(filter)) || [];
         }
-        
+
         // Apply network filter
         if (this.networkFilter) {
-          devices = devices.filter(d => 
+          devices = devices.filter(d =>
             d.addresses?.some(a => a.network_id === this.networkFilter)
           );
         }
-        
+
         // Apply pool filter
         if (this.poolFilter) {
-          devices = devices.filter(d => 
+          devices = devices.filter(d =>
             d.addresses?.some(a => a.pool_id === this.poolFilter)
           );
         }
-        
+
+        // Apply status filter (for search results)
+        if (this.search && this.statusFilter) {
+          devices = devices.filter(d => d.status === this.statusFilter);
+        }
+
         this.devices = devices;
         this.page = 1;
       } catch (e) {
@@ -239,6 +253,7 @@ export function deviceList() {
       this.search = '';
       this.networkFilter = '';
       this.poolFilter = '';
+      this.statusFilter = '';
       // Update URL to remove query parameters
       if (window.location.search) {
         window.history.pushState({}, '', '/devices');
@@ -322,6 +337,7 @@ export function deviceList() {
         datacenter_id: this.datacenters.length === 1 ? this.datacenters[0].id : '',
         username: '',
         location: '',
+        status: 'active',
         tags: [],
         addresses: [],
         domains: [],
@@ -349,6 +365,7 @@ export function deviceList() {
         datacenter_id: device.datacenter_id || '',
         username: device.username || '',
         location: device.location || '',
+        status: device.status || 'active',
         tags: [...(device.tags || [])],
         addresses: (device.addresses || []).map((a) => ({ ...a })),
         domains: [...(device.domains || [])],
@@ -683,6 +700,7 @@ export function deviceDetail() {
         datacenter_id: this.device.datacenter_id || '',
         username: this.device.username || '',
         location: this.device.location || '',
+        status: this.device.status || 'active',
         tags: [...(this.device.tags || [])],
         addresses: (this.device.addresses || []).map((a) => ({ ...a })),
         domains: [...(this.device.domains || [])],

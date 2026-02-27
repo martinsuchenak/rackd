@@ -20,6 +20,8 @@ func ListCommand() *cli.Command {
 			&cli.StringFlag{Name: "tags", Usage: "Filter by tags (comma-separated)"},
 			&cli.StringFlag{Name: "datacenter", Usage: "Filter by datacenter ID"},
 			&cli.StringFlag{Name: "network", Usage: "Filter by network ID"},
+			&cli.StringFlag{Name: "pool", Usage: "Filter by pool ID"},
+			&cli.StringFlag{Name: "status", Usage: "Filter by status (planned, active, maintenance, decommissioned)"},
 			&cli.IntFlag{Name: "limit", Usage: "Limit number of results"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (table/json/yaml)", DefaultValue: "table"},
 		},
@@ -39,6 +41,12 @@ func ListCommand() *cli.Command {
 			}
 			if net := cmd.GetString("network"); net != "" {
 				params.Set("network_id", net)
+			}
+			if pool := cmd.GetString("pool"); pool != "" {
+				params.Set("pool_id", pool)
+			}
+			if status := cmd.GetString("status"); status != "" {
+				params.Set("status", status)
 			}
 			if limit := cmd.GetInt("limit"); limit > 0 {
 				params.Set("limit", fmt.Sprintf("%d", limit))

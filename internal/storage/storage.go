@@ -42,6 +42,7 @@ type DeviceStorage interface {
 	DeleteDevice(ctx context.Context, id string) error
 	ListDevices(filter *model.DeviceFilter) ([]model.Device, error)
 	SearchDevices(query string) ([]model.Device, error)
+	GetDeviceStatusCounts() (map[model.DeviceStatus]int, error)
 }
 
 // DatacenterStorage defines datacenter persistence operations

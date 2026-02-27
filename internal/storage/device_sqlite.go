@@ -22,13 +22,16 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 
 	// Get the device
 	device := &model.Device{}
-	var datacenterID sql.NullString
+	var datacenterID, statusChangedBy sql.NullString
+	var decommissionDate, statusChangedAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at
+		SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location,
+		       status, decommission_date, status_changed_at, status_changed_by, created_at, updated_at
 		FROM devices WHERE id = ?
 	`, id).Scan(
 		&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 		&device.OS, &datacenterID, &device.Username, &device.Location,
+		&device.Status, &decommissionDate, &statusChangedAt, &statusChangedBy,
 		&device.CreatedAt, &device.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -39,6 +42,15 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 	}
 	if datacenterID.Valid {
 		device.DatacenterID = datacenterID.String
+	}
+	if decommissionDate.Valid {
+		device.DecommissionDate = &decommissionDate.Time
+	}
+	if statusChangedAt.Valid {
+		device.StatusChangedAt = &statusChangedAt.Time
+	}
+	if statusChangedBy.Valid {
+		device.StatusChangedBy = statusChangedBy.String
 	}
 
 	// Get addresses
@@ -191,13 +203,23 @@ func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device
 	device.CreatedAt = now
 	device.UpdatedAt = now
 
+	// Set default status if not provided
+	if device.Status == "" {
+		device.Status = model.DeviceStatusActive
+	}
+
+	// Set status changed at for new devices
+	device.StatusChangedAt = &now
+
 	// Insert device
 	_, err := tx.ExecContext(ctx, `
-		INSERT INTO devices (id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO devices (id, name, hostname, description, make_model, os, datacenter_id, username, location,
+		                     status, decommission_date, status_changed_at, status_changed_by, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, device.ID, device.Name, device.Hostname, device.Description, device.MakeModel,
 		device.OS, nullString(device.DatacenterID), device.Username, device.Location,
-		device.CreatedAt, device.UpdatedAt)
+		device.Status, nullTime(device.DecommissionDate), nullTime(device.StatusChangedAt),
+		nullString(device.StatusChangedBy), device.CreatedAt, device.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to insert device: %w", err)
 	}
@@ -291,26 +313,39 @@ func (s *SQLiteStorage) UpdateDevice(ctx context.Context, device *model.Device) 
 // updateDeviceInTx updates a device within an existing transaction
 func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device *model.Device) error {
 
-	// Check if device exists
-	var exists bool
-	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, device.ID).Scan(&exists)
+	// Check if device exists and get current status
+	var currentStatus model.DeviceStatus
+	err := tx.QueryRowContext(ctx, `SELECT status FROM devices WHERE id = ?`, device.ID).Scan(&currentStatus)
+	if err == sql.ErrNoRows {
+		return ErrDeviceNotFound
+	}
 	if err != nil {
 		return fmt.Errorf("failed to check device existence: %w", err)
 	}
-	if !exists {
-		return ErrDeviceNotFound
-	}
 
 	device.UpdatedAt = time.Now().UTC()
+
+	// Track status changes
+	if device.Status != "" && device.Status != currentStatus {
+		now := time.Now().UTC()
+		device.StatusChangedAt = &now
+		// StatusChangedBy should be set by the service layer from context
+	} else if device.Status == "" {
+		// Keep existing status if not provided
+		device.Status = currentStatus
+	}
 
 	// Update device
 	_, err = tx.ExecContext(ctx, `
 		UPDATE devices SET
 			name = ?, hostname = ?, description = ?, make_model = ?, os = ?, datacenter_id = ?,
-			username = ?, location = ?, updated_at = ?
+			username = ?, location = ?, status = ?, decommission_date = ?,
+			status_changed_at = ?, status_changed_by = ?, updated_at = ?
 		WHERE id = ?
 	`, device.Name, device.Hostname, device.Description, device.MakeModel, device.OS,
 		nullString(device.DatacenterID), device.Username, device.Location,
+		device.Status, nullTime(device.DecommissionDate),
+		nullTime(device.StatusChangedAt), nullString(device.StatusChangedBy),
 		device.UpdatedAt, device.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update device: %w", err)
@@ -391,7 +426,9 @@ func (s *SQLiteStorage) deleteDeviceInTx(ctx context.Context, tx *sql.Tx, id str
 func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device, error) {
 	ctx := context.Background()
 
-	query := `SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location, created_at, updated_at FROM devices`
+	query := `SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location,
+	          status, decommission_date, status_changed_at, status_changed_by, created_at, updated_at
+	          FROM devices`
 	var args []any
 	var conditions []string
 
@@ -404,6 +441,16 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 		if filter.NetworkID != "" {
 			conditions = append(conditions, "id IN (SELECT device_id FROM addresses WHERE network_id = ?)")
 			args = append(args, filter.NetworkID)
+		}
+
+		if filter.PoolID != "" {
+			conditions = append(conditions, "id IN (SELECT device_id FROM addresses WHERE pool_id = ?)")
+			args = append(args, filter.PoolID)
+		}
+
+		if filter.Status != "" {
+			conditions = append(conditions, "status = ?")
+			args = append(args, filter.Status)
 		}
 
 		if len(filter.Tags) > 0 {
@@ -430,16 +477,27 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 	var devices []model.Device
 	for rows.Next() {
 		var device model.Device
-		var datacenterID sql.NullString
+		var datacenterID, statusChangedBy sql.NullString
+		var decommissionDate, statusChangedAt sql.NullTime
 		if err := rows.Scan(
 			&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 			&device.OS, &datacenterID, &device.Username, &device.Location,
+			&device.Status, &decommissionDate, &statusChangedAt, &statusChangedBy,
 			&device.CreatedAt, &device.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan device: %w", err)
 		}
 		if datacenterID.Valid {
 			device.DatacenterID = datacenterID.String
+		}
+		if decommissionDate.Valid {
+			device.DecommissionDate = &decommissionDate.Time
+		}
+		if statusChangedAt.Valid {
+			device.StatusChangedAt = &statusChangedAt.Time
+		}
+		if statusChangedBy.Valid {
+			device.StatusChangedBy = statusChangedBy.String
 		}
 		devices = append(devices, device)
 	}
@@ -489,25 +547,33 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	// Use UNION to combine FTS results with tag/domain/address matches
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
-		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		       d.datacenter_id, d.username, d.location,
+		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
+		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN devices_fts fts ON d.id = fts.id
 		WHERE devices_fts MATCH ?
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
-		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		       d.datacenter_id, d.username, d.location,
+		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
+		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN tags t ON d.id = t.device_id
 		WHERE t.tag LIKE ?
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
-		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		       d.datacenter_id, d.username, d.location,
+		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
+		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN domains dm ON d.id = dm.device_id
 		WHERE dm.domain LIKE ?
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
-		       d.datacenter_id, d.username, d.location, d.created_at, d.updated_at
+		       d.datacenter_id, d.username, d.location,
+		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
+		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN addresses a ON d.id = a.device_id
 		WHERE a.ip LIKE ?
@@ -521,16 +587,27 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	var devices []model.Device
 	for rows.Next() {
 		var device model.Device
-		var datacenterID sql.NullString
+		var datacenterID, statusChangedBy sql.NullString
+		var decommissionDate, statusChangedAt sql.NullTime
 		if err := rows.Scan(
 			&device.ID, &device.Name, &device.Hostname, &device.Description, &device.MakeModel,
 			&device.OS, &datacenterID, &device.Username, &device.Location,
+			&device.Status, &decommissionDate, &statusChangedAt, &statusChangedBy,
 			&device.CreatedAt, &device.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan device: %w", err)
 		}
 		if datacenterID.Valid {
 			device.DatacenterID = datacenterID.String
+		}
+		if decommissionDate.Valid {
+			device.DecommissionDate = &decommissionDate.Time
+		}
+		if statusChangedAt.Valid {
+			device.StatusChangedAt = &statusChangedAt.Time
+		}
+		if statusChangedBy.Valid {
+			device.StatusChangedBy = statusChangedBy.String
 		}
 		devices = append(devices, device)
 	}
@@ -565,6 +642,36 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 	}
 
 	return devices, nil
+}
+
+// GetDeviceStatusCounts returns the count of devices by status
+func (s *SQLiteStorage) GetDeviceStatusCounts() (map[model.DeviceStatus]int, error) {
+	ctx := context.Background()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT status, COUNT(*) as count
+		FROM devices
+		GROUP BY status
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device status counts: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[model.DeviceStatus]int)
+	for rows.Next() {
+		var status model.DeviceStatus
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan status count: %w", err)
+		}
+		counts[status] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
 }
 
 // escapeFTSQuery escapes special FTS5 characters and adds prefix matching

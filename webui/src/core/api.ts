@@ -11,6 +11,7 @@ import type {
   Device,
   DeviceFilter,
   DeviceRelationship,
+  DeviceStatusCounts,
   DiscoveredDevice,
   DiscoveryRule,
   DiscoveryScan,
@@ -48,6 +49,7 @@ export type {
   Device,
   DeviceFilter,
   DeviceRelationship,
+  DeviceStatusCounts,
   DiscoveredDevice,
   DiscoveryRule,
   DiscoveryScan,
@@ -163,6 +165,8 @@ export class RackdAPI {
     if (filter?.tags?.length) params.set('tags', filter.tags.join(','));
     if (filter?.datacenter_id) params.set('datacenter_id', filter.datacenter_id);
     if (filter?.network_id) params.set('network_id', filter.network_id);
+    if (filter?.pool_id) params.set('pool_id', filter.pool_id);
+    if (filter?.status) params.set('status', filter.status);
     const query = params.toString();
     return this.request<Device[]>('GET', `/api/devices${query ? `?${query}` : ''}`);
   }
@@ -181,6 +185,10 @@ export class RackdAPI {
 
   async deleteDevice(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/devices/${id}`);
+  }
+
+  async getDeviceStatusCounts(): Promise<DeviceStatusCounts> {
+    return this.request<DeviceStatusCounts>('GET', '/api/devices/status-counts');
   }
 
   async searchDevices(query: string): Promise<Device[]> {

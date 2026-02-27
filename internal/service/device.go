@@ -9,7 +9,7 @@ import (
 )
 
 type DeviceService struct {
-	store          storage.ExtendedStorage
+	store           storage.ExtendedStorage
 	conflictService *ConflictService
 }
 
@@ -84,6 +84,22 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 	}
 }
 
+// validateStatus validates the device status
+func validateStatus(status model.DeviceStatus) error {
+	if status != "" && !status.IsValid() {
+		return ValidationErrors{{Field: "status", Message: "Invalid status. Must be one of: planned, active, maintenance, decommissioned"}}
+	}
+	return nil
+}
+
+// setStatusChangedBy sets the StatusChangedBy field from the context
+func setStatusChangedBy(ctx context.Context, device *model.Device) {
+	caller := CallerFrom(ctx)
+	if caller != nil && caller.UserID != "" {
+		device.StatusChangedBy = caller.UserID
+	}
+}
+
 func (s *DeviceService) List(ctx context.Context, filter *model.DeviceFilter) ([]model.Device, error) {
 	if err := requirePermission(ctx, s.store, "devices", "list"); err != nil {
 		return nil, err
@@ -99,6 +115,14 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	if device.Name == "" {
 		return ValidationErrors{{Field: "name", Message: "Name is required"}}
 	}
+
+	// Validate status
+	if err := validateStatus(device.Status); err != nil {
+		return err
+	}
+
+	// Set status changed by from context
+	setStatusChangedBy(ctx, device)
 
 	err := s.store.CreateDevice(enrichAuditCtx(ctx), device)
 	if err != nil {
@@ -139,6 +163,14 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 		return ValidationErrors{{Field: "name", Message: "Name is required"}}
 	}
 
+	// Validate status
+	if err := validateStatus(device.Status); err != nil {
+		return err
+	}
+
+	// Set status changed by from context
+	setStatusChangedBy(ctx, device)
+
 	err := s.store.UpdateDevice(enrichAuditCtx(ctx), device)
 	if err != nil {
 		return err
@@ -170,4 +202,13 @@ func (s *DeviceService) Search(ctx context.Context, query string) ([]model.Devic
 	}
 
 	return s.store.SearchDevices(query)
+}
+
+// GetStatusCounts returns the count of devices by status
+func (s *DeviceService) GetStatusCounts(ctx context.Context) (map[model.DeviceStatus]int, error) {
+	if err := requirePermission(ctx, s.store, "devices", "list"); err != nil {
+		return nil, err
+	}
+
+	return s.store.GetDeviceStatusCounts()
 }

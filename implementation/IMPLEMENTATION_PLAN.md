@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 9 of 12 | 🟡 In Progress |
+| **Phase 4: Advanced** | 8 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **12** | |
+| **Total remaining** | **11** | |
 
 ### Completed (not listed here)
 
@@ -25,6 +25,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 3.6**: MCP OAuth 2.1 Authorization (OAuth endpoints, PKCE, token validation, client management UI, consent screen)
 - **Phase 4.1**: IP Conflict Detection
 - **Phase 4.2**: IP Address Reservation & Planning
+- **Phase 4.3**: Device Lifecycle & Status Tracking
 
 ## Architecture Reference
 
@@ -111,29 +112,36 @@ webui/src/
 - **Migration**: `internal/storage/migrations.go` — Database schema with indexes
 - **RBAC**: `reservation:list`, `reservation:read`, `reservation:create`, `reservation:update`, `reservation:delete` permissions
 
-### 4.3 Device Lifecycle & Status Tracking
+### 4.3 Device Lifecycle & Status Tracking ✅
 
 **Effort**: 2-3 days | **Priority**: HIGH
 
 **What**: Track device lifecycle states with history and scheduled transitions
 
 **Tasks**:
-- [ ] Add `status` field to Device model (`planned`, `active`, `maintenance`, `decommissioned`)
-- [ ] Status change history (stored in audit trail or dedicated table)
-- [ ] Scheduled decommission date field
-- [ ] Filter/search devices by lifecycle status
-- [ ] Status badge in device list and detail UI
-- [ ] Status change dropdown in device detail UI
-- [ ] Dashboard widget: device count by status
-- [ ] CLI: `rackd device list --status active`
+- [x] Add `status` field to Device model (`planned`, `active`, `maintenance`, `decommissioned`)
+- [x] Status change history (stored in audit trail or dedicated table)
+- [x] Scheduled decommission date field
+- [x] Filter/search devices by lifecycle status
+- [x] Status badge in device list and detail UI
+- [x] Status change dropdown in device detail UI
+- [x] Dashboard widget: device count by status
+- [x] CLI: `rackd device list --status active`
 
-**Files to Modify**:
-- `internal/model/device.go` — Add Status and DecommissionDate fields
-- `internal/storage/device_sqlite.go` — Migration + query filters
-- `internal/service/device.go` — Status validation, transition logic
-- `internal/api/device_handlers.go` — Accept status in create/update
-- `webui/src/components/devices.ts` — Status filter, badge, dropdown
-- `webui/src/components/dashboard.ts` — Status summary widget
+**Implementation Details**:
+- **Model**: `internal/model/device.go` — DeviceStatus type with validation, Status/DecommissionDate/StatusChangedAt/StatusChangedBy fields
+- **Storage**: `internal/storage/device_sqlite.go` — Status filtering in ListDevices, GetDeviceStatusCounts method
+- **Migration**: `internal/storage/migrations.go` — Migration 20260228000000 for status columns
+- **Service**: `internal/service/device.go` — Status validation, setStatusChangedBy helper, GetStatusCounts method
+- **API**: `internal/api/device_handlers.go` — Status filter param, /api/devices/status-counts endpoint
+- **CLI**: `cmd/device/list.go` — --status and --pool flags
+- **Types**: `webui/src/core/types.ts` — DeviceStatus and DeviceStatusCounts types
+- **API Client**: `webui/src/core/api.ts` — getDeviceStatusCounts method
+- **UI Components**: `webui/src/components/devices.ts` — statusFilter state, URL param handling
+- **UI Templates**: `webui/src/partials/pages/devices.html` — Status filter dropdown, status badge styling
+- **UI Templates**: `webui/src/partials/pages/dashboard.html` — Device Status section with clickable cards
+- **Modal**: `webui/src/partials/modals/device-form.html` — Status dropdown for editing
+- **Tests**: `internal/storage/device_sqlite_test.go` — Device status tests
 
 ### 4.4 Dashboard Reporting & Trends
 

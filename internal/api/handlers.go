@@ -104,6 +104,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Device routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/devices", wrapAuth(h.listDevices))
 	mux.HandleFunc("POST /api/devices", wrapAuth(h.createDevice))
+	mux.HandleFunc("GET /api/devices/status-counts", wrapAuth(h.getDeviceStatusCounts))
 	mux.HandleFunc("GET /api/devices/{id}", wrapAuth(h.getDevice))
 	mux.HandleFunc("PUT /api/devices/{id}", wrapAuth(h.updateDevice))
 	mux.HandleFunc("DELETE /api/devices/{id}", wrapAuth(h.deleteDevice))

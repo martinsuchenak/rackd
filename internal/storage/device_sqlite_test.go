@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -676,4 +677,218 @@ func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 	if ipv6Count != 2 {
 		t.Errorf("expected 2 ipv6 addresses, got %d", ipv6Count)
 	}
+}
+
+// ============================================================================
+// Device Status Tests
+// ============================================================================
+
+func TestDeviceStatus_DefaultStatus(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device without specifying status
+	device := &model.Device{Name: "test-device"}
+	if err := storage.CreateDevice(context.Background(), device); err != nil {
+		t.Fatalf("CreateDevice failed: %v", err)
+	}
+
+	// Get device and verify default status is active
+	retrieved, err := storage.GetDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDevice failed: %v", err)
+	}
+
+	if retrieved.Status != model.DeviceStatusActive {
+		t.Errorf("expected default status 'active', got '%s'", retrieved.Status)
+	}
+
+	// Verify StatusChangedAt is set
+	if retrieved.StatusChangedAt == nil {
+		t.Error("StatusChangedAt should be set for new devices")
+	}
+}
+
+func TestDeviceStatus_CreateWithStatus(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device with planned status
+	device := &model.Device{
+		Name:   "planned-server",
+		Status: model.DeviceStatusPlanned,
+	}
+	if err := storage.CreateDevice(context.Background(), device); err != nil {
+		t.Fatalf("CreateDevice failed: %v", err)
+	}
+
+	retrieved, err := storage.GetDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDevice failed: %v", err)
+	}
+
+	if retrieved.Status != model.DeviceStatusPlanned {
+		t.Errorf("expected status 'planned', got '%s'", retrieved.Status)
+	}
+}
+
+func TestDeviceStatus_UpdateStatus(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device
+	device := &model.Device{Name: "test-device"}
+	storage.CreateDevice(context.Background(), device)
+
+	originalStatusChangedAt := device.StatusChangedAt
+
+	// Update status to maintenance
+	device.Status = model.DeviceStatusMaintenance
+	if err := storage.UpdateDevice(context.Background(), device); err != nil {
+		t.Fatalf("UpdateDevice failed: %v", err)
+	}
+
+	retrieved, err := storage.GetDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDevice failed: %v", err)
+	}
+
+	if retrieved.Status != model.DeviceStatusMaintenance {
+		t.Errorf("expected status 'maintenance', got '%s'", retrieved.Status)
+	}
+
+	// StatusChangedAt should be updated when status changes
+	if retrieved.StatusChangedAt == nil {
+		t.Error("StatusChangedAt should be set")
+	} else if !retrieved.StatusChangedAt.After(*originalStatusChangedAt) {
+		t.Error("StatusChangedAt should be updated when status changes")
+	}
+}
+
+func TestDeviceStatus_FilterByStatus(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create devices with different statuses
+	devices := []*model.Device{
+		{Name: "planned1", Status: model.DeviceStatusPlanned},
+		{Name: "planned2", Status: model.DeviceStatusPlanned},
+		{Name: "active1", Status: model.DeviceStatusActive},
+		{Name: "maintenance1", Status: model.DeviceStatusMaintenance},
+		{Name: "decommissioned1", Status: model.DeviceStatusDecommissioned},
+	}
+
+	for _, d := range devices {
+		storage.CreateDevice(context.Background(), d)
+	}
+
+	// Filter by planned status
+	result, err := storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusPlanned})
+	if err != nil {
+		t.Fatalf("ListDevices failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 planned devices, got %d", len(result))
+	}
+
+	// Filter by active status
+	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusActive})
+	if err != nil {
+		t.Fatalf("ListDevices failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 active device, got %d", len(result))
+	}
+
+	// Filter by maintenance status
+	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusMaintenance})
+	if err != nil {
+		t.Fatalf("ListDevices failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 maintenance device, got %d", len(result))
+	}
+
+	// Filter by decommissioned status
+	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusDecommissioned})
+	if err != nil {
+		t.Fatalf("ListDevices failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 decommissioned device, got %d", len(result))
+	}
+}
+
+func TestDeviceStatus_StatusCounts(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create devices with different statuses
+	devices := []*model.Device{
+		{Name: "planned1", Status: model.DeviceStatusPlanned},
+		{Name: "planned2", Status: model.DeviceStatusPlanned},
+		{Name: "active1", Status: model.DeviceStatusActive},
+		{Name: "active2", Status: model.DeviceStatusActive},
+		{Name: "active3", Status: model.DeviceStatusActive},
+		{Name: "maintenance1", Status: model.DeviceStatusMaintenance},
+		{Name: "decommissioned1", Status: model.DeviceStatusDecommissioned},
+	}
+
+	for _, d := range devices {
+		storage.CreateDevice(context.Background(), d)
+	}
+
+	// Get status counts
+	counts, err := storage.GetDeviceStatusCounts()
+	if err != nil {
+		t.Fatalf("GetDeviceStatusCounts failed: %v", err)
+	}
+
+	if counts[model.DeviceStatusPlanned] != 2 {
+		t.Errorf("expected 2 planned, got %d", counts[model.DeviceStatusPlanned])
+	}
+	if counts[model.DeviceStatusActive] != 3 {
+		t.Errorf("expected 3 active, got %d", counts[model.DeviceStatusActive])
+	}
+	if counts[model.DeviceStatusMaintenance] != 1 {
+		t.Errorf("expected 1 maintenance, got %d", counts[model.DeviceStatusMaintenance])
+	}
+	if counts[model.DeviceStatusDecommissioned] != 1 {
+		t.Errorf("expected 1 decommissioned, got %d", counts[model.DeviceStatusDecommissioned])
+	}
+}
+
+func TestDeviceStatus_DecommissionDate(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+
+	// Create device with decommission date
+	decomDate := parseTime("2025-12-31T00:00:00Z")
+	device := &model.Device{
+		Name:             "to-decommission",
+		Status:           model.DeviceStatusDecommissioned,
+		DecommissionDate: &decomDate,
+		StatusChangedBy:  "admin",
+	}
+	if err := storage.CreateDevice(context.Background(), device); err != nil {
+		t.Fatalf("CreateDevice failed: %v", err)
+	}
+
+	retrieved, err := storage.GetDevice(device.ID)
+	if err != nil {
+		t.Fatalf("GetDevice failed: %v", err)
+	}
+
+	if retrieved.DecommissionDate == nil {
+		t.Error("DecommissionDate should be set")
+	}
+	if retrieved.StatusChangedBy != "admin" {
+		t.Errorf("expected StatusChangedBy 'admin', got '%s'", retrieved.StatusChangedBy)
+	}
+}
+
+// Helper function to parse time for tests
+func parseTime(s string) time.Time {
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }

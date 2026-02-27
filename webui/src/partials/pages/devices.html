@@ -49,8 +49,18 @@
             <option value="">All Pools</option>
             <template x-for="pool in allPools" :key="pool.id">
               <option :value="pool.id" :selected="pool.id === poolFilter" x-text="pool.name"></option>
-              <option :value="pool.id" x-text="pool.name"></option>
             </template>
+          </select>
+        </div>
+        <div>
+          <label for="device-status-filter" class="sr-only">Filter by status</label>
+          <select id="device-status-filter" x-model="statusFilter" @change="applyFilters()"
+                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <option value="">All Statuses</option>
+            <option value="planned">Planned</option>
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="decommissioned">Decommissioned</option>
           </select>
         </div>
         <button @click="clearFilters()" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">
@@ -93,10 +103,13 @@
               </td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="d.make_model || '-'"></td>
               <td class="px-6 py-4">
-                <span class="px-2 py-1 text-xs font-medium rounded-full status-active"
+                <span class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="{
-                        'status-active': d.status === 'active',
-                        'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200': d.status !== 'active'
+                        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': d.status === 'planned',
+                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': d.status === 'active',
+                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': d.status === 'maintenance',
+                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': d.status === 'decommissioned',
+                        'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400': !d.status || (d.status !== 'planned' && d.status !== 'active' && d.status !== 'maintenance' && d.status !== 'decommissioned')
                       }"
                       x-text="d.status || 'unknown'"></span>
               </td>
