@@ -20,8 +20,8 @@ github.com/paularlott/cli v0.7.11 h1:19B1Xto4ulm6bz3y3C91qPEWr79UKHv2UHiMzTrNbbI
 github.com/paularlott/cli v0.7.11/go.mod h1:ZSHKSCzhS4y0I4PWCAWo+++plYEocRdsZPBy6OBOKHs=
 github.com/paularlott/logger v0.3.0 h1:QwVUoxmlEFkfHI25y5dn56OJvK4Bpe3OvoJu4GZM7ng=
 github.com/paularlott/logger v0.3.0/go.mod h1:vjAOY1vUvYigmJxxQ0eMclryIjDS6VWNK6FprtTMce0=
-github.com/paularlott/mcp v0.12.9 h1:R1sQe5UzCKgRO2DtQ4bpMWXNUHeQn2CBkfQtqV3ppts=
-github.com/paularlott/mcp v0.12.9/go.mod h1:RHtwyZchcdC4oiz0fEaTBDEWNP0YHL7qMFhbmm/l7WI=
+github.com/paularlott/mcp v0.12.10 h1:wqdvjQtDCkjAGOt5DiaU8ny1BwbjwyKBWvJ0KJkbAfA=
+github.com/paularlott/mcp v0.12.10/go.mod h1:RHtwyZchcdC4oiz0fEaTBDEWNP0YHL7qMFhbmm/l7WI=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
