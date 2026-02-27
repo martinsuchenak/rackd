@@ -72,6 +72,21 @@
            :aria-current="route === '/' ? 'page' : null">
           Dashboard
         </a>
+        <!-- Conflicts link -->
+        <a href="/conflicts" @click.prevent="navigate('/conflicts')"
+           class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
+           :class="route.startsWith('/conflicts') ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-accent)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-muted)]'"
+           :aria-current="route.startsWith('/conflicts') ? 'page' : null">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.432-3L13.313 5c-.77-1.333-2.694-1.333-3.464 0L3.513 16c-1.07 1.333.108 3 1.638 3z"/>
+          </svg>
+          <span class="flex items-center gap-2">
+            <span class="text-sm font-medium">Conflicts</span>
+            <span x-show="activeConflictCount > 0"
+                  class="px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
+                  x-text="activeConflictCount"></span>
+          </span>
+        </a>
         <!-- Dynamic items from config -->
         <template x-for="item in navItems" :key="item.path">
           <a :href="item.path"
@@ -348,6 +363,7 @@
         <include src="partials/pages/users.html"></include>
         <include src="partials/pages/scan-profiles.html"></include>
         <include src="partials/pages/oauth-clients.html"></include>
+        <include src="partials/pages/conflicts.html"></include>
 
         <!-- Extension pages slot -->
         <template x-for="page in (extensionPage ? [extensionPage] : [])" :key="page.path">

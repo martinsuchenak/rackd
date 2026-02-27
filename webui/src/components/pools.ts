@@ -1,6 +1,6 @@
 // Pool Components for Rackd Web UI
 
-import type { IPStatus, Network, NetworkPool } from '../core/types';
+import type { IPStatus, Network, NetworkPool, Device } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 
 interface PoolDetailData {
@@ -8,6 +8,8 @@ interface PoolDetailData {
   network: Network | null;
   heatmap: IPStatus[];
   nextIP: string;
+  poolDevices: Device[];
+  loadingDevices: boolean;
   loading: boolean;
   error: string;
   showDeleteModal: boolean;
@@ -17,6 +19,7 @@ interface PoolDetailData {
   deleteModalName: string;
   init(): Promise<void>;
   loadPool(): Promise<void>;
+  loadPoolDevices(): Promise<void>;
   loadNetwork(): Promise<void>;
   loadHeatmap(): Promise<void>;
   fetchNextIP(): Promise<void>;
@@ -68,7 +71,7 @@ export function poolDetail(): PoolDetailData {
       try {
         // Get all devices and filter by pool_id
         const allDevices = await api.listDevices({});
-        this.poolDevices = allDevices.filter(d => 
+        this.poolDevices = allDevices.filter(d =>
           d.addresses?.some(a => a.pool_id === id)
         );
       } catch {
@@ -128,6 +131,7 @@ export function poolDetail(): PoolDetailData {
         case 'available': return 'bg-green-500';
         case 'used': return 'bg-red-500';
         case 'reserved': return 'bg-yellow-500';
+        case 'conflicted': return 'bg-orange-500';
         default: return 'bg-gray-300';
       }
     },

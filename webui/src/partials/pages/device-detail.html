@@ -1,4 +1,4 @@
-<div x-data="deviceDetail">
+<div x-data="deviceDetail()">
   <div x-show="loading" class="text-gray-700 dark:text-gray-300" role="status" aria-live="polite">Loading...</div>
   <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error" role="alert"></div>
   <div x-show="!loading && device">

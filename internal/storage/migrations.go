@@ -114,6 +114,18 @@ var migrations = []*Migration{
 		Up:      migrateAddOAuthTablesUp,
 		Down:    migrateAddOAuthTablesDown,
 	},
+	{
+		Version: "20260213100000",
+		Name:    "add_conflicts",
+		Up:      migrateAddConflictsUp,
+		Down:    migrateAddConflictsDown,
+	},
+	{
+		Version: "20260213110000",
+		Name:    "add_conflict_permissions",
+		Up:      migrateAddConflictPermissionsUp,
+		Down:    migrateAddConflictPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1284,6 +1296,137 @@ func migrateAddAPIKeyUserIDDown(ctx context.Context, tx *sql.Tx) error {
 	for _, q := range queries {
 		if _, err := tx.ExecContext(ctx, q); err != nil {
 			return fmt.Errorf("failed to remove user_id column from api_keys: %w", err)
+		}
+	}
+	return nil
+}
+
+// migrateAddConflictsUp creates the conflicts table for tracking IP conflicts
+func migrateAddConflictsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS conflicts (
+			id TEXT PRIMARY KEY,
+			type TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			description TEXT,
+			ip_address TEXT,
+			device_ids TEXT,
+			device_names TEXT,
+			network_ids TEXT,
+			network_names TEXT,
+			subnets TEXT,
+			detected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			resolved_at TIMESTAMP,
+			resolved_by TEXT,
+			notes TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create conflicts table: %w", err)
+	}
+
+	// Create indexes for common queries
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_conflicts_type ON conflicts(type)",
+		"CREATE INDEX IF NOT EXISTS idx_conflicts_status ON conflicts(status)",
+		"CREATE INDEX IF NOT EXISTS idx_conflicts_ip ON conflicts(ip_address)",
+		"CREATE INDEX IF NOT EXISTS idx_conflicts_detected ON conflicts(detected_at DESC)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create conflicts index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddConflictsDown drops the conflicts table
+func migrateAddConflictsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS conflicts`); err != nil {
+		return fmt.Errorf("failed to drop conflicts table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddConflictPermissionsUp adds permissions for conflict management
+func migrateAddConflictPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	conflictPermissions := [][]string{
+		{"conflict:list", "conflicts", "list"},
+		{"conflict:read", "conflicts", "read"},
+		{"conflict:resolve", "conflicts", "resolve"},
+		{"conflict:detect", "conflicts", "detect"},
+		{"conflict:delete", "conflicts", "delete"},
+	}
+
+	for _, perm := range conflictPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to insert conflict permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant all conflict permissions to admin role
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'admin'
+		AND p.name IN ('conflict:list', 'conflict:read', 'conflict:resolve', 'conflict:detect', 'conflict:delete')
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign conflict permissions to admin role: %w", err)
+	}
+
+	// Grant operator read, list, and detect permissions
+	operatorPerms := []string{
+		"conflict:list", "conflict:read", "conflict:detect",
+	}
+	for _, permName := range operatorPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator conflict permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant viewer read permissions
+	viewerPerms := []string{
+		"conflict:list", "conflict:read",
+	}
+	for _, permName := range viewerPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer conflict permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddConflictPermissionsDown removes conflict permissions
+func migrateAddConflictPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{
+		"conflict:list", "conflict:read", "conflict:resolve", "conflict:detect", "conflict:delete",
+	}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete conflict permission %s: %w", name, err)
 		}
 	}
 	return nil

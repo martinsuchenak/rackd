@@ -24,6 +24,7 @@ import { userMenu } from './components/user-menu';
 import { toastComponent } from './components/toast';
 import { oauthConsent } from './components/oauth-consent';
 import { oauthClients } from './components/oauth-clients';
+import { conflictList } from './components/conflicts';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -39,6 +40,7 @@ function updatePageTitle(route: string) {
     '/datacenters/detail': 'Datacenter Details',
     '/discovery': 'Discovery',
     '/scan-profiles': 'Scan Profiles',
+    '/conflicts': 'IP Conflicts',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -124,6 +126,7 @@ function router() {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
     accessDenied: false,
+    activeConflictCount: 0,
 
     // Nav items from config, filtered by user permissions
     get navItems() {
@@ -177,6 +180,17 @@ function router() {
         this.accessDenied = !checkRoutePermission(path);
         updatePageTitle(path);
         this.sidebarOpen = false;
+        // Update conflict count when navigating to conflicts page
+        if (path.startsWith('/conflicts')) {
+          this.updateConflictCount();
+        }
+      }
+    },
+
+    updateConflictCount() {
+      const conflictList = Alpine.store('conflictList') as any;
+      if (conflictList) {
+        this.activeConflictCount = conflictList.activeConflictCount ?? 0;
       }
     },
   };
@@ -376,6 +390,8 @@ async function init(): Promise<void> {
 
   // Register scan profiles component (page uses direct HTML include)
   Alpine.data('scanProfilesList', scanProfilesList);
+  // Conflicts component
+  Alpine.data('conflictList', conflictList);
 
   // Register deep scan type
   window.rackdRegisterScanType({

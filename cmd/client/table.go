@@ -61,6 +61,19 @@ func PrintDiscoveredTable(devices []map[string]interface{}) {
 	w.Flush()
 }
 
+func PrintConflictTable(conflicts []map[string]interface{}) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tDESCRIPTION")
+	for _, c := range conflicts {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+			getString(c, "id"),
+			getString(c, "type"),
+			getString(c, "status"),
+			getString(c, "description"))
+	}
+	w.Flush()
+}
+
 func PrintJSON(data interface{}) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

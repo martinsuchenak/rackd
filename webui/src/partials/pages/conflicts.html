@@ -1,0 +1,166 @@
+<!-- Conflicts List -->
+<template x-if="route === '/conflicts'">
+  <div x-data="conflictList()">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">IP Conflicts</h1>
+      <button @click="detectAll()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" :disabled="detecting">
+        <span x-show="!detecting">Detect Conflicts</span>
+        <span x-show="detecting" class="inline-flex items-center">
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Detecting...
+        </span>
+      </button>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <!-- Duplicate IPs Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Duplicate IPs</h2>
+          <button @click="openFilter('duplicate_ip')" class="text-sm text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-show="filter !== 'duplicate_ip'">View only</button>
+        </div>
+        <div class="flex items-center">
+          <div class="text-3xl font-bold text-orange-600 dark:text-orange-400" x-text="summary.duplicate_ips || 0"></div>
+          <div class="ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">IP addresses assigned to multiple devices</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlapping Subnets Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Overlapping Subnets</h2>
+          <button @click="openFilter('overlapping_subnet')" class="text-sm text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-show="filter !== 'overlapping_subnet'">View only</button>
+        </div>
+        <div class="flex items-center">
+          <div class="text-3xl font-bold text-purple-600 dark:text-purple-400" x-text="summary.overlapping_subnets || 0"></div>
+          <div class="ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Network subnets that overlap</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Active Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Total Active</h2>
+          <button @click="clearFilter()" class="text-sm text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-show="filter !== ''">View all</button>
+        </div>
+        <div class="flex items-center">
+          <div class="text-3xl font-bold text-red-600 dark:text-red-400" x-text="(summary.duplicate_ips || 0) + (summary.overlapping_subnets || 0)"></div>
+          <div class="ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">All active conflicts</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+        </svg>
+        <div>
+          <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">How to resolve conflicts</h3>
+          <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">Click on the affected resources below to navigate to their detail pages. From there, you can edit the IP addresses or subnet configurations to resolve the conflicts manually.</p>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md border border-red-300 dark:border-red-800" x-text="error" role="alert"></div>
+
+    <!-- Conflicts List -->
+    <div class="space-y-4">
+      <div x-show="loading" class="text-center py-8 text-gray-600 dark:text-gray-400">
+        <span role="status" aria-live="polite">Loading conflicts...</span>
+      </div>
+
+      <div x-show="!loading && filteredConflicts.length === 0" class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
+        <svg class="w-12 h-12 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">No conflicts detected</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">All IP addresses and subnets are properly configured.</p>
+      </div>
+
+      <template x-for="conflict in filteredConflicts" :key="conflict.id">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <!-- Conflict Header -->
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-1 text-xs font-medium rounded-full"
+                    :class="{
+                      'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300': conflict.type === 'duplicate_ip',
+                      'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300': conflict.type === 'overlapping_subnet'
+                    }"
+                    x-text="conflict.type === 'duplicate_ip' ? 'Duplicate IP' : 'Overlapping Subnet'"></span>
+              <span class="font-mono text-sm text-gray-900 dark:text-white" x-text="conflict.ip_address || conflict.description"></span>
+            </div>
+            <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Detected: ' + formatDate(conflict.detected_at)"></span>
+          </div>
+
+          <!-- Duplicate IP Conflict -->
+          <template x-if="conflict.type === 'duplicate_ip'">
+            <div class="px-6 py-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                The IP address <strong class="text-gray-900 dark:text-white" x-text="conflict.ip_address"></strong> is assigned to <span x-text="conflict.device_ids?.length || 0"></span> devices:
+              </p>
+              <div class="space-y-2">
+                <template x-for="(deviceId, index) in conflict.device_ids" :key="deviceId">
+                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                      </svg>
+                      <span class="font-medium text-gray-900 dark:text-white" x-text="conflict.device_names?.[index] || 'Unknown Device'"></span>
+                    </div>
+                    <a :href="'/devices/detail?id=' + deviceId"
+                       @click.prevent="$dispatch('nav', '/devices/detail?id=' + deviceId)"
+                       class="px-3 py-1.5 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer">
+                      View Device
+                    </a>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Overlapping Subnet Conflict -->
+          <template x-if="conflict.type === 'overlapping_subnet'">
+            <div class="px-6 py-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                These network subnets overlap with each other:
+              </p>
+              <div class="space-y-2">
+                <template x-for="(networkId, index) in conflict.network_ids" :key="networkId">
+                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                      </svg>
+                      <div>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="conflict.network_names?.[index] || 'Unknown Network'"></span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2" x-text="conflict.subnets?.[index] || ''"></span>
+                      </div>
+                    </div>
+                    <a :href="'/networks/detail?id=' + networkId"
+                       @click.prevent="$dispatch('nav', '/networks/detail?id=' + networkId)"
+                       class="px-3 py-1.5 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer">
+                      View Network
+                    </a>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+</template>

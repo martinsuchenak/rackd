@@ -232,6 +232,15 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("DELETE /api/oauth/clients/{id}", wrapAuth(h.oauthDeleteClient))
 	}
 
+	// Conflict routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/conflicts", wrapAuth(h.listConflicts))
+	mux.HandleFunc("GET /api/conflicts/summary", wrapAuth(h.getConflictSummary))
+	mux.HandleFunc("POST /api/conflicts/detect", wrapAuth(h.detectConflicts))
+	mux.HandleFunc("GET /api/conflicts/{id}", wrapAuth(h.getConflict))
+	mux.HandleFunc("POST /api/conflicts/{id}/resolve", wrapAuth(h.resolveConflict))
+	mux.HandleFunc("DELETE /api/conflicts/{id}", wrapAuth(h.deleteConflict))
+	mux.HandleFunc("GET /api/devices/{id}/conflicts", wrapAuth(h.getDeviceConflicts))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

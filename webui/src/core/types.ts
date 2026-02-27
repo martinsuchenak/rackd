@@ -75,8 +75,37 @@ export interface NetworkUtilization {
 
 export interface IPStatus {
   ip: string;
-  status: 'available' | 'used' | 'reserved';
+  status: 'available' | 'used' | 'reserved' | 'conflicted';
   device_id?: string;
+}
+
+export interface Conflict {
+  id: string;
+  type: 'duplicate_ip' | 'overlapping_subnet';
+  status: 'active' | 'resolved' | 'ignored';
+  description: string;
+  ip_address?: string;
+  device_ids?: string[];
+  device_names?: string[];
+  network_ids?: string[];
+  network_names?: string[];
+  subnets?: string[];
+  detected_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  notes?: string;
+}
+
+export interface ConflictResolution {
+  conflict_id: string;
+  keep_device_id?: string;
+  keep_network_id?: string;
+  notes: string;
+}
+
+export interface ConflictType {
+  duplicate_ip: 'duplicate_ip';
+  overlapping_subnet: 'overlapping_subnet';
 }
 
 export interface ServiceInfo {

@@ -33,6 +33,8 @@ import type {
   User,
   UserFilter,
   UserInfo,
+  Conflict,
+  ConflictResolution,
 } from './types';
 
 export type {
@@ -457,6 +459,32 @@ export class RackdAPI {
 
   async getUserPermissions(id: string): Promise<Permission[]> {
     return this.request<Permission[]>('GET', `/api/users/${id}/permissions`);
+  }
+
+  // Conflicts
+  async listConflicts(): Promise<Conflict[]> {
+    return this.request<Conflict[]>('GET', '/api/conflicts');
+  }
+
+  async getConflictSummary(): Promise<{ duplicate_ips: number; overlapping_subnets: number } | null> {
+    return this.request<{ duplicate_ips: number; overlapping_subnets: number } | null>('GET', '/api/conflicts/summary');
+  }
+
+  async detectConflicts(type?: string): Promise<{ conflicts: Conflict[] }> {
+    const query = type ? `?type=${type}` : '';
+    return this.request<{ conflicts: Conflict[] }>('POST', `/api/conflicts/detect${query}`);
+  }
+
+  async getConflict(id: string): Promise<Conflict> {
+    return this.request<Conflict>('GET', `/api/conflicts/${id}`);
+  }
+
+  async resolveConflict(resolution: ConflictResolution): Promise<void> {
+    return this.request<void>('POST', '/api/conflicts/resolve', resolution);
+  }
+
+  async deleteConflict(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/conflicts/${id}`);
   }
 }
 

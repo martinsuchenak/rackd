@@ -1,6 +1,6 @@
 <!-- Devices List -->
 <template x-if="route === '/devices' || route.startsWith('/devices?')">
-  <div x-data="deviceList">
+  <div x-data="deviceList()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Devices</h1>
       <div class="flex gap-2">

@@ -9,11 +9,79 @@ import (
 )
 
 type DeviceService struct {
-	store storage.ExtendedStorage
+	store          storage.ExtendedStorage
+	conflictService *ConflictService
 }
 
 func NewDeviceService(store storage.ExtendedStorage) *DeviceService {
 	return &DeviceService{store: store}
+}
+
+func (s *DeviceService) setConflictService(cs *ConflictService) {
+	s.conflictService = cs
+}
+
+// checkForIPConflicts checks if any IP addresses are duplicates and creates conflict records
+func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.Device) {
+	if s.conflictService == nil {
+		return
+	}
+
+	// Check each IP address for duplicates
+	for _, addr := range device.Addresses {
+		if addr.IP == "" {
+			continue
+		}
+
+		// Look for existing devices with this IP
+		conflicts, err := s.store.GetConflictsByIP(addr.IP)
+		if err != nil {
+			continue
+		}
+
+		// Check if we already have a conflict for this IP
+		hasConflict := false
+		for _, c := range conflicts {
+			if c.Status == model.ConflictStatusActive {
+				hasConflict = true
+				break
+			}
+		}
+
+		// If no active conflict exists and we found multiple devices with this IP, create one
+		if !hasConflict && len(conflicts) == 0 {
+			// Find all devices with this IP (including the current one)
+			allDevices, err := s.store.ListDevices(&model.DeviceFilter{})
+			if err != nil {
+				continue
+			}
+
+			var deviceIDs []string
+			var deviceNames []string
+			for _, d := range allDevices {
+				for _, a := range d.Addresses {
+					if a.IP == addr.IP {
+						deviceIDs = append(deviceIDs, d.ID)
+						deviceNames = append(deviceNames, d.Name)
+						break
+					}
+				}
+			}
+
+			// Only create conflict if multiple devices have this IP
+			if len(deviceIDs) > 1 {
+				conflict := &model.Conflict{
+					Type:        model.ConflictTypeDuplicateIP,
+					Status:      model.ConflictStatusActive,
+					Description: "IP address assigned to multiple devices",
+					IPAddress:   addr.IP,
+					DeviceIDs:   deviceIDs,
+					DeviceNames: deviceNames,
+				}
+				s.conflictService.store.CreateConflict(ctx, conflict)
+			}
+		}
+	}
 }
 
 func (s *DeviceService) List(ctx context.Context, filter *model.DeviceFilter) ([]model.Device, error) {
@@ -32,7 +100,15 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 		return ValidationErrors{{Field: "name", Message: "Name is required"}}
 	}
 
-	return s.store.CreateDevice(enrichAuditCtx(ctx), device)
+	err := s.store.CreateDevice(enrichAuditCtx(ctx), device)
+	if err != nil {
+		return err
+	}
+
+	// Check for IP conflicts after creation
+	s.checkForIPConflicts(ctx, device)
+
+	return nil
 }
 
 func (s *DeviceService) Get(ctx context.Context, id string) (*model.Device, error) {
@@ -63,7 +139,15 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 		return ValidationErrors{{Field: "name", Message: "Name is required"}}
 	}
 
-	return s.store.UpdateDevice(enrichAuditCtx(ctx), device)
+	err := s.store.UpdateDevice(enrichAuditCtx(ctx), device)
+	if err != nil {
+		return err
+	}
+
+	// Check for IP conflicts after update
+	s.checkForIPConflicts(ctx, device)
+
+	return nil
 }
 
 func (s *DeviceService) Delete(ctx context.Context, id string) error {

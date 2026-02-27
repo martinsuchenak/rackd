@@ -7,6 +7,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/cmd/apikey"
 	"github.com/martinsuchenak/rackd/cmd/audit"
+	cmdconflict "github.com/martinsuchenak/rackd/cmd/conflict"
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
 	"github.com/martinsuchenak/rackd/cmd/discovery"
@@ -36,6 +37,7 @@ func main() {
 			network.Command(),
 			datacenter.Command(),
 			discovery.Command(),
+			cmdconflict.Command(),
 			apikey.Command(),
 			user.Command(),
 			role.Command(),

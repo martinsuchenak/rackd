@@ -1,6 +1,6 @@
 <!-- Networks List -->
 <template x-if="route === '/networks'">
-  <div x-data="networkList">
+  <div x-data="networkList()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Networks</h1>
       <button x-show="$store.permissions.canCreate('networks')" @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
@@ -39,6 +39,7 @@
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Subnet</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">VLAN</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Datacenter</th>
+            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider"><span class="sr-only">Overlap</span></th>
             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -53,6 +54,14 @@
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="n.subnet"></td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="n.vlan_id || '-'"></td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getDatacenterName(n.datacenter_id)"></td>
+              <td class="px-6 py-4 text-center">
+                <span x-show="n.has_subnet_overlap"
+                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300"
+                      title="This subnet overlaps with other networks">
+                  Overlap
+                </span>
+                <span x-show="!n.has_subnet_overlap" class="text-gray-400 dark:text-gray-500">-</span>
+              </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
                   <button @click="$dispatch('nav', '/devices?network=' + n.id)" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'View devices in ' + n.name">Devices</button>

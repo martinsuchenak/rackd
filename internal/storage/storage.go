@@ -165,6 +165,23 @@ type OAuthStorage interface {
 	CleanupExpiredTokens() error
 }
 
+// ConflictStorage defines conflict persistence operations
+type ConflictStorage interface {
+	// Conflicts
+	CreateConflict(ctx context.Context, conflict *model.Conflict) error
+	GetConflict(id string) (*model.Conflict, error)
+	ListConflicts(filter *model.ConflictFilter) ([]model.Conflict, error)
+	UpdateConflictStatus(ctx context.Context, id string, status model.ConflictStatus, resolvedBy, notes string) error
+	DeleteConflict(ctx context.Context, id string) error
+
+	// Detection helpers
+	FindDuplicateIPs(ctx context.Context) ([]model.Conflict, error)
+	FindOverlappingSubnets(ctx context.Context) ([]model.Conflict, error)
+	GetConflictsByDeviceID(deviceID string) ([]model.Conflict, error)
+	GetConflictsByIP(ip string) ([]model.Conflict, error)
+	MarkConflictsResolvedForDevice(ctx context.Context, deviceID string, resolvedBy string) error
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -184,6 +201,7 @@ type ExtendedStorage interface {
 	UserStorage
 	RBACStorage
 	OAuthStorage
+	ConflictStorage
 	Close() error
 	DB() *sql.DB
 }

@@ -1,6 +1,6 @@
 <!-- Scan Profiles -->
 <template x-if="route === '/scan-profiles'">
-  <div x-data="scanProfilesList" @beforeunload.window="destroy()">
+  <div x-data="scanProfilesList()" @beforeunload.window="destroy()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Scan Profiles</h1>
       <button @click="openCreateModal()"
