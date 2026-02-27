@@ -1,6 +1,6 @@
 # Rackd Implementation Plan
 
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-27
 
 Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phase 3 are complete.
 
@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 12 of 12 | 🔮 Future |
+| **Phase 4: Advanced** | 10 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **15** | |
+| **Total remaining** | **13** | |
 
 ### Completed (not listed here)
 
@@ -23,6 +23,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 3.4**: PostgreSQL — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (SQLite handles the scale)
 - **Phase 3.5**: Webhook System — moved to Phase 4.7 (depends on Notifications event bus)
 - **Phase 3.6**: MCP OAuth 2.1 Authorization (OAuth endpoints, PKCE, token validation, client management UI, consent screen)
+- **Phase 4.1**: IP Conflict Detection
 
 ## Architecture Reference
 
@@ -43,8 +44,8 @@ webui/src/
 
 **Route auth wrappers** (in `handlers.go`):
 - `wrap` — optional auth (respects `cfg.requireAuth`)
-- `wrapAuth` — always requires authenticated session
-- `wrapPerm` — auth + RBAC permission check (skips RBAC when auth not configured)
+- `wrapAuth` — Always requires authenticated session
+- `wrapPerm` — Auth + RBAC permission check (skips RBAC when auth not configured)
 
 **RBAC enforcement** happens at the service layer via `requirePermission(ctx, store, "resource", "action")`, not at the middleware level.
 
@@ -63,11 +64,23 @@ webui/src/
 **What**: Detect and warn about IP conflicts (core IPAM integrity)
 
 **Tasks**:
-- [ ] Duplicate IP detection
-- [ ] Overlapping subnet detection
-- [ ] Conflict resolution UI
-- [ ] Conflict API endpoints
-- [ ] Automatic conflict checking on IP assignment
+- [x] Duplicate IP detection
+- [x] Overlapping subnet detection
+- [x] Conflict resolution UI
+- [x] Conflict API endpoints
+- [x] Automatic conflict checking on IP assignment
+
+**Implementation Details**:
+- **Model**: `internal/model/conflict.go` — ConflictType, ConflictStatus, Conflict, ConflictResolution
+- **Storage**: `internal/storage/conflict_sqlite.go` — SQLite implementation with FindDuplicateIPs, FindOverlappingSubnets, CRUD operations
+- **Service**: `internal/service/conflict.go` — ConflictService with RBAC enforcement
+- **API**: `internal/api/conflict_handlers.go` — REST endpoints for  - **UI**: `webui/src/components/conflicts.ts` + `webui/src/partials/pages/conflicts.html`
+- **CLI**: `cmd/conflict/` — `list`, `get`, `detect`, `resolve`, `delete` commands
+- **Tests**: `internal/storage/conflict_sqlite_test.go` + `cmd/conflict/conflict_test.go`
+- **Integration**: Automatic conflict checking in device service,- **UI Integration**: Navigation badge with dynamic count, conflict warning banners,- device detail page warning
+- Device list conflict indicator
+- Network list overlap badge
+- Pool heatmap "conflicted" status (orange)
 
 ### 4.2 IP Address Reservation & Planning
 
@@ -382,3 +395,4 @@ SMTP_FROM=rackd@example.com
 - All features include MCP tools where applicable
 - New features follow the service-layer pattern: model -> storage -> service (with RBAC) -> API handler
 - See [FUTURE_FEATURES.md](FUTURE_FEATURES.md) for ideas not yet planned (SSO, PostgreSQL, etc.)
+- 
