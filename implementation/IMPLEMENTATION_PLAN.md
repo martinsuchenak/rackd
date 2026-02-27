@@ -175,20 +175,24 @@ webui/src/
 
 ### 4.5 Network Topology Visualization
 
-**Effort**: 7-10 days
+**Effort**: 7-10 days | **Status**: ✅ COMPLETE
 
 **What**: Interactive visual network topology based on device relationships
 
 **Tasks**:
-- [ ] Topology data structure (nodes, edges from relationships)
-- [ ] Topology API endpoint
-- [ ] Graph layout algorithm
-- [ ] Interactive visualization (Cytoscape.js or D3.js)
-- [ ] Zoom, pan, filter controls
-- [ ] Export (PNG, SVG, JSON)
-- [ ] Real-time updates via WebSocket
+- [x] Topology data structure (nodes, edges from relationships)
+- [x] Topology API endpoint
+- [x] Graph layout algorithm
+- [x] Interactive visualization (Cytoscape.js or D3.js)
+- [x] Zoom, pan, filter controls
+- [x] Export (PNG, SVG, JSON)
+- [ ] Real-time updates via WebSocket (deferred)
 
-**Note**: Basic relationship graph already exists at `/devices/graph`.
+**Files Modified**:
+- `webui/src/components/graph.ts` — Enhanced Cytoscape.js component with filters, export, layout options
+- `webui/src/partials/pages/device-graph.html` — Toolbar, filter controls, export buttons, stats
+
+**Note**: Basic relationship graph already existed at `/devices/graph`. Enhanced with zoom/pan controls, filtering by status/datacenter/relationship type, multiple layout algorithms, PNG/JSON export, and node tooltips.
 
 ### 4.6 Notifications & Alerting
 
