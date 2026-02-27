@@ -409,3 +409,72 @@ export interface DashboardStats {
   stale_threshold_days: number;
   stale_device_list: StaleDevice[];
 }
+
+// Webhook types
+export type EventType =
+  | 'device.created'
+  | 'device.updated'
+  | 'device.deleted'
+  | 'device.promoted'
+  | 'network.created'
+  | 'network.updated'
+  | 'network.deleted'
+  | 'discovery.started'
+  | 'discovery.completed'
+  | 'discovery.device_found'
+  | 'conflict.detected'
+  | 'conflict.resolved'
+  | 'pool.utilization_high';
+
+export interface EventTypeOption {
+  value: EventType;
+  label: string;
+}
+
+export type DeliveryStatus = 'pending' | 'success' | 'failed' | 'retrying' | 'abandoned';
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string;
+  events: EventType[];
+  active: boolean;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: EventType;
+  payload: string;
+  response_code?: number;
+  response_body?: string;
+  error?: string;
+  duration_ms: number;
+  status: DeliveryStatus;
+  attempt_number: number;
+  next_retry?: string;
+  created_at: string;
+}
+
+export interface CreateWebhookRequest {
+  name: string;
+  url: string;
+  secret?: string;
+  events: EventType[];
+  active: boolean;
+  description?: string;
+}
+
+export interface UpdateWebhookRequest {
+  name?: string;
+  url?: string;
+  secret?: string;
+  events?: EventType[];
+  active?: boolean;
+  description?: string;
+}

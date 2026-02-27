@@ -156,6 +156,18 @@ var migrations = []*Migration{
 		Up:      migrateAddDashboardPermissionsUp,
 		Down:    migrateAddDashboardPermissionsDown,
 	},
+	{
+		Version: "20260228030000",
+		Name:    "add_webhooks",
+		Up:      migrateAddWebhooksUp,
+		Down:    migrateAddWebhooksDown,
+	},
+	{
+		Version: "20260228040000",
+		Name:    "add_webhook_permissions",
+		Up:      migrateAddWebhookPermissionsUp,
+		Down:    migrateAddWebhookPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1745,6 +1757,157 @@ func migrateAddDashboardPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete dashboard permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddWebhooksUp creates the webhooks and webhook_deliveries tables
+func migrateAddWebhooksUp(ctx context.Context, tx *sql.Tx) error {
+	// Create webhooks table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS webhooks (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			url TEXT NOT NULL,
+			secret TEXT,
+			events TEXT NOT NULL,
+			active INTEGER NOT NULL DEFAULT 1,
+			description TEXT,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			created_by TEXT
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create webhooks table: %w", err)
+	}
+
+	// Create indexes for webhooks
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_webhooks_active ON webhooks(active)`); err != nil {
+		return fmt.Errorf("failed to create webhooks active index: %w", err)
+	}
+
+	// Create webhook_deliveries table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS webhook_deliveries (
+			id TEXT PRIMARY KEY,
+			webhook_id TEXT NOT NULL,
+			event_type TEXT NOT NULL,
+			payload TEXT NOT NULL,
+			response_code INTEGER,
+			response_body TEXT,
+			error TEXT,
+			duration_ms INTEGER,
+			status TEXT NOT NULL,
+			attempt_number INTEGER NOT NULL DEFAULT 1,
+			next_retry DATETIME,
+			created_at DATETIME NOT NULL,
+			FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create webhook_deliveries table: %w", err)
+	}
+
+	// Create indexes for webhook_deliveries
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_webhook_id ON webhook_deliveries(webhook_id)",
+		"CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status ON webhook_deliveries(status)",
+		"CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_created_at ON webhook_deliveries(created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_next_retry ON webhook_deliveries(next_retry)",
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create webhook_deliveries index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddWebhooksDown drops the webhooks and webhook_deliveries tables
+func migrateAddWebhooksDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS webhook_deliveries`); err != nil {
+		return fmt.Errorf("failed to drop webhook_deliveries table: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS webhooks`); err != nil {
+		return fmt.Errorf("failed to drop webhooks table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddWebhookPermissionsUp adds webhook permissions
+func migrateAddWebhookPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now().UTC()
+
+	// Add webhook permissions (name, resource, action)
+	webhookPermissions := [][3]string{
+		{"webhook:list", "webhook", "list"},
+		{"webhook:read", "webhook", "read"},
+		{"webhook:create", "webhook", "create"},
+		{"webhook:update", "webhook", "update"},
+		{"webhook:delete", "webhook", "delete"},
+	}
+	for _, perm := range webhookPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant to admin role
+	adminPerms := []string{"webhook:list", "webhook:read", "webhook:create", "webhook:update", "webhook:delete"}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin webhook permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role
+	operatorPerms := []string{"webhook:list", "webhook:read"}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator webhook permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role
+	viewerPerms := []string{"webhook:list", "webhook:read"}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer webhook permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddWebhookPermissionsDown removes webhook permissions
+func migrateAddWebhookPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{"webhook:list", "webhook:read", "webhook:create", "webhook:update", "webhook:delete"}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete webhook permission %s: %w", name, err)
 		}
 	}
 	return nil

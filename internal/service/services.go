@@ -27,6 +27,7 @@ type Services struct {
 	Conflicts      *ConflictService
 	Reservations   *ReservationService
 	Dashboard      *DashboardService
+	Webhooks       *WebhookService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -46,6 +47,7 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		Conflicts:     NewConflictService(store),
 		Reservations:  NewReservationService(store),
 		Dashboard:     NewDashboardService(store),
+		Webhooks:      NewWebhookService(store),
 	}
 }
 

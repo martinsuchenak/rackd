@@ -6,9 +6,11 @@ import type {
   ChangePasswordRequest,
   CreateUserRequest,
   CreateReservationRequest,
+  CreateWebhookRequest,
   CurrentUser,
   DashboardStats,
   Datacenter,
+  DeliveryStatus,
   Device,
   DeviceFilter,
   DeviceRelationship,
@@ -16,6 +18,7 @@ import type {
   DiscoveredDevice,
   DiscoveryRule,
   DiscoveryScan,
+  EventTypeOption,
   IPStatus,
   LoginRequest,
   LoginResponse,
@@ -34,11 +37,14 @@ import type {
   UIConfig,
   UpdateReservationRequest,
   UpdateUserRequest,
+  UpdateWebhookRequest,
   CreateRoleRequest,
   UpdateRoleRequest,
   User,
   UserFilter,
   UserInfo,
+  Webhook,
+  WebhookDelivery,
   Conflict,
   ConflictResolution,
   UtilizationTrendPoint,
@@ -553,6 +559,45 @@ export class RackdAPI {
     params.set('resource_id', resourceId);
     if (days) params.set('days', days.toString());
     return this.request<UtilizationTrendPoint[]>('GET', `/api/dashboard/trend?${params.toString()}`);
+  }
+
+  // Webhooks
+  async listWebhooks(active?: boolean): Promise<Webhook[]> {
+    const params = active !== undefined ? `?active=${active}` : '';
+    return this.request<Webhook[]>('GET', `/api/webhooks${params}`);
+  }
+
+  async getWebhook(id: string): Promise<Webhook> {
+    return this.request<Webhook>('GET', `/api/webhooks/${id}`);
+  }
+
+  async createWebhook(request: CreateWebhookRequest): Promise<Webhook> {
+    return this.request<Webhook>('POST', '/api/webhooks', request);
+  }
+
+  async updateWebhook(id: string, request: UpdateWebhookRequest): Promise<Webhook> {
+    return this.request<Webhook>('PUT', `/api/webhooks/${id}`, request);
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/webhooks/${id}`);
+  }
+
+  async pingWebhook(id: string): Promise<{ message: string; delivery: WebhookDelivery }> {
+    return this.request<{ message: string; delivery: WebhookDelivery }>('POST', `/api/webhooks/${id}/ping`);
+  }
+
+  async getWebhookDeliveries(webhookId: string, status?: DeliveryStatus): Promise<WebhookDelivery[]> {
+    const params = status ? `?status=${status}` : '';
+    return this.request<WebhookDelivery[]>('GET', `/api/webhooks/${webhookId}/deliveries${params}`);
+  }
+
+  async getWebhookDelivery(webhookId: string, deliveryId: string): Promise<WebhookDelivery> {
+    return this.request<WebhookDelivery>('GET', `/api/webhooks/${webhookId}/deliveries/${deliveryId}`);
+  }
+
+  async getEventTypes(): Promise<EventTypeOption[]> {
+    return this.request<EventTypeOption[]>('GET', '/api/webhooks/events');
   }
 }
 

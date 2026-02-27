@@ -18,6 +18,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/role"
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/martinsuchenak/rackd/cmd/user"
+	"github.com/martinsuchenak/rackd/cmd/webhook"
 	"github.com/paularlott/cli"
 )
 
@@ -40,6 +41,7 @@ func main() {
 			discovery.Command(),
 			cmdconflict.Command(),
 			reservation.Command(),
+			webhook.Command(),
 			apikey.Command(),
 			user.Command(),
 			role.Command(),

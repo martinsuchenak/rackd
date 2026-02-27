@@ -255,6 +255,17 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/reservations/{id}/release", wrapAuth(h.releaseReservation))
 	mux.HandleFunc("GET /api/pools/{id}/reservations", wrapAuth(h.listPoolReservations))
 
+	// Webhook routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/webhooks", wrapAuth(h.listWebhooks))
+	mux.HandleFunc("POST /api/webhooks", wrapAuth(h.createWebhook))
+	mux.HandleFunc("GET /api/webhooks/events", wrapAuth(h.getEventTypes))
+	mux.HandleFunc("GET /api/webhooks/{id}", wrapAuth(h.getWebhook))
+	mux.HandleFunc("PUT /api/webhooks/{id}", wrapAuth(h.updateWebhook))
+	mux.HandleFunc("DELETE /api/webhooks/{id}", wrapAuth(h.deleteWebhook))
+	mux.HandleFunc("POST /api/webhooks/{id}/ping", wrapAuth(h.pingWebhook))
+	mux.HandleFunc("GET /api/webhooks/{id}/deliveries", wrapAuth(h.listWebhookDeliveries))
+	mux.HandleFunc("GET /api/webhooks/{id}/deliveries/{deliveryId}", wrapAuth(h.getWebhookDelivery))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

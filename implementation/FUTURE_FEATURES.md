@@ -1,8 +1,61 @@
 # Rackd Future Feature Ideas
 
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-27
 
 Ideas and improvements that are not yet planned for implementation. These may be promoted to the main [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) when prioritized.
+
+---
+
+## Notifications & Alerting
+
+**Effort**: 4-5 days | **Priority**: HIGH
+
+**What**: Configurable notifications for infrastructure events via email, Slack, and Teams
+
+Moved from IMPLEMENTATION_PLAN.md section 4.6. The webhook system (4.7) provides external event integration which satisfies immediate automation needs. In-app notifications can be added later.
+
+**Tasks**:
+- [ ] Notification channel model (email, Slack webhook, Teams webhook)
+- [ ] Notification channel storage + service
+- [ ] Channel CRUD API
+- [ ] Internal event bus (already implemented in webhook system - reuse)
+- [ ] Notification triggers with configurable thresholds:
+  - Pool utilization exceeds threshold (e.g., 80%)
+  - New device discovered
+  - Discovery scan failure
+  - IP conflict detected
+  - Device status change
+- [ ] Per-user notification preferences
+- [ ] Notification history/log
+- [ ] Notification management UI
+- [ ] Notification CLI commands
+- [ ] Email sender (SMTP)
+- [ ] Slack sender (incoming webhook)
+- [ ] Teams sender (incoming webhook)
+
+**Configuration**:
+```bash
+NOTIFICATIONS_ENABLED=true
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=alerts@example.com
+SMTP_PASSWORD=xxx
+SMTP_FROM=rackd@example.com
+```
+
+**Files to Create**:
+- `internal/model/notification.go` — Channel, trigger, and history models
+- `internal/storage/notification_sqlite.go`
+- `internal/service/notification.go` — CRUD + permission checks
+- `internal/notification/dispatcher.go` — Event bus + trigger evaluation
+- `internal/notification/email.go` — SMTP sender
+- `internal/notification/slack.go` — Slack webhook sender
+- `internal/notification/teams.go` — Teams webhook sender
+- `internal/api/notification_handlers.go`
+- `webui/src/components/notifications.ts`
+- `cmd/notification/notification.go`
+
+**Dependencies**: Webhook System (complete - provides event bus)
 
 ---
 

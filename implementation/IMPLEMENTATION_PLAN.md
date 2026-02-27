@@ -9,15 +9,23 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 7 of 12 | 🟡 In Progress |
+| **Phase 4: Advanced** | 5 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **10** | |
+| **Total remaining** | **8** | |
 
 ### Completed (not listed here)
 
 - **Phase 1**: Full-Text Search, Metrics, Health Checks, API Key Auth
 - **Phase 2**: Export/Import, Bulk Operations, Rate Limiting, Audit Trail, UI/UX Enhancements
 - **Phase 3.1**: User Management (users, sessions, bcrypt, login UI, CLI, bootstrap via env vars)
+- **Phase 3.6**: MCP OAuth 2.1 Authorization
+- **Phase 4.1**: IP Conflict Detection
+- **Phase 4.2**: IP Address Reservation & Planning
+- **Phase 4.3**: Device Lifecycle & Status Tracking
+- **Phase 4.4**: Dashboard Reporting & Trends
+- **Phase 4.5**: Network Topology Visualization
+- **Phase 4.6**: Notifications & Alerting — MOVED TO FUTURE (webhooks provide external integration)
+- **Phase 4.7**: Webhook System
 - **Phase 3.2**: RBAC (roles, permissions, service-layer enforcement, default roles, UI, CLI)
 - **Phase 3.3**: SSO/OIDC — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (implement when requested)
 - **Phase 3.4**: PostgreSQL — moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md) (SQLite handles the scale)
@@ -194,79 +202,52 @@ webui/src/
 
 **Note**: Basic relationship graph already existed at `/devices/graph`. Enhanced with zoom/pan controls, filtering by status/datacenter/relationship type, multiple layout algorithms, PNG/JSON export, and node tooltips.
 
-### 4.6 Notifications & Alerting
+### 4.6 Notifications & Alerting — MOVED TO FUTURE
 
-**Effort**: 4-5 days | **Priority**: HIGH
+**Effort**: 4-5 days | **Priority**: DEFERRED
 
 **What**: Configurable notifications for infrastructure events via email, Slack, and Teams
 
-**Tasks**:
-- [ ] Notification channel model (email, Slack webhook, Teams webhook)
-- [ ] Notification channel storage + service
-- [ ] Channel CRUD API
-- [ ] Internal event bus (reusable by webhooks)
-- [ ] Notification triggers with configurable thresholds:
-  - Pool utilization exceeds threshold (e.g., 80%)
-  - New device discovered
-  - Discovery scan failure
-  - IP conflict detected
-  - Device status change
-- [ ] Per-user notification preferences
-- [ ] Notification history/log
-- [ ] Notification management UI
-- [ ] Notification CLI commands
-- [ ] Email sender (SMTP)
-- [ ] Slack sender (incoming webhook)
-- [ ] Teams sender (incoming webhook)
+**Note**: Moved to [FUTURE_FEATURES.md](FUTURE_FEATURES.md). The webhook system (4.7) provides external event integration, which satisfies immediate automation needs. In-app notifications can be added later.
 
-**Configuration**:
-```bash
-NOTIFICATIONS_ENABLED=true
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USERNAME=alerts@example.com
-SMTP_PASSWORD=xxx
-SMTP_FROM=rackd@example.com
-```
+### 4.7 Webhook System ✅
 
-**Files to Create**:
-- `internal/model/notification.go` — Channel, trigger, and history models
-- `internal/storage/notification_sqlite.go`
-- `internal/service/notification.go` — CRUD + permission checks
-- `internal/notification/dispatcher.go` — Event bus + trigger evaluation
-- `internal/notification/email.go` — SMTP sender
-- `internal/notification/slack.go` — Slack webhook sender
-- `internal/notification/teams.go` — Teams webhook sender
-- `internal/api/notification_handlers.go`
-- `webui/src/components/notifications.ts`
-- `cmd/notification/notification.go`
-
-### 4.7 Webhook System
-
-**Effort**: 5-7 days | **Priority**: LOW (Optional)
+**Effort**: 5-7 days | **Status**: COMPLETE
 
 **What**: Event notifications for external automation
 
 **Tasks**:
-- [ ] Webhook model and storage
-- [ ] Webhook CRUD API + service
-- [ ] Webhook delivery with retries and backoff (subscribes to event bus from Notifications)
-- [ ] HMAC signature verification for payloads
-- [ ] Webhook management UI
-- [ ] Webhook CLI commands
-- [ ] Webhook MCP tools
+- [x] Webhook model and storage
+- [x] Webhook CRUD API + service
+- [x] Event bus for internal events (independent of notifications)
+- [x] Webhook delivery with retries and backoff
+- [x] HMAC signature verification for payloads
+- [x] Webhook management UI
+- [x] Webhook CLI commands
+- [ ] Webhook MCP tools (deferred)
 
 **Events**:
-- `device.created`, `device.updated`, `device.deleted`
+- `device.created`, `device.updated`, `device.deleted`, `device.promoted`
 - `network.created`, `network.updated`, `network.deleted`
-- `discovery.scan.started`, `discovery.scan.completed`
-- `device.promoted`
+- `discovery.started`, `discovery.completed`, `discovery.device_found`
+- `conflict.detected`, `conflict.resolved`
+- `pool.utilization_high`
 
-**Note**: Can be skipped if not doing heavy automation. Depends on Notifications (4.6) for event bus.
-
-**Files to Create**:
-- `internal/model/webhook.go`
-- `internal/storage/webhook_sqlite.go`
+**Implementation Details**:
+- **Model**: `internal/model/webhook.go` — Webhook, WebhookDelivery, Event types, DeliveryStatus
+- **Storage**: `internal/storage/webhook_sqlite.go` — SQLite implementation with CRUD operations
+- **Migration**: `internal/storage/migrations.go` — Migration 20260228030000 for webhooks and deliveries tables
+- **Event Bus**: `internal/webhook/eventbus.go` — Simple pub/sub event dispatcher
+- **Delivery**: `internal/webhook/delivery.go` — HTTP delivery with retries, exponential backoff, HMAC signatures
+- **Worker**: `internal/webhook/worker.go` — Background worker for processing pending deliveries
+- **Service**: `internal/service/webhook.go` — CRUD + RBAC enforcement
+- **API**: `internal/api/webhook_handlers.go` — REST endpoints for webhooks and deliveries
+- **Types**: `webui/src/core/types.ts` — TypeScript types for webhooks
+- **API Client**: `webui/src/core/api.ts` — API methods for webhooks
+- **Component**: `webui/src/components/webhooks.ts` — Webhook management UI component
+- **Template**: `webui/src/partials/pages/webhooks.html` — Webhook management page
+- **CLI**: `cmd/webhook/` — `list`, `get`, `create`, `update`, `delete`, `ping`, `events` commands
+- **RBAC**: `webhook:list`, `webhook:read`, `webhook:create`, `webhook:update`, `webhook:delete` permissions
 - `internal/service/webhook.go` — CRUD + permission checks
 - `internal/webhook/delivery.go` — HTTP delivery with retries
 - `internal/api/webhook_handlers.go`

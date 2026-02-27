@@ -32,6 +32,8 @@ var (
 	ErrReservationNotFound  = errors.New("reservation not found")
 	ErrReservationExpired   = errors.New("reservation has expired")
 	ErrIPAlreadyReserved    = errors.New("IP address is already reserved")
+	ErrWebhookNotFound      = errors.New("webhook not found")
+	ErrDeliveryNotFound     = errors.New("webhook delivery not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -213,6 +215,25 @@ type SnapshotStorage interface {
 	GetUtilizationTrend(resourceType model.SnapshotType, resourceID string, days int) ([]model.UtilizationTrendPoint, error)
 }
 
+// WebhookStorage defines webhook persistence operations
+type WebhookStorage interface {
+	// Webhooks
+	CreateWebhook(ctx context.Context, webhook *model.Webhook) error
+	GetWebhook(id string) (*model.Webhook, error)
+	ListWebhooks(filter *model.WebhookFilter) ([]model.Webhook, error)
+	UpdateWebhook(ctx context.Context, webhook *model.Webhook) error
+	DeleteWebhook(ctx context.Context, id string) error
+	GetWebhooksForEvent(eventType model.EventType) ([]model.Webhook, error)
+
+	// Deliveries
+	CreateDelivery(ctx context.Context, delivery *model.WebhookDelivery) error
+	GetDelivery(id string) (*model.WebhookDelivery, error)
+	ListDeliveries(filter *model.DeliveryFilter) ([]model.WebhookDelivery, error)
+	UpdateDelivery(ctx context.Context, delivery *model.WebhookDelivery) error
+	DeleteOldDeliveries(olderThanDays int) error
+	GetPendingDeliveries(limit int) ([]model.WebhookDelivery, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -235,6 +256,7 @@ type ExtendedStorage interface {
 	ConflictStorage
 	ReservationStorage
 	SnapshotStorage
+	WebhookStorage
 	Close() error
 	DB() *sql.DB
 }
