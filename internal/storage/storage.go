@@ -36,6 +36,7 @@ var (
 	ErrDeliveryNotFound     = errors.New("webhook delivery not found")
 	ErrCustomFieldNotFound  = errors.New("custom field definition not found")
 	ErrDuplicateFieldKey    = errors.New("custom field key already exists")
+	ErrCircuitNotFound      = errors.New("circuit not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -256,6 +257,18 @@ type CustomFieldStorage interface {
 	GetCustomFieldValuesWithDefinitions(deviceID string) ([]model.CustomFieldWithDefinition, error)
 }
 
+// CircuitStorage defines circuit persistence operations
+type CircuitStorage interface {
+	CreateCircuit(ctx context.Context, circuit *model.Circuit) error
+	GetCircuit(id string) (*model.Circuit, error)
+	GetCircuitByCircuitID(circuitID string) (*model.Circuit, error)
+	ListCircuits(filter *model.CircuitFilter) ([]model.Circuit, error)
+	UpdateCircuit(ctx context.Context, circuit *model.Circuit) error
+	DeleteCircuit(ctx context.Context, id string) error
+	GetCircuitsByDatacenter(datacenterID string) ([]model.Circuit, error)
+	GetCircuitsByDevice(deviceID string) ([]model.Circuit, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -280,6 +293,7 @@ type ExtendedStorage interface {
 	SnapshotStorage
 	WebhookStorage
 	CustomFieldStorage
+	CircuitStorage
 	Close() error
 	DB() *sql.DB
 }

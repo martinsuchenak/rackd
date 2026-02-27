@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 5 of 12 | 🟡 In Progress |
+| **Phase 4: Advanced** | 3 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **8** | |
+| **Total remaining** | **7** | |
 
 ### Completed (not listed here)
 
@@ -287,20 +287,33 @@ webui/src/
 - [ ] DHCP configuration UI
 - [ ] DHCP CLI commands
 
-### 4.10 Circuit Management
+### 4.10 Circuit Management ✅
 
-**Effort**: 4-5 days
+**Effort**: 4-5 days | **Status**: COMPLETE
 
 **What**: Track network circuits (provider, circuit ID, capacity, endpoints)
 
 **Tasks**:
-- [ ] Circuit model
-- [ ] Circuit storage + service
-- [ ] Circuit CRUD API
-- [ ] Circuit UI page
-- [ ] Link circuits to devices
-- [ ] Circuit status tracking
-- [ ] Circuit CLI commands
+- [x] Circuit model
+- [x] Circuit storage + service
+- [x] Circuit CRUD API
+- [x] Circuit UI page
+- [x] Link circuits to devices
+- [x] Circuit status tracking
+- [x] Circuit CLI commands
+
+**Implementation Details**:
+- **Model**: `internal/model/circuit.go` — CircuitType (fiber/copper/microwave/dark_fiber), CircuitStatus (active/inactive/planned/decommissioned), Circuit model with endpoints, capacity, provider info
+- **Storage**: `internal/storage/circuit_sqlite.go` — SQLite implementation with CRUD operations, filtering by provider/status/datacenter/type
+- **Migration**: `internal/storage/migrations.go` — Migration 20260228070000 for circuits table with RBAC permissions
+- **Service**: `internal/service/circuit.go` — CRUD + RBAC enforcement
+- **API**: `internal/api/circuit_handlers.go` — REST endpoints for circuits
+- **Types**: `webui/src/core/types.ts` — CircuitType, CircuitStatus, Circuit, CircuitFilter, CreateCircuitRequest, UpdateCircuitRequest types
+- **API Client**: `webui/src/core/api.ts` — listCircuits, getCircuit, createCircuit, updateCircuit, deleteCircuit methods
+- **Component**: `webui/src/components/circuits.ts` — Circuit management UI component with filters, forms, CRUD
+- **Template**: `webui/src/partials/pages/circuits.html` — Circuit management page with table, filters, create/edit modals
+- **CLI**: `cmd/circuit/` — `list`, `get`, `create`, `update`, `delete` commands
+- **RBAC**: `circuit:list`, `circuit:read`, `circuit:create`, `circuit:update`, `circuit:delete` permissions
 
 ### 4.11 NAT Tracking
 
@@ -317,19 +330,43 @@ webui/src/
 - [ ] NAT validation
 - [ ] NAT CLI commands
 
-### 4.12 Custom Fields/Metadata
+### 4.12 Custom Fields/Metadata ✅
 
-**Effort**: 4-5 days
+**Effort**: 4-5 days | **Status**: COMPLETE
 
-**What**: User-defined fields for devices/networks
+**What**: User-defined fields for devices
 
 **Tasks**:
-- [ ] Custom field model
-- [ ] Custom field storage (JSON or key-value)
-- [ ] Custom field CRUD API + service
-- [ ] Custom field UI
-- [ ] Custom field validation
-- [ ] Search/filter by custom fields
+- [x] Custom field model (definitions + values)
+- [x] Custom field storage (hybrid: definitions table + values table)
+- [x] Custom field CRUD API + service with RBAC
+- [x] Custom field admin UI
+- [x] Custom field validation (type, required, options for select)
+- [x] Custom fields tab in device form
+- [x] Custom fields display on device detail page
+- [x] Custom fields CLI commands
+- [ ] Search/filter by custom fields (deferred)
+- [ ] Custom fields on networks/pools (deferred)
+
+**Implementation Details**:
+- **Model**: `internal/model/custom_field.go` — CustomFieldType (text/number/boolean/select), CustomFieldDefinition, CustomFieldValue, CustomFieldValueInput
+- **Storage**: `internal/storage/custom_field_sqlite.go` — SQLite implementation with definitions and values tables
+- **Migration**: `internal/storage/migrations.go` — Migration for custom_field_definitions and custom_field_values tables
+- **Service**: `internal/service/custom_field.go` — CRUD + RBAC enforcement, validation
+- **API**: `internal/api/custom_field_handlers.go` — REST endpoints for definitions and types
+- **Device Integration**: `internal/storage/device_sqlite.go` — Custom fields loaded with device, saved on create/update
+- **Device Handler**: `internal/api/device_handlers.go` — toCustomFieldSlice helper, custom_fields handling in updateDevice
+- **Types**: `webui/src/core/types.ts` — CustomFieldDefinition, CustomFieldType, CustomFieldValueInput types
+- **API Client**: `webui/src/core/api.ts` — listCustomFieldDefinitions, getCustomFieldTypes, createCustomFieldDefinition, updateCustomFieldDefinition, deleteCustomFieldDefinition methods
+- **Component**: `webui/src/components/custom-fields.ts` — Custom field management UI component
+- **Template**: `webui/src/partials/pages/custom-fields.html` — Custom field management page
+- **Device Form**: `webui/src/partials/modals/device-form.html` — Custom Fields tab with dynamic inputs
+- **Device Detail Edit**: `webui/src/partials/modals/device-detail-edit.html` — Custom Fields tab
+- **Device Detail**: `webui/src/partials/pages/device-detail.html` — Custom fields display section
+- **Device Component**: `webui/src/components/devices.ts` — getCustomFieldValue, setCustomFieldValue helpers in both devices and deviceDetail components
+- **CLI**: `cmd/customfield/` — `list`, `get`, `create`, `update`, `delete`, `types` commands
+- **RBAC**: `custom-fields:list`, `custom-fields:read`, `custom-fields:create`, `custom-fields:update`, `custom-fields:delete` permissions
+- **Tests**: `internal/storage/custom_field_sqlite_test.go`, `internal/api/custom_field_handlers_test.go`
 
 ---
 

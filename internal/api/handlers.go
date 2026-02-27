@@ -274,6 +274,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/custom-fields/{id}", wrapAuth(h.updateCustomFieldDefinition))
 	mux.HandleFunc("DELETE /api/custom-fields/{id}", wrapAuth(h.deleteCustomFieldDefinition))
 
+	// Circuit routes
+	mux.HandleFunc("GET /api/circuits", wrapAuth(h.listCircuits))
+	mux.HandleFunc("POST /api/circuits", wrapAuth(h.createCircuit))
+	mux.HandleFunc("GET /api/circuits/{id}", wrapAuth(h.getCircuit))
+	mux.HandleFunc("PUT /api/circuits/{id}", wrapAuth(h.updateCircuit))
+	mux.HandleFunc("DELETE /api/circuits/{id}", wrapAuth(h.deleteCircuit))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

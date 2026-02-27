@@ -53,6 +53,10 @@ import type {
   Conflict,
   ConflictResolution,
   UtilizationTrendPoint,
+  Circuit,
+  CircuitFilter,
+  CreateCircuitRequest,
+  UpdateCircuitRequest,
 } from './types';
 
 export type {
@@ -629,6 +633,36 @@ export class RackdAPI {
 
   async getCustomFieldTypes(): Promise<{ value: string; label: string }[]> {
     return this.request<{ value: string; label: string }[]>('GET', '/api/custom-fields/types');
+  }
+
+  // Circuit API methods
+  async listCircuits(filter?: CircuitFilter): Promise<Circuit[]> {
+    const params = new URLSearchParams();
+    if (filter?.provider) params.append('provider', filter.provider);
+    if (filter?.status) params.append('status', filter.status);
+    if (filter?.datacenter_id) params.append('datacenter_id', filter.datacenter_id);
+    if (filter?.type) params.append('type', filter.type);
+    if (filter?.tags) {
+      filter.tags.forEach(tag => params.append('tags', tag));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<Circuit[]>('GET', `/api/circuits${query}`);
+  }
+
+  async getCircuit(id: string): Promise<Circuit> {
+    return this.request<Circuit>('GET', `/api/circuits/${id}`);
+  }
+
+  async createCircuit(data: CreateCircuitRequest): Promise<Circuit> {
+    return this.request<Circuit>('POST', '/api/circuits', data);
+  }
+
+  async updateCircuit(id: string, data: UpdateCircuitRequest): Promise<Circuit> {
+    return this.request<Circuit>('PUT', `/api/circuits/${id}`, data);
+  }
+
+  async deleteCircuit(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/circuits/${id}`);
   }
 }
 

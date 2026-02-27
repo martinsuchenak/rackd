@@ -531,3 +531,99 @@ export interface UpdateCustomFieldDefinitionRequest {
   options?: string[];
   description?: string;
 }
+
+// Circuit Types
+export type CircuitType = 'fiber' | 'copper' | 'microwave' | 'dark_fiber';
+export type CircuitStatus = 'active' | 'inactive' | 'planned' | 'decommissioned';
+
+export interface Circuit {
+  id: string;
+  name: string;
+  circuit_id: string;
+  provider: string;
+  type: CircuitType;
+  status: CircuitStatus;
+  capacity_mbps: number;
+  datacenter_a_id?: string;
+  datacenter_b_id?: string;
+  device_a_id?: string;
+  device_b_id?: string;
+  port_a?: string;
+  port_b?: string;
+  ip_address_a?: string;
+  ip_address_b?: string;
+  vlan_id?: number;
+  description?: string;
+  install_date?: string;
+  terminate_date?: string;
+  monthly_cost?: number;
+  contract_number?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CircuitFilter {
+  provider?: string;
+  status?: string;
+  datacenter_id?: string;
+  type?: string;
+  tags?: string[];
+}
+
+export interface CreateCircuitRequest {
+  name: string;
+  circuit_id: string;
+  provider: string;
+  type?: CircuitType;
+  status?: CircuitStatus;
+  capacity_mbps?: number;
+  datacenter_a_id?: string;
+  datacenter_b_id?: string;
+  device_a_id?: string;
+  device_b_id?: string;
+  port_a?: string;
+  port_b?: string;
+  ip_address_a?: string;
+  ip_address_b?: string;
+  vlan_id?: number;
+  description?: string;
+  install_date?: string;
+  terminate_date?: string;
+  monthly_cost?: number;
+  contract_number?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  tags?: string[];
+}
+
+export interface UpdateCircuitRequest {
+  name?: string;
+  circuit_id?: string;
+  provider?: string;
+  type?: CircuitType;
+  status?: CircuitStatus;
+  capacity_mbps?: number;
+  datacenter_a_id?: string;
+  datacenter_b_id?: string;
+  device_a_id?: string;
+  device_b_id?: string;
+  port_a?: string;
+  port_b?: string;
+  ip_address_a?: string;
+  ip_address_b?: string;
+  vlan_id?: number;
+  description?: string;
+  install_date?: string;
+  terminate_date?: string;
+  monthly_cost?: number;
+  contract_number?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  tags?: string[];
+}

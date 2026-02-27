@@ -29,6 +29,7 @@ import { conflictList } from './components/conflicts';
 import { webhookComponent } from './components/webhooks';
 import { customFieldComponent } from './components/custom-fields';
 import { dashboardComponent } from './components/dashboard';
+import { circuitComponent } from './components/circuits';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -45,6 +46,7 @@ function updatePageTitle(route: string) {
     '/discovery': 'Discovery',
     '/scan-profiles': 'Scan Profiles',
     '/conflicts': 'IP Conflicts',
+    '/circuits': 'Circuits',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -140,6 +142,7 @@ function router() {
         { label: 'Datacenters', path: '/datacenters', order: 30 },
         { label: 'Discovery', path: '/discovery', order: 40 },
         { label: 'Conflicts', path: '/conflicts', order: 50, badge: () => this.activeConflictCount },
+        { label: 'Circuits', path: '/circuits', order: 55 },
       ];
       const dynamic = window.rackdConfig?.nav_items ?? [];
       const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
@@ -404,6 +407,7 @@ async function init(): Promise<void> {
   Alpine.data('webhookComponent', webhookComponent);
   Alpine.data('customFieldComponent', customFieldComponent);
   Alpine.data('dashboardComponent', dashboardComponent);
+  Alpine.data('circuitComponent', circuitComponent);
 
   // Register deep scan type
   window.rackdRegisterScanType({

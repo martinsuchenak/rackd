@@ -180,6 +180,12 @@ var migrations = []*Migration{
 		Up:      migrateAddCustomFieldPermissionsUp,
 		Down:    migrateAddCustomFieldPermissionsDown,
 	},
+	{
+		Version: "20260228070000",
+		Name:    "add_circuits",
+		Up:      migrateAddCircuitsUp,
+		Down:    migrateAddCircuitsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2061,6 +2067,142 @@ func migrateAddCustomFieldPermissionsDown(ctx context.Context, tx *sql.Tx) error
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete custom-fields permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddCircuitsUp creates the circuits table
+func migrateAddCircuitsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS circuits (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			circuit_id TEXT NOT NULL UNIQUE,
+			provider TEXT NOT NULL,
+			type TEXT NOT NULL DEFAULT 'fiber',
+			status TEXT NOT NULL DEFAULT 'active',
+			capacity_mbps INTEGER NOT NULL DEFAULT 0,
+			datacenter_a_id TEXT,
+			datacenter_b_id TEXT,
+			device_a_id TEXT,
+			device_b_id TEXT,
+			port_a TEXT DEFAULT '',
+			port_b TEXT DEFAULT '',
+			ip_address_a TEXT DEFAULT '',
+			ip_address_b TEXT DEFAULT '',
+			vlan_id INTEGER DEFAULT 0,
+			description TEXT DEFAULT '',
+			install_date DATETIME,
+			terminate_date DATETIME,
+			monthly_cost REAL DEFAULT 0,
+			contract_number TEXT DEFAULT '',
+			contact_name TEXT DEFAULT '',
+			contact_phone TEXT DEFAULT '',
+			contact_email TEXT DEFAULT '',
+			tags TEXT DEFAULT '[]',
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (datacenter_a_id) REFERENCES datacenters(id) ON DELETE SET NULL,
+			FOREIGN KEY (datacenter_b_id) REFERENCES datacenters(id) ON DELETE SET NULL,
+			FOREIGN KEY (device_a_id) REFERENCES devices(id) ON DELETE SET NULL,
+			FOREIGN KEY (device_b_id) REFERENCES devices(id) ON DELETE SET NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create circuits table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_circuits_provider ON circuits(provider)",
+		"CREATE INDEX IF NOT EXISTS idx_circuits_status ON circuits(status)",
+		"CREATE INDEX IF NOT EXISTS idx_circuits_datacenter_a ON circuits(datacenter_a_id)",
+		"CREATE INDEX IF NOT EXISTS idx_circuits_datacenter_b ON circuits(datacenter_b_id)",
+		"CREATE INDEX IF NOT EXISTS idx_circuits_device_a ON circuits(device_a_id)",
+		"CREATE INDEX IF NOT EXISTS idx_circuits_device_b ON circuits(device_b_id)",
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create circuit index: %w", err)
+		}
+	}
+
+	// Add circuit permissions
+	now := time.Now().UTC()
+	circuitPermissions := [][3]string{
+		{"circuits:list", "circuits", "list"},
+		{"circuits:read", "circuits", "read"},
+		{"circuits:create", "circuits", "create"},
+		{"circuits:update", "circuits", "update"},
+		{"circuits:delete", "circuits", "delete"},
+	}
+	for _, perm := range circuitPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant to admin role - all permissions
+	adminPerms := []string{"circuits:list", "circuits:read", "circuits:create", "circuits:update", "circuits:delete"}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin circuits permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role - read/write
+	operatorPerms := []string{"circuits:list", "circuits:read", "circuits:create", "circuits:update"}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator circuits permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role - read only
+	viewerPerms := []string{"circuits:list", "circuits:read"}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer circuits permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddCircuitsDown drops the circuits table
+func migrateAddCircuitsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS circuits`); err != nil {
+		return fmt.Errorf("failed to drop circuits table: %w", err)
+	}
+
+	// Remove circuit permissions
+	permNames := []string{"circuits:list", "circuits:read", "circuits:create", "circuits:update", "circuits:delete"}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete circuits permission %s: %w", name, err)
 		}
 	}
 	return nil

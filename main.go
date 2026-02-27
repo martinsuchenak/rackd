@@ -7,6 +7,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/cmd/apikey"
 	"github.com/martinsuchenak/rackd/cmd/audit"
+	"github.com/martinsuchenak/rackd/cmd/circuit"
 	cmdconflict "github.com/martinsuchenak/rackd/cmd/conflict"
 	"github.com/martinsuchenak/rackd/cmd/customfield"
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
@@ -41,6 +42,7 @@ func main() {
 			datacenter.Command(),
 			discovery.Command(),
 			cmdconflict.Command(),
+			circuit.Command(),
 			reservation.Command(),
 			webhook.Command(),
 			customfield.Command(),
