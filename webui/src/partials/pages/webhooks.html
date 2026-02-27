@@ -24,7 +24,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
           <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading webhooks...</span></td></tr>
-          <tr x-show="!loading && webhooks.length === 0"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No webhooks configured. <button @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first webhook</button></td></tr>
+          <tr x-show="!loading && (!webhooks || webhooks.length === 0)"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No webhooks configured. <button @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first webhook</button></td></tr>
           <template x-for="webhook in webhooks" :key="webhook.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">

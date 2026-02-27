@@ -168,6 +168,18 @@ var migrations = []*Migration{
 		Up:      migrateAddWebhookPermissionsUp,
 		Down:    migrateAddWebhookPermissionsDown,
 	},
+	{
+		Version: "20260228050000",
+		Name:    "add_custom_fields",
+		Up:      migrateAddCustomFieldsUp,
+		Down:    migrateAddCustomFieldsDown,
+	},
+	{
+		Version: "20260228060000",
+		Name:    "add_custom_field_permissions",
+		Up:      migrateAddCustomFieldPermissionsUp,
+		Down:    migrateAddCustomFieldPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1908,6 +1920,147 @@ func migrateAddWebhookPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete webhook permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddCustomFieldsUp creates the custom field tables
+func migrateAddCustomFieldsUp(ctx context.Context, tx *sql.Tx) error {
+	// Create custom field definitions table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS custom_field_definitions (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			key TEXT NOT NULL UNIQUE,
+			type TEXT NOT NULL CHECK(type IN ('text', 'number', 'boolean', 'select')),
+			required INTEGER NOT NULL DEFAULT 0,
+			options TEXT DEFAULT '[]',
+			description TEXT DEFAULT '',
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create custom_field_definitions table: %w", err)
+	}
+
+	// Create custom field values table
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS custom_field_values (
+			id TEXT PRIMARY KEY,
+			device_id TEXT NOT NULL,
+			field_id TEXT NOT NULL,
+			string_value TEXT DEFAULT '',
+			number_value INTEGER,
+			bool_value INTEGER,
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+			FOREIGN KEY (field_id) REFERENCES custom_field_definitions(id) ON DELETE CASCADE,
+			UNIQUE(device_id, field_id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create custom_field_values table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_cfv_device ON custom_field_values(device_id)",
+		"CREATE INDEX IF NOT EXISTS idx_cfv_field ON custom_field_values(field_id)",
+		"CREATE INDEX IF NOT EXISTS idx_cfv_string ON custom_field_values(string_value)",
+		"CREATE INDEX IF NOT EXISTS idx_cfd_key ON custom_field_definitions(key)",
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create custom field index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddCustomFieldsDown drops the custom field tables
+func migrateAddCustomFieldsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS custom_field_values`); err != nil {
+		return fmt.Errorf("failed to drop custom_field_values table: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS custom_field_definitions`); err != nil {
+		return fmt.Errorf("failed to drop custom_field_definitions table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddCustomFieldPermissionsUp adds custom field permissions
+func migrateAddCustomFieldPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now().UTC()
+
+	// Add custom field permissions (name, resource, action)
+	customFieldPermissions := [][3]string{
+		{"custom-fields:list", "custom-fields", "list"},
+		{"custom-fields:read", "custom-fields", "read"},
+		{"custom-fields:create", "custom-fields", "create"},
+		{"custom-fields:update", "custom-fields", "update"},
+		{"custom-fields:delete", "custom-fields", "delete"},
+	}
+	for _, perm := range customFieldPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant to admin role - all permissions
+	adminPerms := []string{"custom-fields:list", "custom-fields:read", "custom-fields:create", "custom-fields:update", "custom-fields:delete"}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin custom-fields permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role - read only
+	operatorPerms := []string{"custom-fields:list", "custom-fields:read"}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator custom-fields permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role - read only
+	viewerPerms := []string{"custom-fields:list", "custom-fields:read"}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer custom-fields permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddCustomFieldPermissionsDown removes custom field permissions
+func migrateAddCustomFieldPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{"custom-fields:list", "custom-fields:read", "custom-fields:create", "custom-fields:update", "custom-fields:delete"}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete custom-fields permission %s: %w", name, err)
 		}
 	}
 	return nil

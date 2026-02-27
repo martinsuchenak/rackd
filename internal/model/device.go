@@ -52,6 +52,7 @@ type Device struct {
 	Tags             []string     `json:"tags"`
 	Addresses        []Address    `json:"addresses"`
 	Domains          []string     `json:"domains"`
+	CustomFields     []CustomFieldValueInput `json:"custom_fields,omitempty"`
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 }
@@ -73,4 +74,39 @@ type DeviceFilter struct {
 	PoolID       string
 	Status       DeviceStatus
 	StaleDays    int // If > 0, filter devices not seen in discovery for X days
+	CustomFields []CustomFieldFilter
+}
+
+// CreateDeviceRequest represents the input for creating a device
+type CreateDeviceRequest struct {
+	Name         string                   `json:"name"`
+	Hostname     string                   `json:"hostname,omitempty"`
+	Description  string                   `json:"description"`
+	MakeModel    string                   `json:"make_model"`
+	OS           string                   `json:"os"`
+	DatacenterID string                   `json:"datacenter_id,omitempty"`
+	Username     string                   `json:"username,omitempty"`
+	Location     string                   `json:"location,omitempty"`
+	Status       DeviceStatus             `json:"status"`
+	Tags         []string                 `json:"tags"`
+	Addresses    []Address                `json:"addresses"`
+	Domains      []string                 `json:"domains"`
+	CustomFields []CustomFieldValueInput  `json:"custom_fields,omitempty"`
+}
+
+// UpdateDeviceRequest represents the input for updating a device
+type UpdateDeviceRequest struct {
+	Name         *string                  `json:"name,omitempty"`
+	Hostname     *string                  `json:"hostname,omitempty"`
+	Description  *string                  `json:"description,omitempty"`
+	MakeModel    *string                  `json:"make_model,omitempty"`
+	OS           *string                  `json:"os,omitempty"`
+	DatacenterID *string                  `json:"datacenter_id,omitempty"`
+	Username     *string                  `json:"username,omitempty"`
+	Location     *string                  `json:"location,omitempty"`
+	Status       *DeviceStatus            `json:"status,omitempty"`
+	Tags         *[]string                `json:"tags,omitempty"`
+	Addresses    *[]Address               `json:"addresses,omitempty"`
+	Domains      *[]string                `json:"domains,omitempty"`
+	CustomFields *[]CustomFieldValueInput `json:"custom_fields,omitempty"`
 }

@@ -1,6 +1,6 @@
 // Device Components for Rackd Web UI
 
-import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool } from '../core/types';
+import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool, CustomFieldDefinition, CustomFieldValueInput } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { debounce, formatDate, createFocusTrap, isValidIP } from '../core/utils';
 
@@ -55,7 +55,7 @@ export function deviceList() {
     // Device modal (unified for add/edit)
     showDeviceModal: false,
     isEditMode: false,
-    modalTab: 'general' as 'general' | 'addresses' | 'tags',
+    modalTab: 'general' as 'general' | 'addresses' | 'tags' | 'customfields',
     editDevice: {
       name: '',
       hostname: '',
@@ -69,7 +69,9 @@ export function deviceList() {
       tags: [] as string[],
       addresses: [] as Address[],
       domains: [] as string[],
+      custom_fields: [] as CustomFieldValueInput[],
     } as Partial<Device>,
+    customFieldDefinitions: [] as CustomFieldDefinition[],
     tagInput: '',
     domainInput: '',
     saving: false,
@@ -119,7 +121,7 @@ export function deviceList() {
         if (staleDaysParam) this.staleDays = parseInt(staleDaysParam, 10) || 7;
       }
 
-      await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
+      await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks(), this.loadCustomFieldDefinitions()]);
       await this.loadAllPools();
       
       // Watch for modal open/close to manage focus trap
@@ -301,6 +303,35 @@ export function deviceList() {
       }
     },
 
+    async loadCustomFieldDefinitions(): Promise<void> {
+      try {
+        this.customFieldDefinitions = await api.listCustomFieldDefinitions() || [];
+      } catch {
+        this.customFieldDefinitions = [];
+      }
+    },
+
+    getCustomFieldValue(fieldId: string): string | number | boolean | null {
+      const cf = this.editDevice.custom_fields?.find(f => f.field_id === fieldId);
+      return cf?.value ?? null;
+    },
+
+    setCustomFieldValue(fieldId: string, value: string | number | boolean | null): void {
+      if (!this.editDevice.custom_fields) {
+        this.editDevice.custom_fields = [];
+      }
+      const existingIndex = this.editDevice.custom_fields.findIndex(f => f.field_id === fieldId);
+      if (existingIndex >= 0) {
+        if (value === null || value === '') {
+          this.editDevice.custom_fields.splice(existingIndex, 1);
+        } else {
+          this.editDevice.custom_fields[existingIndex].value = value;
+        }
+      } else if (value !== null && value !== '') {
+        this.editDevice.custom_fields.push({ field_id: fieldId, value });
+      }
+    },
+
     goToPage(p: number): void {
       if (p >= 1 && p <= this.totalPages) this.page = p;
     },
@@ -353,6 +384,7 @@ export function deviceList() {
         tags: [],
         addresses: [],
         domains: [],
+        custom_fields: [],
       };
       this.tagInput = '';
       this.domainInput = '';
@@ -367,27 +399,42 @@ export function deviceList() {
     async openEditModal(device: Device): Promise<void> {
       this.isEditMode = true;
       this.modalTab = 'general';
+
+      // Fetch full device to get custom_fields (list doesn't include them)
+      let fullDevice = device;
+      try {
+        fullDevice = await api.getDevice(device.id);
+      } catch {
+        // Fall back to the list device if fetch fails
+      }
+
+      // Deep copy custom_fields to ensure reactivity
+      const customFieldsCopy = fullDevice.custom_fields
+        ? fullDevice.custom_fields.map(cf => ({ field_id: cf.field_id, value: cf.value }))
+        : [];
+
       this.editDevice = {
-        id: device.id,
-        name: device.name,
-        hostname: device.hostname || '',
-        make_model: device.make_model,
-        description: device.description,
-        os: device.os,
-        datacenter_id: device.datacenter_id || '',
-        username: device.username || '',
-        location: device.location || '',
-        status: device.status || 'active',
-        tags: [...(device.tags || [])],
-        addresses: (device.addresses || []).map((a) => ({ ...a })),
-        domains: [...(device.domains || [])],
+        id: fullDevice.id,
+        name: fullDevice.name,
+        hostname: fullDevice.hostname || '',
+        make_model: fullDevice.make_model,
+        description: fullDevice.description,
+        os: fullDevice.os,
+        datacenter_id: fullDevice.datacenter_id || '',
+        username: fullDevice.username || '',
+        location: fullDevice.location || '',
+        status: fullDevice.status || 'active',
+        tags: [...(fullDevice.tags || [])],
+        addresses: (fullDevice.addresses || []).map((a) => ({ ...a })),
+        domains: [...(fullDevice.domains || [])],
+        custom_fields: customFieldsCopy,
       };
       this.tagInput = '';
       this.domainInput = '';
       this.pools = [];
       // Preload pools for networks used in existing addresses before showing modal
       const networkIds = [...new Set(
-        (device.addresses || []).map((a) => a.network_id).filter((id): id is string => !!id)
+        (fullDevice.addresses || []).map((a) => a.network_id).filter((id): id is string => !!id)
       )];
       await Promise.all(networkIds.map((networkId) => this.loadPoolsForNetwork(networkId)));
       this.showDeviceModal = true;
@@ -511,6 +558,7 @@ export function deviceDetail() {
     poolsCache: {} as Record<string, NetworkPool[]>,
     relationships: [] as DeviceRelationship[],
     relatedDevices: new Map() as Map<string, Device>,
+    customFieldDefinitions: [] as CustomFieldDefinition[],
     loading: true,
     error: '',
     activeTab: 'details' as 'details' | 'addresses' | 'relationships',
@@ -518,8 +566,13 @@ export function deviceDetail() {
     deleting: false,
     // Edit modal
     showEditModal: false,
-    modalTab: 'general' as 'general' | 'addresses' | 'tags',
-    editDevice: {} as Partial<Device>,
+    modalTab: 'general' as 'general' | 'addresses' | 'tags' | 'customfields',
+    editDevice: {
+      tags: [],
+      addresses: [],
+      domains: [],
+      custom_fields: [],
+    } as Partial<Device>,
     tagInput: '',
     domainInput: '',
     saving: false,
@@ -545,7 +598,7 @@ export function deviceDetail() {
         this.loading = false;
         return;
       }
-      await Promise.all([this.loadDevice(), this.loadDatacenters(), this.loadNetworks()]);
+      await Promise.all([this.loadDevice(), this.loadDatacenters(), this.loadNetworks(), this.loadCustomFieldDefinitions()]);
       
       // Watch for URL changes
       const checkURL = () => {
@@ -625,6 +678,41 @@ export function deviceDetail() {
       }
     },
 
+    async loadCustomFieldDefinitions(): Promise<void> {
+      try {
+        this.customFieldDefinitions = await api.listCustomFieldDefinitions() || [];
+      } catch {
+        this.customFieldDefinitions = [];
+      }
+    },
+
+    getCustomFieldValue(fieldId: string): string | number | boolean | null {
+      if (!this.editDevice.custom_fields || !Array.isArray(this.editDevice.custom_fields)) return null;
+      const cf = this.editDevice.custom_fields.find(f => f.field_id === fieldId);
+      return cf?.value ?? null;
+    },
+
+    setCustomFieldValue(fieldId: string, value: string | number | boolean | null): void {
+      if (!this.editDevice.custom_fields) {
+        this.editDevice.custom_fields = [];
+      }
+      const existingIndex = this.editDevice.custom_fields.findIndex(f => f.field_id === fieldId);
+      if (existingIndex >= 0) {
+        if (value === null || value === '') {
+          this.editDevice.custom_fields.splice(existingIndex, 1);
+        } else {
+          this.editDevice.custom_fields[existingIndex].value = value;
+        }
+      } else if (value !== null && value !== '') {
+        this.editDevice.custom_fields.push({ field_id: fieldId, value });
+      }
+    },
+
+    getCustomFieldDisplayValue(fieldDef: CustomFieldDefinition): string | number | boolean | null {
+      const cf = this.device?.custom_fields?.find(f => f.field_id === fieldDef.id);
+      return cf?.value ?? null;
+    },
+
     async loadDevice(): Promise<void> {
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) return;
@@ -702,6 +790,10 @@ export function deviceDetail() {
     async openEditModal(): Promise<void> {
       if (!this.device) return;
       this.modalTab = 'general';
+      // Deep copy custom_fields to ensure reactivity
+      const customFieldsCopy = this.device.custom_fields
+        ? this.device.custom_fields.map(cf => ({ field_id: cf.field_id, value: cf.value }))
+        : [];
       this.editDevice = {
         id: this.device.id,
         name: this.device.name,
@@ -716,6 +808,7 @@ export function deviceDetail() {
         tags: [...(this.device.tags || [])],
         addresses: (this.device.addresses || []).map((a) => ({ ...a })),
         domains: [...(this.device.domains || [])],
+        custom_fields: customFieldsCopy,
       };
       this.tagInput = '';
       this.domainInput = '';

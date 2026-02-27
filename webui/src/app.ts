@@ -27,6 +27,7 @@ import { oauthConsent } from './components/oauth-consent';
 import { oauthClients } from './components/oauth-clients';
 import { conflictList } from './components/conflicts';
 import { webhookComponent } from './components/webhooks';
+import { customFieldComponent } from './components/custom-fields';
 import { dashboardComponent } from './components/dashboard';
 
 // Update page title based on route
@@ -401,6 +402,7 @@ async function init(): Promise<void> {
   // Conflicts component
   Alpine.data('conflictList', conflictList);
   Alpine.data('webhookComponent', webhookComponent);
+  Alpine.data('customFieldComponent', customFieldComponent);
   Alpine.data('dashboardComponent', dashboardComponent);
 
   // Register deep scan type

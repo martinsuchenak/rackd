@@ -110,6 +110,7 @@ func RunWithAdvancedFeatures(
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scan Profiles", Path: "/scan-profiles", Icon: "cog", Order: 51})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scheduled Scans", Path: "/scheduled-scans", Icon: "clock", Order: 52})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
+	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
 
 	// Register features
 	for _, f := range features {
@@ -224,6 +225,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	uiBuilder := api.NewUIConfigBuilder()
 	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15, RequiredPermissions: []api.PermissionCheck{{Resource: "users", Action: "list"}}})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
+	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
 
 	// Register features
 	for _, f := range features {

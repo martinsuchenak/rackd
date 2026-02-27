@@ -34,6 +34,8 @@ var (
 	ErrIPAlreadyReserved    = errors.New("IP address is already reserved")
 	ErrWebhookNotFound      = errors.New("webhook not found")
 	ErrDeliveryNotFound     = errors.New("webhook delivery not found")
+	ErrCustomFieldNotFound  = errors.New("custom field definition not found")
+	ErrDuplicateFieldKey    = errors.New("custom field key already exists")
 )
 
 // DeviceStorage defines device persistence operations
@@ -234,6 +236,26 @@ type WebhookStorage interface {
 	GetPendingDeliveries(limit int) ([]model.WebhookDelivery, error)
 }
 
+// CustomFieldStorage defines custom field persistence operations
+type CustomFieldStorage interface {
+	// Definitions
+	CreateCustomFieldDefinition(ctx context.Context, def *model.CustomFieldDefinition) error
+	GetCustomFieldDefinition(id string) (*model.CustomFieldDefinition, error)
+	GetCustomFieldDefinitionByKey(key string) (*model.CustomFieldDefinition, error)
+	ListCustomFieldDefinitions(filter *model.CustomFieldDefinitionFilter) ([]model.CustomFieldDefinition, error)
+	UpdateCustomFieldDefinition(ctx context.Context, def *model.CustomFieldDefinition) error
+	DeleteCustomFieldDefinition(ctx context.Context, id string) error
+
+	// Values
+	SetCustomFieldValue(ctx context.Context, value *model.CustomFieldValue) error
+	GetCustomFieldValues(deviceID string) ([]model.CustomFieldValue, error)
+	GetCustomFieldValue(deviceID, fieldID string) (*model.CustomFieldValue, error)
+	DeleteCustomFieldValue(ctx context.Context, deviceID, fieldID string) error
+	DeleteCustomFieldValuesForDevice(ctx context.Context, deviceID string) error
+	DeleteCustomFieldValuesForDefinition(ctx context.Context, fieldID string) error
+	GetCustomFieldValuesWithDefinitions(deviceID string) ([]model.CustomFieldWithDefinition, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -257,6 +279,7 @@ type ExtendedStorage interface {
 	ReservationStorage
 	SnapshotStorage
 	WebhookStorage
+	CustomFieldStorage
 	Close() error
 	DB() *sql.DB
 }

@@ -74,6 +74,19 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 	}
 	device.Domains = domains
 
+	// Get custom fields with definitions to get typed values
+	customFieldsWithDefs, err := s.GetCustomFieldValuesWithDefinitions(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device custom fields: %w", err)
+	}
+	// Convert to input format
+	for _, cf := range customFieldsWithDefs {
+		device.CustomFields = append(device.CustomFields, model.CustomFieldValueInput{
+			FieldID: cf.Definition.ID,
+			Value:   cf.Value,
+		})
+	}
+
 	return device, nil
 }
 
@@ -239,6 +252,11 @@ func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device
 		return fmt.Errorf("failed to insert domains: %w", err)
 	}
 
+	// Insert custom fields
+	if err := s.insertDeviceCustomFields(ctx, tx, device.ID, device.CustomFields); err != nil {
+		return fmt.Errorf("failed to insert custom fields: %w", err)
+	}
+
 	return nil
 }
 
@@ -276,6 +294,39 @@ func (s *SQLiteStorage) insertDeviceDomains(ctx context.Context, tx *sql.Tx, dev
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO domains (device_id, domain) VALUES (?, ?)
 		`, deviceID, domain)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// insertDeviceCustomFields inserts custom fields for a device within a transaction
+func (s *SQLiteStorage) insertDeviceCustomFields(ctx context.Context, tx *sql.Tx, deviceID string, customFields []model.CustomFieldValueInput) error {
+	for _, cf := range customFields {
+		if cf.FieldID == "" {
+			continue
+		}
+
+		// Get the field type using the transaction context to avoid locking issues
+		var fieldType model.CustomFieldType
+		err := tx.QueryRowContext(ctx, `SELECT type FROM custom_field_definitions WHERE id = ?`, cf.FieldID).Scan(&fieldType)
+		if err != nil {
+			continue // Skip invalid field IDs
+		}
+
+		// Create the value record
+		value := &model.CustomFieldValue{
+			DeviceID: deviceID,
+			FieldID:  cf.FieldID,
+		}
+		value.SetValue(fieldType, cf.Value)
+
+		// Insert the value
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO custom_field_values (id, device_id, field_id, string_value, number_value, bool_value)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, newUUID(), value.DeviceID, value.FieldID, value.StringValue, value.NumberValue, value.BoolValue)
 		if err != nil {
 			return err
 		}
@@ -361,6 +412,9 @@ func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device
 	if _, err := tx.ExecContext(ctx, `DELETE FROM domains WHERE device_id = ?`, device.ID); err != nil {
 		return fmt.Errorf("failed to delete domains: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE device_id = ?`, device.ID); err != nil {
+		return fmt.Errorf("failed to delete custom field values: %w", err)
+	}
 
 	// Insert new addresses, tags, domains
 	if err := s.insertDeviceAddresses(ctx, tx, device.ID, device.Addresses); err != nil {
@@ -371,6 +425,9 @@ func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device
 	}
 	if err := s.insertDeviceDomains(ctx, tx, device.ID, device.Domains); err != nil {
 		return fmt.Errorf("failed to insert domains: %w", err)
+	}
+	if err := s.insertDeviceCustomFields(ctx, tx, device.ID, device.CustomFields); err != nil {
+		return fmt.Errorf("failed to insert custom fields: %w", err)
 	}
 
 	return nil

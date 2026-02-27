@@ -29,6 +29,7 @@ export interface Device {
   tags: string[];
   addresses: Address[];
   domains: string[];
+  custom_fields?: CustomFieldValueInput[];
   created_at: string;
   updated_at: string;
 }
@@ -476,5 +477,57 @@ export interface UpdateWebhookRequest {
   secret?: string;
   events?: EventType[];
   active?: boolean;
+  description?: string;
+}
+
+// Custom Field Types
+export type CustomFieldType = 'text' | 'number' | 'boolean' | 'select';
+
+export interface CustomFieldDefinition {
+  id: string;
+  name: string;
+  key: string;
+  type: CustomFieldType;
+  required: boolean;
+  options?: string[];
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomFieldValue {
+  id: string;
+  device_id: string;
+  field_id: string;
+  string_value: string;
+  number_value?: number;
+  bool_value?: boolean;
+}
+
+export interface CustomFieldValueInput {
+  field_id: string;
+  value: string | number | boolean | null;
+}
+
+export interface CustomFieldWithDefinition {
+  definition: CustomFieldDefinition;
+  value: string | number | boolean | null;
+}
+
+export interface CreateCustomFieldDefinitionRequest {
+  name: string;
+  key: string;
+  type: CustomFieldType;
+  required: boolean;
+  options?: string[];
+  description?: string;
+}
+
+export interface UpdateCustomFieldDefinitionRequest {
+  name?: string;
+  key?: string;
+  type?: CustomFieldType;
+  required?: boolean;
+  options?: string[];
   description?: string;
 }

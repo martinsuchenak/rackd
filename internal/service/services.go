@@ -28,6 +28,7 @@ type Services struct {
 	Reservations   *ReservationService
 	Dashboard      *DashboardService
 	Webhooks       *WebhookService
+	CustomFields   *CustomFieldService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -48,6 +49,7 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		Reservations:  NewReservationService(store),
 		Dashboard:     NewDashboardService(store),
 		Webhooks:      NewWebhookService(store),
+		CustomFields:  NewCustomFieldService(store),
 	}
 }
 

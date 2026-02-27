@@ -7,7 +7,11 @@ import type {
   CreateUserRequest,
   CreateReservationRequest,
   CreateWebhookRequest,
+  CreateCustomFieldDefinitionRequest,
   CurrentUser,
+  CustomFieldDefinition,
+  CustomFieldValue,
+  CustomFieldWithDefinition,
   DashboardStats,
   Datacenter,
   DeliveryStatus,
@@ -38,6 +42,7 @@ import type {
   UpdateReservationRequest,
   UpdateUserRequest,
   UpdateWebhookRequest,
+  UpdateCustomFieldDefinitionRequest,
   CreateRoleRequest,
   UpdateRoleRequest,
   User,
@@ -598,6 +603,32 @@ export class RackdAPI {
 
   async getEventTypes(): Promise<EventTypeOption[]> {
     return this.request<EventTypeOption[]>('GET', '/api/webhooks/events');
+  }
+
+  // Custom Fields
+  async listCustomFieldDefinitions(type?: string): Promise<CustomFieldDefinition[]> {
+    const params = type ? `?type=${type}` : '';
+    return this.request<CustomFieldDefinition[]>('GET', `/api/custom-fields${params}`);
+  }
+
+  async getCustomFieldDefinition(id: string): Promise<CustomFieldDefinition> {
+    return this.request<CustomFieldDefinition>('GET', `/api/custom-fields/${id}`);
+  }
+
+  async createCustomFieldDefinition(request: CreateCustomFieldDefinitionRequest): Promise<CustomFieldDefinition> {
+    return this.request<CustomFieldDefinition>('POST', '/api/custom-fields', request);
+  }
+
+  async updateCustomFieldDefinition(id: string, request: UpdateCustomFieldDefinitionRequest): Promise<CustomFieldDefinition> {
+    return this.request<CustomFieldDefinition>('PUT', `/api/custom-fields/${id}`, request);
+  }
+
+  async deleteCustomFieldDefinition(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/custom-fields/${id}`);
+  }
+
+  async getCustomFieldTypes(): Promise<{ value: string; label: string }[]> {
+    return this.request<{ value: string; label: string }[]>('GET', '/api/custom-fields/types');
   }
 }
 

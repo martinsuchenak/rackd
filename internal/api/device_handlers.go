@@ -116,6 +116,9 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	if addresses, ok := updates["addresses"].([]any); ok {
 		device.Addresses = toAddressSlice(addresses)
 	}
+	if customFields, ok := updates["custom_fields"].([]any); ok {
+		device.CustomFields = toCustomFieldSlice(customFields)
+	}
 
 	if errs := ValidateDevice(device); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
@@ -196,6 +199,23 @@ func toAddressSlice(arr []any) []model.Address {
 				addr.PoolID = poolID
 			}
 			result = append(result, addr)
+		}
+	}
+	return result
+}
+
+func toCustomFieldSlice(arr []any) []model.CustomFieldValueInput {
+	result := make([]model.CustomFieldValueInput, 0, len(arr))
+	for _, v := range arr {
+		if m, ok := v.(map[string]any); ok {
+			cf := model.CustomFieldValueInput{}
+			if fieldID, ok := m["field_id"].(string); ok {
+				cf.FieldID = fieldID
+			}
+			if value, ok := m["value"]; ok {
+				cf.Value = value
+			}
+			result = append(result, cf)
 		}
 	}
 	return result

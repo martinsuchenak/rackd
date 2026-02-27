@@ -266,6 +266,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/webhooks/{id}/deliveries", wrapAuth(h.listWebhookDeliveries))
 	mux.HandleFunc("GET /api/webhooks/{id}/deliveries/{deliveryId}", wrapAuth(h.getWebhookDelivery))
 
+	// Custom field routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/custom-fields", wrapAuth(h.listCustomFieldDefinitions))
+	mux.HandleFunc("POST /api/custom-fields", wrapAuth(h.createCustomFieldDefinition))
+	mux.HandleFunc("GET /api/custom-fields/types", wrapAuth(h.getCustomFieldTypes))
+	mux.HandleFunc("GET /api/custom-fields/{id}", wrapAuth(h.getCustomFieldDefinition))
+	mux.HandleFunc("PUT /api/custom-fields/{id}", wrapAuth(h.updateCustomFieldDefinition))
+	mux.HandleFunc("DELETE /api/custom-fields/{id}", wrapAuth(h.deleteCustomFieldDefinition))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

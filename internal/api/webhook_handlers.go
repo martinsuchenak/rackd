@@ -20,6 +20,10 @@ func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	// Ensure we return an empty array, not null
+	if webhooks == nil {
+		webhooks = []model.Webhook{}
+	}
 	h.writeJSON(w, http.StatusOK, webhooks)
 }
 

@@ -23,6 +23,10 @@
           Tags & Domains
           <span x-show="(editDevice.tags?.length || 0) + (editDevice.domains?.length || 0)" class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full" x-text="(editDevice.tags?.length || 0) + (editDevice.domains?.length || 0)" aria-label="tags and domains count"></span>
         </button>
+        <button type="button" @click="modalTab = 'customfields'" role="tab" :aria-selected="modalTab === 'customfields'" :tabindex="modalTab === 'customfields' ? 0 : -1" id="tab-customfields" aria-controls="panel-customfields" :class="modalTab === 'customfields' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
+          Custom Fields
+          <span x-show="customFieldDefinitions?.length" class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full" x-text="customFieldDefinitions?.length" aria-label="custom fields count"></span>
+        </button>
       </div>
     </div>
     <!-- Modal Body -->
@@ -238,6 +242,58 @@
             </div>
             <p x-show="!editDevice.domains?.length" class="text-sm text-gray-800 dark:text-gray-200">No domains added yet.</p>
           </div>
+        </div>
+        <!-- Custom Fields Tab -->
+        <div x-show="modalTab === 'customfields'" id="panel-customfields" role="tabpanel" aria-labelledby="tab-customfields" class="space-y-4">
+          <div x-show="!customFieldDefinitions || customFieldDefinitions.length === 0" class="text-center py-8">
+            <p class="text-sm text-gray-600 dark:text-gray-400">No custom fields defined.</p>
+            <a href="/custom-fields" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Manage custom fields</a>
+          </div>
+          <template x-for="fieldDef in customFieldDefinitions || []" :key="fieldDef.id">
+            <div class="space-y-1">
+              <label :for="'cf-' + fieldDef.key" class="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                <span x-text="fieldDef.name"></span>
+                <span x-show="fieldDef.required" class="text-red-500">*</span>
+              </label>
+              <!-- Text type -->
+              <input x-show="fieldDef.type === 'text'"
+                     :id="'cf-' + fieldDef.key"
+                     type="text"
+                     :value="getCustomFieldValue(fieldDef.id)"
+                     @input="setCustomFieldValue(fieldDef.id, $event.target.value)"
+                     :placeholder="fieldDef.description"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <!-- Number type -->
+              <input x-show="fieldDef.type === 'number'"
+                     :id="'cf-' + fieldDef.key"
+                     type="number"
+                     :value="getCustomFieldValue(fieldDef.id)"
+                     @input="setCustomFieldValue(fieldDef.id, $event.target.value ? Number($event.target.value) : null)"
+                     :placeholder="fieldDef.description"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <!-- Boolean type -->
+              <div x-show="fieldDef.type === 'boolean'" class="flex items-center">
+                <input :id="'cf-' + fieldDef.key"
+                       type="checkbox"
+                       :checked="getCustomFieldValue(fieldDef.id) === true"
+                       @change="setCustomFieldValue(fieldDef.id, $event.target.checked)"
+                       class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300" x-text="fieldDef.description || 'Yes'"></span>
+              </div>
+              <!-- Select type -->
+              <select x-show="fieldDef.type === 'select'"
+                      :id="'cf-' + fieldDef.key"
+                      :value="getCustomFieldValue(fieldDef.id) || ''"
+                      @change="setCustomFieldValue(fieldDef.id, $event.target.value || null)"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <option value="">-- Select --</option>
+                <template x-for="opt in fieldDef.options || []" :key="opt">
+                  <option :value="opt" x-text="opt"></option>
+                </template>
+              </select>
+              <p x-show="fieldDef.description && fieldDef.type !== 'boolean'" class="text-xs text-gray-500 dark:text-gray-400" x-text="fieldDef.description"></p>
+            </div>
+          </template>
         </div>
       </div>
       <!-- Modal Footer -->
