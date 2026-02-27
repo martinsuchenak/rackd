@@ -25,6 +25,7 @@ type Services struct {
 	ScheduledScans *ScheduledScanService
 	OAuth          *OAuthService
 	Conflicts      *ConflictService
+	Reservations   *ReservationService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -42,6 +43,7 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		APIKeys:       NewAPIKeyService(store),
 		Bulk:          NewBulkService(store),
 		Conflicts:     NewConflictService(store),
+		Reservations:  NewReservationService(store),
 	}
 }
 

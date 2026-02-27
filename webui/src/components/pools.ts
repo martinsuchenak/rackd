@@ -1,6 +1,6 @@
 // Pool Components for Rackd Web UI
 
-import type { IPStatus, Network, NetworkPool, Device } from '../core/types';
+import type { IPStatus, Network, NetworkPool, Device, Reservation, CreateReservationRequest } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 
 interface PoolDetailData {
@@ -9,24 +9,39 @@ interface PoolDetailData {
   heatmap: IPStatus[];
   nextIP: string;
   poolDevices: Device[];
+  reservations: Reservation[];
   loadingDevices: boolean;
+  loadingReservations: boolean;
   loading: boolean;
   error: string;
   showDeleteModal: boolean;
+  showReserveModal: boolean;
+  showDeleteReservationModal: boolean;
+  deleteReservationItem: Reservation | null;
   deleting: boolean;
+  deletingReservation: boolean;
   fetchingNextIP: boolean;
+  savingReservation: boolean;
   deleteModalTitle: string;
   deleteModalName: string;
+  reservationForm: { ip_address: string; hostname: string; purpose: string; expires_in_days: number; notes: string };
   init(): Promise<void>;
   loadPool(): Promise<void>;
   loadPoolDevices(): Promise<void>;
   loadNetwork(): Promise<void>;
   loadHeatmap(): Promise<void>;
+  loadReservations(): Promise<void>;
   fetchNextIP(): Promise<void>;
   getStatusColor(status: IPStatus['status']): string;
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  openReserveModal(ip?: string): void;
+  closeReserveModal(): void;
+  createReservation(): Promise<void>;
+  confirmDeleteReservation(reservation: Reservation): void;
+  cancelDeleteReservation(): void;
+  doDeleteReservation(): Promise<void>;
 }
 
 export function poolDetail(): PoolDetailData {
@@ -36,12 +51,20 @@ export function poolDetail(): PoolDetailData {
     heatmap: [],
     nextIP: '',
     poolDevices: [] as Device[],
+    reservations: [] as Reservation[],
     loadingDevices: false,
+    loadingReservations: false,
     loading: true,
     error: '',
     showDeleteModal: false,
+    showReserveModal: false,
+    showDeleteReservationModal: false,
+    deleteReservationItem: null as Reservation | null,
     deleting: false,
+    deletingReservation: false,
     fetchingNextIP: false,
+    savingReservation: false,
+    reservationForm: { ip_address: '', hostname: '', purpose: '', expires_in_days: 0, notes: '' },
 
     get deleteModalTitle(): string {
       return 'Delete Pool';
@@ -62,6 +85,7 @@ export function poolDetail(): PoolDetailData {
       }
       await this.loadPool();
       await this.loadPoolDevices();
+      await this.loadReservations();
     },
 
     async loadPoolDevices(): Promise<void> {
@@ -110,6 +134,18 @@ export function poolDetail(): PoolDetailData {
         this.heatmap = (await api.getPoolHeatmap(this.pool.id)) || [];
       } catch {
         this.heatmap = [];
+      }
+    },
+
+    async loadReservations(): Promise<void> {
+      if (!this.pool) return;
+      this.loadingReservations = true;
+      try {
+        this.reservations = await api.getPoolReservations(this.pool.id);
+      } catch {
+        this.reservations = [];
+      } finally {
+        this.loadingReservations = false;
       }
     },
 
@@ -162,6 +198,70 @@ export function poolDetail(): PoolDetailData {
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete pool';
         this.deleting = false;
+      }
+    },
+
+    openReserveModal(ip?: string): void {
+      this.reservationForm = {
+        ip_address: ip || this.nextIP || '',
+        hostname: '',
+        purpose: '',
+        expires_in_days: 0,
+        notes: ''
+      };
+      this.showReserveModal = true;
+    },
+
+    closeReserveModal(): void {
+      this.showReserveModal = false;
+    },
+
+    async createReservation(): Promise<void> {
+      if (!this.pool) return;
+      this.savingReservation = true;
+      this.error = '';
+      try {
+        const req: CreateReservationRequest = {
+          pool_id: this.pool.id,
+          ip_address: this.reservationForm.ip_address || undefined,
+          hostname: this.reservationForm.hostname || undefined,
+          purpose: this.reservationForm.purpose || undefined,
+          expires_in_days: this.reservationForm.expires_in_days || undefined,
+          notes: this.reservationForm.notes || undefined
+        };
+        await api.createReservation(req);
+        this.closeReserveModal();
+        await Promise.all([this.loadHeatmap(), this.loadReservations()]);
+        this.nextIP = ''; // Clear cached next IP
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to create reservation';
+      } finally {
+        this.savingReservation = false;
+      }
+    },
+
+    confirmDeleteReservation(reservation: Reservation): void {
+      this.deleteReservationItem = reservation;
+      this.showDeleteReservationModal = true;
+    },
+
+    cancelDeleteReservation(): void {
+      this.showDeleteReservationModal = false;
+      this.deleteReservationItem = null;
+    },
+
+    async doDeleteReservation(): Promise<void> {
+      if (!this.deleteReservationItem) return;
+      this.deletingReservation = true;
+      try {
+        await api.deleteReservation(this.deleteReservationItem.id);
+        this.showDeleteReservationModal = false;
+        this.deleteReservationItem = null;
+        await Promise.all([this.loadHeatmap(), this.loadReservations()]);
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete reservation';
+      } finally {
+        this.deletingReservation = false;
       }
     },
   };

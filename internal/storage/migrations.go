@@ -126,6 +126,18 @@ var migrations = []*Migration{
 		Up:      migrateAddConflictPermissionsUp,
 		Down:    migrateAddConflictPermissionsDown,
 	},
+	{
+		Version: "20260227120000",
+		Name:    "add_reservations",
+		Up:      migrateAddReservationsUp,
+		Down:    migrateAddReservationsDown,
+	},
+	{
+		Version: "20260227130000",
+		Name:    "add_reservation_permissions",
+		Up:      migrateAddReservationPermissionsUp,
+		Down:    migrateAddReservationPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1427,6 +1439,137 @@ func migrateAddConflictPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete conflict permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddReservationsUp creates the reservations table
+func migrateAddReservationsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS reservations (
+			id TEXT PRIMARY KEY,
+			pool_id TEXT NOT NULL REFERENCES network_pools(id) ON DELETE CASCADE,
+			ip_address TEXT NOT NULL,
+			hostname TEXT,
+			purpose TEXT,
+			reserved_by TEXT NOT NULL,
+			reserved_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at TIMESTAMP,
+			status TEXT NOT NULL DEFAULT 'active',
+			notes TEXT,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create reservations table: %w", err)
+	}
+
+	// Create indexes for common queries
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_reservations_pool_id ON reservations(pool_id)",
+		"CREATE INDEX IF NOT EXISTS idx_reservations_ip_address ON reservations(pool_id, ip_address)",
+		"CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status)",
+		"CREATE INDEX IF NOT EXISTS idx_reservations_reserved_by ON reservations(reserved_by)",
+		"CREATE INDEX IF NOT EXISTS idx_reservations_expires_at ON reservations(expires_at)",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_pool_ip_unique ON reservations(pool_id, ip_address) WHERE status = 'active'",
+	}
+
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create reservations index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddReservationsDown drops the reservations table
+func migrateAddReservationsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS reservations`); err != nil {
+		return fmt.Errorf("failed to drop reservations table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddReservationPermissionsUp adds permissions for reservation management
+func migrateAddReservationPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	reservationPermissions := [][]string{
+		{"reservation:list", "reservations", "list"},
+		{"reservation:read", "reservations", "read"},
+		{"reservation:create", "reservations", "create"},
+		{"reservation:update", "reservations", "update"},
+		{"reservation:delete", "reservations", "delete"},
+	}
+
+	for _, perm := range reservationPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to insert reservation permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant all reservation permissions to admin role
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'admin'
+		AND p.name IN ('reservation:list', 'reservation:read', 'reservation:create', 'reservation:update', 'reservation:delete')
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign reservation permissions to admin role: %w", err)
+	}
+
+	// Grant operator read, list, and create permissions
+	operatorPerms := []string{
+		"reservation:list", "reservation:read", "reservation:create", "reservation:update",
+	}
+	for _, permName := range operatorPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator reservation permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant viewer read permissions
+	viewerPerms := []string{
+		"reservation:list", "reservation:read",
+	}
+	for _, permName := range viewerPerms {
+		_, err = tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer reservation permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddReservationPermissionsDown removes reservation permissions
+func migrateAddReservationPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{
+		"reservation:list", "reservation:read", "reservation:create", "reservation:update", "reservation:delete",
+	}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete reservation permission %s: %w", name, err)
 		}
 	}
 	return nil

@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 10 of 12 | 🟡 In Progress |
+| **Phase 4: Advanced** | 9 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **13** | |
+| **Total remaining** | **12** | |
 
 ### Completed (not listed here)
 
@@ -24,6 +24,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 3.5**: Webhook System — moved to Phase 4.7 (depends on Notifications event bus)
 - **Phase 3.6**: MCP OAuth 2.1 Authorization (OAuth endpoints, PKCE, token validation, client management UI, consent screen)
 - **Phase 4.1**: IP Conflict Detection
+- **Phase 4.2**: IP Address Reservation & Planning
 
 ## Architecture Reference
 
@@ -89,23 +90,26 @@ webui/src/
 **What**: Reserve IPs before assignment for planning phases
 
 **Tasks**:
-- [ ] Reservation model (IP, purpose, reserved_by, expires_at)
-- [ ] Reservation storage + service
-- [ ] Reserve IPs without assigning to a device
-- [ ] Reservation expiration (auto-release if not claimed within X days)
-- [ ] Reservation notes/purpose field
-- [ ] Reserve for a specific user
-- [ ] API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
-- [ ] Show reservations in pool heatmap (different color from assigned IPs)
-- [ ] Reservation CLI commands
+- [x] Reservation model (IP, purpose, reserved_by, expires_at)
+- [x] Reservation storage + service
+- [x] Reserve IPs without assigning to a device
+- [x] Reservation expiration (auto-release if not claimed within X days)
+- [x] Reservation notes/purpose field
+- [x] Reserve for a specific user
+- [x] API: `POST /api/pools/{id}/reservations`, `DELETE /api/pools/{id}/reservations/{ip}`
+- [x] Show reservations in pool heatmap (different color from assigned IPs)
+- [x] Reservation CLI commands
 
-**Files to Create/Modify**:
-- `internal/model/reservation.go` — Reservation model
-- `internal/storage/reservation_sqlite.go` — Reservation storage
-- `internal/service/reservation.go` — CRUD + expiration logic
-- `internal/api/reservation_handlers.go` — Reservation endpoints
-- `webui/src/components/pools.ts` — Reservation UI in pool view
-- `cmd/reservation/reservation.go` — CLI commands
+**Implementation Details**:
+- **Model**: `internal/model/reservation.go` — Reservation model with status (active/expired/claimed/released)
+- **Storage**: `internal/storage/reservation_sqlite.go` — SQLite implementation with CRUD operations
+- **Service**: `internal/service/reservation.go` — CRUD + expiration logic with RBAC enforcement
+- **API**: `internal/api/reservation_handlers.go` — REST endpoints for reservations
+- **CLI**: `cmd/reservation/` — `list`, `get`, `create`, `update`, `delete`, `release` commands
+- **Types**: `webui/src/core/types.ts` — TypeScript types for reservations
+- **API Client**: `webui/src/core/api.ts` — API methods for reservations
+- **Migration**: `internal/storage/migrations.go` — Database schema with indexes
+- **RBAC**: `reservation:list`, `reservation:read`, `reservation:create`, `reservation:update`, `reservation:delete` permissions
 
 ### 4.3 Device Lifecycle & Status Tracking
 

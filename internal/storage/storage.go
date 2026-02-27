@@ -29,6 +29,9 @@ var (
 	ErrOAuthTokenNotFound   = errors.New("oauth token not found")
 	ErrOAuthTokenRevoked    = errors.New("oauth token revoked")
 	ErrOAuthTokenExpired    = errors.New("oauth token expired")
+	ErrReservationNotFound  = errors.New("reservation not found")
+	ErrReservationExpired   = errors.New("reservation has expired")
+	ErrIPAlreadyReserved    = errors.New("IP address is already reserved")
 )
 
 // DeviceStorage defines device persistence operations
@@ -182,6 +185,20 @@ type ConflictStorage interface {
 	MarkConflictsResolvedForDevice(ctx context.Context, deviceID string, resolvedBy string) error
 }
 
+// ReservationStorage defines reservation persistence operations
+type ReservationStorage interface {
+	CreateReservation(ctx context.Context, reservation *model.Reservation) error
+	GetReservation(id string) (*model.Reservation, error)
+	GetReservationByIP(poolID, ip string) (*model.Reservation, error)
+	ListReservations(filter *model.ReservationFilter) ([]model.Reservation, error)
+	UpdateReservation(ctx context.Context, reservation *model.Reservation) error
+	DeleteReservation(ctx context.Context, id string) error
+	GetReservationsByPool(poolID string) ([]model.Reservation, error)
+	GetReservationsByUser(userID string) ([]model.Reservation, error)
+	ExpireReservations(ctx context.Context) (int64, error)
+	IsIPReserved(poolID, ip string) (bool, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -202,6 +219,7 @@ type ExtendedStorage interface {
 	RBACStorage
 	OAuthStorage
 	ConflictStorage
+	ReservationStorage
 	Close() error
 	DB() *sql.DB
 }

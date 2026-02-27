@@ -241,6 +241,15 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/conflicts/{id}", wrapAuth(h.deleteConflict))
 	mux.HandleFunc("GET /api/devices/{id}/conflicts", wrapAuth(h.getDeviceConflicts))
 
+	// Reservation routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/reservations", wrapAuth(h.listReservations))
+	mux.HandleFunc("POST /api/reservations", wrapAuth(h.createReservationWithDefaults))
+	mux.HandleFunc("GET /api/reservations/{id}", wrapAuth(h.getReservation))
+	mux.HandleFunc("PUT /api/reservations/{id}", wrapAuth(h.updateReservation))
+	mux.HandleFunc("DELETE /api/reservations/{id}", wrapAuth(h.deleteReservation))
+	mux.HandleFunc("POST /api/reservations/{id}/release", wrapAuth(h.releaseReservation))
+	mux.HandleFunc("GET /api/pools/{id}/reservations", wrapAuth(h.listPoolReservations))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

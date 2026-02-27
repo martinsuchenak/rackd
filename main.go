@@ -14,6 +14,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/export"
 	importcmd "github.com/martinsuchenak/rackd/cmd/import"
 	"github.com/martinsuchenak/rackd/cmd/network"
+	"github.com/martinsuchenak/rackd/cmd/reservation"
 	"github.com/martinsuchenak/rackd/cmd/role"
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/martinsuchenak/rackd/cmd/user"
@@ -38,6 +39,7 @@ func main() {
 			datacenter.Command(),
 			discovery.Command(),
 			cmdconflict.Command(),
+			reservation.Command(),
 			apikey.Command(),
 			user.Command(),
 			role.Command(),

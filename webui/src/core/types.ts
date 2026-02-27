@@ -108,6 +108,44 @@ export interface ConflictType {
   overlapping_subnet: 'overlapping_subnet';
 }
 
+export interface Reservation {
+  id: string;
+  pool_id: string;
+  ip_address: string;
+  hostname?: string;
+  purpose?: string;
+  reserved_by: string;
+  reserved_at: string;
+  expires_at?: string;
+  status: 'active' | 'expired' | 'claimed' | 'released';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReservationFilter {
+  pool_id?: string;
+  status?: 'active' | 'expired' | 'claimed' | 'released';
+  reserved_by?: string;
+  ip?: string;
+}
+
+export interface CreateReservationRequest {
+  pool_id: string;
+  ip_address?: string;
+  hostname?: string;
+  purpose?: string;
+  expires_in_days?: number;
+  notes?: string;
+}
+
+export interface UpdateReservationRequest {
+  hostname?: string;
+  purpose?: string;
+  expires_in_days?: number;
+  notes?: string;
+}
+
 export interface ServiceInfo {
   port: number;
   protocol: string;

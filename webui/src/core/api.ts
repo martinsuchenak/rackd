@@ -5,6 +5,7 @@ import type {
   APIError,
   ChangePasswordRequest,
   CreateUserRequest,
+  CreateReservationRequest,
   CurrentUser,
   Datacenter,
   Device,
@@ -21,12 +22,15 @@ import type {
   NetworkPool,
   NetworkUtilization,
   Permission,
+  Reservation,
+  ReservationFilter,
   Role,
   RoleFilter,
   ScanProfile,
   SearchResult,
   ServiceInfo,
   UIConfig,
+  UpdateReservationRequest,
   UpdateUserRequest,
   CreateRoleRequest,
   UpdateRoleRequest,
@@ -485,6 +489,41 @@ export class RackdAPI {
 
   async deleteConflict(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/conflicts/${id}`);
+  }
+
+  // Reservations
+  async listReservations(filter?: ReservationFilter): Promise<Reservation[]> {
+    const params = new URLSearchParams();
+    if (filter?.pool_id) params.set('pool_id', filter.pool_id);
+    if (filter?.status) params.set('status', filter.status);
+    if (filter?.reserved_by) params.set('reserved_by', filter.reserved_by);
+    if (filter?.ip) params.set('ip', filter.ip);
+    const query = params.toString();
+    return this.request<Reservation[]>('GET', `/api/reservations${query ? `?${query}` : ''}`);
+  }
+
+  async getReservation(id: string): Promise<Reservation> {
+    return this.request<Reservation>('GET', `/api/reservations/${id}`);
+  }
+
+  async createReservation(request: CreateReservationRequest): Promise<Reservation> {
+    return this.request<Reservation>('POST', '/api/reservations', request);
+  }
+
+  async updateReservation(id: string, request: UpdateReservationRequest): Promise<Reservation> {
+    return this.request<Reservation>('PUT', `/api/reservations/${id}`, request);
+  }
+
+  async deleteReservation(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/reservations/${id}`);
+  }
+
+  async releaseReservation(id: string): Promise<void> {
+    return this.request<void>('POST', `/api/reservations/${id}/release`);
+  }
+
+  async getPoolReservations(poolId: string): Promise<Reservation[]> {
+    return this.request<Reservation[]>('GET', `/api/pools/${poolId}/reservations`);
   }
 }
 

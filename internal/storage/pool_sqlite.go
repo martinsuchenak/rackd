@@ -502,6 +502,28 @@ func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
 		return nil, err
 	}
 
+	// Get all active reservations in this pool
+	reservationMap := make(map[string]string) // ip -> reservation_id
+	resRows, err := s.db.QueryContext(ctx, `
+		SELECT ip_address, id FROM reservations
+		WHERE pool_id = ? AND status = ?
+	`, poolID, "active")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query reservations: %w", err)
+	}
+	defer resRows.Close()
+
+	for resRows.Next() {
+		var ip, reservationID string
+		if err := resRows.Scan(&ip, &reservationID); err != nil {
+			return nil, fmt.Errorf("failed to scan reservation: %w", err)
+		}
+		reservationMap[ip] = reservationID
+	}
+	if err := resRows.Err(); err != nil {
+		return nil, err
+	}
+
 	// Build heatmap
 	var heatmap []IPStatus
 	current := make(net.IP, len(startIP))
@@ -521,6 +543,8 @@ func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
 		if deviceID, exists := addressMap[ipStr]; exists {
 			status.Status = "used"
 			status.DeviceID = deviceID
+		} else if _, reserved := reservationMap[ipStr]; reserved {
+			status.Status = "reserved"
 		}
 
 		heatmap = append(heatmap, status)
