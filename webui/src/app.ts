@@ -135,6 +135,7 @@ function router() {
         { label: 'Networks', path: '/networks', order: 20 },
         { label: 'Datacenters', path: '/datacenters', order: 30 },
         { label: 'Discovery', path: '/discovery', order: 40 },
+        { label: 'Conflicts', path: '/conflicts', order: 50, badge: () => this.activeConflictCount },
       ];
       const dynamic = window.rackdConfig?.nav_items ?? [];
       const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
@@ -166,6 +167,8 @@ function router() {
     init() {
       this.accessDenied = !checkRoutePermission(this.route);
       updatePageTitle(this.route);
+      // Load conflict count on init
+      this.updateConflictCount();
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
         this.accessDenied = !checkRoutePermission(this.route);
@@ -180,17 +183,17 @@ function router() {
         this.accessDenied = !checkRoutePermission(path);
         updatePageTitle(path);
         this.sidebarOpen = false;
-        // Update conflict count when navigating to conflicts page
-        if (path.startsWith('/conflicts')) {
-          this.updateConflictCount();
-        }
       }
     },
 
-    updateConflictCount() {
-      const conflictList = Alpine.store('conflictList') as any;
-      if (conflictList) {
-        this.activeConflictCount = conflictList.activeConflictCount ?? 0;
+    async updateConflictCount() {
+      try {
+        const summary = await api.getConflictSummary();
+        if (summary) {
+          this.activeConflictCount = (summary.duplicate_ips || 0) + (summary.overlapping_subnets || 0);
+        }
+      } catch {
+        // Non-critical, keep default value
       }
     },
   };
