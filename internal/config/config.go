@@ -39,6 +39,10 @@ type Config struct {
 	MCPOAuthIssuerURL       string
 	MCPOAuthAccessTokenTTL  time.Duration
 	MCPOAuthRefreshTokenTTL time.Duration
+
+	// Utilization snapshots
+	SnapshotInterval      time.Duration
+	SnapshotRetentionDays int
 }
 
 var cfg Config
@@ -75,6 +79,9 @@ func Load() *Config {
 		MCPOAuthIssuerURL:       getEnv("MCP_OAUTH_ISSUER_URL", ""),
 		MCPOAuthAccessTokenTTL:  getDurationEnv("MCP_OAUTH_ACCESS_TOKEN_TTL", 1*time.Hour),
 		MCPOAuthRefreshTokenTTL: getDurationEnv("MCP_OAUTH_REFRESH_TOKEN_TTL", 30*24*time.Hour),
+
+		SnapshotInterval:      getDurationEnv("SNAPSHOT_INTERVAL", 1*time.Hour),
+		SnapshotRetentionDays: getIntEnv("SNAPSHOT_RETENTION_DAYS", 90),
 	}
 
 	return &cfg

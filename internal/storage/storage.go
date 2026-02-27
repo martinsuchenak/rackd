@@ -200,6 +200,19 @@ type ReservationStorage interface {
 	IsIPReserved(poolID, ip string) (bool, error)
 }
 
+// SnapshotStorage defines utilization snapshot operations
+type SnapshotStorage interface {
+	// Snapshot operations
+	CreateSnapshot(ctx context.Context, snapshot *model.UtilizationSnapshot) error
+	ListSnapshots(filter *model.SnapshotFilter) ([]model.UtilizationSnapshot, error)
+	GetLatestSnapshots(snapshotType model.SnapshotType) ([]model.UtilizationSnapshot, error)
+	DeleteOldSnapshots(olderThanDays int) error
+
+	// Dashboard operations
+	GetDashboardStats(staleDays int, recentLimit int) (*model.DashboardStats, error)
+	GetUtilizationTrend(resourceType model.SnapshotType, resourceID string, days int) ([]model.UtilizationTrendPoint, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -221,6 +234,7 @@ type ExtendedStorage interface {
 	OAuthStorage
 	ConflictStorage
 	ReservationStorage
+	SnapshotStorage
 	Close() error
 	DB() *sql.DB
 }

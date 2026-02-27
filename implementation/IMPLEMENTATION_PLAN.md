@@ -9,9 +9,9 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 | Phase | Remaining | Status |
 |-------|-----------|--------|
 | **Phase 3: Multi-User** | 0 of 6 | ✅ Complete |
-| **Phase 4: Advanced** | 8 of 12 | 🟡 In Progress |
+| **Phase 4: Advanced** | 7 of 12 | 🟡 In Progress |
 | **Phase 5: Scale** | 3 of 3 | 🔮 Future |
-| **Total remaining** | **11** | |
+| **Total remaining** | **10** | |
 
 ### Completed (not listed here)
 
@@ -26,6 +26,7 @@ Remaining features for Rackd, organized by priority. Phases 1-2 and most of Phas
 - **Phase 4.1**: IP Conflict Detection
 - **Phase 4.2**: IP Address Reservation & Planning
 - **Phase 4.3**: Device Lifecycle & Status Tracking
+- **Phase 4.4**: Dashboard Reporting & Trends
 
 ## Architecture Reference
 
@@ -143,28 +144,34 @@ webui/src/
 - **Modal**: `webui/src/partials/modals/device-form.html` — Status dropdown for editing
 - **Tests**: `internal/storage/device_sqlite_test.go` — Device status tests
 
-### 4.4 Dashboard Reporting & Trends
+### 4.4 Dashboard Reporting & Trends ✅
 
 **Effort**: 3-4 days | **Priority**: HIGH
 
 **What**: Enhanced dashboard with utilization trends, activity feeds, and summary stats
 
 **Tasks**:
-- [ ] Pool utilization snapshots (periodic storage of utilization %)
-- [ ] Utilization trend chart (sparkline or line chart over time)
-- [ ] Recently discovered devices feed
-- [ ] Network utilization summary (% used per subnet)
-- [ ] Stale device detection (devices not seen in discovery for X days)
-- [ ] Top-level stats: total devices, networks, pools, utilization
-- [ ] Dashboard API endpoint for aggregated stats
-- [ ] Configurable dashboard refresh interval
+- [x] Pool utilization snapshots (periodic storage of utilization %)
+- [x] Utilization trend chart (sparkline or line chart over time)
+- [x] Recently discovered devices feed
+- [x] Network utilization summary (% used per subnet)
+- [x] Stale device detection (devices not seen in discovery for X days)
+- [x] Top-level stats: total devices, networks, pools, utilization
+- [x] Dashboard API endpoint for aggregated stats
+- [x] Configurable dashboard refresh interval
 
-**Files to Create/Modify**:
-- `internal/model/snapshot.go` — Utilization snapshot model
-- `internal/storage/snapshot_sqlite.go` — Snapshot storage + periodic writer
-- `internal/service/dashboard.go` — Aggregation queries, stale detection
-- `internal/api/dashboard_handlers.go` — `/api/dashboard` endpoint
-- `webui/src/components/dashboard.ts` — Trend charts, activity feed, stats cards
+**Implementation Details**:
+- **Model**: `internal/model/snapshot.go` — UtilizationSnapshot, DashboardStats, RecentDiscovery, NetworkUtilizationSummary, UtilizationTrendPoint types
+- **Storage**: `internal/storage/snapshot_sqlite.go` — CreateSnapshot, ListSnapshots, GetLatestSnapshots, DeleteOldSnapshots, GetUtilizationTrend, GetDashboardStats methods
+- **Migration**: `internal/storage/migrations.go` — Migration 20260228010000 for utilization_snapshots table
+- **Worker**: `internal/worker/snapshot.go` — Background worker for periodic snapshot collection
+- **Config**: `internal/config/config.go` — SnapshotInterval (default 1h), SnapshotRetentionDays (default 90)
+- **Service**: `internal/service/dashboard.go` — DashboardService with RBAC enforcement
+- **API**: `internal/api/dashboard_handlers.go` — GET /api/dashboard, GET /api/dashboard/trend endpoints
+- **Types**: `webui/src/core/types.ts` — DashboardStats, RecentDiscovery, NetworkUtilizationSummary, UtilizationTrendPoint types
+- **API Client**: `webui/src/core/api.ts` — getDashboardStats(), getUtilizationTrend() methods
+- **Component**: `webui/src/components/dashboard.ts` — dashboardComponent() with auto-refresh, trend chart rendering
+- **Template**: `webui/src/partials/pages/dashboard.html` — Enhanced dashboard with stats cards, network utilization list, trend chart, recent discoveries, health alerts
 
 ### 4.5 Network Topology Visualization
 
@@ -272,6 +279,8 @@ SMTP_FROM=rackd@example.com
 - [ ] DNS provider interface
 - [ ] BIND support (via nsupdate)
 - [ ] PowerDNS support (via API)
+- [ ] Technitium DNS support (via API), Docs: https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md
+- [ ] PI-Hole DNS support (via API), Docs: https://docs.pi-hole.net/api/
 - [ ] DNS record CRUD
 - [ ] Auto-create DNS records on device creation
 - [ ] DNS sync functionality

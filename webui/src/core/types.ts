@@ -39,6 +39,8 @@ export interface DeviceFilter {
   network_id?: string;
   pool_id?: string;
   status?: DeviceStatus;
+  stale?: boolean;
+  stale_days?: number;
 }
 
 export interface DeviceStatusCounts {
@@ -359,4 +361,51 @@ export interface SearchResult {
   device?: Device;
   network?: Network;
   datacenter?: Datacenter;
+}
+
+// Dashboard types
+export interface RecentDiscovery {
+  id: string;
+  ip: string;
+  hostname?: string;
+  vendor?: string;
+  network_id?: string;
+  first_seen: string;
+  last_seen: string;
+}
+
+export interface NetworkUtilizationSummary {
+  network_id: string;
+  network_name: string;
+  subnet: string;
+  total_ips: number;
+  used_ips: number;
+  utilization: number;
+}
+
+export interface UtilizationTrendPoint {
+  timestamp: string;
+  utilization: number;
+  used_ips: number;
+}
+
+export interface StaleDevice {
+  id: string;
+  name: string;
+  hostname?: string;
+}
+
+export interface DashboardStats {
+  total_devices: number;
+  total_networks: number;
+  total_pools: number;
+  total_datacenters: number;
+  device_status_counts: DeviceStatusCounts;
+  discovered_devices: number;
+  recent_discoveries: RecentDiscovery[];
+  overall_utilization: number;
+  network_utilization: NetworkUtilizationSummary[];
+  stale_devices: number;
+  stale_threshold_days: number;
+  stale_device_list: StaleDevice[];
 }

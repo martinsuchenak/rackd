@@ -5,6 +5,7 @@
     "": {
       "name": "rackd-webui",
       "dependencies": {
+        "@alpinejs/collapse": "^3.15.8",
         "@alpinejs/focus": "^3.15.8",
         "alpinejs": "^3.14.8",
         "cytoscape": "^3.33.1",
@@ -20,6 +21,8 @@
     },
   },
   "packages": {
+    "@alpinejs/collapse": ["@alpinejs/collapse@3.15.8", "", {}, "sha512-zZhD8DHdHuzGFe8+cHNH99K//oFutzKwcy6vagydb3KFlTzmqxTnHZo5sSV81lAazhV7qKsYCKtNV14tR9QkJw=="],
+
     "@alpinejs/focus": ["@alpinejs/focus@3.15.8", "", { "dependencies": { "focus-trap": "^6.9.4", "tabbable": "^5.3.3" } }, "sha512-YPF7jtaMFqrWI7xLjathWe/Hi/dXLReGoeZZxJZCW6pgmbFaVKqUFhl3DA+kUPSYsEhh9xk2wr9yoTZ2aB8xew=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],

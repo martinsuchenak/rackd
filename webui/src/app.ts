@@ -2,6 +2,7 @@
 
 import Alpine from 'alpinejs';
 import focus from '@alpinejs/focus';
+import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 
@@ -25,6 +26,7 @@ import { toastComponent } from './components/toast';
 import { oauthConsent } from './components/oauth-consent';
 import { oauthClients } from './components/oauth-clients';
 import { conflictList } from './components/conflicts';
+import { dashboardComponent } from './components/dashboard';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -167,8 +169,10 @@ function router() {
     init() {
       this.accessDenied = !checkRoutePermission(this.route);
       updatePageTitle(this.route);
-      // Load conflict count on init
-      this.updateConflictCount();
+      // Load conflict count on init (only if authenticated)
+      if (window.rackdConfig?.user) {
+        this.updateConflictCount();
+      }
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
         this.accessDenied = !checkRoutePermission(this.route);
@@ -395,6 +399,7 @@ async function init(): Promise<void> {
   Alpine.data('scanProfilesList', scanProfilesList);
   // Conflicts component
   Alpine.data('conflictList', conflictList);
+  Alpine.data('dashboardComponent', dashboardComponent);
 
   // Register deep scan type
   window.rackdRegisterScanType({
@@ -408,6 +413,7 @@ async function init(): Promise<void> {
 
   // Register plugins
   Alpine.plugin(focus);
+  Alpine.plugin(collapse);
 
   // Start Alpine
   Alpine.start();

@@ -144,6 +144,18 @@ var migrations = []*Migration{
 		Up:      migrateAddDeviceStatusUp,
 		Down:    migrateAddDeviceStatusDown,
 	},
+	{
+		Version: "20260228010000",
+		Name:    "add_utilization_snapshots",
+		Up:      migrateAddUtilizationSnapshotsUp,
+		Down:    migrateAddUtilizationSnapshotsDown,
+	},
+	{
+		Version: "20260228020000",
+		Name:    "add_dashboard_permissions",
+		Up:      migrateAddDashboardPermissionsUp,
+		Down:    migrateAddDashboardPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -1631,5 +1643,109 @@ func migrateAddDeviceStatusDown(ctx context.Context, tx *sql.Tx) error {
 	}
 	// Note: In production SQLite, columns cannot be easily dropped
 	// The columns will remain but be unused
+	return nil
+}
+
+// migrateAddUtilizationSnapshotsUp creates the utilization_snapshots table
+func migrateAddUtilizationSnapshotsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE utilization_snapshots (
+			id TEXT PRIMARY KEY,
+			type TEXT NOT NULL,
+			resource_id TEXT NOT NULL,
+			resource_name TEXT NOT NULL,
+			total_ips INTEGER NOT NULL,
+			used_ips INTEGER NOT NULL,
+			utilization REAL NOT NULL,
+			timestamp DATETIME NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE INDEX idx_snapshots_type_resource ON utilization_snapshots(type, resource_id);
+		CREATE INDEX idx_snapshots_timestamp ON utilization_snapshots(timestamp);
+		CREATE INDEX idx_snapshots_type_timestamp ON utilization_snapshots(type, timestamp);
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create utilization_snapshots table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddUtilizationSnapshotsDown drops the utilization_snapshots table
+func migrateAddUtilizationSnapshotsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS utilization_snapshots`); err != nil {
+		return fmt.Errorf("failed to drop utilization_snapshots table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddDashboardPermissionsUp adds dashboard permissions
+func migrateAddDashboardPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now().UTC()
+
+	// Add dashboard permissions
+	permNames := []string{"dashboard:read"}
+	for _, name := range permNames {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, 'dashboard', 'read', ?)
+		`, newUUID(), name, now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", name, err)
+		}
+	}
+
+	// Grant to admin role
+	adminPerms := []string{"dashboard:read"}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin dashboard permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role
+	operatorPerms := []string{"dashboard:read"}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator dashboard permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role
+	viewerPerms := []string{"dashboard:read"}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer dashboard permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddDashboardPermissionsDown removes dashboard permissions
+func migrateAddDashboardPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{"dashboard:read"}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete dashboard permission %s: %w", name, err)
+		}
+	}
 	return nil
 }

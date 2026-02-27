@@ -16,6 +16,12 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 		PoolID:       r.URL.Query().Get("pool_id"),
 		Status:       model.DeviceStatus(r.URL.Query().Get("status")),
 	}
+	// Handle stale filter - if stale=true, use default of 7 days
+	if r.URL.Query().Get("stale") == "true" {
+		filter.StaleDays = parseIntParam(r, "stale_days", 7)
+	} else if staleDays := parseIntParam(r, "stale_days", 0); staleDays > 0 {
+		filter.StaleDays = staleDays
+	}
 	devices, err := h.svc.Devices.List(r.Context(), filter)
 	if err != nil {
 		h.handleServiceError(w, err)

@@ -109,6 +109,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/devices/{id}", wrapAuth(h.updateDevice))
 	mux.HandleFunc("DELETE /api/devices/{id}", wrapAuth(h.deleteDevice))
 
+	// Dashboard routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/dashboard", wrapAuth(h.getDashboardStats))
+	mux.HandleFunc("GET /api/dashboard/trend", wrapAuth(h.getUtilizationTrend))
+
 	// Relationship routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/relationships", wrapAuth(h.listAllRelationships))
 	mux.HandleFunc("POST /api/devices/{id}/relationships", wrapAuth(h.addRelationship))

@@ -41,6 +41,8 @@ export function deviceList() {
     networkFilter: '',
     poolFilter: '',
     statusFilter: '',
+    staleFilter: false,
+    staleDays: 7,
     loading: true,
     error: '',
     search: '',
@@ -106,10 +108,16 @@ export function deviceList() {
       const networkParam = params.get('network');
       const poolParam = params.get('pool');
       const statusParam = params.get('status');
+      const staleParam = params.get('stale');
+      const staleDaysParam = params.get('stale_days');
 
       if (networkParam) this.networkFilter = networkParam;
       if (poolParam) this.poolFilter = poolParam;
       if (statusParam) this.statusFilter = statusParam;
+      if (staleParam === 'true') {
+        this.staleFilter = true;
+        if (staleDaysParam) this.staleDays = parseInt(staleDaysParam, 10) || 7;
+      }
 
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks()]);
       await this.loadAllPools();
@@ -194,10 +202,14 @@ export function deviceList() {
         if (this.search) {
           devices = (await api.searchDevices(this.search)) || [];
         } else {
-          // Build filter with status
+          // Build filter with status and stale
           const filter: DeviceFilter = { ...this.filter };
           if (this.statusFilter) {
             filter.status = this.statusFilter as any;
+          }
+          if (this.staleFilter) {
+            filter.stale = true;
+            filter.stale_days = this.staleDays;
           }
           devices = (await api.listDevices(filter)) || [];
         }

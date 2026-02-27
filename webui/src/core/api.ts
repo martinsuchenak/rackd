@@ -7,6 +7,7 @@ import type {
   CreateUserRequest,
   CreateReservationRequest,
   CurrentUser,
+  DashboardStats,
   Datacenter,
   Device,
   DeviceFilter,
@@ -40,6 +41,7 @@ import type {
   UserInfo,
   Conflict,
   ConflictResolution,
+  UtilizationTrendPoint,
 } from './types';
 
 export type {
@@ -167,6 +169,8 @@ export class RackdAPI {
     if (filter?.network_id) params.set('network_id', filter.network_id);
     if (filter?.pool_id) params.set('pool_id', filter.pool_id);
     if (filter?.status) params.set('status', filter.status);
+    if (filter?.stale) params.set('stale', 'true');
+    if (filter?.stale_days) params.set('stale_days', String(filter.stale_days));
     const query = params.toString();
     return this.request<Device[]>('GET', `/api/devices${query ? `?${query}` : ''}`);
   }
@@ -532,6 +536,23 @@ export class RackdAPI {
 
   async getPoolReservations(poolId: string): Promise<Reservation[]> {
     return this.request<Reservation[]>('GET', `/api/pools/${poolId}/reservations`);
+  }
+
+  // Dashboard
+  async getDashboardStats(staleDays?: number, recentLimit?: number): Promise<DashboardStats> {
+    const params = new URLSearchParams();
+    if (staleDays) params.set('stale_days', staleDays.toString());
+    if (recentLimit) params.set('recent_limit', recentLimit.toString());
+    const query = params.toString();
+    return this.request<DashboardStats>('GET', `/api/dashboard${query ? `?${query}` : ''}`);
+  }
+
+  async getUtilizationTrend(type: 'network' | 'pool', resourceId: string, days?: number): Promise<UtilizationTrendPoint[]> {
+    const params = new URLSearchParams();
+    params.set('type', type);
+    params.set('resource_id', resourceId);
+    if (days) params.set('days', days.toString());
+    return this.request<UtilizationTrendPoint[]>('GET', `/api/dashboard/trend?${params.toString()}`);
   }
 }
 

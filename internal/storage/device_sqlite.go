@@ -460,6 +460,17 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 				args = append(args, tag)
 			}
 		}
+
+		if filter.StaleDays > 0 {
+			// Filter devices not seen in discovery for X days
+			staleCutoff := time.Now().AddDate(0, 0, -filter.StaleDays)
+			conditions = append(conditions, `status = 'active' AND NOT EXISTS (
+				SELECT 1 FROM discovered_devices dd
+				WHERE dd.promoted_to_device_id = devices.id
+				AND dd.last_seen >= ?
+			)`)
+			args = append(args, staleCutoff)
+		}
 	}
 
 	if len(conditions) > 0 {

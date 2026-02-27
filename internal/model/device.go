@@ -72,4 +72,5 @@ type DeviceFilter struct {
 	NetworkID    string
 	PoolID       string
 	Status       DeviceStatus
+	StaleDays    int // If > 0, filter devices not seen in discovery for X days
 }
