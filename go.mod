@@ -1,16 +1,16 @@
 module github.com/martinsuchenak/rackd
 
-go 1.25.6
+go 1.26.0
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gosnmp/gosnmp v1.43.2
-	github.com/paularlott/cli v0.7.2
+	github.com/paularlott/cli v0.7.11
 	github.com/paularlott/logger v0.3.0
-	github.com/paularlott/mcp v0.11.1
+	github.com/paularlott/mcp v0.12.9
 	github.com/robfig/cron/v3 v3.0.1
-	golang.org/x/crypto v0.47.0
-	modernc.org/sqlite v1.44.3
+	golang.org/x/crypto v0.48.0
+	modernc.org/sqlite v1.46.1
 )
 
 require (
@@ -19,12 +19,12 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
-	modernc.org/libc v1.67.6 // indirect
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/oauth2 v0.35.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	modernc.org/libc v1.68.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
