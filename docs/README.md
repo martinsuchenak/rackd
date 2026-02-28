@@ -36,6 +36,17 @@ Learn how to use Rackd:
 - **[Discovery](discovery.md)** - Network scanning and auto-discovery
 - **[Relationships](relationships.md)** - Device dependencies and connections
 
+### Advanced Features
+
+- **[Dashboard & Trends](dashboard.md)** - Reporting, utilization trends, and activity feeds
+- **[Device Lifecycle](lifecycle.md)** - Status tracking and decommission planning
+- **[IP Conflict Detection](conflicts.md)** - Detect and resolve IP conflicts
+- **[IP Reservations](reservations.md)** - Reserve IPs for planning
+- **[Webhooks](webhooks.md)** - Event notifications for automation
+- **[Circuit Management](circuits.md)** - Track network circuits
+- **[NAT Tracking](nat.md)** - Document NAT mappings
+- **[Custom Fields](custom-fields.md)** - User-defined device metadata
+
 ## Operations
 
 Deploy and maintain Rackd in production:
@@ -63,6 +74,14 @@ Contribute to Rackd:
 | Add a device | [Devices](devices.md#adding-devices) |
 | Create a network | [Networks](networks.md#creating-networks) |
 | Run a discovery scan | [Discovery](discovery.md#running-scans) |
+| View dashboard | [Dashboard](dashboard.md) |
+| Track device lifecycle | [Lifecycle](lifecycle.md) |
+| Detect IP conflicts | [Conflicts](conflicts.md) |
+| Reserve IP addresses | [Reservations](reservations.md) |
+| Configure webhooks | [Webhooks](webhooks.md) |
+| Track NAT mappings | [NAT](nat.md) |
+| Manage circuits | [Circuits](circuits.md) |
+| Add custom fields | [Custom Fields](custom-fields.md) |
 | Use the CLI | [CLI Reference](cli.md) |
 | Call the API | [API Reference](api.md) |
 | Deploy with Docker | [Deployment](deployment.md#docker) |
@@ -117,6 +136,14 @@ docs/
 ├── datacenters.md            # Datacenter management
 ├── discovery.md              # Network discovery
 ├── relationships.md          # Device relationships
+├── dashboard.md              # Dashboard and trends
+├── lifecycle.md              # Device lifecycle tracking
+├── conflicts.md              # IP conflict detection
+├── reservations.md           # IP reservations
+├── webhooks.md               # Webhook system
+├── circuits.md               # Circuit management
+├── nat.md                    # NAT tracking
+├── custom-fields.md          # Custom fields
 ├── deployment.md             # Deployment guide
 ├── backup.md                 # Backup and restore
 ├── security.md               # Security guide
