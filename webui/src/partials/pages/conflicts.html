@@ -3,7 +3,7 @@
   <div x-data="conflictList()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">IP Conflicts</h1>
-      <button @click="detectAll()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" :disabled="detecting">
+      <button x-show="$store.permissions.can('conflicts', 'detect')" @click="detectAll()" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]" :disabled="detecting">
         <span x-show="!detecting">Detect Conflicts</span>
         <span x-show="detecting" class="inline-flex items-center">
           <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">

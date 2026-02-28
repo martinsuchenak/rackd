@@ -24,14 +24,22 @@
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
           <tr x-show="loading"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading webhooks...</span></td></tr>
-          <tr x-show="!loading && (!webhooks || webhooks.length === 0)"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No webhooks configured. <button @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first webhook</button></td></tr>
+          <tr x-show="!loading && (!webhooks || webhooks.length === 0)"><td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No webhooks configured. <button x-show="$store.permissions.canCreate('webhook')" @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first webhook</button></td></tr>
           <template x-for="webhook in webhooks" :key="webhook.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <button @click="openEditModal(webhook)" class="text-left cursor-pointer focus:outline-none focus:underline">
-                  <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" x-text="webhook.name"></div>
-                  <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="webhook.description"></div>
-                </button>
+                <template x-if="$store.permissions.canUpdate('webhook')">
+                  <button @click="openEditModal(webhook)" class="text-left cursor-pointer focus:outline-none focus:underline">
+                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" x-text="webhook.name"></div>
+                    <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="webhook.description"></div>
+                  </button>
+                </template>
+                <template x-if="!$store.permissions.canUpdate('webhook')">
+                  <div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="webhook.name"></div>
+                    <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="webhook.description"></div>
+                  </div>
+                </template>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-xs" x-text="webhook.url"></div>

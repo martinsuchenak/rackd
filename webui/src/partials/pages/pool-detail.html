@@ -45,7 +45,7 @@
               <span x-show="fetchingNextIP">Fetching...</span>
             </button>
             <span x-show="nextIP" class="font-mono text-lg text-gray-900 dark:text-white" x-text="nextIP"></span>
-            <button x-show="$store.permissions.canCreate('reservations')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+            <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
               + Reserve IP
             </button>
           </div>
@@ -74,7 +74,7 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Reservations</h2>
-        <button x-show="$store.permissions.canCreate('reservations')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">+ New Reservation</button>
+        <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">+ New Reservation</button>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
         <div x-show="loadingReservations" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading reservations...</div>
@@ -99,7 +99,7 @@
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.reserved_by"></td>
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.expires_at ? new Date(reservation.expires_at).toLocaleDateString() : 'Never'"></td>
                 <td class="px-6 py-4">
-                  <button x-show="$store.permissions.canDelete('reservations')" @click="confirmDeleteReservation(reservation)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 rounded transition-colors">Delete</button>
+                  <button x-show="$store.permissions.canDelete('reservation')" @click="confirmDeleteReservation(reservation)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 rounded transition-colors">Delete</button>
                 </td>
               </tr>
             </template>

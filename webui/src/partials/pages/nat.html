@@ -90,8 +90,8 @@
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded" :class="mapping.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'" x-text="mapping.enabled ? 'Enabled' : 'Disabled'"></span>
               </td>
               <td class="px-6 py-4 text-right text-sm font-medium">
-                <button @click="openEditForm(mapping)" class="text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer mr-3">Edit</button>
-                <button @click="confirmDelete(mapping.id)" class="text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer">Delete</button>
+                <button x-show="$store.permissions.canUpdate('nat')" @click="openEditForm(mapping)" class="text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer mr-3">Edit</button>
+                <button x-show="$store.permissions.canDelete('nat')" @click="confirmDelete(mapping.id)" class="text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer">Delete</button>
               </td>
             </tr>
           </template>
