@@ -80,6 +80,10 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password"`
+}
+
 func (u *User) ToResponse() UserResponse {
 	return UserResponse{
 		ID:          u.ID,

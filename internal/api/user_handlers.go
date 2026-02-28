@@ -106,3 +106,25 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// resetPassword allows admins to reset a user's password without the old password
+func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req model.ResetPasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		return
+	}
+
+	if err := h.svc.Users.ResetPassword(r.Context(), id, &req); err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	// Invalidate all sessions for this user
+	h.sessionManager.InvalidateUserSessions(id)
+	log.Info("Password reset by admin", "user_id", id)
+
+	w.WriteHeader(http.StatusNoContent)
+}

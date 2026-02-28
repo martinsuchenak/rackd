@@ -73,6 +73,7 @@
                    <button x-show="$store.permissions.canUpdate('users')" @click="openEditModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + user.username">Edit</button>
                    <button x-show="$store.permissions.canList('roles')" @click="openRoleManager(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Manage roles for ' + user.username">Roles</button>
                    <button x-show="$store.permissions.canUpdate('users')" @click="openPasswordModal(user)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Change password for ' + user.username">Password</button>
+                   <button x-show="$store.permissions.canUpdate('users') && currentUser?.id !== user.id" @click="openResetPasswordModal(user)" class="px-3 py-2 text-sm text-orange-800 dark:text-orange-200 hover:text-orange-900 dark:hover:text-orange-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Reset password for ' + user.username">Reset</button>
                    <button x-show="$store.permissions.canDelete('users') && currentUser?.id !== user.id" @click="openDeleteModal(user)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + user.username">Delete</button>
                  </div>
                </td>
@@ -156,7 +157,7 @@
           <div class="space-y-4">
             <div>
               <label :for="'edit-email-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
-              <input :id="'edit-email-' + selectedUser.id" type="email" x-model="createForm.email"
+              <input :id="'edit-email-' + selectedUser.id" type="email" x-model="editForm.email"
                      :aria-invalid="!!validationErrors.email"
                      class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                      :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -164,15 +165,15 @@
             </div>
             <div>
               <label :for="'edit-fullname-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
-              <input :id="'edit-fullname-' + selectedUser.id" type="text" x-model="createForm.full_name"
+              <input :id="'edit-fullname-' + selectedUser.id" type="text" x-model="editForm.full_name"
                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
             <div>
               <label :for="'edit-active-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Active Status</label>
-              <select :id="'edit-active-' + selectedUser.id" x-model.number="createForm.is_active"
+              <select :id="'edit-active-' + selectedUser.id" x-model="editForm.is_active"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-                <option :value="1">Active</option>
-                <option :value="0">Inactive</option>
+                <option :value="true">Active</option>
+                <option :value="false">Inactive</option>
               </select>
             </div>
           </div>
@@ -320,6 +321,49 @@
             <span x-show="roleSaving">Saving...</span>
           </button>
         </div>
+      </div>
+    </div>
+    </template>
+
+    <!-- Reset Password Modal (Admin only) -->
+    <template x-if="showResetPasswordModal && selectedUser">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reset-password-modal-title" @keydown.escape.window="closeResetPasswordModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeResetPasswordModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
+        <button @click="closeResetPasswordModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="reset-password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Reset Password</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Reset password for user <span class="font-semibold text-gray-900 dark:text-gray-50" x-text="selectedUser?.username"></span>. This will invalidate all active sessions for this user.
+        </p>
+        <form @submit.prevent="doResetPassword()">
+          <div class="space-y-4">
+            <div>
+              <label :for="'reset-new-password-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input :id="'reset-new-password-' + selectedUser.id" type="password" x-model="resetPasswordForm.new_password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.new_password"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.new_password"></p>
+            </div>
+            <div>
+              <label :for="'reset-confirm-password-' + selectedUser.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input :id="'reset-confirm-password-' + selectedUser.id" type="password" x-model="resetPasswordForm.confirm_password" required aria-required="true"
+                     :aria-invalid="!!validationErrors.confirm_password"
+                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                     :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.confirm_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.confirm_password"></p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="closeResetPasswordModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <span x-show="!saving">Reset Password</span>
+              <span x-show="saving">Resetting...</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
     </template>

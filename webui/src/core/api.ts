@@ -447,6 +447,10 @@ export class RackdAPI {
     return this.request<void>('POST', `/api/users/${id}/password`, request);
   }
 
+  async resetPassword(id: string, newPassword: string): Promise<void> {
+    return this.request<void>('POST', `/api/users/${id}/reset-password`, { new_password: newPassword });
+  }
+
   async grantRole(userId: string, roleId: string): Promise<void> {
     return this.request<void>('POST', '/api/users/grant-role', { user_id: userId, role_id: roleId });
   }

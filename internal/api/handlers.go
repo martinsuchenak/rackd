@@ -205,6 +205,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/users/{id}", wrapAuth(h.updateUser))
 	mux.HandleFunc("DELETE /api/users/{id}", wrapAuth(h.deleteUser))
 	mux.HandleFunc("POST /api/users/{id}/password", wrapAuth(h.changePassword))
+	mux.HandleFunc("POST /api/users/{id}/reset-password", wrapAuth(h.resetPassword))
 
 	// Role routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/roles", wrapAuth(h.listRoles))

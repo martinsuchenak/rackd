@@ -17,12 +17,15 @@ interface UsersListData {
   showEditModal: boolean;
   showDeleteModal: boolean;
   showPasswordModal: boolean;
+  showResetPasswordModal: boolean;
   selectedUser: User | null;
   saving: boolean;
   deleting: boolean;
   validationErrors: Record<string, string>;
   createForm: CreateUserRequest;
+  editForm: { email: string; full_name: string; is_active: boolean };
   passwordForm: { old_password: string; new_password: string; confirm_password: string };
+  resetPasswordForm: { new_password: string; confirm_password: string };
   currentUser: User | null;
   availableRoles: Role[];
   userRolesCache: Map<string, Role[]>;
@@ -43,12 +46,15 @@ interface UsersListData {
   closeDeleteModal(): void;
   openPasswordModal(user: User): void;
   closePasswordModal(): void;
+  openResetPasswordModal(user: User): void;
+  closeResetPasswordModal(): void;
   openRoleManager(user: User): void;
   closeRoleManager(): void;
   doCreateUser(): Promise<void>;
   doUpdateUser(): Promise<void>;
   doDeleteUser(): Promise<void>;
   doChangePassword(): Promise<void>;
+  doResetPassword(): Promise<void>;
   grantRole(role: Role): Promise<void>;
   revokeRole(role: Role): Promise<void>;
   logout(): void;
@@ -66,6 +72,7 @@ export function usersList() {
     showEditModal: false,
     showDeleteModal: false,
     showPasswordModal: false,
+    showResetPasswordModal: false,
     selectedUser: null as User | null,
     saving: false,
     deleting: false,
@@ -77,8 +84,17 @@ export function usersList() {
       full_name: '',
       is_admin: false,
     } as CreateUserRequest,
+    editForm: {
+      email: '',
+      full_name: '',
+      is_active: true,
+    },
     passwordForm: {
       old_password: '',
+      new_password: '',
+      confirm_password: '',
+    },
+    resetPasswordForm: {
       new_password: '',
       confirm_password: '',
     },
@@ -206,6 +222,12 @@ export function usersList() {
       this.showEditModal = true;
       this.selectedUser = user;
       this.validationErrors = {};
+      // Pre-populate edit form with user's current values
+      this.editForm = {
+        email: user.email || '',
+        full_name: user.full_name || '',
+        is_active: user.is_active !== false,
+      };
     },
 
     closeEditModal(): void {
@@ -246,6 +268,26 @@ export function usersList() {
       };
     },
 
+    openResetPasswordModal(user: User): void {
+      this.showResetPasswordModal = true;
+      this.selectedUser = user;
+      this.validationErrors = {};
+      this.resetPasswordForm = {
+        new_password: '',
+        confirm_password: '',
+      };
+    },
+
+    closeResetPasswordModal(): void {
+      this.showResetPasswordModal = false;
+      this.selectedUser = null;
+      this.validationErrors = {};
+      this.resetPasswordForm = {
+        new_password: '',
+        confirm_password: '',
+      };
+    },
+
     hasRole(role: Role): boolean {
       if (!this.selectedUser?.roles) {
         return false;
@@ -255,7 +297,8 @@ export function usersList() {
 
     async openRoleManager(user: User): Promise<void> {
       this.selectedUser = user;
-      await this.loadUserRoles(user.id);
+      // Load roles and assign to selectedUser for hasRole() to work
+      this.selectedUser.roles = await this.loadUserRoles(user.id);
       this.showRoleManager = true;
     },
 
@@ -374,17 +417,19 @@ export function usersList() {
       this.validationErrors = {};
       const updates: UpdateUserRequest = {};
 
-      if (this.createForm.email) {
-        if (!this.createForm.email.includes('@')) {
+      if (this.editForm.email) {
+        if (!this.editForm.email.includes('@')) {
           this.validationErrors.email = 'Invalid email format';
           return;
         }
-        updates.email = this.createForm.email;
+        updates.email = this.editForm.email;
       }
 
-      if (this.createForm.full_name) {
-        updates.full_name = this.createForm.full_name;
+      if (this.editForm.full_name) {
+        updates.full_name = this.editForm.full_name;
       }
+
+      updates.is_active = this.editForm.is_active;
 
       if (Object.keys(this.validationErrors).length > 0) {
         return;
@@ -480,6 +525,43 @@ export function usersList() {
           }
         } else {
           this.error = 'Failed to change password';
+        }
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async doResetPassword(): Promise<void> {
+      if (!this.selectedUser) {
+        return;
+      }
+
+      this.validationErrors = {};
+
+      if (!this.resetPasswordForm.new_password) {
+        this.validationErrors.new_password = 'New password is required';
+      } else if (this.resetPasswordForm.new_password.length < 8) {
+        this.validationErrors.new_password = 'Password must be at least 8 characters';
+      }
+
+      if (this.resetPasswordForm.new_password !== this.resetPasswordForm.confirm_password) {
+        this.validationErrors.confirm_password = 'Passwords do not match';
+      }
+
+      if (Object.keys(this.validationErrors).length > 0) {
+        return;
+      }
+
+      this.saving = true;
+
+      try {
+        await api.resetPassword(this.selectedUser.id, this.resetPasswordForm.new_password);
+        this.closeResetPasswordModal();
+      } catch (err) {
+        if (err instanceof RackdAPIError) {
+          this.error = err.message;
+        } else {
+          this.error = 'Failed to reset password';
         }
       } finally {
         this.saving = false;

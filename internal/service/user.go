@@ -229,6 +229,35 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	return s.store.UpdateUser(enrichAuditCtx(ctx), user)
 }
 
+// ResetPassword allows admins to reset a user's password without knowing the old one
+func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.ResetPasswordRequest) error {
+	// Only users with users:update permission can reset passwords
+	if err := requirePermission(ctx, s.store, "users", "update"); err != nil {
+		return err
+	}
+
+	if len(req.NewPassword) < 8 {
+		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 8 characters"}}
+	}
+
+	user, err := s.store.GetUser(id)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	passwordHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	user.PasswordHash = passwordHash
+	user.UpdatedAt = time.Now()
+	return s.store.UpdateUser(enrichAuditCtx(ctx), user)
+}
+
 func (s *UserService) GetRoles(ctx context.Context, userID string) ([]model.Role, error) {
 	if err := requirePermission(ctx, s.store, "users", "read"); err != nil {
 		return nil, err
