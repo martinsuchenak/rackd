@@ -57,6 +57,10 @@ import type {
   CircuitFilter,
   CreateCircuitRequest,
   UpdateCircuitRequest,
+  NATMapping,
+  NATFilter,
+  CreateNATRequest,
+  UpdateNATRequest,
 } from './types';
 
 export type {
@@ -663,6 +667,36 @@ export class RackdAPI {
 
   async deleteCircuit(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/circuits/${id}`);
+  }
+
+  // NAT API methods
+  async listNATMappings(filter?: NATFilter): Promise<NATMapping[]> {
+    const params = new URLSearchParams();
+    if (filter?.external_ip) params.append('external_ip', filter.external_ip);
+    if (filter?.internal_ip) params.append('internal_ip', filter.internal_ip);
+    if (filter?.protocol) params.append('protocol', filter.protocol);
+    if (filter?.device_id) params.append('device_id', filter.device_id);
+    if (filter?.datacenter_id) params.append('datacenter_id', filter.datacenter_id);
+    if (filter?.network_id) params.append('network_id', filter.network_id);
+    if (filter?.enabled !== undefined) params.append('enabled', String(filter.enabled));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<NATMapping[]>('GET', `/api/nat${query}`);
+  }
+
+  async getNATMapping(id: string): Promise<NATMapping> {
+    return this.request<NATMapping>('GET', `/api/nat/${id}`);
+  }
+
+  async createNATMapping(data: CreateNATRequest): Promise<NATMapping> {
+    return this.request<NATMapping>('POST', '/api/nat', data);
+  }
+
+  async updateNATMapping(id: string, data: UpdateNATRequest): Promise<NATMapping> {
+    return this.request<NATMapping>('PUT', `/api/nat/${id}`, data);
+  }
+
+  async deleteNATMapping(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/nat/${id}`);
   }
 }
 

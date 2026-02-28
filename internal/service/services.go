@@ -30,6 +30,7 @@ type Services struct {
 	Webhooks       *WebhookService
 	CustomFields   *CustomFieldService
 	Circuits       *CircuitService
+	NAT            *NATService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -52,6 +53,7 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		Webhooks:      NewWebhookService(store),
 		CustomFields:  NewCustomFieldService(store),
 		Circuits:      NewCircuitService(store),
+		NAT:           NewNATService(store),
 	}
 }
 

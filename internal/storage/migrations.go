@@ -186,6 +186,12 @@ var migrations = []*Migration{
 		Up:      migrateAddCircuitsUp,
 		Down:    migrateAddCircuitsDown,
 	},
+	{
+		Version: "20260228080000",
+		Name:    "add_nat_mappings",
+		Up:      migrateAddNATMappingsUp,
+		Down:    migrateAddNATMappingsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2203,6 +2209,130 @@ func migrateAddCircuitsDown(ctx context.Context, tx *sql.Tx) error {
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete circuits permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddNATMappingsUp creates the nat_mappings table
+func migrateAddNATMappingsUp(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS nat_mappings (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			external_ip TEXT NOT NULL,
+			external_port INTEGER NOT NULL,
+			internal_ip TEXT NOT NULL,
+			internal_port INTEGER NOT NULL,
+			protocol TEXT NOT NULL DEFAULT 'tcp',
+			device_id TEXT,
+			description TEXT DEFAULT '',
+			enabled INTEGER NOT NULL DEFAULT 1,
+			datacenter_id TEXT,
+			network_id TEXT,
+			tags TEXT DEFAULT '[]',
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL,
+			FOREIGN KEY (datacenter_id) REFERENCES datacenters(id) ON DELETE SET NULL,
+			FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE SET NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create nat_mappings table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_nat_external_ip ON nat_mappings(external_ip)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_internal_ip ON nat_mappings(internal_ip)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_protocol ON nat_mappings(protocol)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_device ON nat_mappings(device_id)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_datacenter ON nat_mappings(datacenter_id)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_network ON nat_mappings(network_id)",
+		"CREATE INDEX IF NOT EXISTS idx_nat_enabled ON nat_mappings(enabled)",
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create NAT mapping index: %w", err)
+		}
+	}
+
+	// Add NAT permissions
+	now := time.Now().UTC()
+	natPermissions := [][3]string{
+		{"nat:list", "nat", "list"},
+		{"nat:read", "nat", "read"},
+		{"nat:create", "nat", "create"},
+		{"nat:update", "nat", "update"},
+		{"nat:delete", "nat", "delete"},
+	}
+	for _, perm := range natPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant to admin role - all permissions
+	adminPerms := []string{"nat:list", "nat:read", "nat:create", "nat:update", "nat:delete"}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin nat permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role - read/write
+	operatorPerms := []string{"nat:list", "nat:read", "nat:create", "nat:update"}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator nat permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role - read only
+	viewerPerms := []string{"nat:list", "nat:read"}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer nat permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddNATMappingsDown drops the nat_mappings table
+func migrateAddNATMappingsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS nat_mappings`); err != nil {
+		return fmt.Errorf("failed to drop nat_mappings table: %w", err)
+	}
+
+	// Remove NAT permissions
+	permNames := []string{"nat:list", "nat:read", "nat:create", "nat:update", "nat:delete"}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete nat permission %s: %w", name, err)
 		}
 	}
 	return nil

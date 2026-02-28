@@ -30,6 +30,7 @@ import { webhookComponent } from './components/webhooks';
 import { customFieldComponent } from './components/custom-fields';
 import { dashboardComponent } from './components/dashboard';
 import { circuitComponent } from './components/circuits';
+import { natComponent } from './components/nat';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -47,6 +48,7 @@ function updatePageTitle(route: string) {
     '/scan-profiles': 'Scan Profiles',
     '/conflicts': 'IP Conflicts',
     '/circuits': 'Circuits',
+    '/nat': 'NAT Mappings',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -143,6 +145,7 @@ function router() {
         { label: 'Discovery', path: '/discovery', order: 40 },
         { label: 'Conflicts', path: '/conflicts', order: 50, badge: () => this.activeConflictCount },
         { label: 'Circuits', path: '/circuits', order: 55 },
+        { label: 'NAT', path: '/nat', order: 56 },
       ];
       const dynamic = window.rackdConfig?.nav_items ?? [];
       const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
@@ -408,6 +411,7 @@ async function init(): Promise<void> {
   Alpine.data('customFieldComponent', customFieldComponent);
   Alpine.data('dashboardComponent', dashboardComponent);
   Alpine.data('circuitComponent', circuitComponent);
+  Alpine.data('natComponent', natComponent);
 
   // Register deep scan type
   window.rackdRegisterScanType({

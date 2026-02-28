@@ -627,3 +627,64 @@ export interface UpdateCircuitRequest {
   contact_email?: string;
   tags?: string[];
 }
+
+// NAT Types
+export type NATProtocol = 'tcp' | 'udp' | 'any';
+
+export interface NATMapping {
+  id: string;
+  name: string;
+  external_ip: string;
+  external_port: number;
+  internal_ip: string;
+  internal_port: number;
+  protocol: NATProtocol;
+  device_id?: string;
+  description: string;
+  enabled: boolean;
+  datacenter_id?: string;
+  network_id?: string;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NATFilter {
+  external_ip?: string;
+  internal_ip?: string;
+  protocol?: NATProtocol;
+  device_id?: string;
+  datacenter_id?: string;
+  network_id?: string;
+  enabled?: boolean;
+}
+
+export interface CreateNATRequest {
+  name: string;
+  external_ip: string;
+  external_port: number;
+  internal_ip: string;
+  internal_port: number;
+  protocol?: NATProtocol;
+  device_id?: string;
+  description?: string;
+  enabled?: boolean;
+  datacenter_id?: string;
+  network_id?: string;
+  tags?: string[];
+}
+
+export interface UpdateNATRequest {
+  name?: string;
+  external_ip?: string;
+  external_port?: number;
+  internal_ip?: string;
+  internal_port?: number;
+  protocol?: NATProtocol;
+  device_id?: string;
+  description?: string;
+  enabled?: boolean;
+  datacenter_id?: string;
+  network_id?: string;
+  tags?: string[];
+}

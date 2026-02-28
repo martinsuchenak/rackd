@@ -315,20 +315,34 @@ webui/src/
 - **CLI**: `cmd/circuit/` — `list`, `get`, `create`, `update`, `delete` commands
 - **RBAC**: `circuit:list`, `circuit:read`, `circuit:create`, `circuit:update`, `circuit:delete` permissions
 
-### 4.11 NAT Tracking
+### 4.11 NAT Tracking ✅
 
-**Effort**: 3-4 days
+**Effort**: 3-4 days | **Status**: COMPLETE
 
 **What**: Track NAT mappings (external IP/port to internal IP/port)
 
 **Tasks**:
-- [ ] NAT mapping model
-- [ ] NAT storage + service
-- [ ] NAT CRUD API
-- [ ] NAT UI page
-- [ ] Link NAT to devices
-- [ ] NAT validation
-- [ ] NAT CLI commands
+
+- [x] NAT mapping model
+- [x] NAT storage + service
+- [x] NAT CRUD API
+- [x] NAT UI page
+- [x] Link NAT to devices
+- [x] NAT validation
+- [x] NAT CLI commands
+
+**Implementation Details**:
+- **Model**: `internal/model/nat.go` — NATProtocol (tcp/udp/any), NATMapping, NATFilter, CreateNATRequest, UpdateNATRequest
+- **Storage**: `internal/storage/nat_sqlite.go` — SQLite implementation with full CRUD and filtering
+- **Migration**: `internal/storage/migrations.go` — Migration for nat_mappings table with indexes and RBAC permissions
+- **Service**: `internal/service/nat.go` — CRUD + RBAC enforcement, validation (ports, protocols)
+- **API**: `internal/api/nat_handlers.go` — REST endpoints for NAT mappings
+- **Types**: `webui/src/core/types.ts` — NATProtocol, NATMapping, NATFilter, CreateNATRequest, UpdateNATRequest types
+- **API Client**: `webui/src/core/api.ts` — listNATMappings, getNATMapping, createNATMapping, updateNATMapping, deleteNATMapping methods
+- **Component**: `webui/src/components/nat.ts` — NAT management UI component with filters, forms, CRUD
+- **Template**: `webui/src/partials/pages/nat.html` — NAT management page with table, filters, create/edit modals
+- **CLI**: `cmd/nat/` — `list`, `get`, `create`, `update`, `delete` commands
+- **RBAC**: `nat:list`, `nat:read`, `nat:create`, `nat:update`, `nat:delete` permissions
 
 ### 4.12 Custom Fields/Metadata ✅
 

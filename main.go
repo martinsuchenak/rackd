@@ -15,6 +15,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/discovery"
 	"github.com/martinsuchenak/rackd/cmd/export"
 	importcmd "github.com/martinsuchenak/rackd/cmd/import"
+	"github.com/martinsuchenak/rackd/cmd/nat"
 	"github.com/martinsuchenak/rackd/cmd/network"
 	"github.com/martinsuchenak/rackd/cmd/reservation"
 	"github.com/martinsuchenak/rackd/cmd/role"
@@ -43,6 +44,7 @@ func main() {
 			discovery.Command(),
 			cmdconflict.Command(),
 			circuit.Command(),
+			nat.Command(),
 			reservation.Command(),
 			webhook.Command(),
 			customfield.Command(),

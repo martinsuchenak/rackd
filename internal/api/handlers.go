@@ -281,6 +281,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/circuits/{id}", wrapAuth(h.updateCircuit))
 	mux.HandleFunc("DELETE /api/circuits/{id}", wrapAuth(h.deleteCircuit))
 
+	// NAT routes
+	mux.HandleFunc("GET /api/nat", wrapAuth(h.listNATMappings))
+	mux.HandleFunc("POST /api/nat", wrapAuth(h.createNATMapping))
+	mux.HandleFunc("GET /api/nat/{id}", wrapAuth(h.getNATMapping))
+	mux.HandleFunc("PUT /api/nat/{id}", wrapAuth(h.updateNATMapping))
+	mux.HandleFunc("DELETE /api/nat/{id}", wrapAuth(h.deleteNATMapping))
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

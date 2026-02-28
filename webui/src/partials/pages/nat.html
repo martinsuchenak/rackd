@@ -1,0 +1,102 @@
+<!-- NAT Mappings Page -->
+<template x-if="route.startsWith('/nat')">
+  <div x-data="natComponent" x-init="init()" class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">NAT Mappings</h1>
+      <div class="flex gap-2">
+        <button x-show="$store.permissions.canCreate('nat')" @click="openCreateForm()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+          Add Mapping
+        </button>
+      </div>
+    </div>
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
+        <div>
+          <label for="nat-search" class="sr-only">Search NAT mappings</label>
+          <input id="nat-search" type="text" x-model="search" @input="applySearch()" placeholder="Search..."
+                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        </div>
+        <div>
+          <label for="nat-filter-external-ip" class="sr-only">Filter by external IP</label>
+          <input id="nat-filter-external-ip" type="text" x-model="filterExternalIP" @change="applyFilters()" placeholder="External IP"
+                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        </div>
+        <div>
+          <label for="nat-filter-internal-ip" class="sr-only">Filter by internal IP</label>
+          <input id="nat-filter-internal-ip" type="text" x-model="filterInternalIP" @change="applyFilters()" placeholder="Internal IP"
+                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        </div>
+        <div>
+          <label for="nat-filter-protocol" class="sr-only">Filter by protocol</label>
+          <select id="nat-filter-protocol" x-model="filterProtocol" @change="applyFilters()"
+                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <option value="">All Protocols</option>
+            <option value="tcp">TCP</option>
+            <option value="udp">UDP</option>
+            <option value="any">Any</option>
+          </select>
+        </div>
+        <div>
+          <label for="nat-filter-status" class="sr-only">Filter by status</label>
+          <select id="nat-filter-status" x-model="filterEnabled" @change="applyFilters()"
+                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <option value="">All Statuses</option>
+            <option value="true">Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+        </div>
+        <button @click="clearFilters()" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">
+          Clear filters
+        </button>
+      </div>
+      <!-- Table -->
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <caption class="sr-only">List of NAT mappings with name, external/internal addresses and protocol, and status</caption>
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">External</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Internal</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Protocol</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Device</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tr x-show="loading"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading NAT mappings...</span></td></tr>
+          <tr x-show="!loading && mappings.length === 0"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No NAT mappings found</td></tr>
+          <template x-for="mapping in mappings" :key="mapping.id">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-6 py-4">
+                <a :href="'/nat?id=' + mapping.id" @click.prevent="$dispatch('nav', '/nat/detail?id=' + mapping.id)" class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" x-text="mapping.name"></a>
+              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono" x-text="formatAddress(mapping.external_ip, mapping.external_port)"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono" x-text="formatAddress(mapping.internal_ip, mapping.internal_port)"></td>
+              <td class="px-6 py-4">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded" :class="mapping.protocol === 'tcp' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : mapping.protocol === 'udp' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'" x-text="mapping.protocol.toUpperCase()"></span>
+              </td>
+              <td class="px-6 py-4">
+                <template x-if="mapping.device_id">
+                  <a :href="'/devices/detail?id=' + mapping.device_id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + mapping.device_id)" class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-text="getDeviceName(mapping.device_id)"></a>
+                </template>
+                <span x-show="!mapping.device_id" class="text-gray-500 dark:text-gray-400">-</span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded" :class="mapping.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'" x-text="mapping.enabled ? 'Enabled' : 'Disabled'"></span>
+              </td>
+              <td class="px-6 py-4 text-right text-sm font-medium">
+                <button @click="openEditForm(mapping)" class="text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer mr-3">Edit</button>
+                <button @click="confirmDelete(mapping.id)" class="text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer">Delete</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>

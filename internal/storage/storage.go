@@ -37,6 +37,7 @@ var (
 	ErrCustomFieldNotFound  = errors.New("custom field definition not found")
 	ErrDuplicateFieldKey    = errors.New("custom field key already exists")
 	ErrCircuitNotFound      = errors.New("circuit not found")
+	ErrNATNotFound          = errors.New("NAT mapping not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -269,6 +270,17 @@ type CircuitStorage interface {
 	GetCircuitsByDevice(deviceID string) ([]model.Circuit, error)
 }
 
+// NATStorage defines NAT mapping persistence operations
+type NATStorage interface {
+	CreateNATMapping(ctx context.Context, mapping *model.NATMapping) error
+	GetNATMapping(id string) (*model.NATMapping, error)
+	ListNATMappings(filter *model.NATFilter) ([]model.NATMapping, error)
+	UpdateNATMapping(ctx context.Context, mapping *model.NATMapping) error
+	DeleteNATMapping(ctx context.Context, id string) error
+	GetNATMappingsByDevice(deviceID string) ([]model.NATMapping, error)
+	GetNATMappingsByDatacenter(datacenterID string) ([]model.NATMapping, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -294,6 +306,7 @@ type ExtendedStorage interface {
 	WebhookStorage
 	CustomFieldStorage
 	CircuitStorage
+	NATStorage
 	Close() error
 	DB() *sql.DB
 }
