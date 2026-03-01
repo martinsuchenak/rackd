@@ -28,7 +28,9 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(/tmp/rackd_test conflict:*)",
       "Bash(gofmt -d ./internal/model/nat.go ./internal/service/nat.go)",
-      "Bash(gofmt -w ./internal/model/nat.go ./internal/service/nat.go)"
+      "Bash(gofmt -w ./internal/model/nat.go ./internal/service/nat.go)",
+      "Bash(npm run --prefix webui build)",
+      "Bash(npm run --prefix /Users/martinsuchenak/Devel/projects/rackd/webui build)"
     ]
   },
   "spinnerVerbs": {

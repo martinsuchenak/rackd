@@ -69,12 +69,13 @@ type UserWithRoles struct {
 }
 
 type RoleResponse struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	IsSystem    bool      `json:"is_system"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description,omitempty"`
+	IsSystem    bool         `json:"is_system"`
+	Permissions []Permission `json:"permissions,omitempty"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
 func (r *Role) ToResponse() RoleResponse {
@@ -83,6 +84,18 @@ func (r *Role) ToResponse() RoleResponse {
 		Name:        r.Name,
 		Description: r.Description,
 		IsSystem:    r.IsSystem,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
+	}
+}
+
+func (r *Role) ToResponseWithPermissions(permissions []Permission) RoleResponse {
+	return RoleResponse{
+		ID:          r.ID,
+		Name:        r.Name,
+		Description: r.Description,
+		IsSystem:    r.IsSystem,
+		Permissions: permissions,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 	}

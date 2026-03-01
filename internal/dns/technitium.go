@@ -59,11 +59,6 @@ type recordsGetResponse struct {
 	} `json:"records"`
 }
 
-// statusResponse represents the response from status API
-type statusResponse struct {
-	Status string `json:"status"`
-}
-
 // doAPI executes an API call to the Technitium DNS server
 func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, params url.Values, result interface{}) error {
 	// Build URL with token
@@ -247,13 +242,11 @@ func (c *TechnitiumClient) ZoneExists(ctx context.Context, zone string) (bool, e
 
 // HealthCheck verifies connectivity to the Technitium DNS server
 func (c *TechnitiumClient) HealthCheck(ctx context.Context) error {
-	var resp statusResponse
+	// The /api/status endpoint returns server info; we just need to verify the API responds
+	// doAPI already checks that the outer status is "ok"
+	var resp map[string]interface{}
 	if err := c.doAPI(ctx, "GET", "/api/status", nil, &resp); err != nil {
 		return err
-	}
-
-	if resp.Status != "ok" {
-		return fmt.Errorf("server status is not ok: %s", resp.Status)
 	}
 
 	return nil

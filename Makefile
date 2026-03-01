@@ -73,6 +73,9 @@ clean:
 run-server: build
 	$(BUILD_DIR)/$(BINARY) server
 
+run-dev: build
+	$(BUILD_DIR)/$(BINARY) server --dev-mode --log-level debug
+
 ## dev: Run in development mode with hot reload
 dev:
 	@echo "Starting development server..."

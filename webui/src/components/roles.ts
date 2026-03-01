@@ -57,6 +57,7 @@ export function rolesList() {
     showCreateModal: false,
     showEditModal: false,
     showDeleteModal: false,
+    showViewModal: false,
     showPermissionsModal: false,
     selectedRole: null as Role | null,
     saving: false,
@@ -100,6 +101,25 @@ export function rolesList() {
 
     get editDisabled(): boolean {
       return this.selectedRole?.is_system || false;
+    },
+
+    get groupedPermissions(): Record<string, Permission[]> {
+      if (!this.selectedRole?.permissions) return {};
+      return this.selectedRole.permissions.reduce((acc, perm) => {
+        if (!acc[perm.resource]) acc[perm.resource] = [];
+        acc[perm.resource].push(perm);
+        return acc;
+      }, {} as Record<string, Permission[]>);
+    },
+
+    formatDate(date: string | Date): string {
+      if (!date) return '-';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
     },
 
     async init(): Promise<void> {
@@ -169,11 +189,6 @@ export function rolesList() {
     },
 
     openEditModal(role: Role): void {
-      if (role.is_system) {
-        this.error = 'Cannot edit system roles';
-        return;
-      }
-
       this.showEditModal = true;
       this.selectedRole = role;
       this.validationErrors = {};
@@ -202,6 +217,16 @@ export function rolesList() {
 
     closeDeleteModal(): void {
       this.showDeleteModal = false;
+      this.selectedRole = null;
+    },
+
+    openViewModal(role: Role): void {
+      this.showViewModal = true;
+      this.selectedRole = role;
+    },
+
+    closeViewModal(): void {
+      this.showViewModal = false;
       this.selectedRole = null;
     },
 

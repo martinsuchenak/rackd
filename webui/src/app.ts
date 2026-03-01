@@ -21,6 +21,7 @@ import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } fro
 import { scanProfilesList } from './components/scan-profiles';
 import { login } from './components/login';
 import { usersList } from './components/users';
+import { rolesList } from './components/roles';
 import { userMenu } from './components/user-menu';
 import { toastComponent } from './components/toast';
 import { oauthConsent } from './components/oauth-consent';
@@ -353,6 +354,7 @@ async function init(): Promise<void> {
   // Auth & user management
   Alpine.data('login', login);
   Alpine.data('usersList', usersList);
+  Alpine.data('rolesList', rolesList);
   Alpine.data('userMenu', userMenu);
 
   // OAuth

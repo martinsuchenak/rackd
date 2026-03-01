@@ -27,7 +27,8 @@ func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 
 	roleResponses := make([]model.RoleResponse, len(roles))
 	for i, role := range roles {
-		roleResponses[i] = role.ToResponse()
+		permissions, _ := h.svc.Roles.GetPermissions(r.Context(), role.ID)
+		roleResponses[i] = role.ToResponseWithPermissions(permissions)
 	}
 
 	h.writeJSON(w, http.StatusOK, roleResponses)

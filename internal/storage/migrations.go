@@ -198,6 +198,12 @@ var migrations = []*Migration{
 		Up:      migrateAddDNSTablesUp,
 		Down:    migrateAddDNSTablesDown,
 	},
+	{
+		Version: "20260301140000",
+		Name:    "add_dns_provider_test_permission",
+		Up:      migrateAddDNSProviderTestPermissionUp,
+		Down:    migrateAddDNSProviderTestPermissionDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2536,5 +2542,74 @@ func migrateAddDNSTablesDown(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("failed to delete DNS permission %s: %w", name, err)
 		}
 	}
+	return nil
+}
+
+// migrateAddDNSProviderTestPermissionUp adds the dns-provider:test permission
+func migrateAddDNSProviderTestPermissionUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	// Add the test permission
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, newUUID(), "dns-provider:test", "dns-provider", "test", now)
+	if err != nil {
+		return fmt.Errorf("failed to insert dns-provider:test permission: %w", err)
+	}
+
+	// Grant to admin role
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'admin' AND p.name = 'dns-provider:test'
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign dns-provider:test to admin role: %w", err)
+	}
+
+	// Grant to operator role
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'operator' AND p.name = 'dns-provider:test'
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign dns-provider:test to operator role: %w", err)
+	}
+
+	// Grant to viewer role (testing is read-only)
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'viewer' AND p.name = 'dns-provider:test'
+	`, now)
+	if err != nil {
+		return fmt.Errorf("failed to assign dns-provider:test to viewer role: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddDNSProviderTestPermissionDown removes the dns-provider:test permission
+func migrateAddDNSProviderTestPermissionDown(ctx context.Context, tx *sql.Tx) error {
+	// Remove from role_permissions first
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM role_permissions
+		WHERE permission_id IN (SELECT id FROM permissions WHERE name = 'dns-provider:test')
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to remove dns-provider:test from roles: %w", err)
+	}
+
+	// Remove the permission
+	_, err = tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = 'dns-provider:test'`)
+	if err != nil {
+		return fmt.Errorf("failed to delete dns-provider:test permission: %w", err)
+	}
+
 	return nil
 }
