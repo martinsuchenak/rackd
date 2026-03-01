@@ -260,15 +260,19 @@ webui/src/
 
 **What**: Automatic DNS record management
 
+**Detailed Plan**: See [DNS_INTEGRATION.md](DNS_INTEGRATION.md)
+
 **Tasks**:
 - [ ] DNS provider interface
-- [ ] BIND support (via nsupdate)
-- [ ] PowerDNS support (via API)
 - [ ] Technitium DNS support (via API), Docs: https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md
-- [ ] PI-Hole DNS support (via API), Docs: https://docs.pi-hole.net/api/
+- [ ] PowerDNS support (via API) - future
+- [ ] BIND support (via nsupdate) - future
+- [ ] PI-Hole DNS support (via API) - future
 - [ ] DNS record CRUD
 - [ ] Auto-create DNS records on device creation
 - [ ] DNS sync functionality
+- [ ] Import records from DNS
+- [ ] PTR zone auto-generation
 - [ ] DNS configuration UI
 - [ ] DNS CLI commands
 
