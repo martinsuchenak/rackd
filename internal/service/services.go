@@ -31,6 +31,7 @@ type Services struct {
 	CustomFields   *CustomFieldService
 	Circuits       *CircuitService
 	NAT            *NATService
+	DNS            *DNSService
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
@@ -67,4 +68,10 @@ func (s *Services) SetProfileStorage(store storage.ProfileStorage) {
 
 func (s *Services) SetScheduledScanStorage(store storage.ScheduledScanStorage) {
 	s.ScheduledScans = NewScheduledScanService(store, s.Users.store)
+}
+
+func (s *Services) SetDNSService(store storage.ExtendedStorage, encryptor *credentials.Encryptor) {
+	s.DNS = NewDNSService(store, encryptor)
+	// Set DNS service on DeviceService for automatic DNS record creation/updates
+	s.Devices.setDNSService(s.DNS)
 }

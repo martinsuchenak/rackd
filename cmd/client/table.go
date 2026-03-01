@@ -120,9 +120,13 @@ func isScalar(v interface{}) bool {
 	return true
 }
 
-func getString(m map[string]interface{}, key string) string {
+func GetString(m map[string]interface{}, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
+}
+
+func getString(m map[string]interface{}, key string) string {
+	return GetString(m, key)
 }

@@ -43,6 +43,9 @@ type Config struct {
 	// Utilization snapshots
 	SnapshotInterval      time.Duration
 	SnapshotRetentionDays int
+
+	// DNS sync
+	DNSSyncInterval time.Duration
 }
 
 var cfg Config
@@ -68,7 +71,7 @@ func Load() *Config {
 		SessionTTL:             getDurationEnv("SESSION_TTL", 24*time.Hour),
 		LoginRateLimitRequests: getIntEnv("LOGIN_RATE_LIMIT_REQUESTS", 5),
 		LoginRateLimitWindow:   getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
-		CookieSecure:           getBoolEnv("COOKIE_SECURE", true),
+		CookieSecure:           getBoolEnv("COOKIE_SECURE", false),
 		TrustProxy:             getBoolEnv("TRUST_PROXY", false),
 		InitialAdminUsername:   getEnv("INITIAL_ADMIN_USERNAME", ""),
 		InitialAdminPassword:   getEnv("INITIAL_ADMIN_PASSWORD", ""),
@@ -82,6 +85,8 @@ func Load() *Config {
 
 		SnapshotInterval:      getDurationEnv("SNAPSHOT_INTERVAL", 1*time.Hour),
 		SnapshotRetentionDays: getIntEnv("SNAPSHOT_RETENTION_DAYS", 90),
+
+		DNSSyncInterval: getDurationEnv("DNS_SYNC_INTERVAL", 1*time.Hour),
 	}
 
 	return &cfg

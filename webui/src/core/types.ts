@@ -688,3 +688,140 @@ export interface UpdateNATRequest {
   network_id?: string;
   tags?: string[];
 }
+
+// DNS Types
+export type DNSProviderType = 'technitium' | 'powerdns' | 'bind';
+export type SyncStatus = 'success' | 'failed' | 'partial';
+export type RecordSyncStatus = 'synced' | 'pending' | 'failed';
+
+export interface DNSProvider {
+  id: string;
+  name: string;
+  type: DNSProviderType;
+  endpoint: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DNSProviderFilter {
+  type?: DNSProviderType;
+}
+
+export interface CreateDNSProviderRequest {
+  name: string;
+  type: DNSProviderType;
+  endpoint: string;
+  token: string;
+  description?: string;
+}
+
+export interface UpdateDNSProviderRequest {
+  name?: string;
+  endpoint?: string;
+  token?: string;
+  description?: string;
+}
+
+export interface DNSZone {
+  id: string;
+  name: string;
+  provider_id: string;
+  network_id?: string;
+  auto_sync: boolean;
+  create_ptr: boolean;
+  ptr_zone?: string;
+  ttl: number;
+  description?: string;
+  last_sync_at?: string;
+  last_sync_status?: SyncStatus;
+  last_sync_error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DNSZoneFilter {
+  provider_id?: string;
+  network_id?: string;
+  auto_sync?: boolean;
+}
+
+export interface CreateDNSZoneRequest {
+  name: string;
+  provider_id: string;
+  network_id?: string;
+  auto_sync: boolean;
+  create_ptr: boolean;
+  ptr_zone?: string;
+  ttl: number;
+  description?: string;
+}
+
+export interface UpdateDNSZoneRequest {
+  name?: string;
+  network_id?: string;
+  auto_sync?: boolean;
+  create_ptr?: boolean;
+  ptr_zone?: string;
+  ttl?: number;
+  description?: string;
+}
+
+export interface DNSRecord {
+  id: string;
+  zone_id: string;
+  device_id?: string;
+  name: string;
+  type: string;
+  value: string;
+  ttl: number;
+  sync_status: RecordSyncStatus;
+  last_sync_at?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DNSRecordFilter {
+  zone_id?: string;
+  device_id?: string;
+  type?: string;
+  sync_status?: RecordSyncStatus;
+}
+
+export interface CreateDNSRecordRequest {
+  zone_id: string;
+  device_id?: string;
+  name: string;
+  type: string;
+  value: string;
+  ttl: number;
+}
+
+export interface UpdateDNSRecordRequest {
+  device_id?: string;
+  name?: string;
+  type?: string;
+  value?: string;
+  ttl?: number;
+}
+
+export interface SyncResult {
+  success: boolean;
+  total: number;
+  synced: number;
+  failed: number;
+  error?: string;
+  failed_ids?: string[];
+}
+
+export interface ImportResult {
+  success: boolean;
+  total: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  error?: string;
+  skipped_ids?: string[];
+  failed_ids?: string[];
+}

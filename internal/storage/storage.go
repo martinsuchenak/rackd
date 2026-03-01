@@ -38,6 +38,9 @@ var (
 	ErrDuplicateFieldKey    = errors.New("custom field key already exists")
 	ErrCircuitNotFound      = errors.New("circuit not found")
 	ErrNATNotFound          = errors.New("NAT mapping not found")
+	ErrDNSProviderNotFound  = errors.New("DNS provider not found")
+	ErrDNSZoneNotFound      = errors.New("DNS zone not found")
+	ErrDNSRecordNotFound    = errors.New("DNS record not found")
 )
 
 // DeviceStorage defines device persistence operations
@@ -281,6 +284,38 @@ type NATStorage interface {
 	GetNATMappingsByDatacenter(datacenterID string) ([]model.NATMapping, error)
 }
 
+// DNSStorage defines DNS persistence operations
+type DNSStorage interface {
+	// Providers
+	CreateDNSProvider(ctx context.Context, provider *model.DNSProviderConfig) error
+	GetDNSProvider(id string) (*model.DNSProviderConfig, error)
+	GetDNSProviderByName(name string) (*model.DNSProviderConfig, error)
+	ListDNSProviders(filter *model.DNSProviderFilter) ([]model.DNSProviderConfig, error)
+	UpdateDNSProvider(ctx context.Context, provider *model.DNSProviderConfig) error
+	DeleteDNSProvider(ctx context.Context, id string) error
+
+	// Zones
+	CreateDNSZone(ctx context.Context, zone *model.DNSZone) error
+	GetDNSZone(id string) (*model.DNSZone, error)
+	GetDNSZoneByName(name string) (*model.DNSZone, error)
+	ListDNSZones(filter *model.DNSZoneFilter) ([]model.DNSZone, error)
+	UpdateDNSZone(ctx context.Context, zone *model.DNSZone) error
+	DeleteDNSZone(ctx context.Context, id string) error
+	GetDNSZonesByNetwork(networkID string) ([]model.DNSZone, error)
+	GetDNSZonesByProvider(providerID string) ([]model.DNSZone, error)
+
+	// Records
+	CreateDNSRecord(ctx context.Context, record *model.DNSRecord) error
+	GetDNSRecord(id string) (*model.DNSRecord, error)
+	ListDNSRecords(filter *model.DNSRecordFilter) ([]model.DNSRecord, error)
+	UpdateDNSRecord(ctx context.Context, record *model.DNSRecord) error
+	DeleteDNSRecord(ctx context.Context, id string) error
+	DeleteDNSRecordsByZone(ctx context.Context, zoneID string) error
+	DeleteDNSRecordsByDevice(ctx context.Context, deviceID string) error
+	GetDNSRecordsByDevice(deviceID string) ([]model.DNSRecord, error)
+	GetDNSRecordByName(zoneID, name string, recordType string) (*model.DNSRecord, error)
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -307,6 +342,7 @@ type ExtendedStorage interface {
 	CustomFieldStorage
 	CircuitStorage
 	NATStorage
+	DNSStorage
 	Close() error
 	DB() *sql.DB
 }

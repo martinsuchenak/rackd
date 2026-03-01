@@ -31,6 +31,7 @@ import { customFieldComponent } from './components/custom-fields';
 import { dashboardComponent } from './components/dashboard';
 import { circuitComponent } from './components/circuits';
 import { natComponent } from './components/nat';
+import { dnsProvidersComponent, dnsZonesComponent, dnsRecordsComponent } from './components/dns';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -49,6 +50,9 @@ function updatePageTitle(route: string) {
     '/conflicts': 'IP Conflicts',
     '/circuits': 'Circuits',
     '/nat': 'NAT Mappings',
+    '/dns/providers': 'DNS Providers',
+    '/dns/zones': 'DNS Zones',
+    '/dns/records': 'DNS Records',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -412,6 +416,9 @@ async function init(): Promise<void> {
   Alpine.data('dashboardComponent', dashboardComponent);
   Alpine.data('circuitComponent', circuitComponent);
   Alpine.data('natComponent', natComponent);
+  Alpine.data('dnsProvidersComponent', dnsProvidersComponent);
+  Alpine.data('dnsZonesComponent', dnsZonesComponent);
+  Alpine.data('dnsRecordsComponent', dnsRecordsComponent);
 
   // Register deep scan type
   window.rackdRegisterScanType({

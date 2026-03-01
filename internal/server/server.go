@@ -42,6 +42,7 @@ func RunWithAdvancedFeatures(
 	credStore credentials.Storage,
 	profileStore storage.ProfileStorage,
 	scheduledStore storage.ScheduledScanStorage,
+	encryptionKey []byte,
 	features ...Feature,
 ) error {
 	mux := http.NewServeMux()
@@ -72,6 +73,24 @@ func RunWithAdvancedFeatures(
 	services.SetCredentialsStorage(credStore)
 	services.SetProfileStorage(profileStore)
 	services.SetScheduledScanStorage(scheduledStore)
+
+	// DNS service setup (requires encryption for provider credentials)
+	if encryptionKey != nil {
+		encryptor, err := credentials.NewEncryptor(encryptionKey)
+		if err != nil {
+			return fmt.Errorf("failed to create encryptor for DNS service: %w", err)
+		}
+		services.SetDNSService(store, encryptor)
+
+		// Initialize and start DNS sync worker if interval is configured
+		if cfg.DNSSyncInterval > 0 {
+			dnsWorker := worker.NewDNSWorker(services.DNS, cfg)
+			dnsWorker.Start()
+			defer dnsWorker.Stop()
+		} else {
+			log.Info("DNS sync disabled (interval set to 0)")
+		}
+	}
 
 	// OAuth setup (conditional) - must be before RegisterRoutes
 	if cfg.MCPOAuthEnabled {
@@ -106,11 +125,17 @@ func RunWithAdvancedFeatures(
 	// UI config with nav items for new features
 	uiBuilder := api.NewUIConfigBuilder()
 	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15, RequiredPermissions: []api.PermissionCheck{{Resource: "users", Action: "list"}}})
+	uiBuilder.AddNavItem(api.NavItem{Label: "Roles", Path: "/roles", Icon: "shield", Order: 16, RequiredPermissions: []api.PermissionCheck{{Resource: "roles", Action: "list"}}})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Credentials", Path: "/credentials", Icon: "key", Order: 50})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scan Profiles", Path: "/scan-profiles", Icon: "cog", Order: 51})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Scheduled Scans", Path: "/scheduled-scans", Icon: "clock", Order: 52})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
+
+	// Add DNS nav item if DNS service is available
+	if services.DNS != nil {
+		uiBuilder.AddNavItem(api.NavItem{Label: "DNS", Path: "/dns/providers", Icon: "globe", Order: 57})
+	}
 
 	// Register features
 	for _, f := range features {

@@ -1,0 +1,192 @@
+<!-- DNS Records Management Page -->
+<template x-if="route.startsWith('/dns/records/')">
+  <div x-data="dnsRecordsComponent(zoneId)" x-init="await init(zoneId)" x-modelable="zoneId" @zone-id-change="zoneId = $event.detail">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">DNS Records</h1>
+        <p x-show="zone" class="text-sm text-gray-600 dark:text-gray-400 mt-1">Zone: <span class="font-medium" x-text="zone?.name"></span></p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/dns/zones" class="px-4 py-2 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+          Back to Zones
+        </a>
+      </div>
+    </div>
+
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+
+    <!-- Filters -->
+    <div class="mb-4 flex flex-wrap gap-4">
+      <div>
+        <label for="filter-type" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Record Type</label>
+        <select id="filter-type" x-model="filterType" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <option value="">All Types</option>
+          <option value="A">A</option>
+          <option value="AAAA">AAAA</option>
+          <option value="CNAME">CNAME</option>
+          <option value="MX">MX</option>
+          <option value="TXT">TXT</option>
+          <option value="NS">NS</option>
+          <option value="PTR">PTR</option>
+          <option value="SRV">SRV</option>
+        </select>
+      </div>
+      <div>
+        <label for="filter-sync" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Sync Status</label>
+        <select id="filter-sync" x-model="filterSyncStatus" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <option value="">All Statuses</option>
+          <option value="synced">Synced</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <caption class="sr-only">List of DNS records with name, type, value, TTL, and sync status</caption>
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Type</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Value</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">TTL</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Sync Status</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Last Sync</th>
+            <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading DNS records...</span></td></tr>
+          <tr x-show="!loading && (!records || records.length === 0)"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No DNS records found for this zone. Records are automatically created from devices in the associated network.</td></tr>
+          <template x-for="record in records" :key="record.id">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-6 py-4">
+                <div class="text-sm font-mono text-gray-900 dark:text-gray-100" x-text="record.name"></div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-200" x-text="record.type"></span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-xs" x-text="record.value" :title="record.value"></div>
+                <p x-show="record.error_message" class="text-xs text-red-600 dark:text-red-400 mt-1" x-text="record.error_message"></p>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="record.ttl + 's'"></div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                      :class="{
+                        'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200': record.sync_status === 'synced',
+                        'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200': record.sync_status === 'pending',
+                        'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200': record.sync_status === 'failed'
+                      }"
+                      x-text="formatSyncStatus(record.sync_status)"></span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(record.last_sync_at)"></div>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="inline-flex gap-1">
+                  <button x-show="$store.permissions.canUpdate('dns')" @click="openEditModal(record)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit record ' + record.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('dns')" @click="openDeleteModal(record)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete record ' + record.name">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Record Modal -->
+    <template x-if="showEditModal && selectedRecord">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="true">
+          <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit DNS Record</h2>
+          <form @submit.prevent="saveRecord()">
+            <div class="space-y-4">
+              <div>
+                <label :for="'edit-name-' + selectedRecord.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <input :id="'edit-name-' + selectedRecord.id" type="text" x-model="formData.name" required aria-required="true"
+                       :aria-invalid="!!validationErrors.name"
+                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                       :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label :for="'edit-type-' + selectedRecord.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                  <select :id="'edit-type-' + selectedRecord.id" x-model="formData.type" required aria-required="true"
+                          :aria-invalid="!!validationErrors.type"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.type ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <option value="A">A</option>
+                    <option value="AAAA">AAAA</option>
+                    <option value="CNAME">CNAME</option>
+                    <option value="MX">MX</option>
+                    <option value="TXT">TXT</option>
+                    <option value="NS">NS</option>
+                    <option value="PTR">PTR</option>
+                    <option value="SRV">SRV</option>
+                  </select>
+                  <p x-show="validationErrors.type" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.type"></p>
+                </div>
+                <div>
+                  <label :for="'edit-ttl-' + selectedRecord.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">TTL (seconds) <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                  <input :id="'edit-ttl-' + selectedRecord.id" type="number" x-model.number="formData.ttl" min="0" required aria-required="true"
+                         :aria-invalid="!!validationErrors.ttl"
+                         class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                         :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                  <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
+                </div>
+              </div>
+              <div>
+                <label :for="'edit-value-' + selectedRecord.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Value <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <textarea :id="'edit-value-' + selectedRecord.id" x-model="formData.value" rows="3" required aria-required="true"
+                          :aria-invalid="!!validationErrors.value"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 font-mono text-sm"
+                          :class="validationErrors.value ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'"></textarea>
+                <p x-show="validationErrors.value" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.value"></p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Enter the record value. For multiple values (like MX records), enter each on a new line.</p>
+              </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+              <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                <span x-show="!saving">Save Changes</span>
+                <span x-show="saving">Saving...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </template>
+
+    <!-- Delete Confirmation Modal -->
+    <template x-if="showDeleteModal && selectedRecord">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc" @keydown.escape.window="closeDeleteModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeDeleteModal()" aria-hidden="true"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
+          <button @click="closeDeleteModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete DNS Record</h2>
+          <p id="delete-confirm-desc" class="text-gray-800 dark:text-gray-200 mb-6">
+            Are you sure you want to delete the DNS record <strong x-text="selectedRecord?.name"></strong> (<span x-text="selectedRecord?.type"></span>)? This action cannot be undone.
+          </p>
+          <div class="flex justify-end gap-3">
+            <button @click="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button @click="doDeleteRecord()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <span x-show="!deleting">Delete</span>
+              <span x-show="deleting">Deleting...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

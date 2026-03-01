@@ -192,6 +192,12 @@ var migrations = []*Migration{
 		Up:      migrateAddNATMappingsUp,
 		Down:    migrateAddNATMappingsDown,
 	},
+	{
+		Version: "20260301000000",
+		Name:    "add_dns_tables",
+		Up:      migrateAddDNSTablesUp,
+		Down:    migrateAddDNSTablesDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2333,6 +2339,201 @@ func migrateAddNATMappingsDown(ctx context.Context, tx *sql.Tx) error {
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
 			return fmt.Errorf("failed to delete nat permission %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddDNSTablesUp creates the DNS provider configs, zones, and records tables
+func migrateAddDNSTablesUp(ctx context.Context, tx *sql.Tx) error {
+	// Create dns_provider_configs table
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS dns_provider_configs (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			type TEXT NOT NULL,
+			endpoint TEXT NOT NULL,
+			token TEXT NOT NULL,
+			description TEXT,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create dns_provider_configs table: %w", err)
+	}
+
+	// Create dns_zones table
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS dns_zones (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			provider_id TEXT NOT NULL,
+			network_id TEXT,
+			auto_sync INTEGER NOT NULL DEFAULT 0,
+			create_ptr INTEGER NOT NULL DEFAULT 1,
+			ptr_zone TEXT,
+			ttl INTEGER NOT NULL DEFAULT 3600,
+			description TEXT,
+			last_sync_at DATETIME,
+			last_sync_status TEXT,
+			last_sync_error TEXT,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (provider_id) REFERENCES dns_provider_configs(id) ON DELETE CASCADE,
+			FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE SET NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create dns_zones table: %w", err)
+	}
+
+	// Create dns_records table
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS dns_records (
+			id TEXT PRIMARY KEY,
+			zone_id TEXT NOT NULL,
+			device_id TEXT,
+			name TEXT NOT NULL,
+			type TEXT NOT NULL,
+			value TEXT NOT NULL,
+			ttl INTEGER NOT NULL,
+			sync_status TEXT NOT NULL DEFAULT 'pending',
+			last_sync_at DATETIME,
+			error_message TEXT,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (zone_id) REFERENCES dns_zones(id) ON DELETE CASCADE,
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL,
+			UNIQUE(zone_id, name, type)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create dns_records table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		"CREATE INDEX IF NOT EXISTS idx_dns_zones_provider ON dns_zones(provider_id)",
+		"CREATE INDEX IF NOT EXISTS idx_dns_zones_network ON dns_zones(network_id)",
+		"CREATE INDEX IF NOT EXISTS idx_dns_records_zone ON dns_records(zone_id)",
+		"CREATE INDEX IF NOT EXISTS idx_dns_records_device ON dns_records(device_id)",
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(ctx, idx); err != nil {
+			return fmt.Errorf("failed to create DNS index: %w", err)
+		}
+	}
+
+	// Add DNS permissions
+	now := time.Now().UTC()
+	dnsPermissions := [][3]string{
+		{"dns-provider:list", "dns-provider", "list"},
+		{"dns-provider:read", "dns-provider", "read"},
+		{"dns-provider:create", "dns-provider", "create"},
+		{"dns-provider:update", "dns-provider", "update"},
+		{"dns-provider:delete", "dns-provider", "delete"},
+		{"dns-zone:list", "dns-zone", "list"},
+		{"dns-zone:read", "dns-zone", "read"},
+		{"dns-zone:create", "dns-zone", "create"},
+		{"dns-zone:update", "dns-zone", "update"},
+		{"dns-zone:delete", "dns-zone", "delete"},
+		{"dns-zone:sync", "dns-zone", "sync"},
+		{"dns-zone:import", "dns-zone", "import"},
+		{"dns:list", "dns", "list"},
+		{"dns:read", "dns", "read"},
+		{"dns:create", "dns", "create"},
+		{"dns:update", "dns", "update"},
+		{"dns:delete", "dns", "delete"},
+		{"dns:sync", "dns", "sync"},
+		{"dns:import", "dns", "import"},
+	}
+	for _, perm := range dnsPermissions {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now)
+		if err != nil {
+			return fmt.Errorf("failed to add permission %s: %w", perm[0], err)
+		}
+	}
+
+	// Grant to admin role - all permissions
+	adminPerms := []string{
+		"dns-provider:list", "dns-provider:read", "dns-provider:create", "dns-provider:update", "dns-provider:delete",
+		"dns-zone:list", "dns-zone:read", "dns-zone:create", "dns-zone:update", "dns-zone:delete", "dns-zone:sync", "dns-zone:import",
+		"dns:list", "dns:read", "dns:create", "dns:update", "dns:delete", "dns:sync", "dns:import",
+	}
+	for _, permName := range adminPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'admin' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign admin DNS permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to operator role - read + sync
+	operatorPerms := []string{
+		"dns-provider:list", "dns-provider:read",
+		"dns-zone:list", "dns-zone:read", "dns-zone:sync",
+		"dns:list", "dns:read", "dns:sync",
+	}
+	for _, permName := range operatorPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'operator' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign operator DNS permission %s: %w", permName, err)
+		}
+	}
+
+	// Grant to viewer role - read only
+	viewerPerms := []string{
+		"dns-provider:list", "dns-provider:read",
+		"dns-zone:list", "dns-zone:read",
+		"dns:list", "dns:read",
+	}
+	for _, permName := range viewerPerms {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+			SELECT r.id, p.id, ?
+			FROM roles r, permissions p
+			WHERE r.name = 'viewer' AND p.name = ?
+		`, now, permName)
+		if err != nil {
+			return fmt.Errorf("failed to assign viewer DNS permission %s: %w", permName, err)
+		}
+	}
+
+	return nil
+}
+
+// migrateAddDNSTablesDown drops the DNS tables
+func migrateAddDNSTablesDown(ctx context.Context, tx *sql.Tx) error {
+	// Drop tables in correct order (child tables first)
+	tables := []string{"dns_records", "dns_zones", "dns_provider_configs"}
+	for _, table := range tables {
+		if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
+			return fmt.Errorf("failed to drop %s table: %w", table, err)
+		}
+	}
+
+	// Remove DNS permissions
+	permNames := []string{
+		"dns-provider:list", "dns-provider:read", "dns-provider:create", "dns-provider:update", "dns-provider:delete",
+		"dns-zone:list", "dns-zone:read", "dns-zone:create", "dns-zone:update", "dns-zone:delete",
+		"dns:sync", "dns:import",
+	}
+	for _, name := range permNames {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
+			return fmt.Errorf("failed to delete DNS permission %s: %w", name, err)
 		}
 	}
 	return nil

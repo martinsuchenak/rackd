@@ -289,6 +289,31 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/nat/{id}", wrapAuth(h.updateNATMapping))
 	mux.HandleFunc("DELETE /api/nat/{id}", wrapAuth(h.deleteNATMapping))
 
+	// DNS routes (RBAC enforced in service layer)
+	if h.svc != nil && h.svc.DNS != nil {
+		// Provider routes
+		mux.HandleFunc("GET /api/dns/providers", wrapAuth(h.listDNSProviders))
+		mux.HandleFunc("POST /api/dns/providers", wrapAuth(h.createDNSProvider))
+		mux.HandleFunc("GET /api/dns/providers/{id}", wrapAuth(h.getDNSProvider))
+		mux.HandleFunc("PUT /api/dns/providers/{id}", wrapAuth(h.updateDNSProvider))
+		mux.HandleFunc("DELETE /api/dns/providers/{id}", wrapAuth(h.deleteDNSProvider))
+		mux.HandleFunc("POST /api/dns/providers/{id}/test", wrapAuth(h.testDNSProvider))
+		mux.HandleFunc("GET /api/dns/providers/{id}/zones", wrapAuth(h.listDNSProviderZones))
+		// Zone routes
+		mux.HandleFunc("GET /api/dns/zones", wrapAuth(h.listDNSZones))
+		mux.HandleFunc("POST /api/dns/zones", wrapAuth(h.createDNSZone))
+		mux.HandleFunc("GET /api/dns/zones/{id}", wrapAuth(h.getDNSZone))
+		mux.HandleFunc("PUT /api/dns/zones/{id}", wrapAuth(h.updateDNSZone))
+		mux.HandleFunc("DELETE /api/dns/zones/{id}", wrapAuth(h.deleteDNSZone))
+		mux.HandleFunc("POST /api/dns/zones/{id}/sync", wrapAuth(h.syncDNSZone))
+		mux.HandleFunc("POST /api/dns/zones/{id}/import", wrapAuth(h.importDNSZone))
+		mux.HandleFunc("GET /api/dns/zones/{id}/records", wrapAuth(h.listDNSZoneRecords))
+		// Record routes
+		mux.HandleFunc("GET /api/dns/records/{id}", wrapAuth(h.getDNSRecord))
+		mux.HandleFunc("PUT /api/dns/records/{id}", wrapAuth(h.updateDNSRecord))
+		mux.HandleFunc("DELETE /api/dns/records/{id}", wrapAuth(h.deleteDNSRecord))
+	}
+
 	// Health check routes (no auth required)
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)

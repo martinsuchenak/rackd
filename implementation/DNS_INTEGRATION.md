@@ -1,5 +1,9 @@
 # DNS Integration - Detailed Implementation Plan
 
+> **Status**: ✅ **COMPLETED** (2026-03-01)
+>
+> All phases implemented including periodic sync worker and auto-creation on device changes.
+
 ## Overview
 
 This document describes the detailed implementation plan for DNS integration in rackd. The feature allows automatic management of DNS records for devices through external DNS providers, with Technitium DNS as the first supported provider.

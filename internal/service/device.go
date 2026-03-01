@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -11,6 +13,7 @@ import (
 type DeviceService struct {
 	store           storage.ExtendedStorage
 	conflictService *ConflictService
+	dns             *DNSService
 }
 
 func NewDeviceService(store storage.ExtendedStorage) *DeviceService {
@@ -19,6 +22,93 @@ func NewDeviceService(store storage.ExtendedStorage) *DeviceService {
 
 func (s *DeviceService) setConflictService(cs *ConflictService) {
 	s.conflictService = cs
+}
+
+func (s *DeviceService) setDNSService(dns *DNSService) {
+	s.dns = dns
+}
+
+// boolPtr returns a pointer to the given bool value
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+// syncDeviceDNS creates/updates DNS records for a device when it has a hostname
+func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device) error {
+	if s.dns == nil {
+		return nil
+	}
+	if device.Hostname == "" {
+		return nil
+	}
+
+	// Find zones for this device's networks with auto_sync enabled
+	zones, err := s.store.ListDNSZones(&model.DNSZoneFilter{
+		AutoSync: boolPtr(true),
+	})
+	if err != nil {
+		return err
+	}
+
+	// For each zone linked to device's network
+	for _, zone := range zones {
+		if zone.NetworkID != nil && deviceHasNetworkID(device, *zone.NetworkID) {
+			// Create/update A record for each IP in this network
+			for _, addr := range device.Addresses {
+				if addr.NetworkID == *zone.NetworkID && addr.IP != "" {
+					req := &model.CreateDNSRecordRequest{
+						ZoneID:   zone.ID,
+						DeviceID: &device.ID,
+						Name:     device.Hostname,
+						Type:     "A",
+						Value:    addr.IP,
+						TTL:      zone.TTL,
+					}
+					if _, err := s.dns.CreateRecord(ctx, req); err != nil {
+						// Log but don't fail - individual record failures shouldn't block
+						continue
+					}
+
+					// Create PTR record if enabled
+					if zone.CreatePTR && zone.PTRZone != nil && *zone.PTRZone != "" {
+						ptrReq := &model.CreateDNSRecordRequest{
+							ZoneID:   zone.ID,
+							DeviceID: &device.ID,
+							Name:     extractPTRName(addr.IP),
+							Type:     "PTR",
+							Value:    device.Hostname + "." + zone.Name,
+							TTL:      zone.TTL,
+						}
+						if _, err := s.dns.CreateRecord(ctx, ptrReq); err != nil {
+							// Log but don't fail - individual record failures shouldn't block
+							continue
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// deviceHasNetworkID checks if a device has an address in the specified network
+func deviceHasNetworkID(device *model.Device, networkID string) bool {
+	for _, addr := range device.Addresses {
+		if addr.NetworkID == networkID {
+			return true
+		}
+	}
+	return false
+}
+
+// extractPTRName extracts a PTR record name from an IP address
+func extractPTRName(ipStr string) string {
+	parts := strings.Split(ipStr, ".")
+	if len(parts) != 4 {
+		return ""
+	}
+	// Reverse the IP for in-addr.arpa format
+	return fmt.Sprintf("%s.%s.%s.in-addr.arpa", parts[3], parts[2], parts[1])
 }
 
 // checkForIPConflicts checks if any IP addresses are duplicates and creates conflict records
@@ -132,6 +222,11 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	// Check for IP conflicts after creation
 	s.checkForIPConflicts(ctx, device)
 
+	// Sync DNS records if device has a hostname
+	if err := s.syncDeviceDNS(ctx, device); err != nil {
+		// Log but don't fail - DNS sync failures shouldn't block device creation
+	}
+
 	return nil
 }
 
@@ -178,6 +273,11 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 
 	// Check for IP conflicts after update
 	s.checkForIPConflicts(ctx, device)
+
+	// Sync DNS records if device has a hostname
+	if err := s.syncDeviceDNS(ctx, device); err != nil {
+		// Log but don't fail - DNS sync failures shouldn't block device update
+	}
 
 	return nil
 }

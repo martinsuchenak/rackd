@@ -61,6 +61,19 @@ import type {
   NATFilter,
   CreateNATRequest,
   UpdateNATRequest,
+  DNSProvider,
+  DNSProviderFilter,
+  CreateDNSProviderRequest,
+  UpdateDNSProviderRequest,
+  DNSZone,
+  DNSZoneFilter,
+  CreateDNSZoneRequest,
+  UpdateDNSZoneRequest,
+  DNSRecord,
+  DNSRecordFilter,
+  UpdateDNSRecordRequest,
+  SyncResult,
+  ImportResult,
 } from './types';
 
 export type {
@@ -701,6 +714,91 @@ export class RackdAPI {
 
   async deleteNATMapping(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/nat/${id}`);
+  }
+
+  // DNS Providers
+  async listDNSProviders(filter?: DNSProviderFilter): Promise<DNSProvider[]> {
+    const params = new URLSearchParams();
+    if (filter?.type) params.set('type', filter.type);
+    const query = params.toString();
+    return this.request<DNSProvider[]>('GET', `/api/dns/providers${query ? `?${query}` : ''}`);
+  }
+
+  async getDNSProvider(id: string): Promise<DNSProvider> {
+    return this.request<DNSProvider>('GET', `/api/dns/providers/${id}`);
+  }
+
+  async createDNSProvider(req: CreateDNSProviderRequest): Promise<DNSProvider> {
+    return this.request<DNSProvider>('POST', '/api/dns/providers', req);
+  }
+
+  async updateDNSProvider(id: string, req: UpdateDNSProviderRequest): Promise<DNSProvider> {
+    return this.request<DNSProvider>('PUT', `/api/dns/providers/${id}`, req);
+  }
+
+  async deleteDNSProvider(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/dns/providers/${id}`);
+  }
+
+  async testDNSProvider(id: string): Promise<void> {
+    return this.request<void>('POST', `/api/dns/providers/${id}/test`);
+  }
+
+  // DNS Zones
+  async listDNSZones(filter?: DNSZoneFilter): Promise<DNSZone[]> {
+    const params = new URLSearchParams();
+    if (filter?.provider_id) params.set('provider_id', filter.provider_id);
+    if (filter?.network_id) params.set('network_id', filter.network_id);
+    if (filter?.auto_sync !== undefined) params.set('auto_sync', filter.auto_sync.toString());
+    const query = params.toString();
+    return this.request<DNSZone[]>('GET', `/api/dns/zones${query ? `?${query}` : ''}`);
+  }
+
+  async getDNSZone(id: string): Promise<DNSZone> {
+    return this.request<DNSZone>('GET', `/api/dns/zones/${id}`);
+  }
+
+  async createDNSZone(req: CreateDNSZoneRequest): Promise<DNSZone> {
+    return this.request<DNSZone>('POST', '/api/dns/zones', req);
+  }
+
+  async updateDNSZone(id: string, req: UpdateDNSZoneRequest): Promise<DNSZone> {
+    return this.request<DNSZone>('PUT', `/api/dns/zones/${id}`, req);
+  }
+
+  async deleteDNSZone(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/dns/zones/${id}`);
+  }
+
+  async syncDNSZone(id: string): Promise<SyncResult> {
+    return this.request<SyncResult>('POST', `/api/dns/zones/${id}/sync`);
+  }
+
+  async importDNSZone(id: string): Promise<ImportResult> {
+    return this.request<ImportResult>('POST', `/api/dns/zones/${id}/import`);
+  }
+
+  // DNS Records
+  async listDNSRecords(filter?: DNSRecordFilter): Promise<DNSRecord[]> {
+    const params = new URLSearchParams();
+    if (filter?.zone_id) params.set('zone_id', filter.zone_id);
+    if (filter?.device_id) params.set('device_id', filter.device_id);
+    if (filter?.type) params.set('type', filter.type);
+    if (filter?.sync_status) params.set('sync_status', filter.sync_status);
+    const query = params.toString();
+    return this.request<DNSRecord[]>('GET', `/api/dns/records${query ? `?${query}` : ''}`);
+  }
+
+  async getDNSRecord(id: string): Promise<DNSRecord> {
+    return this.request<DNSRecord>('GET', `/api/dns/records/${id}`);
+  }
+
+  async updateDNSRecord(id: string, req: UpdateDNSRecordRequest): Promise<DNSRecord> {
+    return this.request<DNSRecord>('PUT', `/api/dns/records/${id}`, req);
+  }
+
+  async deleteDNSRecord(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/dns/records/${id}`);
   }
 }
 

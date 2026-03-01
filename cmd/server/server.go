@@ -55,13 +55,13 @@ func Command() *cli.Command {
 				return err
 			}
 
-			// Get encryption key for credentials (optional)
+			// Get encryption key for credentials (optional in dev-mode)
 			devMode := cmd.GetBool("dev-mode")
 			encryptionKey, hasKey := getEncryptionKey(devMode)
 
 			// If no encryption key, run basic server without advanced features
 			if !hasKey {
-				log.Info("Running without credentials/scan profiles (set ENCRYPTION_KEY to enable)")
+				log.Info("Running without credentials/scan profiles/DNS (set ENCRYPTION_KEY or use --dev-mode to enable)")
 				return server.Run(cfg, store)
 			}
 
@@ -83,7 +83,7 @@ func Command() *cli.Command {
 				return fmt.Errorf("failed to initialize scheduled scans storage: %w", err)
 			}
 
-			return server.RunWithAdvancedFeatures(cfg, store, credStore, profileStore, scheduledStore)
+			return server.RunWithAdvancedFeatures(cfg, store, credStore, profileStore, scheduledStore, encryptionKey)
 		},
 	}
 }
