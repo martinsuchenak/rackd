@@ -438,7 +438,7 @@ export interface Webhook {
   id: string;
   name: string;
   url: string;
-  secret?: string;
+  has_secret: boolean;
   events: EventType[];
   active: boolean;
   description?: string;

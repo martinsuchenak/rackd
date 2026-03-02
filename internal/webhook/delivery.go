@@ -81,7 +81,7 @@ func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, e
 
 	// Attempt delivery
 	startTime := time.Now()
-	err = s.sendHTTPRequest(ctx, webhook, payload)
+	err = s.sendHTTPRequest(ctx, webhook, event.Type, payload)
 	duration := time.Since(startTime)
 
 	delivery.Duration = duration.Milliseconds()
@@ -109,7 +109,7 @@ func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, e
 }
 
 // sendHTTPRequest sends the webhook payload via HTTP
-func (s *DeliveryService) sendHTTPRequest(ctx context.Context, webhook *model.Webhook, payload string) error {
+func (s *DeliveryService) sendHTTPRequest(ctx context.Context, webhook *model.Webhook, eventType model.EventType, payload string) error {
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewBufferString(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -117,7 +117,7 @@ func (s *DeliveryService) sendHTTPRequest(ctx context.Context, webhook *model.We
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Rackd-Webhook/1.0")
-	req.Header.Set("X-Event-Type", string(webhook.Events[0])) // Primary event type
+	req.Header.Set("X-Event-Type", string(eventType))
 	req.Header.Set("X-Delivery-ID", uuid.New().String())
 
 	// Add HMAC signature if secret is configured
@@ -188,7 +188,7 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 
 		// Attempt delivery
 		startTime := time.Now()
-		err = s.sendHTTPRequest(ctx, webhook, delivery.Payload)
+		err = s.sendHTTPRequest(ctx, webhook, delivery.EventType, delivery.Payload)
 		duration := time.Since(startTime)
 
 		delivery.Duration = duration.Milliseconds()

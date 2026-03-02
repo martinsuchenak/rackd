@@ -100,9 +100,7 @@ func (h *Handler) deleteCustomFieldDefinition(w http.ResponseWriter, r *http.Req
 		h.handleServiceError(w, err)
 		return
 	}
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"message": "Custom field definition deleted successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // getCustomFieldTypes returns all available custom field types

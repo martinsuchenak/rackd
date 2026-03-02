@@ -7,6 +7,20 @@ import (
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
+// sanitizeWebhook strips the secret from a webhook before returning it in API responses.
+// The Secret field uses json:"-" so it won't serialize, but we populate HasSecret for the UI.
+func sanitizeWebhook(w *model.Webhook) {
+	w.HasSecret = w.Secret != ""
+	w.Secret = ""
+}
+
+// sanitizeWebhooks strips secrets from a slice of webhooks
+func sanitizeWebhooks(webhooks []model.Webhook) {
+	for i := range webhooks {
+		sanitizeWebhook(&webhooks[i])
+	}
+}
+
 // listWebhooks returns all webhooks
 func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 	filter := &model.WebhookFilter{}
@@ -24,6 +38,7 @@ func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 	if webhooks == nil {
 		webhooks = []model.Webhook{}
 	}
+	sanitizeWebhooks(webhooks)
 	h.writeJSON(w, http.StatusOK, webhooks)
 }
 
@@ -36,6 +51,7 @@ func (h *Handler) getWebhook(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	sanitizeWebhook(webhook)
 	h.writeJSON(w, http.StatusOK, webhook)
 }
 
@@ -52,6 +68,7 @@ func (h *Handler) createWebhook(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	sanitizeWebhook(webhook)
 	h.writeJSON(w, http.StatusCreated, webhook)
 }
 
@@ -70,6 +87,7 @@ func (h *Handler) updateWebhook(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	sanitizeWebhook(webhook)
 	h.writeJSON(w, http.StatusOK, webhook)
 }
 
@@ -81,9 +99,7 @@ func (h *Handler) deleteWebhook(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"message": "Webhook deleted successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // pingWebhook sends a test event to a webhook

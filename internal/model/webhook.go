@@ -67,7 +67,8 @@ type Webhook struct {
 	ID          string      `json:"id"`
 	Name        string      `json:"name"`
 	URL         string      `json:"url"`
-	Secret      string      `json:"secret,omitempty"` // Used for HMAC signature
+	Secret      string      `json:"-"` // Used for HMAC signature, never exposed in API responses
+	HasSecret   bool        `json:"has_secret"`       // Indicates whether a secret is configured
 	Events      []EventType `json:"events"`
 	Active      bool        `json:"active"`
 	Description string      `json:"description,omitempty"`

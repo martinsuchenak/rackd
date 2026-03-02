@@ -93,10 +93,12 @@ func (h *Handler) getConflictSummary(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	dupCount, _ := summary["duplicate_ip"]
+	overlapCount, _ := summary["overlapping_subnet"]
 	h.writeJSON(w, http.StatusOK, map[string]any{
-		"duplicate_ips":      summary["duplicate_ip"],
-		"overlapping_subnets": summary["overlapping_subnet"],
-		"total_active":       0, // Calculated from summary
+		"duplicate_ips":       dupCount,
+		"overlapping_subnets": overlapCount,
+		"total_active":        dupCount + overlapCount,
 	})
 }
 
@@ -107,9 +109,7 @@ func (h *Handler) deleteConflict(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"message": "Conflict deleted successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) getDeviceConflicts(w http.ResponseWriter, r *http.Request) {

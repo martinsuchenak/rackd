@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -54,8 +55,14 @@ func (s *NATService) Create(ctx context.Context, req *model.CreateNATRequest) (*
 	if req.ExternalIP == "" {
 		return nil, ValidationErrors{{Field: "external_ip", Message: "External IP is required"}}
 	}
+	if net.ParseIP(req.ExternalIP) == nil {
+		return nil, ValidationErrors{{Field: "external_ip", Message: "Invalid IP address"}}
+	}
 	if req.InternalIP == "" {
 		return nil, ValidationErrors{{Field: "internal_ip", Message: "Internal IP is required"}}
+	}
+	if net.ParseIP(req.InternalIP) == nil {
+		return nil, ValidationErrors{{Field: "internal_ip", Message: "Invalid IP address"}}
 	}
 	if req.ExternalPort < 0 || req.ExternalPort > 65535 {
 		return nil, ValidationErrors{{Field: "external_port", Message: "External port must be between 0 and 65535"}}
@@ -118,6 +125,9 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 		mapping.Name = *req.Name
 	}
 	if req.ExternalIP != nil {
+		if net.ParseIP(*req.ExternalIP) == nil {
+			return nil, ValidationErrors{{Field: "external_ip", Message: "Invalid IP address"}}
+		}
 		mapping.ExternalIP = *req.ExternalIP
 	}
 	if req.ExternalPort != nil {
@@ -127,6 +137,9 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 		mapping.ExternalPort = *req.ExternalPort
 	}
 	if req.InternalIP != nil {
+		if net.ParseIP(*req.InternalIP) == nil {
+			return nil, ValidationErrors{{Field: "internal_ip", Message: "Invalid IP address"}}
+		}
 		mapping.InternalIP = *req.InternalIP
 	}
 	if req.InternalPort != nil {

@@ -81,9 +81,7 @@ func (h *Handler) deleteReservation(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
-	h.writeJSON(w, http.StatusOK, map[string]any{
-		"message": "Reservation deleted successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) releaseReservation(w http.ResponseWriter, r *http.Request) {
