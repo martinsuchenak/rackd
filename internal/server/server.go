@@ -132,9 +132,10 @@ func RunWithAdvancedFeatures(
 	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
 	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
 
-	// Add DNS nav item if DNS service is available
+	// Add DNS nav items if DNS service is available
 	if services.DNS != nil {
-		uiBuilder.AddNavItem(api.NavItem{Label: "DNS", Path: "/dns/providers", Icon: "globe", Order: 57})
+		uiBuilder.AddNavItem(api.NavItem{Label: "DNS Providers", Path: "/dns/providers", Icon: "server", Order: 57})
+		uiBuilder.AddNavItem(api.NavItem{Label: "DNS Zones", Path: "/dns/zones", Icon: "globe", Order: 58})
 	}
 
 	// Register features

@@ -780,8 +780,15 @@ export class RackdAPI {
 
   // DNS Records
   async listDNSRecords(filter?: DNSRecordFilter): Promise<DNSRecord[]> {
+    if (filter?.zone_id) {
+      // Use zone-specific endpoint when zone_id is provided
+      const params = new URLSearchParams();
+      if (filter?.type) params.set('type', filter.type);
+      if (filter?.sync_status) params.set('sync_status', filter.sync_status);
+      const query = params.toString();
+      return this.request<DNSRecord[]>('GET', `/api/dns/zones/${filter.zone_id}/records${query ? `?${query}` : ''}`);
+    }
     const params = new URLSearchParams();
-    if (filter?.zone_id) params.set('zone_id', filter.zone_id);
     if (filter?.device_id) params.set('device_id', filter.device_id);
     if (filter?.type) params.set('type', filter.type);
     if (filter?.sync_status) params.set('sync_status', filter.sync_status);

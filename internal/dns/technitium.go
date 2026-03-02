@@ -53,9 +53,18 @@ type recordsGetResponse struct {
 	Records []struct {
 		Name     string `json:"name"`
 		Type     string `json:"type"`
-		Data     string `json:"data"`
 		TTL      uint32 `json:"ttl"`
-		Priority uint16 `json:"priority,omitempty"`
+		Disabled bool   `json:"disabled"`
+		// Technitium nests record data in rData object
+		RData struct {
+			IPAddress         string `json:"ipAddress,omitempty"`  // A/AAAA records
+			CNAME             string `json:"cname,omitempty"`      // CNAME records
+			NameServer        string `json:"nameServer,omitempty"` // NS records
+			Exchange          string `json:"exchange,omitempty"`   // MX records
+			Text              string `json:"text,omitempty"`       // TXT records
+			PtrName           string `json:"ptrName,omitempty"`    // PTR records
+			PrimaryNameServer string `json:"primaryNameServer,omitempty"` // SOA records
+		} `json:"rData"`
 	} `json:"records"`
 }
 
@@ -173,11 +182,10 @@ func (c *TechnitiumClient) GetRecord(ctx context.Context, zone string, name stri
 	for _, r := range resp.Records {
 		if r.Type == rtype && r.Name == name {
 			return &Record{
-				Name:     r.Name,
-				Type:     r.Type,
-				Value:    r.Data,
-				TTL:      int(r.TTL),
-				Priority: priorityPtr(r.Priority),
+				Name:  r.Name,
+				Type:  r.Type,
+				Value: extractRecordValue(r.RData.IPAddress, r.RData.CNAME, r.RData.NameServer, r.RData.Exchange, r.RData.Text, r.RData.PtrName, r.RData.PrimaryNameServer),
+				TTL:   int(r.TTL),
 			}, nil
 		}
 	}
@@ -189,6 +197,8 @@ func (c *TechnitiumClient) GetRecord(ctx context.Context, zone string, name stri
 func (c *TechnitiumClient) ListRecords(ctx context.Context, zone string) ([]*Record, error) {
 	params := url.Values{}
 	params.Set("zone", zone)
+	params.Set("domain", zone) // domain is required by the API
+	params.Set("listZone", "true") // list all records in the zone, not just for the domain
 
 	var resp recordsGetResponse
 	if err := c.doAPI(ctx, "GET", "/api/zones/records/get", params, &resp); err != nil {
@@ -198,15 +208,26 @@ func (c *TechnitiumClient) ListRecords(ctx context.Context, zone string) ([]*Rec
 	records := make([]*Record, 0, len(resp.Records))
 	for _, r := range resp.Records {
 		records = append(records, &Record{
-			Name:     r.Name,
-			Type:     r.Type,
-			Value:    r.Data,
-			TTL:      int(r.TTL),
-			Priority: priorityPtr(r.Priority),
+			Name:  r.Name,
+			Type:  r.Type,
+			Value: extractRecordValue(r.RData.IPAddress, r.RData.CNAME, r.RData.NameServer, r.RData.Exchange, r.RData.Text, r.RData.PtrName, r.RData.PrimaryNameServer),
+			TTL:   int(r.TTL),
 		})
 	}
 
 	return records, nil
+}
+
+// extractRecordValue extracts the value from a Technitium record response
+// Technitium uses different field names depending on record type
+func extractRecordValue(fields ...string) string {
+	// Return the first non-empty field
+	for _, f := range fields {
+		if f != "" {
+			return f
+		}
+	}
+	return ""
 }
 
 // ListZones lists all available zones on the server

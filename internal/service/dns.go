@@ -795,6 +795,8 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 					existing.TTL = dnsRecord.TTL
 				}
 				existing.SyncStatus = model.RecordSyncStatusSynced
+				now := time.Now().UTC()
+				existing.LastSyncAt = &now
 				if err := s.store.UpdateDNSRecord(ctx, existing); err != nil {
 					result.Failed++
 					result.FailedIDs = append(result.FailedIDs, dnsRecord.Name)
@@ -807,6 +809,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 			}
 		} else if err == storage.ErrDNSRecordNotFound {
 			// Create new record
+			now := time.Now().UTC()
 			record := &model.DNSRecord{
 				ZoneID:     zoneID,
 				Name:       dnsRecord.Name,
@@ -814,6 +817,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 				Value:      dnsRecord.Value,
 				TTL:        dnsRecord.TTL,
 				SyncStatus: model.RecordSyncStatusSynced,
+				LastSyncAt: &now,
 			}
 			if dnsRecord.TTL == 0 {
 				record.TTL = zone.TTL

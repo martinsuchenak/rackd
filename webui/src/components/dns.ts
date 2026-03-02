@@ -806,11 +806,11 @@ export function dnsRecordsComponent(): DNSRecordsData {
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
 
     async init(): Promise<void> {
-      // Get zoneId from URL path: /dns/zones/{zoneId}/records
+      // Get zoneId from URL path: /dns/records/{zoneId}
       const pathParts = window.location.pathname.split('/');
-      const zonesIndex = pathParts.indexOf('zones');
-      if (zonesIndex !== -1 && pathParts.length > zonesIndex + 1) {
-        this.zoneId = pathParts[zonesIndex + 1];
+      const recordsIndex = pathParts.indexOf('records');
+      if (recordsIndex !== -1 && pathParts.length > recordsIndex + 1) {
+        this.zoneId = pathParts[recordsIndex + 1];
       }
       if (!this.zoneId) {
         this.error = 'Zone ID not found in URL';
