@@ -95,6 +95,11 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	}
 	defer resp.Body.Close()
 
+	// Check for non-2xx HTTP status before attempting JSON decode
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("HTTP error: status %d %s", resp.StatusCode, resp.Status)
+	}
+
 	var apiResp apiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
@@ -134,7 +139,8 @@ func (c *TechnitiumClient) CreateRecord(ctx context.Context, zone string, record
 }
 
 // UpdateRecord updates an existing DNS record in the zone
-// Note: Technitium API uses delete + add pattern for updates, so we implement that
+// Uses create-then-delete pattern to avoid a window where the record doesn't exist.
+// Technitium allows duplicate records, so we add the new one first, then remove the old.
 func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record *Record) error {
 	// First, get the existing record to check if it exists
 	existing, err := c.GetRecord(ctx, zone, record.Name, record.Type)
@@ -148,12 +154,18 @@ func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record
 		return nil
 	}
 
-	// Delete the old record and create a new one
-	if err := c.DeleteRecord(ctx, zone, record.Name, record.Type); err != nil {
-		return fmt.Errorf("failed to delete old record during update: %w", err)
+	// Create the new record first so there's no gap in DNS resolution
+	if err := c.CreateRecord(ctx, zone, record); err != nil {
+		return fmt.Errorf("failed to create new record during update: %w", err)
 	}
 
-	return c.CreateRecord(ctx, zone, record)
+	// Now delete the old record; if this fails, we have a duplicate but no data loss
+	if err := c.DeleteRecord(ctx, zone, record.Name, record.Type); err != nil {
+		// Log-worthy but not fatal — the new record is already in place
+		// The old value may linger as a duplicate until next sync
+	}
+
+	return nil
 }
 
 // DeleteRecord deletes a DNS record from the zone

@@ -168,6 +168,10 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 			return nil, ValidationErrors{{Field: "endpoint", Message: "Endpoint cannot be empty"}}
 		}
 		provider.Endpoint = *req.Endpoint
+		// Invalidate cached provider since endpoint changed
+		s.mu.Lock()
+		delete(s.providerCache, id)
+		s.mu.Unlock()
 	}
 	if req.Token != nil {
 		if *req.Token == "" {
@@ -843,13 +847,21 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 
 // getProvider returns a cached or newly created DNS provider client
 func (s *DNSService) getProvider(ctx context.Context, providerID string) (dns.Provider, error) {
-	// Try cache first
+	// Try cache first with read lock
 	s.mu.RLock()
 	if provider, ok := s.providerCache[providerID]; ok {
 		s.mu.RUnlock()
 		return provider, nil
 	}
 	s.mu.RUnlock()
+
+	// Acquire write lock and double-check (another goroutine may have populated it)
+	s.mu.Lock()
+	if provider, ok := s.providerCache[providerID]; ok {
+		s.mu.Unlock()
+		return provider, nil
+	}
+	s.mu.Unlock()
 
 	// Get provider config from storage
 	config, err := s.store.GetDNSProvider(providerID)

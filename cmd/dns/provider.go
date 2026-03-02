@@ -125,7 +125,7 @@ func providerCreateCommand() *cli.Command {
 		Usage: "Create a new DNS provider",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "name", Usage: "Provider name", Required: true},
-			&cli.StringFlag{Name: "type", Usage: "Provider type (cloudflare, route53, godaddy, namecheap, powerdns, bind)", Required: true},
+			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)", Required: true},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
 			&cli.StringFlag{Name: "token", Usage: "API token or credentials"},
 			&cli.StringFlag{Name: "description", Usage: "Provider description"},
@@ -187,7 +187,7 @@ func providerUpdateCommand() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "id", Usage: "Provider ID", Required: true},
 			&cli.StringFlag{Name: "name", Usage: "Provider name"},
-			&cli.StringFlag{Name: "type", Usage: "Provider type (cloudflare, route53, godaddy, namecheap, powerdns, bind)"},
+			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)"},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
 			&cli.StringFlag{Name: "token", Usage: "API token or credentials"},
 			&cli.StringFlag{Name: "description", Usage: "Provider description"},
