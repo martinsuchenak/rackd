@@ -204,6 +204,12 @@ var migrations = []*Migration{
 		Up:      migrateAddDNSProviderTestPermissionUp,
 		Down:    migrateAddDNSProviderTestPermissionDown,
 	},
+	{
+		Version: "20260302000000",
+		Name:    "rename_webhook_resource_to_plural",
+		Up:      migrateRenameWebhookResourceUp,
+		Down:    migrateRenameWebhookResourceDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2609,6 +2615,39 @@ func migrateAddDNSProviderTestPermissionDown(ctx context.Context, tx *sql.Tx) er
 	_, err = tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = 'dns-provider:test'`)
 	if err != nil {
 		return fmt.Errorf("failed to delete dns-provider:test permission: %w", err)
+	}
+
+	return nil
+}
+
+// migrateRenameWebhookResourceUp renames the "webhook" resource to "webhooks" for consistency
+// with the plural convention used by all other resources (devices, networks, circuits, etc.).
+func migrateRenameWebhookResourceUp(ctx context.Context, tx *sql.Tx) error {
+	// Update the resource column
+	_, err := tx.ExecContext(ctx, `UPDATE permissions SET resource = 'webhooks' WHERE resource = 'webhook'`)
+	if err != nil {
+		return fmt.Errorf("failed to rename webhook resource: %w", err)
+	}
+
+	// Update the name column (webhook:list -> webhooks:list, etc.)
+	_, err = tx.ExecContext(ctx, `UPDATE permissions SET name = REPLACE(name, 'webhook:', 'webhooks:') WHERE name LIKE 'webhook:%'`)
+	if err != nil {
+		return fmt.Errorf("failed to rename webhook permission names: %w", err)
+	}
+
+	return nil
+}
+
+// migrateRenameWebhookResourceDown reverts the resource name back to singular
+func migrateRenameWebhookResourceDown(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `UPDATE permissions SET resource = 'webhook' WHERE resource = 'webhooks'`)
+	if err != nil {
+		return fmt.Errorf("failed to revert webhook resource: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE permissions SET name = REPLACE(name, 'webhooks:', 'webhook:') WHERE name LIKE 'webhooks:%'`)
+	if err != nil {
+		return fmt.Errorf("failed to revert webhook permission names: %w", err)
 	}
 
 	return nil

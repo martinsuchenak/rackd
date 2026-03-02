@@ -59,6 +59,11 @@ func (h *Handler) resolveConflict(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) detectConflicts(w http.ResponseWriter, r *http.Request) {
 	conflictType := r.URL.Query().Get("type")
 
+	if conflictType != "" && conflictType != "duplicate_ip" && conflictType != "overlapping_subnet" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be 'duplicate_ip' or 'overlapping_subnet'")
+		return
+	}
+
 	var conflicts []model.Conflict
 
 	if conflictType == "duplicate_ip" || conflictType == "" {

@@ -290,8 +290,8 @@ func TestWebhookHandlers(t *testing.T) {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected %d, got %d", http.StatusOK, w.Code)
+		if w.Code != http.StatusNoContent {
+			t.Errorf("expected %d, got %d", http.StatusNoContent, w.Code)
 		}
 
 		// Verify deletion

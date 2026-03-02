@@ -28,6 +28,9 @@ func (h *Handler) listReservations(w http.ResponseWriter, r *http.Request) {
 		h.handleServiceError(w, err)
 		return
 	}
+	if reservations == nil {
+		reservations = []model.Reservation{}
+	}
 	h.writeJSON(w, http.StatusOK, reservations)
 }
 
@@ -139,6 +142,10 @@ func (h *Handler) createReservationWithDefaults(w http.ResponseWriter, r *http.R
 	// Convert expires_in_days to *time.Time
 	var expiresAt *time.Time
 	if req.ExpiresInDays > 0 {
+		if req.ExpiresInDays > 365 {
+			h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "expires_in_days cannot exceed 365")
+			return
+		}
 		exp := time.Now().UTC().AddDate(0, 0, req.ExpiresInDays)
 		expiresAt = &exp
 	}

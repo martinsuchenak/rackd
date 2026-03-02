@@ -10,6 +10,11 @@ import (
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
+const (
+	// maxConcurrentDeliveries limits the number of simultaneous webhook deliveries
+	maxConcurrentDeliveries = 20
+)
+
 // Worker processes webhook deliveries in the background
 type Worker struct {
 	store           storage.WebhookStorage
@@ -17,6 +22,7 @@ type Worker struct {
 	interval        time.Duration
 	stopCh          chan struct{}
 	wg              sync.WaitGroup
+	sem             chan struct{} // semaphore to bound concurrent deliveries
 }
 
 // NewWorker creates a new webhook worker
@@ -26,6 +32,7 @@ func NewWorker(store storage.WebhookStorage, config DeliveryConfig) *Worker {
 		deliveryService: NewDeliveryService(store, config),
 		interval:        30 * time.Second,
 		stopCh:          make(chan struct{}),
+		sem:             make(chan struct{}, maxConcurrentDeliveries),
 	}
 }
 
@@ -75,9 +82,11 @@ func (w *Worker) handleEvent(event model.Event) {
 		return
 	}
 
-	// Deliver to each webhook
+	// Deliver to each webhook (bounded concurrency)
 	for _, webhook := range webhooks {
+		w.sem <- struct{}{} // acquire
 		go func(wh model.Webhook) {
+			defer func() { <-w.sem }() // release
 			_, err := w.deliveryService.Deliver(ctx, &wh, event)
 			if err != nil {
 				log.Printf("webhook delivery failed for %s: %v", wh.Name, err)
