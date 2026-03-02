@@ -6,7 +6,7 @@ import type {
   DNSZone, DNSZoneFilter,
   CreateDNSZoneRequest, UpdateDNSZoneRequest,
   DNSRecord, DNSRecordFilter, UpdateDNSRecordRequest,
-  SyncStatus, RecordSyncStatus, Network
+  SyncStatus, RecordSyncStatus, Network, Device, Datacenter
 } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 
@@ -667,8 +667,8 @@ export function dnsZonesComponent(): DNSZonesData {
         const result = await api.importDNSZone(this.selectedZone.id);
         this.syncResult = {
           success: result.success || result.imported > 0,
-          message: `Imported ${result.imported} records, skipped ${result.skipped}`,
-          details: result.failed > 0 ? `${result.failed} records failed` : undefined
+          message: `Imported: ${result.imported}, Linked: ${result.linked || 0}, Skipped: ${result.skipped}`,
+          details: result.failed > 0 ? `Failed: ${result.failed}` : undefined
         };
         if (result.success) {
           await this.loadZones();
@@ -723,7 +723,7 @@ interface RecordValidationErrors {
   ttl?: string;
 }
 
-type RecordModalType = '' | 'edit' | 'delete';
+type RecordModalType = '' | 'edit' | 'delete' | 'link' | 'promote';
 
 interface DNSRecordsData {
   records: DNSRecord[];
@@ -735,6 +735,10 @@ interface DNSRecordsData {
   // Filters
   filterType: string;
   filterSyncStatus: string;
+  filterLinkStatus: string;
+
+  // Device data for resolving names
+  devices: Device[];
 
   // Single modal state
   modalType: RecordModalType;
@@ -751,24 +755,56 @@ interface DNSRecordsData {
   saving: boolean;
   deleting: boolean;
 
+  // Link modal state
+  linkDeviceSearch: string;
+  linkSelectedDeviceId: string;
+  linkSelectedAddressId: string;
+  linkAddToDomains: boolean;
+  linkError: string;
+  linking: boolean;
+
+  // Promote modal state
+  promoteDeviceName: string;
+  promoteDatacenterId: string;
+  promoteTags: string;
+  promoteError: string;
+  promoting: boolean;
+  datacenters: Datacenter[];
+
   // Computed properties for template compatibility
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
+  get showLinkModal(): boolean;
+  get showPromoteModal(): boolean;
 
   init(): Promise<void>;
   loadRecords(): Promise<void>;
   loadZone(): Promise<void>;
+  loadDevices(): Promise<void>;
+  loadDatacenters(): Promise<void>;
   applyFilters(): Promise<void>;
 
   // Modal management
   openEditModal(record: DNSRecord): void;
   openDeleteModal(record: DNSRecord): void;
+  openLinkModal(record: DNSRecord): void;
+  openPromoteModal(record: DNSRecord): void;
   closeModal(): void;
   closeDeleteModal(): void;
+  closeLinkModal(): void;
+  closePromoteModal(): void;
 
   // CRUD operations
   saveRecord(): Promise<void>;
   doDeleteRecord(): Promise<void>;
+  doLinkRecord(): Promise<void>;
+  doPromoteRecord(): Promise<void>;
+
+  // Link modal helpers
+  get filteredDevices(): Device[];
+  get selectedDeviceAddresses(): { id: string; ip: string }[];
+  get showAddressDropdown(): boolean;
+  get showAddToDomains(): boolean;
 
   // Form helpers
   validateForm(): boolean;
@@ -776,6 +812,8 @@ interface DNSRecordsData {
   // Utilities
   formatDate(dateStr: string): string;
   formatSyncStatus(status: RecordSyncStatus): string;
+  getDeviceName(deviceId: string): string;
+  getAddressValue(deviceId: string, addressId: string): string;
 }
 
 export function dnsRecordsComponent(): DNSRecordsData {
@@ -788,6 +826,9 @@ export function dnsRecordsComponent(): DNSRecordsData {
 
     filterType: '',
     filterSyncStatus: '',
+    filterLinkStatus: '',
+
+    devices: [],
 
     modalType: '',
     selectedRecord: null,
@@ -802,8 +843,24 @@ export function dnsRecordsComponent(): DNSRecordsData {
     saving: false,
     deleting: false,
 
+    linkDeviceSearch: '',
+    linkSelectedDeviceId: '',
+    linkSelectedAddressId: '',
+    linkAddToDomains: false,
+    linkError: '',
+    linking: false,
+
+    promoteDeviceName: '',
+    promoteDatacenterId: '',
+    promoteTags: '',
+    promoteError: '',
+    promoting: false,
+    datacenters: [],
+
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
+    get showLinkModal(): boolean { return this.modalType === 'link'; },
+    get showPromoteModal(): boolean { return this.modalType === 'promote'; },
 
     async init(): Promise<void> {
       // Get zoneId from URL path: /dns/records/{zoneId}
@@ -818,7 +875,9 @@ export function dnsRecordsComponent(): DNSRecordsData {
       }
       await Promise.all([
         this.loadRecords(),
-        this.loadZone()
+        this.loadZone(),
+        this.loadDevices(),
+        this.loadDatacenters()
       ]);
     },
 
@@ -828,6 +887,7 @@ export function dnsRecordsComponent(): DNSRecordsData {
         const filter: DNSRecordFilter = { zone_id: this.zoneId };
         if (this.filterType) filter.type = this.filterType;
         if (this.filterSyncStatus) filter.sync_status = this.filterSyncStatus as RecordSyncStatus;
+        if (this.filterLinkStatus) filter.link_status = this.filterLinkStatus;
         this.records = await api.listDNSRecords(Object.keys(filter).length > 1 ? filter : { zone_id: this.zoneId });
       } catch (e) {
         console.error('Failed to load DNS records:', e);
@@ -842,6 +902,22 @@ export function dnsRecordsComponent(): DNSRecordsData {
         this.zone = await api.getDNSZone(this.zoneId);
       } catch (e) {
         console.error('Failed to load zone:', e);
+      }
+    },
+
+    async loadDevices(): Promise<void> {
+      try {
+        this.devices = await api.listDevices();
+      } catch (e) {
+        console.error('Failed to load devices:', e);
+      }
+    },
+
+    async loadDatacenters(): Promise<void> {
+      try {
+        this.datacenters = await api.listDatacenters();
+      } catch (e) {
+        console.error('Failed to load datacenters:', e);
       }
     },
 
@@ -879,6 +955,126 @@ export function dnsRecordsComponent(): DNSRecordsData {
     closeDeleteModal(): void {
       this.modalType = '';
       this.selectedRecord = null;
+    },
+
+    openLinkModal(record: DNSRecord): void {
+      this.modalType = '';
+      this.validationErrors = {};
+      this.linkError = '';
+      this.linkDeviceSearch = '';
+      this.linkSelectedDeviceId = '';
+      this.linkSelectedAddressId = '';
+      this.linkAddToDomains = false;
+      this.selectedRecord = record;
+      this.modalType = 'link';
+    },
+
+    closeLinkModal(): void {
+      this.modalType = '';
+      this.selectedRecord = null;
+      this.linkError = '';
+      this.linkDeviceSearch = '';
+      this.linkSelectedDeviceId = '';
+      this.linkSelectedAddressId = '';
+      this.linkAddToDomains = false;
+    },
+
+    openPromoteModal(record: DNSRecord): void {
+      this.modalType = '';
+      this.promoteError = '';
+      this.promoteDeviceName = record.name + '.' + (this.zone?.name || '');
+      this.promoteDatacenterId = '';
+      this.promoteTags = '';
+      this.selectedRecord = record;
+      this.modalType = 'promote';
+    },
+
+    closePromoteModal(): void {
+      this.modalType = '';
+      this.selectedRecord = null;
+      this.promoteError = '';
+      this.promoteDeviceName = '';
+      this.promoteDatacenterId = '';
+      this.promoteTags = '';
+    },
+
+    get filteredDevices(): Device[] {
+      if (!this.linkDeviceSearch.trim()) return this.devices;
+      const search = this.linkDeviceSearch.toLowerCase();
+      return this.devices.filter(d => d.name.toLowerCase().includes(search));
+    },
+
+    get selectedDeviceAddresses(): { id: string; ip: string }[] {
+      if (!this.linkSelectedDeviceId) return [];
+      const device = this.devices.find(d => d.id === this.linkSelectedDeviceId);
+      if (!device || !device.addresses) return [];
+      return device.addresses.filter(a => a.id).map(a => ({ id: a.id!, ip: a.ip }));
+    },
+
+    get showAddressDropdown(): boolean {
+      if (!this.selectedRecord) return false;
+      const type = this.selectedRecord.type;
+      return (type === 'A' || type === 'AAAA' || type === 'PTR') && this.linkSelectedDeviceId !== '';
+    },
+
+    get showAddToDomains(): boolean {
+      if (!this.selectedRecord) return false;
+      return this.selectedRecord.type === 'CNAME';
+    },
+
+    async doLinkRecord(): Promise<void> {
+      if (!this.selectedRecord || !this.linkSelectedDeviceId) return;
+
+      this.linking = true;
+      this.linkError = '';
+
+      try {
+        const req: { device_id: string; address_id?: string; add_to_domains?: boolean } = {
+          device_id: this.linkSelectedDeviceId
+        };
+        if (this.linkSelectedAddressId) {
+          req.address_id = this.linkSelectedAddressId;
+        }
+        if (this.selectedRecord.type === 'CNAME' && this.linkAddToDomains) {
+          req.add_to_domains = true;
+        }
+        await api.linkDNSRecord(this.selectedRecord.id, req);
+        await this.loadRecords();
+        this.closeLinkModal();
+      } catch (e) {
+        console.error('Failed to link DNS record:', e);
+        this.linkError = e instanceof RackdAPIError ? e.message : 'Failed to link DNS record';
+      } finally {
+        this.linking = false;
+      }
+    },
+
+    async doPromoteRecord(): Promise<void> {
+      if (!this.selectedRecord) return;
+
+      this.promoting = true;
+      this.promoteError = '';
+
+      try {
+        const req: { name?: string; datacenter_id?: string; tags?: string[] } = {};
+        if (this.promoteDeviceName.trim()) {
+          req.name = this.promoteDeviceName.trim();
+        }
+        if (this.promoteDatacenterId) {
+          req.datacenter_id = this.promoteDatacenterId;
+        }
+        if (this.promoteTags.trim()) {
+          req.tags = this.promoteTags.split(',').map(t => t.trim()).filter(t => t);
+        }
+        await api.promoteDNSRecord(this.selectedRecord.id, req);
+        await this.loadRecords();
+        this.closePromoteModal();
+      } catch (e) {
+        console.error('Failed to promote DNS record:', e);
+        this.promoteError = e instanceof RackdAPIError ? e.message : 'Failed to promote DNS record';
+      } finally {
+        this.promoting = false;
+      }
     },
 
     validateForm(): boolean {
@@ -958,6 +1154,20 @@ export function dnsRecordsComponent(): DNSRecordsData {
         'failed': 'Failed'
       };
       return statusMap[status] || status;
+    },
+
+    getDeviceName(deviceId: string): string {
+      if (!deviceId) return '';
+      const device = this.devices.find(d => d.id === deviceId);
+      return device ? device.name : deviceId;
+    },
+
+    getAddressValue(deviceId: string, addressId: string): string {
+      if (!deviceId || !addressId) return '';
+      const device = this.devices.find(d => d.id === deviceId);
+      if (!device) return '';
+      const address = device.addresses?.find(a => a.id === addressId);
+      return address ? address.ip : '';
     }
   };
 }

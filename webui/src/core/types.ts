@@ -1,6 +1,7 @@
 // Shared types for Rackd Web UI
 
 export interface Address {
+  id?: string;
   ip: string;
   port?: number;
   type: string;
@@ -771,6 +772,7 @@ export interface DNSRecord {
   id: string;
   zone_id: string;
   device_id?: string;
+  address_id?: string;
   name: string;
   type: string;
   value: string;
@@ -787,6 +789,7 @@ export interface DNSRecordFilter {
   device_id?: string;
   type?: string;
   sync_status?: RecordSyncStatus;
+  link_status?: string;
 }
 
 export interface CreateDNSRecordRequest {
@@ -819,6 +822,7 @@ export interface ImportResult {
   success: boolean;
   total: number;
   imported: number;
+  linked: number;
   skipped: number;
   failed: number;
   error?: string;

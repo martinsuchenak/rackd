@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
+	"pgregory.net/rapid"
 )
 
 // ============================================================================
@@ -1638,4 +1640,305 @@ func TestDNSRecordOperations_ZoneDeleteCascade(t *testing.T) {
 	if len(records) != 0 {
 		t.Errorf("expected 0 records after zone deletion, got %d", len(records))
 	}
+}
+
+// ============================================================================
+// Property-Based Tests: DNS Device Linking
+// ============================================================================
+
+// Feature: dns-device-linking, Property 2: DNSRecord AddressID storage round-trip
+// Validates: Requirements 2.2, 2.3
+func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
+	store := newTestStorage(t)
+	defer store.Close()
+
+	rapid.Check(t, func(rt *rapid.T) {
+		ctx := context.Background()
+
+		// Create a DNS provider and zone (required foreign keys)
+		provider := &model.DNSProviderConfig{
+			Name:     "test-provider",
+			Type:     model.DNSProviderTypeTechnitium,
+			Endpoint: "https://dns.example.com",
+			Token:    "test-token",
+		}
+		if err := store.CreateDNSProvider(ctx, provider); err != nil {
+			rt.Fatalf("CreateDNSProvider failed: %v", err)
+		}
+
+		zone := &model.DNSZone{
+			Name:       rapid.StringMatching(`^[a-z]{3,8}\.com$`).Draw(rt, "zoneName"),
+			ProviderID: provider.ID,
+			TTL:        3600,
+		}
+		if err := store.CreateDNSZone(ctx, zone); err != nil {
+			rt.Fatalf("CreateDNSZone failed: %v", err)
+		}
+
+		// Create a device with an address to get a valid address ID
+		device := &model.Device{
+			Name: "test-device",
+			Addresses: []model.Address{
+				{
+					IP:   rapid.StringMatching(`^10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$`).Draw(rt, "ip"),
+					Type: "ipv4",
+				},
+			},
+			Tags:    []string{},
+			Domains: []string{},
+		}
+		if err := store.CreateDevice(ctx, device); err != nil {
+			rt.Fatalf("CreateDevice failed: %v", err)
+		}
+
+		// Retrieve device to get the generated address ID
+		retrieved, err := store.GetDevice(device.ID)
+		if err != nil {
+			rt.Fatalf("GetDevice failed: %v", err)
+		}
+		if len(retrieved.Addresses) == 0 {
+			rt.Fatalf("expected at least 1 address on device")
+		}
+		addressID := retrieved.Addresses[0].ID
+
+		// Decide randomly whether to use a nil or non-nil AddressID
+		useAddressID := rapid.Bool().Draw(rt, "useAddressID")
+
+		var addrIDPtr *string
+		if useAddressID {
+			addrIDPtr = &addressID
+		}
+
+		// Create a DNS record with the chosen AddressID
+		record := &model.DNSRecord{
+			ZoneID:     zone.ID,
+			DeviceID:   &device.ID,
+			AddressID:  addrIDPtr,
+			Name:       rapid.StringMatching(`^[a-z]{1,10}$`).Draw(rt, "recordName"),
+			Type:       string(model.DNSRecordTypeA),
+			Value:      retrieved.Addresses[0].IP,
+			TTL:        300,
+			SyncStatus: model.RecordSyncStatusPending,
+		}
+		if err := store.CreateDNSRecord(ctx, record); err != nil {
+			rt.Fatalf("CreateDNSRecord failed: %v", err)
+		}
+
+		// Retrieve and verify AddressID matches (create round-trip)
+		got, err := store.GetDNSRecord(record.ID)
+		if err != nil {
+			rt.Fatalf("GetDNSRecord failed: %v", err)
+		}
+
+		if useAddressID {
+			if got.AddressID == nil {
+				rt.Fatalf("expected non-nil AddressID, got nil")
+			}
+			if *got.AddressID != addressID {
+				rt.Errorf("AddressID mismatch after create: expected %q, got %q", addressID, *got.AddressID)
+			}
+		} else {
+			if got.AddressID != nil {
+				rt.Errorf("expected nil AddressID, got %q", *got.AddressID)
+			}
+		}
+
+		// Test update round-trip: flip the AddressID
+		if useAddressID {
+			// Was non-nil, set to nil
+			record.AddressID = nil
+		} else {
+			// Was nil, set to non-nil
+			record.AddressID = &addressID
+		}
+		if err := store.UpdateDNSRecord(ctx, record); err != nil {
+			rt.Fatalf("UpdateDNSRecord failed: %v", err)
+		}
+
+		// Retrieve and verify the updated AddressID
+		got2, err := store.GetDNSRecord(record.ID)
+		if err != nil {
+			rt.Fatalf("GetDNSRecord after update failed: %v", err)
+		}
+
+		if useAddressID {
+			// We flipped from non-nil to nil
+			if got2.AddressID != nil {
+				rt.Errorf("expected nil AddressID after update, got %q", *got2.AddressID)
+			}
+		} else {
+			// We flipped from nil to non-nil
+			if got2.AddressID == nil {
+				rt.Fatalf("expected non-nil AddressID after update, got nil")
+			}
+			if *got2.AddressID != addressID {
+				rt.Errorf("AddressID mismatch after update: expected %q, got %q", addressID, *got2.AddressID)
+			}
+		}
+
+		// Clean up
+		_ = store.DeleteDNSRecord(ctx, record.ID)
+		_ = store.DeleteDNSZone(ctx, zone.ID)
+		_ = store.DeleteDevice(ctx, device.ID)
+		_ = store.DeleteDNSProvider(ctx, provider.ID)
+	})
+}
+
+// Feature: dns-device-linking, Property 17: Link status filter correctness
+// Validates: Requirements 8.22, 8.23
+func TestDNSRecordLinkStatusFilter(t *testing.T) {
+	store := newTestStorage(t)
+	defer store.Close()
+
+	iteration := 0
+	rapid.Check(t, func(rt *rapid.T) {
+		ctx := context.Background()
+		iteration++
+
+		// Create a DNS provider and zone (required foreign keys)
+		// Use unique provider name per iteration to avoid UNIQUE constraint
+		provider := &model.DNSProviderConfig{
+			Name:     fmt.Sprintf("test-provider-linkstatus-%d", iteration),
+			Type:     model.DNSProviderTypeTechnitium,
+			Endpoint: "https://dns.example.com",
+			Token:    "test-token",
+		}
+		if err := store.CreateDNSProvider(ctx, provider); err != nil {
+			rt.Fatalf("CreateDNSProvider failed: %v", err)
+		}
+
+		zone := &model.DNSZone{
+			Name:       rapid.StringMatching(`^[a-z]{3,8}\.com$`).Draw(rt, "zoneName"),
+			ProviderID: provider.ID,
+			TTL:        3600,
+		}
+		if err := store.CreateDNSZone(ctx, zone); err != nil {
+			rt.Fatalf("CreateDNSZone failed: %v", err)
+		}
+
+		// Create a device (needed for linked records)
+		device := &model.Device{
+			Name: fmt.Sprintf("test-device-linkstatus-%d", iteration),
+			Addresses: []model.Address{
+				{IP: "10.0.0.1", Type: "ipv4"},
+			},
+			Tags:    []string{},
+			Domains: []string{},
+		}
+		if err := store.CreateDevice(ctx, device); err != nil {
+			rt.Fatalf("CreateDevice failed: %v", err)
+		}
+
+		// Generate a mix of linked and unlinked records
+		numLinked := rapid.IntRange(0, 5).Draw(rt, "numLinked")
+		numUnlinked := rapid.IntRange(0, 5).Draw(rt, "numUnlinked")
+
+		var linkedIDs []string
+		var unlinkedIDs []string
+
+		for i := 0; i < numLinked; i++ {
+			rec := &model.DNSRecord{
+				ZoneID:     zone.ID,
+				DeviceID:   &device.ID,
+				Name:       fmt.Sprintf("linked-%d-%d", iteration, i),
+				Type:       string(model.DNSRecordTypeA),
+				Value:      "10.0.0.1",
+				TTL:        300,
+				SyncStatus: model.RecordSyncStatusPending,
+			}
+			if err := store.CreateDNSRecord(ctx, rec); err != nil {
+				rt.Fatalf("CreateDNSRecord (linked) failed: %v", err)
+			}
+			linkedIDs = append(linkedIDs, rec.ID)
+		}
+
+		for i := 0; i < numUnlinked; i++ {
+			rec := &model.DNSRecord{
+				ZoneID:     zone.ID,
+				DeviceID:   nil,
+				Name:       fmt.Sprintf("unlinked-%d-%d", iteration, i),
+				Type:       string(model.DNSRecordTypeA),
+				Value:      "10.0.0.2",
+				TTL:        300,
+				SyncStatus: model.RecordSyncStatusPending,
+			}
+			if err := store.CreateDNSRecord(ctx, rec); err != nil {
+				rt.Fatalf("CreateDNSRecord (unlinked) failed: %v", err)
+			}
+			unlinkedIDs = append(unlinkedIDs, rec.ID)
+		}
+
+		// Filter by "linked" — should return exactly the linked records
+		linkedStatus := "linked"
+		linkedResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+			ZoneID:     zone.ID,
+			LinkStatus: &linkedStatus,
+		})
+		if err != nil {
+			rt.Fatalf("ListDNSRecords (linked) failed: %v", err)
+		}
+		if len(linkedResults) != numLinked {
+			rt.Errorf("linked filter: expected %d records, got %d", numLinked, len(linkedResults))
+		}
+		linkedResultIDs := make(map[string]bool)
+		for _, r := range linkedResults {
+			if r.DeviceID == nil {
+				rt.Errorf("linked filter returned record %s with nil DeviceID", r.ID)
+			}
+			linkedResultIDs[r.ID] = true
+		}
+		for _, id := range linkedIDs {
+			if !linkedResultIDs[id] {
+				rt.Errorf("linked filter missing expected record %s", id)
+			}
+		}
+
+		// Filter by "unlinked" — should return exactly the unlinked records
+		unlinkedStatus := "unlinked"
+		unlinkedResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+			ZoneID:     zone.ID,
+			LinkStatus: &unlinkedStatus,
+		})
+		if err != nil {
+			rt.Fatalf("ListDNSRecords (unlinked) failed: %v", err)
+		}
+		if len(unlinkedResults) != numUnlinked {
+			rt.Errorf("unlinked filter: expected %d records, got %d", numUnlinked, len(unlinkedResults))
+		}
+		unlinkedResultIDs := make(map[string]bool)
+		for _, r := range unlinkedResults {
+			if r.DeviceID != nil {
+				rt.Errorf("unlinked filter returned record %s with non-nil DeviceID %q", r.ID, *r.DeviceID)
+			}
+			unlinkedResultIDs[r.ID] = true
+		}
+		for _, id := range unlinkedIDs {
+			if !unlinkedResultIDs[id] {
+				rt.Errorf("unlinked filter missing expected record %s", id)
+			}
+		}
+
+		// Filter with nil LinkStatus — should return all records in the zone
+		allResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+			ZoneID: zone.ID,
+		})
+		if err != nil {
+			rt.Fatalf("ListDNSRecords (all) failed: %v", err)
+		}
+		expectedTotal := numLinked + numUnlinked
+		if len(allResults) != expectedTotal {
+			rt.Errorf("nil filter: expected %d records, got %d", expectedTotal, len(allResults))
+		}
+
+		// Clean up
+		for _, id := range linkedIDs {
+			_ = store.DeleteDNSRecord(ctx, id)
+		}
+		for _, id := range unlinkedIDs {
+			_ = store.DeleteDNSRecord(ctx, id)
+		}
+		_ = store.DeleteDNSZone(ctx, zone.ID)
+		_ = store.DeleteDevice(ctx, device.ID)
+		_ = store.DeleteDNSProvider(ctx, provider.ID)
+	})
 }

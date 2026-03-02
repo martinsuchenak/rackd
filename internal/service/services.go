@@ -74,4 +74,6 @@ func (s *Services) SetDNSService(store storage.ExtendedStorage, encryptor *crede
 	s.DNS = NewDNSService(store, encryptor)
 	// Set DNS service on DeviceService for automatic DNS record creation/updates
 	s.Devices.setDNSService(s.DNS)
+	// Set DeviceService on DNSService for promote operations
+	s.DNS.setDeviceService(s.Devices)
 }

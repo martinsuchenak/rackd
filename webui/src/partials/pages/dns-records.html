@@ -40,11 +40,19 @@
           <option value="failed">Failed</option>
         </select>
       </div>
+      <div>
+        <label for="filter-link-status" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Link Status</label>
+        <select id="filter-link-status" x-model="filterLinkStatus" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <option value="">All</option>
+          <option value="linked">Linked</option>
+          <option value="unlinked">Unlinked</option>
+        </select>
+      </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <caption class="sr-only">List of DNS records with name, type, value, TTL, and sync status</caption>
+        <caption class="sr-only">List of DNS records with name, type, value, TTL, sync status, and device link status</caption>
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
@@ -53,12 +61,13 @@
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">TTL</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Sync Status</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Last Sync</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Device</th>
             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading DNS records...</span></td></tr>
-          <tr x-show="!loading && (!records || records.length === 0)"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No DNS records found for this zone. Records are automatically created from devices in the associated network.</td></tr>
+          <tr x-show="loading"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading DNS records...</span></td></tr>
+          <tr x-show="!loading && (!records || records.length === 0)"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No DNS records found for this zone. Records are automatically created from devices in the associated network.</td></tr>
           <template x-for="record in records" :key="record.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
@@ -86,8 +95,21 @@
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(record.last_sync_at)"></div>
               </td>
+              <td class="px-6 py-4">
+                <template x-if="record.device_id">
+                  <div>
+                    <a :href="'/devices/detail?id=' + record.device_id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + record.device_id)" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded" x-text="getDeviceName(record.device_id)"></a>
+                    <p x-show="record.address_id && getAddressValue(record.device_id, record.address_id)" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5" x-text="getAddressValue(record.device_id, record.address_id)"></p>
+                  </div>
+                </template>
+                <template x-if="!record.device_id">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Unlinked</span>
+                </template>
+              </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
+                  <button x-show="!record.device_id && $store.permissions.canUpdate('dns')" @click="openLinkModal(record)" class="px-3 py-2 text-sm text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Link record ' + record.name">Link</button>
+                  <button x-show="!record.device_id && (record.type === 'A' || record.type === 'AAAA') && $store.permissions.canUpdate('dns')" @click="openPromoteModal(record)" class="px-3 py-2 text-sm text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Promote record ' + record.name">Promote</button>
                   <button x-show="$store.permissions.canUpdate('dns')" @click="openEditModal(record)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit record ' + record.name">Edit</button>
                   <button x-show="$store.permissions.canDelete('dns')" @click="openDeleteModal(record)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete record ' + record.name">Delete</button>
                 </div>
@@ -185,6 +207,129 @@
               <span x-show="deleting">Deleting...</span>
             </button>
           </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Link Record Modal -->
+    <template x-if="showLinkModal && selectedRecord">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="link-modal-title" @keydown.escape.window="closeLinkModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeLinkModal()" aria-hidden="true"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="true">
+          <button @click="closeLinkModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <h2 id="link-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Link DNS Record to Device</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Link <span class="font-mono font-medium" x-text="selectedRecord.name"></span> (<span x-text="selectedRecord.type"></span>) to an existing device.
+          </p>
+
+          <div x-show="linkError" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800 text-sm" role="alert" x-text="linkError"></div>
+
+          <form @submit.prevent="doLinkRecord()">
+            <div class="space-y-4">
+              <!-- Device search and select -->
+              <div>
+                <label for="link-device-search" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Device <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <input id="link-device-search" type="text" x-model="linkDeviceSearch" placeholder="Search devices..."
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] mb-2">
+                <select id="link-device-select" x-model="linkSelectedDeviceId" required aria-required="true" aria-label="Select a device"
+                        @change="linkSelectedAddressId = ''"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                        size="6">
+                  <template x-for="device in filteredDevices" :key="device.id">
+                    <option :value="device.id" x-text="device.name"></option>
+                  </template>
+                </select>
+              </div>
+
+              <!-- Address dropdown (for A/AAAA/PTR records) -->
+              <div x-show="showAddressDropdown">
+                <label for="link-address-select" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Address</label>
+                <select id="link-address-select" x-model="linkSelectedAddressId" aria-label="Select an address (optional)"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <option value="">None</option>
+                  <template x-for="addr in selectedDeviceAddresses" :key="addr.id">
+                    <option :value="addr.id" x-text="addr.ip"></option>
+                  </template>
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optionally associate this record with a specific device address.</p>
+              </div>
+
+              <!-- Add to device domains checkbox (for CNAME records) -->
+              <div x-show="showAddToDomains" class="flex items-center gap-2">
+                <input id="link-add-to-domains" type="checkbox" x-model="linkAddToDomains"
+                       class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                <label for="link-add-to-domains" class="text-sm text-gray-800 dark:text-gray-200">Add to device domains</label>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="closeLinkModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+              <button type="submit" :disabled="linking || !linkSelectedDeviceId" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                <span x-show="!linking">Link</span>
+                <span x-show="linking">Linking...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </template>
+
+    <!-- Promote Record Modal -->
+    <template x-if="showPromoteModal && selectedRecord">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="promote-modal-title" @keydown.escape.window="closePromoteModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closePromoteModal()" aria-hidden="true"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="true">
+          <button @click="closePromoteModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <h2 id="promote-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Promote DNS Record to Device</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Create a new device from <span class="font-mono font-medium" x-text="selectedRecord.name"></span> (<span x-text="selectedRecord.type"></span>) record.
+          </p>
+
+          <div x-show="promoteError" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800 text-sm" role="alert" x-text="promoteError"></div>
+
+          <form @submit.prevent="doPromoteRecord()">
+            <div class="space-y-4">
+              <!-- Device name (pre-filled) -->
+              <div>
+                <label for="promote-device-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Device Name</label>
+                <input id="promote-device-name" type="text" x-model="promoteDeviceName"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Name for the new device. Pre-filled from the record name and zone.</p>
+              </div>
+
+              <!-- Datacenter dropdown (optional) -->
+              <div>
+                <label for="promote-datacenter" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter</label>
+                <select id="promote-datacenter" x-model="promoteDatacenterId" aria-label="Select a datacenter (optional)"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <option value="">None</option>
+                  <template x-for="dc in datacenters" :key="dc.id">
+                    <option :value="dc.id" x-text="dc.name"></option>
+                  </template>
+                </select>
+              </div>
+
+              <!-- Tags input (optional, comma-separated) -->
+              <div>
+                <label for="promote-tags" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Tags</label>
+                <input id="promote-tags" type="text" x-model="promoteTags" placeholder="e.g. discovered, dns, production"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Comma-separated list of tags for the new device.</p>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="closePromoteModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+              <button type="submit" :disabled="promoting" class="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                <span x-show="!promoting">Promote</span>
+                <span x-show="promoting">Promoting...</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </template>

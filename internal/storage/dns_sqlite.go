@@ -686,18 +686,21 @@ func (s *SQLiteStorage) createDNSRecordInTx(ctx context.Context, tx *sql.Tx, rec
 		record.SyncStatus = model.RecordSyncStatusPending
 	}
 
-	var deviceIDParam, errorMessageParam sql.NullString
+	var deviceIDParam, addressIDParam, errorMessageParam sql.NullString
 	if record.DeviceID != nil {
 		deviceIDParam = sql.NullString{String: *record.DeviceID, Valid: true}
+	}
+	if record.AddressID != nil {
+		addressIDParam = sql.NullString{String: *record.AddressID, Valid: true}
 	}
 	if record.ErrorMessage != nil {
 		errorMessageParam = sql.NullString{String: *record.ErrorMessage, Valid: true}
 	}
 
 	_, err := tx.ExecContext(ctx, `
-		INSERT INTO dns_records (id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, record.ID, record.ZoneID, deviceIDParam,
+		INSERT INTO dns_records (id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, record.ID, record.ZoneID, deviceIDParam, addressIDParam,
 		record.Name, record.Type, record.Value, record.TTL,
 		record.SyncStatus, nullTime(record.LastSyncAt), errorMessageParam,
 		record.CreatedAt, record.UpdatedAt)
@@ -718,14 +721,14 @@ func (s *SQLiteStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
 	ctx := context.Background()
 
 	record := &model.DNSRecord{}
-	var deviceID, errorMessage sql.NullString
+	var deviceID, addressID, errorMessage sql.NullString
 	var lastSyncAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
+		SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 		FROM dns_records WHERE id = ?
 	`, id).Scan(
-		&record.ID, &record.ZoneID, &deviceID,
+		&record.ID, &record.ZoneID, &deviceID, &addressID,
 		&record.Name, &record.Type, &record.Value, &record.TTL,
 		&record.SyncStatus, &lastSyncAt, &errorMessage,
 		&record.CreatedAt, &record.UpdatedAt,
@@ -740,6 +743,9 @@ func (s *SQLiteStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
 
 	if deviceID.Valid {
 		record.DeviceID = &deviceID.String
+	}
+	if addressID.Valid {
+		record.AddressID = &addressID.String
 	}
 	if lastSyncAt.Valid {
 		record.LastSyncAt = &lastSyncAt.Time
@@ -760,14 +766,14 @@ func (s *SQLiteStorage) GetDNSRecordByName(zoneID, name string, recordType strin
 	ctx := context.Background()
 
 	record := &model.DNSRecord{}
-	var deviceID, errorMessage sql.NullString
+	var deviceID, addressID, errorMessage sql.NullString
 	var lastSyncAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
+		SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 		FROM dns_records WHERE zone_id = ? AND name = ? AND type = ?
 	`, zoneID, name, recordType).Scan(
-		&record.ID, &record.ZoneID, &deviceID,
+		&record.ID, &record.ZoneID, &deviceID, &addressID,
 		&record.Name, &record.Type, &record.Value, &record.TTL,
 		&record.SyncStatus, &lastSyncAt, &errorMessage,
 		&record.CreatedAt, &record.UpdatedAt,
@@ -783,6 +789,9 @@ func (s *SQLiteStorage) GetDNSRecordByName(zoneID, name string, recordType strin
 	if deviceID.Valid {
 		record.DeviceID = &deviceID.String
 	}
+	if addressID.Valid {
+		record.AddressID = &addressID.String
+	}
 	if lastSyncAt.Valid {
 		record.LastSyncAt = &lastSyncAt.Time
 	}
@@ -797,7 +806,7 @@ func (s *SQLiteStorage) GetDNSRecordByName(zoneID, name string, recordType strin
 func (s *SQLiteStorage) ListDNSRecords(filter *model.DNSRecordFilter) ([]model.DNSRecord, error) {
 	ctx := context.Background()
 
-	query := `SELECT id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
+	query := `SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 	        FROM dns_records`
 	var args []any
 	var conditions []string
@@ -819,6 +828,14 @@ func (s *SQLiteStorage) ListDNSRecords(filter *model.DNSRecordFilter) ([]model.D
 			conditions = append(conditions, "sync_status = ?")
 			args = append(args, *filter.SyncStatus)
 		}
+		if filter.LinkStatus != nil {
+			switch *filter.LinkStatus {
+			case "linked":
+				conditions = append(conditions, "device_id IS NOT NULL")
+			case "unlinked":
+				conditions = append(conditions, "device_id IS NULL")
+			}
+		}
 	}
 
 	if len(conditions) > 0 {
@@ -836,11 +853,11 @@ func (s *SQLiteStorage) ListDNSRecords(filter *model.DNSRecordFilter) ([]model.D
 	var records []model.DNSRecord
 	for rows.Next() {
 		var record model.DNSRecord
-		var deviceID, errorMessage sql.NullString
+		var deviceID, addressID, errorMessage sql.NullString
 		var lastSyncAt sql.NullTime
 
 		if err := rows.Scan(
-			&record.ID, &record.ZoneID, &deviceID,
+			&record.ID, &record.ZoneID, &deviceID, &addressID,
 			&record.Name, &record.Type, &record.Value, &record.TTL,
 			&record.SyncStatus, &lastSyncAt, &errorMessage,
 			&record.CreatedAt, &record.UpdatedAt,
@@ -850,6 +867,9 @@ func (s *SQLiteStorage) ListDNSRecords(filter *model.DNSRecordFilter) ([]model.D
 
 		if deviceID.Valid {
 			record.DeviceID = &deviceID.String
+		}
+		if addressID.Valid {
+			record.AddressID = &addressID.String
 		}
 		if lastSyncAt.Valid {
 			record.LastSyncAt = &lastSyncAt.Time
@@ -893,19 +913,22 @@ func (s *SQLiteStorage) UpdateDNSRecord(ctx context.Context, record *model.DNSRe
 
 	record.UpdatedAt = time.Now().UTC()
 
-	var deviceIDParam, errorMessageParam sql.NullString
+	var deviceIDParam, addressIDParam, errorMessageParam sql.NullString
 	if record.DeviceID != nil {
 		deviceIDParam = sql.NullString{String: *record.DeviceID, Valid: true}
+	}
+	if record.AddressID != nil {
+		addressIDParam = sql.NullString{String: *record.AddressID, Valid: true}
 	}
 	if record.ErrorMessage != nil {
 		errorMessageParam = sql.NullString{String: *record.ErrorMessage, Valid: true}
 	}
 
 	_, err = s.db.ExecContext(ctx, `
-		UPDATE dns_records SET zone_id = ?, device_id = ?, name = ?, type = ?, value = ?,
+		UPDATE dns_records SET zone_id = ?, device_id = ?, address_id = ?, name = ?, type = ?, value = ?,
 		                    ttl = ?, sync_status = ?, last_sync_at = ?, error_message = ?, updated_at = ?
 		WHERE id = ?
-	`, record.ZoneID, deviceIDParam, record.Name, record.Type,
+	`, record.ZoneID, deviceIDParam, addressIDParam, record.Name, record.Type,
 		record.Value, record.TTL, record.SyncStatus, nullTime(record.LastSyncAt),
 		errorMessageParam, record.UpdatedAt, record.ID)
 
@@ -1009,7 +1032,7 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(deviceID string) ([]model.DNSRecor
 		return nil, ErrDeviceNotFound
 	}
 
-	query := `SELECT id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
+	query := `SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 	        FROM dns_records WHERE device_id = ? ORDER BY zone_id, name, type`
 
 	rows, err := s.db.QueryContext(ctx, query, deviceID)
@@ -1021,11 +1044,11 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(deviceID string) ([]model.DNSRecor
 	var records []model.DNSRecord
 	for rows.Next() {
 		var record model.DNSRecord
-		var devID, errorMessage sql.NullString
+		var devID, addressID, errorMessage sql.NullString
 		var lastSyncAt sql.NullTime
 
 		if err := rows.Scan(
-			&record.ID, &record.ZoneID, &devID,
+			&record.ID, &record.ZoneID, &devID, &addressID,
 			&record.Name, &record.Type, &record.Value, &record.TTL,
 			&record.SyncStatus, &lastSyncAt, &errorMessage,
 			&record.CreatedAt, &record.UpdatedAt,
@@ -1035,6 +1058,9 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(deviceID string) ([]model.DNSRecor
 
 		if devID.Valid {
 			record.DeviceID = &devID.String
+		}
+		if addressID.Valid {
+			record.AddressID = &addressID.String
 		}
 		if lastSyncAt.Valid {
 			record.LastSyncAt = &lastSyncAt.Time

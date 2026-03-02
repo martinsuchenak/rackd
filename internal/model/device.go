@@ -58,6 +58,7 @@ type Device struct {
 }
 
 type Address struct {
+	ID         string `json:"id"`
 	IP         string `json:"ip"`
 	Port       *int   `json:"port,omitempty"`
 	Type       string `json:"type"`

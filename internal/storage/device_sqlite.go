@@ -93,7 +93,7 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 // getDeviceAddresses retrieves all addresses for a device
 func (s *SQLiteStorage) getDeviceAddresses(ctx context.Context, deviceID string) ([]model.Address, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT ip, port, type, label, network_id, switch_port, pool_id
+		SELECT id, ip, port, type, label, network_id, switch_port, pool_id
 		FROM addresses WHERE device_id = ?
 	`, deviceID)
 	if err != nil {
@@ -106,7 +106,7 @@ func (s *SQLiteStorage) getDeviceAddresses(ctx context.Context, deviceID string)
 		var addr model.Address
 		var networkID, switchPort, poolID sql.NullString
 		var port sql.NullInt64
-		if err := rows.Scan(&addr.IP, &port, &addr.Type, &addr.Label, &networkID, &switchPort, &poolID); err != nil {
+		if err := rows.Scan(&addr.ID, &addr.IP, &port, &addr.Type, &addr.Label, &networkID, &switchPort, &poolID); err != nil {
 			return nil, err
 		}
 		if port.Valid {
@@ -263,10 +263,14 @@ func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device
 // insertDeviceAddresses inserts addresses for a device within a transaction
 func (s *SQLiteStorage) insertDeviceAddresses(ctx context.Context, tx *sql.Tx, deviceID string, addresses []model.Address) error {
 	for _, addr := range addresses {
+		id := addr.ID
+		if id == "" {
+			id = newUUID()
+		}
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO addresses (id, device_id, ip, port, type, label, network_id, switch_port, pool_id)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, newUUID(), deviceID, addr.IP, nullIntPtr(addr.Port), addr.Type, addr.Label,
+		`, id, deviceID, addr.IP, nullIntPtr(addr.Port), addr.Type, addr.Label,
 			nullString(addr.NetworkID), nullString(addr.SwitchPort), nullString(addr.PoolID))
 		if err != nil {
 			return err

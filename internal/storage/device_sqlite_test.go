@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
+	"pgregory.net/rapid"
 )
 
 // ============================================================================
@@ -891,4 +892,94 @@ func TestDeviceStatus_DecommissionDate(t *testing.T) {
 func parseTime(s string) time.Time {
 	t, _ := time.Parse(time.RFC3339, s)
 	return t
+}
+
+// ============================================================================
+// Property-Based Tests
+// ============================================================================
+
+// Feature: dns-device-linking, Property 1: Address ID storage round-trip
+// Validates: Requirements 1.2
+func TestAddressID_StorageRoundTrip(t *testing.T) {
+	store := newTestStorage(t)
+	defer store.Close()
+
+	rapid.Check(t, func(rt *rapid.T) {
+		// Generate 1-5 addresses with unique IPs
+		numAddrs := rapid.IntRange(1, 5).Draw(rt, "numAddrs")
+		addresses := make([]model.Address, numAddrs)
+		usedIPs := make(map[string]bool)
+		for i := range addresses {
+			// Generate unique IPs to avoid collisions within a single device
+			var ip string
+			for {
+				ip = rapid.StringMatching(`^192\.168\.[0-9]{1,3}\.[0-9]{1,3}$`).Draw(rt, "ip")
+				if !usedIPs[ip] {
+					usedIPs[ip] = true
+					break
+				}
+			}
+			addresses[i] = model.Address{
+				IP:    ip,
+				Type:  rapid.SampledFrom([]string{"ipv4", "ipv6"}).Draw(rt, "type"),
+				Label: rapid.StringMatching(`^[a-z]{1,10}$`).Draw(rt, "label"),
+			}
+		}
+
+		device := &model.Device{
+			Name:      "test-device",
+			Addresses: addresses,
+			Tags:      []string{},
+			Domains:   []string{},
+		}
+
+		// Create device (this generates UUIDs for addresses)
+		err := store.CreateDevice(context.Background(), device)
+		if err != nil {
+			rt.Fatalf("CreateDevice failed: %v", err)
+		}
+
+		// Retrieve device
+		retrieved, err := store.GetDevice(device.ID)
+		if err != nil {
+			rt.Fatalf("GetDevice failed: %v", err)
+		}
+
+		// Verify address count matches
+		if len(retrieved.Addresses) != numAddrs {
+			rt.Fatalf("expected %d addresses, got %d", numAddrs, len(retrieved.Addresses))
+		}
+
+		// Build a map of IP -> Address.ID from the retrieved device
+		retrievedByIP := make(map[string]string)
+		for _, addr := range retrieved.Addresses {
+			if addr.ID == "" {
+				rt.Fatalf("retrieved address for IP %s has empty ID", addr.IP)
+			}
+			retrievedByIP[addr.IP] = addr.ID
+		}
+
+		// Verify round-trip: a second retrieval returns the same Address.IDs
+		retrieved2, err := store.GetDevice(device.ID)
+		if err != nil {
+			rt.Fatalf("second GetDevice failed: %v", err)
+		}
+
+		for _, addr := range retrieved2.Addresses {
+			expectedID, ok := retrievedByIP[addr.IP]
+			if !ok {
+				rt.Fatalf("address IP %s not found in first retrieval", addr.IP)
+			}
+			if addr.ID != expectedID {
+				rt.Errorf("Address.ID mismatch for IP %s: first retrieval %q, second retrieval %q",
+					addr.IP, expectedID, addr.ID)
+			}
+		}
+
+		// Clean up: delete the device so the shared store stays clean between iterations
+		err = store.DeleteDevice(context.Background(), device.ID)
+		if err != nil {
+			rt.Fatalf("DeleteDevice failed: %v", err)
+		}
+	})
 }

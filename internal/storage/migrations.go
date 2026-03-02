@@ -210,6 +210,12 @@ var migrations = []*Migration{
 		Up:      migrateRenameWebhookResourceUp,
 		Down:    migrateRenameWebhookResourceDown,
 	},
+	{
+		Version: "20260302100000",
+		Name:    "add_dns_record_address_id",
+		Up:      migrateAddDNSRecordAddressIDUp,
+		Down:    migrateAddDNSRecordAddressIDDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2650,5 +2656,24 @@ func migrateRenameWebhookResourceDown(ctx context.Context, tx *sql.Tx) error {
 		return fmt.Errorf("failed to revert webhook permission names: %w", err)
 	}
 
+	return nil
+}
+
+func migrateAddDNSRecordAddressIDUp(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE dns_records ADD COLUMN address_id TEXT REFERENCES addresses(id) ON DELETE SET NULL`); err != nil {
+		return fmt.Errorf("failed to add address_id column to dns_records: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_dns_records_address ON dns_records(address_id)`); err != nil {
+		return fmt.Errorf("failed to create index on dns_records.address_id: %w", err)
+	}
+	return nil
+}
+
+func migrateAddDNSRecordAddressIDDown(ctx context.Context, tx *sql.Tx) error {
+	// SQLite doesn't support DROP COLUMN directly, so we'd need to recreate the table
+	// For simplicity, we'll just leave the column (it's safe to have extra columns)
+	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_dns_records_address`); err != nil {
+		return fmt.Errorf("failed to drop index idx_dns_records_address: %w", err)
+	}
 	return nil
 }

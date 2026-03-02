@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/dns"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -33,6 +34,11 @@ type DNSService struct {
 	encryptor     *credentials.Encryptor
 	providerCache map[string]dns.Provider
 	mu            sync.RWMutex
+	devices       *DeviceService
+}
+
+func (s *DNSService) setDeviceService(ds *DeviceService) {
+	s.devices = ds
 }
 
 // NewDNSService creates a new DNS service instance
@@ -782,6 +788,12 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 		}, err
 	}
 
+	// Load devices once for auto-matching; if it fails, continue without matching
+	var devices []model.Device
+	if devs, err := s.store.ListDevices(&model.DeviceFilter{}); err == nil {
+		devices = devs
+	}
+
 	result := &model.ImportResult{
 		Total:      len(dnsRecords),
 		SkippedIDs: []string{},
@@ -801,11 +813,18 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 				existing.SyncStatus = model.RecordSyncStatusSynced
 				now := time.Now().UTC()
 				existing.LastSyncAt = &now
+				// Auto-match device for updated record
+				if devices != nil && existing.DeviceID == nil {
+					s.matchDeviceForRecord(existing, zone, devices)
+				}
 				if err := s.store.UpdateDNSRecord(ctx, existing); err != nil {
 					result.Failed++
 					result.FailedIDs = append(result.FailedIDs, dnsRecord.Name)
 				} else {
 					result.Imported++
+					if existing.DeviceID != nil {
+						result.Linked++
+					}
 				}
 			} else {
 				result.Skipped++
@@ -826,11 +845,18 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 			if dnsRecord.TTL == 0 {
 				record.TTL = zone.TTL
 			}
+			// Auto-match device for new record
+			if devices != nil {
+				s.matchDeviceForRecord(record, zone, devices)
+			}
 			if err := s.store.CreateDNSRecord(ctx, record); err != nil {
 				result.Failed++
 				result.FailedIDs = append(result.FailedIDs, dnsRecord.Name)
 			} else {
 				result.Imported++
+				if record.DeviceID != nil {
+					result.Linked++
+				}
 			}
 		} else {
 			result.Failed++
@@ -1042,4 +1068,286 @@ func reverseIPv6(ip string) string {
 	}
 
 	return strings.Join(nibbles, ".")
+}
+
+// MatchZoneForDomain returns the best matching zone and the record prefix.
+// It selects the zone with the longest name (most specific match).
+// Returns nil if no zone matches.
+func MatchZoneForDomain(domain string, zones []model.DNSZone) (*model.DNSZone, string) {
+	var bestZone *model.DNSZone
+	var bestPrefix string
+	for i := range zones {
+		zone := &zones[i]
+		if domain == zone.Name {
+			if bestZone == nil || len(zone.Name) > len(bestZone.Name) {
+				bestZone = zone
+				bestPrefix = "@"
+			}
+		} else if strings.HasSuffix(domain, "."+zone.Name) {
+			prefix := strings.TrimSuffix(domain, "."+zone.Name)
+			if bestZone == nil || len(zone.Name) > len(bestZone.Name) {
+				bestZone = zone
+				bestPrefix = prefix
+			}
+		}
+	}
+	return bestZone, bestPrefix
+}
+
+// ptrNameToIP converts a PTR record name back to an IP address.
+// For IPv4: "4.3.2.1.in-addr.arpa." -> "1.2.3.4"
+// For IPv6: reverses the nibble notation back to a full IPv6 address.
+// Returns empty string if the name is not a valid PTR name.
+func ptrNameToIP(name string) string {
+	// Strip trailing dot if present
+	name = strings.TrimSuffix(name, ".")
+
+	if strings.HasSuffix(name, ".in-addr.arpa") {
+		// IPv4 PTR
+		prefix := strings.TrimSuffix(name, ".in-addr.arpa")
+		parts := strings.Split(prefix, ".")
+		// Reverse the parts
+		for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
+			parts[i], parts[j] = parts[j], parts[i]
+		}
+		ip := net.ParseIP(strings.Join(parts, "."))
+		if ip == nil {
+			return ""
+		}
+		return ip.String()
+	}
+
+	if strings.HasSuffix(name, ".ip6.arpa") {
+		// IPv6 PTR
+		prefix := strings.TrimSuffix(name, ".ip6.arpa")
+		nibbles := strings.Split(prefix, ".")
+		// Reverse nibbles
+		for i, j := 0, len(nibbles)-1; i < j; i, j = i+1, j-1 {
+			nibbles[i], nibbles[j] = nibbles[j], nibbles[i]
+		}
+		if len(nibbles) != 32 {
+			return ""
+		}
+		// Group nibbles into 8 groups of 4
+		var groups []string
+		for i := 0; i < 32; i += 4 {
+			groups = append(groups, strings.Join(nibbles[i:i+4], ""))
+		}
+		ipStr := strings.Join(groups, ":")
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			return ""
+		}
+		return ip.String()
+	}
+
+	return ""
+}
+
+// matchDeviceForRecord attempts to match an imported DNS record to a device.
+// For A/AAAA records, it matches by IP address.
+// For CNAME records, it matches by FQDN against device domains.
+// For PTR records, it matches by hostname and sets AddressID via reverse IP.
+// For other record types (MX, TXT, NS, SRV, SOA), no matching is performed.
+func (s *DNSService) matchDeviceForRecord(record *model.DNSRecord, zone *model.DNSZone, devices []model.Device) {
+	switch record.Type {
+	case "A", "AAAA":
+		// Match by IP: find device with address matching record.Value
+		for _, dev := range devices {
+			for _, addr := range dev.Addresses {
+				if addr.IP == record.Value {
+					record.DeviceID = &dev.ID
+					record.AddressID = &addr.ID
+					return
+				}
+			}
+		}
+	case "CNAME":
+		// Match by domain: record FQDN (name.zoneName) matches a device domain
+		fqdn := record.Name + "." + zone.Name
+		for _, dev := range devices {
+			for _, domain := range dev.Domains {
+				if domain == fqdn {
+					record.DeviceID = &dev.ID
+					return
+				}
+			}
+		}
+	case "PTR":
+		// Match by hostname: record.Value matches device hostname
+		for _, dev := range devices {
+			if dev.Hostname != "" && record.Value == dev.Hostname+"."+zone.Name {
+				record.DeviceID = &dev.ID
+				// Find address by reverse-mapping the PTR name back to an IP
+				ip := ptrNameToIP(record.Name)
+				for _, addr := range dev.Addresses {
+					if addr.IP == ip {
+						record.AddressID = &addr.ID
+						break
+					}
+				}
+				return
+			}
+		}
+	}
+	// MX, TXT, NS, SRV, SOA: no matching, DeviceID stays nil
+}
+
+// LinkRecord links an unlinked DNS record to an existing device.
+// It validates the record is unlinked, the device exists, and optionally
+// that the address belongs to the device. For CNAME records with AddToDomains,
+// it adds the record's FQDN to the device's Domains list.
+func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model.LinkDNSRecordRequest) (*model.DNSRecord, error) {
+	// 1. Get record, validate it's unlinked
+	record, err := s.store.GetDNSRecord(recordID)
+	if err != nil {
+		if err == storage.ErrDNSRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if record.DeviceID != nil {
+		return nil, ValidationErrors{{Field: "record", Message: "Record is already linked to a device"}}
+	}
+
+	// 2. Validate device exists
+	device, err := s.store.GetDevice(req.DeviceID)
+	if err != nil {
+		if err == storage.ErrDeviceNotFound {
+			return nil, ValidationErrors{{Field: "device_id", Message: "Device not found"}}
+		}
+		return nil, err
+	}
+
+	// 3. If AddressID provided, validate it belongs to the device
+	if req.AddressID != nil && *req.AddressID != "" {
+		found := false
+		for _, addr := range device.Addresses {
+			if addr.ID == *req.AddressID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, ValidationErrors{{Field: "address_id", Message: "Address does not belong to the specified device"}}
+		}
+	}
+
+	// 4. Set DeviceID and AddressID on record
+	record.DeviceID = &req.DeviceID
+	record.AddressID = req.AddressID
+
+	// 5. If CNAME and AddToDomains, add FQDN to device.Domains
+	if record.Type == "CNAME" && req.AddToDomains {
+		zone, err := s.store.GetDNSZone(record.ZoneID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get zone: %w", err)
+		}
+
+		fqdn := record.Name + "." + zone.Name
+
+		// Add FQDN to device domains if not already present
+		alreadyPresent := false
+		for _, d := range device.Domains {
+			if d == fqdn {
+				alreadyPresent = true
+				break
+			}
+		}
+		if !alreadyPresent {
+			device.Domains = append(device.Domains, fqdn)
+			if err := s.store.UpdateDevice(ctx, device); err != nil {
+				return nil, fmt.Errorf("failed to update device domains: %w", err)
+			}
+		}
+	}
+
+	// 6. Update record in storage
+	if err := s.store.UpdateDNSRecord(ctx, record); err != nil {
+		return nil, err
+	}
+
+	return record, nil
+}
+
+// PromoteRecord creates a new device from an unlinked DNS record's data and links the record to it.
+func (s *DNSService) PromoteRecord(ctx context.Context, recordID string, req *model.PromoteDNSRecordRequest) (*model.DNSRecord, error) {
+	// 1. Get record, validate it's unlinked
+	record, err := s.store.GetDNSRecord(recordID)
+	if err != nil {
+		if err == storage.ErrDNSRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if record.DeviceID != nil {
+		return nil, ValidationErrors{{Field: "record", Message: "Record is already linked to a device"}}
+	}
+
+	// 2. Get zone for NetworkID
+	zone, err := s.store.GetDNSZone(record.ZoneID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get zone: %w", err)
+	}
+
+	// 3. Build device: Name = name.zoneName (or override), Hostname = record.Name
+	deviceName := record.Name + "." + zone.Name
+	if req.Name != nil && *req.Name != "" {
+		deviceName = *req.Name
+	}
+
+	device := &model.Device{
+		Name:     deviceName,
+		Hostname: record.Name,
+		Status:   model.DeviceStatusActive,
+	}
+
+	// 4. For A/AAAA: add Address with IP = record.Value, NetworkID = zone.NetworkID
+	var addressID string
+	if record.Type == "A" || record.Type == "AAAA" {
+		addressID = uuid.Must(uuid.NewV7()).String()
+		networkID := ""
+		if zone.NetworkID != nil {
+			networkID = *zone.NetworkID
+		}
+		device.Addresses = []model.Address{
+			{
+				ID:        addressID,
+				IP:        record.Value,
+				Type:      "ipv4",
+				NetworkID: networkID,
+			},
+		}
+		if record.Type == "AAAA" {
+			device.Addresses[0].Type = "ipv6"
+		}
+	}
+
+	// 5. Apply overrides (datacenter_id, tags)
+	if req.DatacenterID != nil && *req.DatacenterID != "" {
+		device.DatacenterID = *req.DatacenterID
+	}
+	if req.Tags != nil {
+		device.Tags = req.Tags
+	}
+
+	// 6. Create device via DeviceService.Create
+	if err := s.devices.Create(ctx, device); err != nil {
+		return nil, fmt.Errorf("failed to create device: %w", err)
+	}
+
+	// 7. Set DeviceID on record; for A/AAAA set AddressID to new address ID
+	record.DeviceID = &device.ID
+	if (record.Type == "A" || record.Type == "AAAA") && addressID != "" {
+		record.AddressID = &addressID
+	}
+
+	// 8. Update record in storage
+	if err := s.store.UpdateDNSRecord(ctx, record); err != nil {
+		return nil, err
+	}
+
+	return record, nil
 }

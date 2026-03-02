@@ -785,6 +785,7 @@ export class RackdAPI {
       const params = new URLSearchParams();
       if (filter?.type) params.set('type', filter.type);
       if (filter?.sync_status) params.set('sync_status', filter.sync_status);
+      if (filter?.link_status) params.set('link_status', filter.link_status);
       const query = params.toString();
       return this.request<DNSRecord[]>('GET', `/api/dns/zones/${filter.zone_id}/records${query ? `?${query}` : ''}`);
     }
@@ -792,6 +793,7 @@ export class RackdAPI {
     if (filter?.device_id) params.set('device_id', filter.device_id);
     if (filter?.type) params.set('type', filter.type);
     if (filter?.sync_status) params.set('sync_status', filter.sync_status);
+    if (filter?.link_status) params.set('link_status', filter.link_status);
     const query = params.toString();
     return this.request<DNSRecord[]>('GET', `/api/dns/records${query ? `?${query}` : ''}`);
   }
@@ -807,6 +809,14 @@ export class RackdAPI {
   async deleteDNSRecord(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/dns/records/${id}`);
   }
+
+  async linkDNSRecord(id: string, req: { device_id: string; address_id?: string; add_to_domains?: boolean }): Promise<DNSRecord> {
+    return this.request<DNSRecord>('POST', `/api/dns/records/${id}/link`, req);
+  }
+  async promoteDNSRecord(id: string, req: { name?: string; datacenter_id?: string; tags?: string[] }): Promise<DNSRecord> {
+    return this.request<DNSRecord>('POST', `/api/dns/records/${id}/promote`, req);
+  }
+
 }
 
 // Singleton instance for request deduplication across components

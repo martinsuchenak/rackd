@@ -245,6 +245,9 @@ func (h *Handler) listDNSZoneRecords(w http.ResponseWriter, r *http.Request) {
 		status := model.RecordSyncStatus(ss)
 		filter.SyncStatus = &status
 	}
+	if ls := r.URL.Query().Get("link_status"); ls != "" {
+		filter.LinkStatus = &ls
+	}
 
 	records, err := h.svc.DNS.ListRecords(r.Context(), filter)
 	if err != nil {
@@ -301,3 +304,41 @@ func (h *Handler) deleteDNSRecord(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// linkDNSRecord links an unlinked DNS record to a device
+func (h *Handler) linkDNSRecord(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	var req model.LinkDNSRecordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	record, err := h.svc.DNS.LinkRecord(r.Context(), id, &req)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, record)
+}
+
+// promoteDNSRecord creates a new device from an unlinked DNS record
+func (h *Handler) promoteDNSRecord(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	var req model.PromoteDNSRecordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+
+	record, err := h.svc.DNS.PromoteRecord(r.Context(), id, &req)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, record)
+}
+
+

@@ -194,6 +194,7 @@ type DNSRecord struct {
 	ID           string           `json:"id"`
 	ZoneID       string           `json:"zone_id"`
 	DeviceID     *string          `json:"device_id,omitempty"`
+	AddressID    *string          `json:"address_id,omitempty"`
 	Name         string           `json:"name"`
 	Type         string           `json:"type"`
 	Value        string           `json:"value"`
@@ -218,6 +219,7 @@ type DNSRecordFilter struct {
 	DeviceID   *string
 	Type       string
 	SyncStatus *RecordSyncStatus
+	LinkStatus *string // "linked", "unlinked", or nil for all
 }
 
 // SyncResult represents the result of a DNS sync operation
@@ -235,6 +237,7 @@ type ImportResult struct {
 	Success    bool     `json:"success"`
 	Total      int      `json:"total"`
 	Imported   int      `json:"imported"`
+	Linked     int      `json:"linked"`
 	Skipped    int      `json:"skipped"`
 	Failed     int      `json:"failed"`
 	Error      string   `json:"error,omitempty"`
@@ -300,4 +303,18 @@ type UpdateDNSRecordRequest struct {
 	Type     *string `json:"type,omitempty"`
 	Value    *string `json:"value,omitempty"`
 	TTL      *int    `json:"ttl,omitempty"`
+}
+
+// LinkDNSRecordRequest represents the input for linking a DNS record to a device
+type LinkDNSRecordRequest struct {
+	DeviceID     string  `json:"device_id"`
+	AddressID    *string `json:"address_id,omitempty"`
+	AddToDomains bool    `json:"add_to_domains,omitempty"`
+}
+
+// PromoteDNSRecordRequest represents the input for promoting a DNS record to a new device
+type PromoteDNSRecordRequest struct {
+	Name         *string  `json:"name,omitempty"`
+	DatacenterID *string  `json:"datacenter_id,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
 }

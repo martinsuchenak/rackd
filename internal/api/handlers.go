@@ -312,6 +312,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /api/dns/records/{id}", wrapAuth(h.getDNSRecord))
 		mux.HandleFunc("PUT /api/dns/records/{id}", wrapAuth(h.updateDNSRecord))
 		mux.HandleFunc("DELETE /api/dns/records/{id}", wrapAuth(h.deleteDNSRecord))
+		mux.HandleFunc("POST /api/dns/records/{id}/link", wrapAuth(h.linkDNSRecord))
+		mux.HandleFunc("POST /api/dns/records/{id}/promote", wrapAuth(h.promoteDNSRecord))
 	}
 
 	// Health check routes (no auth required)

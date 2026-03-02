@@ -88,6 +88,28 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 			}
 		}
 	}
+
+	// Create CNAME records for each device domain that matches a zone
+	for _, domain := range device.Domains {
+		zone, prefix := MatchZoneForDomain(domain, zones)
+		if zone == nil {
+			continue // no matching zone
+		}
+		cnameValue := device.Hostname + "." + zone.Name
+		req := &model.CreateDNSRecordRequest{
+			ZoneID:   zone.ID,
+			DeviceID: &device.ID,
+			Name:     prefix,
+			Type:     "CNAME",
+			Value:    cnameValue,
+			TTL:      zone.TTL,
+		}
+		if _, err := s.dns.CreateRecord(ctx, req); err != nil {
+			// Log but don't fail - individual record failures shouldn't block
+			continue
+		}
+	}
+
 	return nil
 }
 
