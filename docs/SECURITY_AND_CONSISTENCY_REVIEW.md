@@ -81,7 +81,7 @@
 **Category:** Availability
 **Location:** `/internal/auth/session.go:26`
 **Issue:** Sessions stored in memory with no persistence. Server restarts invalidate all sessions. Cannot scale horizontally.
-**Remediation:** Consider Redis or database-backed session store for production.
+**Remediation:** Implement a database-backed session store with an option to use a different store (e.g. Valkey) instead.
 
 ### H-2: OAuth Authorization Code Race Condition
 **Module:** Authentication
@@ -116,7 +116,7 @@
 **Category:** Injection (XSS)
 **Location:** `/webui/src/index.html:366`
 **Issue:** Extension pages use `x-html` to inject arbitrary HTML content. If an extension is compromised, it could inject XSS payloads.
-**Remediation:** Implement CSP and consider using DOMPurify for sanitization.
+**Remediation:** Verify if there are any extensions in use. If not, remove the extension functionality. If yes, implement CSP and consider using DOMPurify for sanitization.
 
 ### H-7: Missing Context Propagation in Storage
 **Module:** Storage Layer
@@ -151,7 +151,7 @@
 **Category:** Key Management
 **Location:** Architecture / CLI logic
 **Issue:** No mechanism to rotate encryption keys.
-**Remediation:** Implement key rotation or remove documentation referring to it.
+**Remediation:** Implement key rotation.
 
 ### H-12: Additional High Issues from Extended Review
 - **Discovery:** Missing input validation for IP addresses in ARP scanner. Trust-On-First-Use (TOFU) issue for SSH host keys.
