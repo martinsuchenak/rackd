@@ -165,8 +165,21 @@ func (s *SQLiteStorage) GetAuthorizationCode(codeHash string) (*model.OAuthAutho
 }
 
 func (s *SQLiteStorage) MarkAuthorizationCodeUsed(codeHash string) error {
-	_, err := s.db.Exec(`UPDATE oauth_authorization_codes SET used = 1 WHERE code_hash = ?`, codeHash)
-	return err
+	result, err := s.db.Exec(`UPDATE oauth_authorization_codes SET used = 1 WHERE code_hash = ? AND used = 0`, codeHash)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrOAuthCodeUsed
+	}
+
+	return nil
 }
 
 func (s *SQLiteStorage) CleanupExpiredCodes() error {

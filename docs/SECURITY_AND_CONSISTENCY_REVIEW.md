@@ -11,7 +11,7 @@
 
 | Module | Critical | High | Medium | Low | Risk Level |
 |--------|----------|------|--------|-----|------------|
-| Authentication (`/internal/auth/`) | 1 | 3 | 5 | 2 | HIGH |
+| Authentication (`/internal/auth/`) | 1 | 2 | 5 | 2 | HIGH |
 | API Handlers (`/internal/api/`) | 0 | 3 | 6 | 4 | MEDIUM |
 | Storage Layer (`/internal/storage/`) | 0 | 3 | 5 | 4 | MEDIUM |
 | Credentials (`/internal/credentials/`) | 0 | 2 | 3 | 2 | MEDIUM |
@@ -21,7 +21,7 @@
 | Discovery (`/internal/discovery/`) | 1 | 3 | 5 | 4 | HIGH |
 | Web UI (`/webui/src/`) | 1 | 2 | 3 | 2 | HIGH |
 | Tests | 0 | 1 | 5 | 4 | MEDIUM |
-| **TOTAL** | **7** | **27** | **47** | **30** | **HIGH** |
+| **TOTAL** | **7** | **26** | **47** | **30** | **HIGH** |
 
 ---
 
@@ -69,6 +69,9 @@
 13. **In-Memory Session Store - No Persistence**
     - **Module:** Authentication
     - **Fix Applied:** Implemented a persistent session store using SQLite by default, with an option to use a Valkey/Redis store instead. Added `SESSION_STORE_TYPE` and `VALKEY_URL` configuration variables.
+14. **OAuth Authorization Code Race Condition**
+    - **Module:** Authentication
+    - **Fix Applied:** Modified `MarkAuthorizationCodeUsed` in the SQLite storage layer to update the used flag only if it is currently 0 (`AND used = 0`) and fail with `ErrOAuthCodeUsed` if no rows were affected. This guarantees atomic marking and prevents race conditions that could lead to authorization code replay.
 
 ---
 
@@ -78,13 +81,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-
-### H-2: OAuth Authorization Code Race Condition
-**Module:** Authentication
-**Category:** OAuth Implementation
-**Location:** `/internal/service/oauth.go:214`
-**Issue:** Authorization code lookup and marking as used are not atomic. Race condition allows potential code replay.
-**Remediation:** Use database transactions or optimistic locking.
 
 ### H-3: Race Condition in IP Address Allocation
 **Module:** Service Layer
@@ -330,9 +326,8 @@
 ### Short Term (This Month) - HIGH
 1. Add configuration to disable SNMPv2c in production
 2. Add SSRF protection for webhook URLs
-3. Fix authorization code race condition
-4. Address Silent Decryption Failures in Credentials module
-5. Fix Context Propagation in Storage routines
+3. Address Silent Decryption Failures in Credentials module
+4. Fix Context Propagation in Storage routines
 
 ### Medium Term (Next Quarter)
 1. Implement CSP for Web UI (mitigate XSS)
