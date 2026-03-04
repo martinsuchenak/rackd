@@ -3,6 +3,20 @@
 **Date:** 2026-03-04
 **Review Scope:** Complete codebase review including API, MCP, CLI, Service Layer, Storage, Discovery, Web UI, and Tests
 **Reviewers:** Security Reviewer, Code Reviewer (OMC Agents)
+**Last Updated:** 2026-03-04 (Critical Issues Fixed)
+
+---
+
+## Critical Issues Status
+
+| # | Issue | Status | Fixed Date |
+|---|-------|--------|------------|
+| 1 | Session Token Not Invalidated on Password Change | ✅ FIXED | 2026-03-04 |
+| 2 | Missing Permission Check in DNS LinkRecord Method | ✅ FIXED | 2026-03-04 |
+| 3 | Insecure Password Input Handling in CLI | ✅ FIXED | 2026-03-04 |
+| 4 | Potential Command Injection in OS Fingerprinting | ✅ FIXED | 2026-03-04 |
+| 5 | Open Redirect Vulnerability in Login Flow | ✅ FIXED | 2026-03-04 |
+| 6 | Legacy API Keys Bypass RBAC | ✅ FIXED | 2026-03-04 |
 
 ---
 
@@ -30,6 +44,7 @@
 **Module:** Authentication
 **Category:** Broken Authentication
 **Location:** `/internal/service/user.go:229,258`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** When a user changes their password (via `ChangePassword` or `ResetPassword`), their existing sessions are NOT invalidated. This allows an attacker who obtained a session token before the password change to maintain access.
 
@@ -38,6 +53,8 @@
 // In ChangePassword (line 229) and ResetPassword (line 258), add:
 s.sessions.InvalidateUserSessions(user.ID)
 ```
+
+**Fix Applied:** Added session invalidation to both `ChangePassword` and `ResetPassword` methods in `/internal/service/user.go`. All existing sessions are now invalidated when a password is changed.
 
 ---
 
@@ -80,10 +97,13 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** Authentication / Service Layer
 **Category:** Broken Access Control
 **Location:** `/internal/service/rbac.go:22-25`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** Legacy API keys (without UserID) completely bypass all RBAC checks, granting unrestricted access.
 
 **Remediation:** Migrate to user-associated keys or implement separate permission system.
+
+**Fix Applied:** Removed the legacy API key bypass entirely. Legacy API keys (without user association) are now rejected with `LEGACY_API_KEY_UNSUPPORTED` error. All API keys must be associated with a user to enforce RBAC.
 
 ---
 
@@ -91,10 +111,13 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** Service Layer
 **Category:** Broken Access Control
 **Location:** `/internal/service/dns.go:1200-1272`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** The `LinkRecord` method does not call `requirePermission()` before performing operations. Any authenticated user can link any DNS record to any device.
 
 **Remediation:** Add permission check at the start of the method.
+
+**Fix Applied:** Added `requirePermission(ctx, s.store, "dns", "update")` to both `LinkRecord` and `PromoteRecord` methods.
 
 ---
 
@@ -102,10 +125,13 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** CLI Commands
 **Category:** Sensitive Data Exposure
 **Location:** `/cmd/user/user.go:118-122,301-311`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** Passwords are read using `fmt.Scanln()` which echoes input to the terminal, exposing passwords to shoulder surfing and terminal scrollback.
 
 **Remediation:** Use `golang.org/x/term.ReadPassword()` to read passwords without echoing.
+
+**Fix Applied:** Replaced `fmt.Scanln()` with `term.ReadPassword()` in both `CreateCommand` and `ChangePasswordCommand`. Passwords are no longer echoed to the terminal.
 
 ---
 
@@ -113,10 +139,13 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** Discovery
 **Category:** Command Injection
 **Location:** `/internal/discovery/os_fingerprint.go:63-69`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** The `measureTTL` function passes user-controllable IP address directly to `exec.Command` for the `ping` command without validation.
 
 **Remediation:** Validate IP address format before passing to the command.
+
+**Fix Applied:** Added defense-in-depth IP validation inside `measureTTL()` using `net.ParseIP()`. The IP is now validated before being passed to `exec.Command`. Note: The code already used `exec.Command` with separate arguments (not shell interpolation), which is secure against command injection.
 
 ---
 
@@ -124,10 +153,13 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** Web UI
 **Category:** OWASP A01:2021 - Broken Access Control
 **Location:** `/webui/src/components/login.ts:69-70`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** The login component trusts the `redirect` query parameter without validation, allowing an attacker to craft malicious URLs that redirect users to external sites after login.
 
 **Remediation:** Validate redirect parameter to only allow relative paths starting with `/`.
+
+**Fix Applied:** Added validation to only allow relative paths starting with `/` and rejecting URLs that start with `//` (protocol-relative URLs). Invalid redirects are replaced with `/`.
 
 ---
 

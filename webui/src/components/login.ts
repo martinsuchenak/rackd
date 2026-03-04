@@ -67,7 +67,12 @@ export function login() {
         // Cookie is set by the server (httpOnly) — just redirect
         const params = new URLSearchParams(window.location.search);
         const redirect = params.get('redirect');
-        window.location.href = redirect || '/';
+        // Security: Only allow relative paths starting with '/' to prevent open redirect attacks
+        if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+          window.location.href = redirect;
+        } else {
+          window.location.href = '/';
+        }
       } catch (err) {
         this.showError('Network error. Please try again.');
       } finally {

@@ -226,7 +226,16 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 
 	user.PasswordHash = passwordHash
 	user.UpdatedAt = time.Now()
-	return s.store.UpdateUser(enrichAuditCtx(ctx), user)
+	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
+		return err
+	}
+
+	// Invalidate all sessions for this user to prevent old sessions from remaining active
+	if s.sessions != nil {
+		s.sessions.InvalidateUserSessions(id)
+	}
+
+	return nil
 }
 
 // ResetPassword allows admins to reset a user's password without knowing the old one
@@ -255,7 +264,16 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 
 	user.PasswordHash = passwordHash
 	user.UpdatedAt = time.Now()
-	return s.store.UpdateUser(enrichAuditCtx(ctx), user)
+	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
+		return err
+	}
+
+	// Invalidate all sessions for this user to prevent old sessions from remaining active
+	if s.sessions != nil {
+		s.sessions.InvalidateUserSessions(id)
+	}
+
+	return nil
 }
 
 func (s *UserService) GetRoles(ctx context.Context, userID string) ([]model.Role, error) {

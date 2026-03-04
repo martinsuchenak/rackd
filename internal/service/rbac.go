@@ -17,13 +17,9 @@ func requirePermission(ctx context.Context, checker PermissionChecker, resource,
 		return nil
 	}
 
-	// Legacy API keys (no user_id) still use CallerTypeAPIKey and bypass RBAC.
-	// New per-user keys are resolved to CallerTypeUser in auth middleware,
-	// so they go through normal RBAC below.
-	if caller != nil && caller.Type == CallerTypeAPIKey {
-		return nil
-	}
-
+	// All API keys must go through RBAC. Legacy API keys (without user association)
+	// are no longer supported and will be denied access. Users should migrate to
+	// user-associated API keys which enforce RBAC based on the owner's roles.
 	if caller == nil || caller.UserID == "" {
 		log.Debug("RBAC: unauthenticated caller", "resource", resource, "action", action)
 		return ErrUnauthenticated

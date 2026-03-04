@@ -1198,6 +1198,11 @@ func (s *DNSService) matchDeviceForRecord(record *model.DNSRecord, zone *model.D
 // that the address belongs to the device. For CNAME records with AddToDomains,
 // it adds the record's FQDN to the device's Domains list.
 func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model.LinkDNSRecordRequest) (*model.DNSRecord, error) {
+	// Permission check - requires dns:update
+	if err := requirePermission(ctx, s.store, "dns", "update"); err != nil {
+		return nil, err
+	}
+
 	// 1. Get record, validate it's unlinked
 	record, err := s.store.GetDNSRecord(recordID)
 	if err != nil {
@@ -1273,6 +1278,11 @@ func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model
 
 // PromoteRecord creates a new device from an unlinked DNS record's data and links the record to it.
 func (s *DNSService) PromoteRecord(ctx context.Context, recordID string, req *model.PromoteDNSRecordRequest) (*model.DNSRecord, error) {
+	// Permission check - requires dns:update (linking records is a modification)
+	if err := requirePermission(ctx, s.store, "dns", "update"); err != nil {
+		return nil, err
+	}
+
 	// 1. Get record, validate it's unlinked
 	record, err := s.store.GetDNSRecord(recordID)
 	if err != nil {

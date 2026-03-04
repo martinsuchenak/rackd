@@ -55,6 +55,13 @@ func (f *OSFingerprinter) Fingerprint(ip string) *OSFingerprint {
 
 // measureTTL uses ping to determine the TTL of a remote host.
 func (f *OSFingerprinter) measureTTL(ip string) uint8 {
+	// Defense-in-depth: validate IP address before passing to exec.Command
+	// Although Fingerprint() validates before calling this, we validate here
+	// to ensure safety if called from elsewhere in the future.
+	if ip == "" || net.ParseIP(ip) == nil {
+		return 0
+	}
+
 	timeoutSec := int(f.timeout.Seconds())
 	if timeoutSec < 1 {
 		timeoutSec = 1

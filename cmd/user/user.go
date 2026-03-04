@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/paularlott/cli"
+	"golang.org/x/term"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -116,10 +117,21 @@ func CreateCommand() *cli.Command {
 			email := cmd.GetString("email")
 
 			fmt.Printf("Enter password for %s: ", username)
-			var password1, password2 string
-			fmt.Scanln(&password1)
+			password1Bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("failed to read password: %w", err)
+			}
+			fmt.Println() // Add newline after password input
+
 			fmt.Printf("Confirm password: ")
-			fmt.Scanln(&password2)
+			password2Bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("failed to read password: %w", err)
+			}
+			fmt.Println() // Add newline after password input
+
+			password1 := string(password1Bytes)
+			password2 := string(password2Bytes)
 
 			if password1 != password2 {
 				return fmt.Errorf("passwords do not match")
@@ -299,16 +311,29 @@ func ChangePasswordCommand() *cli.Command {
 			id := cmd.GetString("id")
 
 			fmt.Printf("Enter old password: ")
-			var oldPassword string
-			fmt.Scanln(&oldPassword)
+			oldPasswordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("failed to read password: %w", err)
+			}
+			fmt.Println() // Add newline after password input
 
 			fmt.Printf("Enter new password: ")
-			var newPassword1 string
-			fmt.Scanln(&newPassword1)
+			newPassword1Bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("failed to read password: %w", err)
+			}
+			fmt.Println() // Add newline after password input
 
 			fmt.Printf("Confirm new password: ")
-			var newPassword2 string
-			fmt.Scanln(&newPassword2)
+			newPassword2Bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("failed to read password: %w", err)
+			}
+			fmt.Println() // Add newline after password input
+
+			oldPassword := string(oldPasswordBytes)
+			newPassword1 := string(newPassword1Bytes)
+			newPassword2 := string(newPassword2Bytes)
 
 			if newPassword1 != newPassword2 {
 				return fmt.Errorf("new passwords do not match")

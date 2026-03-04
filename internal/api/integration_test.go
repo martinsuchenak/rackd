@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -54,8 +56,64 @@ func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, s
 		t.Fatalf("failed to create storage: %v", err)
 	}
 
-	// Create API key for authenticated endpoints
-	apiKey := &model.APIKey{ID: "int-test-key", Name: "integration-key", Key: integrationAPIKey}
+	// Create a test user with admin role for RBAC
+	passwordHash, _ := auth.HashPassword("test-password")
+	testUser := &model.User{
+		ID:           "test-user-id",
+		Username:     "testuser",
+		Email:        "test@example.com",
+		PasswordHash: passwordHash,
+		IsActive:     true,
+		IsAdmin:      true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := store.CreateUser(context.Background(), testUser); err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	// Get the admin role (created by bootstrap)
+	roles, err := store.ListRoles(context.Background(), nil)
+	var adminRoleID string
+	if err != nil || len(roles) == 0 {
+		// Create admin role if it doesn't exist
+		adminRole := &model.Role{
+			ID:          "admin-role-id",
+			Name:        "admin",
+			Description: "Administrator role",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+		if err := store.CreateRole(context.Background(), adminRole); err != nil {
+			t.Fatalf("failed to create admin role: %v", err)
+		}
+		adminRoleID = adminRole.ID
+	} else {
+		adminRoleID = roles[0].ID
+	}
+
+	// Get all existing permissions (created by migrations) and assign to admin role
+	allPerms, err := store.ListPermissions(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("failed to list permissions: %v", err)
+	}
+	var permissionIDs []string
+	for _, p := range allPerms {
+		permissionIDs = append(permissionIDs, p.ID)
+	}
+
+	// Assign all permissions to admin role
+	if err := store.SetRolePermissions(context.Background(), adminRoleID, permissionIDs); err != nil {
+		t.Fatalf("failed to set role permissions: %v", err)
+	}
+
+	// Assign the admin role to the test user
+	if err := store.AssignRoleToUser(context.Background(), testUser.ID, adminRoleID); err != nil {
+		t.Fatalf("failed to assign admin role: %v", err)
+	}
+
+	// Create API key associated with the test user
+	apiKey := &model.APIKey{ID: "int-test-key", Name: "integration-key", Key: integrationAPIKey, UserID: testUser.ID}
 	if err := store.CreateAPIKey(apiKey); err != nil {
 		t.Fatalf("failed to create test API key: %v", err)
 	}

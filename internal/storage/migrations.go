@@ -216,6 +216,12 @@ var migrations = []*Migration{
 		Up:      migrateAddDNSRecordAddressIDUp,
 		Down:    migrateAddDNSRecordAddressIDDown,
 	},
+	{
+		Version: "20260304100000",
+		Name:    "add_discovery_update_permission",
+		Up:      migrateAddDiscoveryUpdatePermissionUp,
+		Down:    migrateAddDiscoveryUpdatePermissionDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2675,5 +2681,81 @@ func migrateAddDNSRecordAddressIDDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_dns_records_address`); err != nil {
 		return fmt.Errorf("failed to drop index idx_dns_records_address: %w", err)
 	}
+	return nil
+}
+
+// migrateAddDiscoveryUpdatePermissionUp adds the missing discovery:update permission
+func migrateAddDiscoveryUpdatePermissionUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	// Add discovery:update permission
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, newUUID(), "discovery:update", "discovery", "update", now)
+	if err != nil {
+		return fmt.Errorf("failed to insert discovery:update permission: %w", err)
+	}
+
+	// Get admin and operator role IDs
+	var adminRoleID, operatorRoleID string
+	err = tx.QueryRowContext(ctx, `SELECT id FROM roles WHERE name = 'admin'`).Scan(&adminRoleID)
+	if err != nil {
+		return fmt.Errorf("failed to find admin role: %w", err)
+	}
+	err = tx.QueryRowContext(ctx, `SELECT id FROM roles WHERE name = 'operator'`).Scan(&operatorRoleID)
+	if err != nil {
+		return fmt.Errorf("failed to find operator role: %w", err)
+	}
+
+	// Get the new permission ID
+	var permID string
+	err = tx.QueryRowContext(ctx, `SELECT id FROM permissions WHERE name = 'discovery:update'`).Scan(&permID)
+	if err != nil {
+		return fmt.Errorf("failed to find discovery:update permission: %w", err)
+	}
+
+	// Add permission to admin role
+	_, err = tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		VALUES (?, ?, ?)
+	`, adminRoleID, permID, now)
+	if err != nil {
+		return fmt.Errorf("failed to add discovery:update permission to admin role: %w", err)
+	}
+
+	// Add permission to operator role
+	_, err = tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		VALUES (?, ?, ?)
+	`, operatorRoleID, permID, now)
+	if err != nil {
+		return fmt.Errorf("failed to add discovery:update permission to operator role: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddDiscoveryUpdatePermissionDown removes the discovery:update permission
+func migrateAddDiscoveryUpdatePermissionDown(ctx context.Context, tx *sql.Tx) error {
+	// Get the permission ID
+	var permID string
+	err := tx.QueryRowContext(ctx, `SELECT id FROM permissions WHERE name = 'discovery:update'`).Scan(&permID)
+	if err != nil {
+		return nil // Permission doesn't exist, nothing to remove
+	}
+
+	// Remove from all role_permissions
+	_, err = tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE permission_id = ?`, permID)
+	if err != nil {
+		return fmt.Errorf("failed to remove discovery:update permission from roles: %w", err)
+	}
+
+	// Remove the permission
+	_, err = tx.ExecContext(ctx, `DELETE FROM permissions WHERE id = ?`, permID)
+	if err != nil {
+		return fmt.Errorf("failed to delete discovery:update permission: %w", err)
+	}
+
 	return nil
 }

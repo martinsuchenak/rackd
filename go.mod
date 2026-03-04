@@ -10,7 +10,9 @@ require (
 	github.com/paularlott/mcp v0.12.10
 	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.48.0
+	golang.org/x/term v0.40.0
 	modernc.org/sqlite v1.46.1
+	pgregory.net/rapid v1.2.0
 )
 
 require (
@@ -27,5 +29,4 @@ require (
 	modernc.org/libc v1.68.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	pgregory.net/rapid v1.2.0 // indirect
 )

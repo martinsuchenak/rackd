@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -25,10 +27,27 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 	}
 	defer store.Close()
 
-	// Create API key
+	// Create a test user
+	passwordHash, _ := auth.HashPassword("test-password")
+	testUser := &model.User{
+		ID:           "test-user-id",
+		Username:     "testuser",
+		Email:        "test@example.com",
+		PasswordHash: passwordHash,
+		IsActive:     true,
+		IsAdmin:      true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := store.CreateUser(context.Background(), testUser); err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create API key associated with the test user
 	key := &model.APIKey{
-		Name: "test-key",
-		Key:  "secret-token",
+		Name:   "test-key",
+		Key:    "secret-token",
+		UserID: testUser.ID,
 	}
 	if err := store.CreateAPIKey(key); err != nil {
 		t.Fatalf("Failed to create API key: %v", err)

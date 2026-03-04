@@ -88,14 +88,14 @@ func resolveAPIKeyCaller(store storage.ExtendedStorage, key *model.APIKey, ip, s
 		}
 		log.Warn("API key owner not found or inactive", "key_name", key.Name, "user_id", key.UserID)
 	}
-	// Legacy key (no user association) — keep CallerTypeAPIKey
-	return &service.Caller{
-		Type:      service.CallerTypeAPIKey,
-		UserID:    key.ID,
-		Username:  key.Name,
-		IPAddress: ip,
-		Source:    source,
-	}
+	// Legacy key (no user association) — no longer supported
+	// API keys must be associated with a user to enforce RBAC
+	log.Warn("Legacy API key rejected - no user association",
+		"key_name", key.Name,
+		"key_id", key.ID,
+		"ip", ip,
+	)
+	return nil
 }
 
 // AuthMiddleware validates API keys
@@ -130,6 +130,12 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
 				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
+				if caller == nil {
+					// Legacy API key without user association - rejected
+					w.Header().Set("Content-Type", "application/json")
+					http.Error(w, `{"error":"Unauthorized","code":"LEGACY_API_KEY_UNSUPPORTED"}`, http.StatusUnauthorized)
+					return
+				}
 				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return
@@ -196,6 +202,12 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
 				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
+				if caller == nil {
+					// Legacy API key without user association - rejected
+					w.Header().Set("Content-Type", "application/json")
+					http.Error(w, `{"error":"Unauthorized","code":"LEGACY_API_KEY_UNSUPPORTED"}`, http.StatusUnauthorized)
+					return
+				}
 				r = r.WithContext(service.WithCaller(r.Context(), caller))
 				next(w, r)
 				return
