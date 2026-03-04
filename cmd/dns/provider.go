@@ -127,7 +127,8 @@ func providerCreateCommand() *cli.Command {
 			&cli.StringFlag{Name: "name", Usage: "Provider name", Required: true},
 			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)", Required: true},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
-			&cli.StringFlag{Name: "token", Usage: "API token or credentials"},
+			&cli.StringFlag{Name: "token-env", Usage: "Environment variable name containing the API token"},
+			&cli.StringFlag{Name: "token-file", Usage: "Path to a file containing the API token"},
 			&cli.StringFlag{Name: "description", Usage: "Provider description"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (table/json/yaml)", DefaultValue: "table"},
 		},
@@ -143,8 +144,19 @@ func providerCreateCommand() *cli.Command {
 			if v := cmd.GetString("endpoint"); v != "" {
 				req["endpoint"] = v
 			}
-			if v := cmd.GetString("token"); v != "" {
-				req["token"] = v
+			if v := cmd.GetString("token-env"); v != "" {
+				token := os.Getenv(v)
+				if token == "" {
+					return fmt.Errorf("environment variable %s is empty or not set", v)
+				}
+				req["token"] = strings.TrimSpace(token)
+			}
+			if v := cmd.GetString("token-file"); v != "" {
+				content, err := os.ReadFile(v)
+				if err != nil {
+					return fmt.Errorf("failed to read token file: %w", err)
+				}
+				req["token"] = strings.TrimSpace(string(content))
 			}
 			if v := cmd.GetString("description"); v != "" {
 				req["description"] = v
@@ -189,7 +201,8 @@ func providerUpdateCommand() *cli.Command {
 			&cli.StringFlag{Name: "name", Usage: "Provider name"},
 			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)"},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
-			&cli.StringFlag{Name: "token", Usage: "API token or credentials"},
+			&cli.StringFlag{Name: "token-env", Usage: "Environment variable name containing the API token"},
+			&cli.StringFlag{Name: "token-file", Usage: "Path to a file containing the API token"},
 			&cli.StringFlag{Name: "description", Usage: "Provider description"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (table/json/yaml)", DefaultValue: "yaml"},
 		},
@@ -208,8 +221,19 @@ func providerUpdateCommand() *cli.Command {
 			if v := cmd.GetString("endpoint"); v != "" {
 				updates["endpoint"] = v
 			}
-			if v := cmd.GetString("token"); v != "" {
-				updates["token"] = v
+			if v := cmd.GetString("token-env"); v != "" {
+				token := os.Getenv(v)
+				if token == "" {
+					return fmt.Errorf("environment variable %s is empty or not set", v)
+				}
+				updates["token"] = strings.TrimSpace(token)
+			}
+			if v := cmd.GetString("token-file"); v != "" {
+				content, err := os.ReadFile(v)
+				if err != nil {
+					return fmt.Errorf("failed to read token file: %w", err)
+				}
+				updates["token"] = strings.TrimSpace(string(content))
 			}
 			if v := cmd.GetString("description"); v != "" {
 				updates["description"] = v

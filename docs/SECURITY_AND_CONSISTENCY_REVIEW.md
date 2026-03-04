@@ -17,11 +17,11 @@
 | Credentials (`/internal/credentials/`) | 0 | 2 | 3 | 2 | MEDIUM |
 | MCP Server (`/internal/mcp/`) | 0 | 2 | 4 | 2 | MEDIUM |
 | Service Layer (`/internal/service/`) | 2 | 3 | 6 | 3 | HIGH |
-| CLI Commands (`/cmd/`) | 2 | 4 | 5 | 3 | HIGH |
+| CLI Commands (`/cmd/`) | 2 | 3 | 5 | 3 | HIGH |
 | Discovery (`/internal/discovery/`) | 1 | 3 | 5 | 4 | HIGH |
 | Web UI (`/webui/src/`) | 1 | 2 | 3 | 2 | HIGH |
 | Tests | 0 | 1 | 5 | 4 | MEDIUM |
-| **TOTAL** | **7** | **25** | **47** | **30** | **HIGH** |
+| **TOTAL** | **7** | **24** | **47** | **30** | **HIGH** |
 
 ---
 
@@ -75,6 +75,9 @@
 15. **Race Condition in IP Address Allocation**
     - **Module:** Service Layer
     - **Fix Applied:** Updated `CreateReservation` in SQLite storage to proactively transform SQLite Unique Constraint violations into `ErrIPAlreadyReserved` when identical `(pool_id, ip_address)` reservations clash. Updated `service/reservation.go` to intercept these conflicts and retry allocation dynamically up to 5 times.
+16. **Token Passed via Command Line Flag**
+    - **Module:** CLI Commands 
+    - **Fix Applied:** Replaced the `--token` flag with `--token-env` and `--token-file` in the `dns provider create` and `dns provider update` subcommands, precluding the possibility of API credentials lingering in process namespaces or shell history.
 
 ---
 
@@ -84,13 +87,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-
-### H-4: Token Passed via Command Line Flag
-**Module:** CLI Commands
-**Category:** Sensitive Data Exposure
-**Location:** `/cmd/dns/provider.go:130,192`
-**Issue:** DNS provider tokens can be passed via `--token` flag, visible in process listings and shell history.
-**Remediation:** Accept tokens via environment variables or files only.
 
 ### H-5: SNMPv2c Community String Transmitted in Cleartext
 **Module:** Discovery
