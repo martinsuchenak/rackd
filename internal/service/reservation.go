@@ -83,36 +83,52 @@ func (s *ReservationService) Create(ctx context.Context, req *model.CreateReserv
 	}
 
 	// If IP not specified, auto-assign one
-	ipAddress := req.IPAddress
-	if ipAddress == "" {
-		var err error
-		ipAddress, err = s.store.GetNextAvailableIP(req.PoolID)
-		if err != nil {
-			if err == storage.ErrIPNotAvailable {
-				return nil, ValidationErrors{{Field: "ip_address", Message: "No IP addresses available in pool"}}
+	autoAssign := req.IPAddress == ""
+	var ipAddress string
+	var reservation *model.Reservation
+
+	maxRetries := 5
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		ipAddress = req.IPAddress
+		if autoAssign {
+			var err error
+			ipAddress, err = s.store.GetNextAvailableIP(req.PoolID)
+			if err != nil {
+				if err == storage.ErrIPNotAvailable {
+					return nil, ValidationErrors{{Field: "ip_address", Message: "No IP addresses available in pool"}}
+				}
+				return nil, err
 			}
-			return nil, err
 		}
-	}
 
-	reservation := &model.Reservation{
-		PoolID:     req.PoolID,
-		IPAddress:  ipAddress,
-		Hostname:   req.Hostname,
-		Purpose:    req.Purpose,
-		ReservedBy: reservedBy,
-		ReservedAt: time.Now().UTC(),
-		ExpiresAt:  req.ExpiresAt,
-		Status:     model.ReservationStatusActive,
-		Notes:      req.Notes,
-	}
+		reservation = &model.Reservation{
+			PoolID:     req.PoolID,
+			IPAddress:  ipAddress,
+			Hostname:   req.Hostname,
+			Purpose:    req.Purpose,
+			ReservedBy: reservedBy,
+			ReservedAt: time.Now().UTC(),
+			ExpiresAt:  req.ExpiresAt,
+			Status:     model.ReservationStatusActive,
+			Notes:      req.Notes,
+		}
 
-	if err := s.store.CreateReservation(enrichAuditCtx(ctx), reservation); err != nil {
+		err := s.store.CreateReservation(enrichAuditCtx(ctx), reservation)
+		if err == nil {
+			return reservation, nil
+		}
+
 		if err == storage.ErrIPConflict {
-			return nil, ValidationErrors{{Field: "ip_address", Message: "IP address is already in use by a device"}}
+			if !autoAssign {
+				return nil, ValidationErrors{{Field: "ip_address", Message: "IP address is already in use by a device"}}
+			}
+			continue // try again if auto-assigned
 		}
 		if err == storage.ErrIPAlreadyReserved {
-			return nil, ValidationErrors{{Field: "ip_address", Message: "IP address is already reserved"}}
+			if !autoAssign {
+				return nil, ValidationErrors{{Field: "ip_address", Message: "IP address is already reserved"}}
+			}
+			continue // try again if auto-assigned
 		}
 		if err == storage.ErrPoolNotFound {
 			return nil, ValidationErrors{{Field: "pool_id", Message: "Pool not found"}}
@@ -120,7 +136,7 @@ func (s *ReservationService) Create(ctx context.Context, req *model.CreateReserv
 		return nil, err
 	}
 
-	return reservation, nil
+	return nil, ValidationErrors{{Field: "ip_address", Message: "Failed to automatically allocate IP due to high contention, please try again later"}}
 }
 
 // Update updates an existing reservation

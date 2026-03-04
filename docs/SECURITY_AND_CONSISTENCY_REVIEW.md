@@ -16,12 +16,12 @@
 | Storage Layer (`/internal/storage/`) | 0 | 3 | 5 | 4 | MEDIUM |
 | Credentials (`/internal/credentials/`) | 0 | 2 | 3 | 2 | MEDIUM |
 | MCP Server (`/internal/mcp/`) | 0 | 2 | 4 | 2 | MEDIUM |
-| Service Layer (`/internal/service/`) | 2 | 4 | 6 | 3 | HIGH |
+| Service Layer (`/internal/service/`) | 2 | 3 | 6 | 3 | HIGH |
 | CLI Commands (`/cmd/`) | 2 | 4 | 5 | 3 | HIGH |
 | Discovery (`/internal/discovery/`) | 1 | 3 | 5 | 4 | HIGH |
 | Web UI (`/webui/src/`) | 1 | 2 | 3 | 2 | HIGH |
 | Tests | 0 | 1 | 5 | 4 | MEDIUM |
-| **TOTAL** | **7** | **26** | **47** | **30** | **HIGH** |
+| **TOTAL** | **7** | **25** | **47** | **30** | **HIGH** |
 
 ---
 
@@ -72,6 +72,9 @@
 14. **OAuth Authorization Code Race Condition**
     - **Module:** Authentication
     - **Fix Applied:** Modified `MarkAuthorizationCodeUsed` in the SQLite storage layer to update the used flag only if it is currently 0 (`AND used = 0`) and fail with `ErrOAuthCodeUsed` if no rows were affected. This guarantees atomic marking and prevents race conditions that could lead to authorization code replay.
+15. **Race Condition in IP Address Allocation**
+    - **Module:** Service Layer
+    - **Fix Applied:** Updated `CreateReservation` in SQLite storage to proactively transform SQLite Unique Constraint violations into `ErrIPAlreadyReserved` when identical `(pool_id, ip_address)` reservations clash. Updated `service/reservation.go` to intercept these conflicts and retry allocation dynamically up to 5 times.
 
 ---
 
@@ -81,13 +84,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-
-### H-3: Race Condition in IP Address Allocation
-**Module:** Service Layer
-**Category:** Race Condition / Data Integrity
-**Location:** `/internal/service/reservation.go:86-96`
-**Issue:** The `GetNextAvailableIP` call and subsequent reservation creation are not atomic, allowing the same IP to be reserved twice.
-**Remediation:** Use database-level transactions or optimistic locking.
 
 ### H-4: Token Passed via Command Line Flag
 **Module:** CLI Commands

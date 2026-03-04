@@ -85,6 +85,9 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		reservation.CreatedAt, reservation.UpdatedAt)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrIPAlreadyReserved
+		}
 		return fmt.Errorf("failed to create reservation: %w", err)
 	}
 
