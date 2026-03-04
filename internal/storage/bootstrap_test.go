@@ -112,9 +112,6 @@ func TestCreateInitialAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateInitialAdmin() error = %v", err)
 	}
-	if err != nil {
-		t.Fatalf("CreateInitialAdmin() error = %v", err)
-	}
 
 	user, err := db.GetUserByUsername("testadmin")
 	if err != nil {

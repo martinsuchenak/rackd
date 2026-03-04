@@ -6,19 +6,19 @@ import (
 )
 
 func TestNewSessionManager(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	if sm == nil {
 		t.Fatal("NewSessionManager() returned nil")
 	}
 	defer sm.Stop()
 
-	if sm.sessions == nil {
-		t.Error("NewSessionManager() sessions map not initialized")
+	if sm.store == nil {
+		t.Error("NewSessionManager() store not initialized")
 	}
 }
 
 func TestCreateSession(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	session, err := sm.CreateSession("user123", "testuser", true)
@@ -53,7 +53,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestGetSession(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	created, _ := sm.CreateSession("user123", "testuser", true)
@@ -103,7 +103,7 @@ func TestGetSession(t *testing.T) {
 }
 
 func TestGetSessionExpired(t *testing.T) {
-	sm := NewSessionManager(10 * time.Millisecond)
+	sm := NewSessionManager(10*time.Millisecond, nil)
 	defer sm.Stop()
 
 	session, _ := sm.CreateSession("user123", "testuser", true)
@@ -117,7 +117,7 @@ func TestGetSessionExpired(t *testing.T) {
 }
 
 func TestRefreshSession(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	session, _ := sm.CreateSession("user123", "testuser", true)
@@ -140,7 +140,7 @@ func TestRefreshSession(t *testing.T) {
 }
 
 func TestInvalidateSession(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	session, _ := sm.CreateSession("user123", "testuser", true)
@@ -157,7 +157,7 @@ func TestInvalidateSession(t *testing.T) {
 }
 
 func TestInvalidateSessionNotFound(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	err := sm.InvalidateSession("nonexistent")
@@ -167,7 +167,7 @@ func TestInvalidateSessionNotFound(t *testing.T) {
 }
 
 func TestInvalidateUserSessions(t *testing.T) {
-	sm := NewSessionManager(time.Hour)
+	sm := NewSessionManager(time.Hour, nil)
 	defer sm.Stop()
 
 	session1, _ := sm.CreateSession("user123", "testuser1", false)
@@ -193,7 +193,7 @@ func TestInvalidateUserSessions(t *testing.T) {
 }
 
 func TestCleanupExpiredSessions(t *testing.T) {
-	sm := NewSessionManager(10 * time.Millisecond)
+	sm := NewSessionManager(10*time.Millisecond, nil)
 	defer sm.Stop()
 
 	session1, _ := sm.CreateSession("user1", "testuser1", false)

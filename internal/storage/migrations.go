@@ -222,6 +222,12 @@ var migrations = []*Migration{
 		Up:      migrateAddDiscoveryUpdatePermissionUp,
 		Down:    migrateAddDiscoveryUpdatePermissionDown,
 	},
+	{
+		Version: "20260304170000",
+		Name:    "add_sessions",
+		Up:      migrateAddSessionsUp,
+		Down:    migrateAddSessionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2757,5 +2763,44 @@ func migrateAddDiscoveryUpdatePermissionDown(ctx context.Context, tx *sql.Tx) er
 		return fmt.Errorf("failed to delete discovery:update permission: %w", err)
 	}
 
+	return nil
+}
+
+// migrateAddSessionsUp creates the sessions table
+func migrateAddSessionsUp(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS sessions (
+			token TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			username TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at TIMESTAMP NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create sessions table: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)
+	`); err != nil {
+		return fmt.Errorf("failed to create sessions user index: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)
+	`); err != nil {
+		return fmt.Errorf("failed to create sessions expires index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateAddSessionsDown drops the sessions table
+func migrateAddSessionsDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS sessions`); err != nil {
+		return fmt.Errorf("failed to drop sessions table: %w", err)
+	}
 	return nil
 }

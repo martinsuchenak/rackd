@@ -20,6 +20,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/internal/worker"
+	"github.com/redis/go-redis/v9"
 )
 
 // Feature interface for extensions
@@ -48,7 +49,33 @@ func RunWithAdvancedFeatures(
 	mux := http.NewServeMux()
 
 	// Initialize session manager
-	sessionManager := auth.NewSessionManager(cfg.SessionTTL)
+	var sessionStore auth.SessionStore
+	switch cfg.SessionStoreType {
+	case "valkey", "redis":
+		opt, err := redis.ParseURL(cfg.ValkeyURL)
+		if err != nil {
+			return fmt.Errorf("invalid Valkey URL: %w", err)
+		}
+		valkeyClient := redis.NewClient(opt)
+		if err := valkeyClient.Ping(context.Background()).Err(); err != nil {
+			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
+		}
+		sessionStore = storage.NewValkeySessionStore(valkeyClient)
+		log.Info("Using Valkey/Redis session store", "url", cfg.ValkeyURL)
+
+	case "sqlite":
+		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
+			sessionStore = storage.NewSQLiteSessionStore(sqliteStore.DB())
+			log.Info("Using SQLite Database session store")
+		} else {
+			log.Warn("SQLite session store requested but underlying store is not SQLite")
+		}
+
+	default:
+		log.Warn("Unknown session store type or memory specified, falling back to memory", "type", cfg.SessionStoreType)
+	}
+
+	sessionManager := auth.NewSessionManager(cfg.SessionTTL, sessionStore)
 	defer sessionManager.Stop()
 
 	// Bootstrap initial admin user
@@ -208,7 +235,33 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	}
 
 	// Initialize session manager
-	sessionManager := auth.NewSessionManager(cfg.SessionTTL)
+	var sessionStore auth.SessionStore
+	switch cfg.SessionStoreType {
+	case "valkey", "redis":
+		opt, err := redis.ParseURL(cfg.ValkeyURL)
+		if err != nil {
+			return fmt.Errorf("invalid Valkey URL: %w", err)
+		}
+		valkeyClient := redis.NewClient(opt)
+		if err := valkeyClient.Ping(context.Background()).Err(); err != nil {
+			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
+		}
+		sessionStore = storage.NewValkeySessionStore(valkeyClient)
+		log.Info("Using Valkey/Redis session store", "url", cfg.ValkeyURL)
+
+	case "sqlite":
+		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
+			sessionStore = storage.NewSQLiteSessionStore(sqliteStore.DB())
+			log.Info("Using SQLite Database session store")
+		} else {
+			log.Warn("SQLite session store requested but underlying store is not SQLite")
+		}
+
+	default:
+		log.Warn("Unknown session store type or memory specified, falling back to memory", "type", cfg.SessionStoreType)
+	}
+
+	sessionManager := auth.NewSessionManager(cfg.SessionTTL, sessionStore)
 	defer sessionManager.Stop()
 
 	// Bootstrap initial admin user

@@ -1,10 +1,10 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"sync"
 	"time"
 )
 
@@ -22,17 +22,28 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+type SessionStore interface {
+	Save(ctx context.Context, session *Session) error
+	Get(ctx context.Context, token string) (*Session, error)
+	Delete(ctx context.Context, token string) error
+	DeleteByUser(ctx context.Context, userID string) error
+	Cleanup(ctx context.Context) error
+}
+
 type SessionManager struct {
-	sessions    map[string]*Session
-	mu          sync.RWMutex
+	store       SessionStore
 	sessionTTL  time.Duration
 	cleanupTick *time.Ticker
 	stopCleanup chan struct{}
 }
 
-func NewSessionManager(sessionTTL time.Duration) *SessionManager {
+func NewSessionManager(sessionTTL time.Duration, store SessionStore) *SessionManager {
+	if store == nil {
+		store = NewMemorySessionStore()
+	}
+
 	sm := &SessionManager{
-		sessions:    make(map[string]*Session),
+		store:       store,
 		sessionTTL:  sessionTTL,
 		stopCleanup: make(chan struct{}),
 	}
@@ -58,14 +69,10 @@ func (sm *SessionManager) startCleanup() {
 }
 
 func (sm *SessionManager) cleanupExpiredSessions() {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	now := time.Now()
-	for token, session := range sm.sessions {
-		if now.After(session.ExpiresAt) {
-			delete(sm.sessions, token)
-		}
+	if sm.store != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = sm.store.Cleanup(ctx)
 	}
 }
 
@@ -87,7 +94,7 @@ func (sm *SessionManager) CreateSession(userID, username string, isAdmin bool) (
 		return nil, err
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	session := &Session{
 		Token:     token,
 		UserID:    userID,
@@ -97,9 +104,11 @@ func (sm *SessionManager) CreateSession(userID, username string, isAdmin bool) (
 		ExpiresAt: now.Add(sm.sessionTTL),
 	}
 
-	sm.mu.Lock()
-	sm.sessions[token] = session
-	sm.mu.Unlock()
+	if sm.store != nil {
+		if err := sm.store.Save(context.Background(), session); err != nil {
+			return nil, err
+		}
+	}
 
 	return session, nil
 }
@@ -109,22 +118,11 @@ func (sm *SessionManager) GetSession(token string) (*Session, error) {
 		return nil, ErrSessionNotFound
 	}
 
-	sm.mu.RLock()
-	session, exists := sm.sessions[token]
-	sm.mu.RUnlock()
-
-	if !exists {
-		return nil, ErrSessionNotFound
+	if sm.store != nil {
+		return sm.store.Get(context.Background(), token)
 	}
 
-	if time.Now().After(session.ExpiresAt) {
-		sm.mu.Lock()
-		delete(sm.sessions, token)
-		sm.mu.Unlock()
-		return nil, ErrSessionExpired
-	}
-
-	return session, nil
+	return nil, ErrSessionNotFound
 }
 
 func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
@@ -133,9 +131,13 @@ func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
 		return nil, err
 	}
 
-	sm.mu.Lock()
-	session.ExpiresAt = time.Now().Add(sm.sessionTTL)
-	sm.mu.Unlock()
+	session.ExpiresAt = time.Now().UTC().Add(sm.sessionTTL)
+
+	if sm.store != nil {
+		if err := sm.store.Save(context.Background(), session); err != nil {
+			return nil, err
+		}
+	}
 
 	return session, nil
 }
@@ -145,14 +147,10 @@ func (sm *SessionManager) InvalidateSession(token string) error {
 		return ErrSessionNotFound
 	}
 
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	if _, exists := sm.sessions[token]; !exists {
-		return ErrSessionNotFound
+	if sm.store != nil {
+		return sm.store.Delete(context.Background(), token)
 	}
 
-	delete(sm.sessions, token)
 	return nil
 }
 
@@ -161,12 +159,7 @@ func (sm *SessionManager) InvalidateUserSessions(userID string) {
 		return
 	}
 
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	for token, session := range sm.sessions {
-		if session.UserID == userID {
-			delete(sm.sessions, token)
-		}
+	if sm.store != nil {
+		_ = sm.store.DeleteByUser(context.Background(), userID)
 	}
 }

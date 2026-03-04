@@ -17,6 +17,8 @@ INITIAL_ADMIN_PASSWORD=securepass     # Password (min 8 characters)
 INITIAL_ADMIN_EMAIL=admin@example.com  # Email (default: admin@localhost)
 INITIAL_ADMIN_FULL_NAME="Admin User" # Full name (default: System Administrator)
 SESSION_TTL=24h                     # Session timeout (default: 24h)
+SESSION_STORE_TYPE=sqlite           # Session store backend (sqlite, valkey, redis)
+VALKEY_URL=redis://localhost:6379/0 # Valkey/Redis URL if used
 ```
 
 ### Docker Example
@@ -77,11 +79,15 @@ Authorization: Bearer <session-token>
 
 Sessions expire after the configured TTL (default: 24 hours). The session is automatically refreshed on each authenticated request.
 
+### Session Persistence
+
+As of Rackd v0.x, sessions are fully persistent across server restarts. By default, they are stored directly in the `sqlite` database. You can also configure a `valkey` or `redis` store for distributed deployments using the `SESSION_STORE_TYPE` and `VALKEY_URL` environment variables.
+
 ### Session Invalidation
 
 - All user sessions are invalidated when the user changes their password
 - Individual sessions can be revoked via logout
-- Expired sessions are automatically cleaned up
+- Expired sessions are automatically cleaned up from the session store
 
 ## API Authentication
 

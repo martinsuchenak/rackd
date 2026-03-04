@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -56,7 +57,7 @@ func TestLoginReturnsPermissions(t *testing.T) {
 	}
 
 	// Setup handler and server
-	sessionManager := auth.NewSessionManager(3600)
+	sessionManager := auth.NewSessionManager(time.Hour, nil)
 	services := service.NewServices(store, sessionManager, nil)
 	h := NewHandler(store, nil)
 	h.SetSessionManager(sessionManager)

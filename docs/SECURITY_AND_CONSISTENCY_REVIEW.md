@@ -11,7 +11,7 @@
 
 | Module | Critical | High | Medium | Low | Risk Level |
 |--------|----------|------|--------|-----|------------|
-| Authentication (`/internal/auth/`) | 1 | 4 | 5 | 2 | HIGH |
+| Authentication (`/internal/auth/`) | 1 | 3 | 5 | 2 | HIGH |
 | API Handlers (`/internal/api/`) | 0 | 3 | 6 | 4 | MEDIUM |
 | Storage Layer (`/internal/storage/`) | 0 | 3 | 5 | 4 | MEDIUM |
 | Credentials (`/internal/credentials/`) | 0 | 2 | 3 | 2 | MEDIUM |
@@ -21,7 +21,7 @@
 | Discovery (`/internal/discovery/`) | 1 | 3 | 5 | 4 | HIGH |
 | Web UI (`/webui/src/`) | 1 | 2 | 3 | 2 | HIGH |
 | Tests | 0 | 1 | 5 | 4 | MEDIUM |
-| **TOTAL** | **7** | **28** | **47** | **30** | **HIGH** |
+| **TOTAL** | **7** | **27** | **47** | **30** | **HIGH** |
 
 ---
 
@@ -65,7 +65,10 @@
     - **Fix Applied:** Added array size limits for all bulk operations in `device_handlers.go` and `network_handlers.go`.
 12. **Missing Rate Limiting on Sensitive Endpoints**
     - **Module:** API Handlers
-    - **Fix Applied:** Introduced `wrapSensitiveAuth` and `wrapSensitiveNoAuth` to apply rate limits to password resets, user creation, API key creation, OAuth tokens, and bulk operations endpoints.
+	- **Fix Applied:** Introduced `wrapSensitiveAuth` and `wrapSensitiveNoAuth` to apply rate limits to password resets, user creation, API key creation, OAuth tokens, and bulk operations endpoints.
+13. **In-Memory Session Store - No Persistence**
+    - **Module:** Authentication
+    - **Fix Applied:** Implemented a persistent session store using SQLite by default, with an option to use a Valkey/Redis store instead. Added `SESSION_STORE_TYPE` and `VALKEY_URL` configuration variables.
 
 ---
 
@@ -75,13 +78,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-
-### H-1: In-Memory Session Store - No Persistence
-**Module:** Authentication
-**Category:** Availability
-**Location:** `/internal/auth/session.go:26`
-**Issue:** Sessions stored in memory with no persistence. Server restarts invalidate all sessions. Cannot scale horizontally.
-**Remediation:** Implement a database-backed session store with an option to use a different store (e.g. Valkey) instead.
 
 ### H-2: OAuth Authorization Code Race Condition
 **Module:** Authentication
@@ -335,9 +331,8 @@
 1. Add configuration to disable SNMPv2c in production
 2. Add SSRF protection for webhook URLs
 3. Fix authorization code race condition
-4. Change session store to persist across restarts (Redis/DB)
-5. Address Silent Decryption Failures in Credentials module
-6. Fix Context Propagation in Storage routines
+4. Address Silent Decryption Failures in Credentials module
+5. Fix Context Propagation in Storage routines
 
 ### Medium Term (Next Quarter)
 1. Implement CSP for Web UI (mitigate XSS)
