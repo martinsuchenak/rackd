@@ -58,6 +58,10 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	key, err := h.svc.APIKeys.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -70,6 +74,10 @@ func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	if err := h.svc.APIKeys.Delete(r.Context(), id); err != nil {
 		h.handleServiceError(w, err)
 		return

@@ -29,6 +29,10 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	resp, err := h.svc.Users.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -58,6 +62,10 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	var req model.UpdateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -78,6 +86,10 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	if err := h.svc.Users.Delete(r.Context(), id); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -89,6 +101,10 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	var req model.ChangePasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -110,6 +126,10 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 // resetPassword allows admins to reset a user's password without the old password
 func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	var req model.ResetPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

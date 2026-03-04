@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/paularlott/mcp"
 
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -245,8 +247,10 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 		// Strategy 2: Fall back to API key authentication
 		if caller == nil {
-			key, err := s.store.GetAPIKeyByKey(token)
-			if err != nil {
+			hash := auth.HashToken(token)
+			key, err := s.store.GetAPIKeyByKey(hash)
+
+			if err != nil || subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) != 1 {
 				log.Debug("MCP auth failed: invalid token")
 				s.writeUnauthorized(w)
 				return

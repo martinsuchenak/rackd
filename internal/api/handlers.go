@@ -75,6 +75,22 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		return AuthMiddleware(h.store, handler)
 	}
 
+	wrapSensitiveAuth := func(handler http.HandlerFunc) http.HandlerFunc {
+		handler = wrapAuth(handler)
+		if h.loginRateLimiter != nil {
+			return LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, handler)
+		}
+		return handler
+	}
+
+	wrapSensitiveNoAuth := func(handler http.HandlerFunc) http.HandlerFunc {
+		handler = LimitBody(handler)
+		if h.loginRateLimiter != nil {
+			return LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, handler)
+		}
+		return handler
+	}
+
 	// Datacenter routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/datacenters", wrapAuth(h.listDatacenters))
 	mux.HandleFunc("POST /api/datacenters", wrapAuth(h.createDatacenter))
@@ -166,20 +182,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// API Key routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/keys", wrapAuth(h.listAPIKeys))
-	mux.HandleFunc("POST /api/keys", wrapAuth(h.createAPIKey))
+	mux.HandleFunc("POST /api/keys", wrapSensitiveAuth(h.createAPIKey))
 	mux.HandleFunc("GET /api/keys/{id}", wrapAuth(h.getAPIKey))
 	mux.HandleFunc("DELETE /api/keys/{id}", wrapAuth(h.deleteAPIKey))
 
 	// Bulk device operations (RBAC enforced in service layer)
-	mux.HandleFunc("POST /api/devices/bulk", wrapAuth(h.bulkCreateDevices))
-	mux.HandleFunc("PUT /api/devices/bulk", wrapAuth(h.bulkUpdateDevices))
-	mux.HandleFunc("DELETE /api/devices/bulk", wrapAuth(h.bulkDeleteDevices))
-	mux.HandleFunc("POST /api/devices/bulk/tags", wrapAuth(h.bulkAddTags))
-	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapAuth(h.bulkRemoveTags))
+	mux.HandleFunc("POST /api/devices/bulk", wrapSensitiveAuth(h.bulkCreateDevices))
+	mux.HandleFunc("PUT /api/devices/bulk", wrapSensitiveAuth(h.bulkUpdateDevices))
+	mux.HandleFunc("DELETE /api/devices/bulk", wrapSensitiveAuth(h.bulkDeleteDevices))
+	mux.HandleFunc("POST /api/devices/bulk/tags", wrapSensitiveAuth(h.bulkAddTags))
+	mux.HandleFunc("DELETE /api/devices/bulk/tags", wrapSensitiveAuth(h.bulkRemoveTags))
 
 	// Bulk network operations (RBAC enforced in service layer)
-	mux.HandleFunc("POST /api/networks/bulk", wrapAuth(h.bulkCreateNetworks))
-	mux.HandleFunc("DELETE /api/networks/bulk", wrapAuth(h.bulkDeleteNetworks))
+	mux.HandleFunc("POST /api/networks/bulk", wrapSensitiveAuth(h.bulkCreateNetworks))
+	mux.HandleFunc("DELETE /api/networks/bulk", wrapSensitiveAuth(h.bulkDeleteNetworks))
 
 	// Search routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/search", wrapAuth(h.search))
@@ -200,12 +216,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// User routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/users", wrapAuth(h.listUsers))
-	mux.HandleFunc("POST /api/users", wrapAuth(h.createUser))
+	mux.HandleFunc("POST /api/users", wrapSensitiveAuth(h.createUser))
 	mux.HandleFunc("GET /api/users/{id}", wrapAuth(h.getUser))
 	mux.HandleFunc("PUT /api/users/{id}", wrapAuth(h.updateUser))
 	mux.HandleFunc("DELETE /api/users/{id}", wrapAuth(h.deleteUser))
-	mux.HandleFunc("POST /api/users/{id}/password", wrapAuth(h.changePassword))
-	mux.HandleFunc("POST /api/users/{id}/reset-password", wrapAuth(h.resetPassword))
+	mux.HandleFunc("POST /api/users/{id}/password", wrapSensitiveAuth(h.changePassword))
+	mux.HandleFunc("POST /api/users/{id}/reset-password", wrapSensitiveAuth(h.resetPassword))
 
 	// Role routes (RBAC enforced in service layer)
 	mux.HandleFunc("GET /api/roles", wrapAuth(h.listRoles))
@@ -229,8 +245,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		// OAuth flow endpoints (no auth required per OAuth/MCP spec)
 		mux.HandleFunc("POST /mcp-oauth/register", LimitBody(h.oauthRegister))
 		mux.HandleFunc("GET /mcp-oauth/authorize", LimitBody(h.oauthAuthorize))
-		mux.HandleFunc("POST /mcp-oauth/authorize", LimitBody(h.oauthAuthorizeSubmit))
-		mux.HandleFunc("POST /mcp-oauth/token", LimitBody(h.oauthToken))
+		mux.HandleFunc("POST /mcp-oauth/authorize", wrapSensitiveNoAuth(h.oauthAuthorizeSubmit))
+		mux.HandleFunc("POST /mcp-oauth/token", wrapSensitiveNoAuth(h.oauthToken))
 		mux.HandleFunc("POST /mcp-oauth/revoke", LimitBody(h.oauthRevoke))
 
 		// OAuth client management (requires auth)

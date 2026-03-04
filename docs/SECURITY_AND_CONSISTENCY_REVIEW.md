@@ -64,6 +64,7 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** Authentication
 **Category:** CSRF
 **Location:** `/internal/api/auth_handlers.go:14-23`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** Session cookies use `SameSiteLaxMode`. For authentication cookies, `SameSiteStrictMode` provides stronger CSRF protection.
 
@@ -167,6 +168,7 @@ s.sessions.InvalidateUserSessions(user.ID)
 **Module:** API Handlers
 **Category:** Input Validation
 **Location:** Multiple handlers
+**Status:** ✅ FIXED (2026-03-04)
 
 **Files affected:**
 - `/internal/api/device_handlers.go:52`
@@ -190,6 +192,7 @@ if id == "" {
 **Module:** MCP Server / Storage
 **Category:** Sensitive Data Exposure
 **Location:** `/internal/storage/apikey_sqlite.go:32-43`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** API keys are stored in plaintext in the database. If the database is compromised, all API keys are immediately usable by attackers.
 
@@ -201,6 +204,7 @@ if id == "" {
 **Module:** MCP Server
 **Category:** Denial of Service
 **Location:** `/internal/server/server.go:123,248`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** The MCP endpoint (`POST /mcp`) is registered directly without rate limiting middleware, allowing brute-force attacks on API keys.
 
@@ -256,6 +260,7 @@ if id == "" {
 **Module:** API Handlers
 **Category:** Input Validation
 **Location:** `/internal/api/handlers.go:224-306`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** Bulk operations accept arrays without:
 - Array size limits (DoS vector)
@@ -270,12 +275,15 @@ if len(devices) > 100 {
 }
 ```
 
+**Fix Applied:** Added array size limits for all bulk operations in `device_handlers.go` and `network_handlers.go`.
+
 ---
 
 ### 8. Missing Rate Limiting on Sensitive Endpoints
 **Module:** API Handlers
 **Category:** Rate Limiting
 **Location:** `/internal/api/handlers.go:69-325`
+**Status:** ✅ FIXED (2026-03-04)
 
 **Issue:** Only login has rate limiting. Missing on:
 - Password reset
@@ -285,6 +293,8 @@ if len(devices) > 100 {
 - Bulk operations
 
 **Remediation:** Apply rate limiting to all sensitive endpoints.
+
+**Fix Applied:** Introduced `wrapSensitiveAuth` and `wrapSensitiveNoAuth` to reuse the `LoginRateLimitMiddleware`. Applied these wrappers to password resets, user creation, API key creation, OAuth tokens, and bulk operations endpoints.
 
 ---
 

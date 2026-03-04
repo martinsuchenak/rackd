@@ -113,7 +113,7 @@ func setupIntegrationServer(t *testing.T, withScanner bool) (*httptest.Server, s
 	}
 
 	// Create API key associated with the test user
-	apiKey := &model.APIKey{ID: "int-test-key", Name: "integration-key", Key: integrationAPIKey, UserID: testUser.ID}
+	apiKey := &model.APIKey{ID: "int-test-key", Name: "integration-key", Key: auth.HashToken(integrationAPIKey), UserID: testUser.ID}
 	if err := store.CreateAPIKey(apiKey); err != nil {
 		t.Fatalf("failed to create test API key: %v", err)
 	}

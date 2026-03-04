@@ -113,8 +113,9 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 
 		// Try API key authentication
 		if store != nil {
-			key, err := store.GetAPIKeyByKey(providedToken)
-			if err == nil && subtle.ConstantTimeCompare([]byte(providedToken), []byte(key.Key)) == 1 {
+			hash := auth.HashToken(providedToken)
+			key, err := store.GetAPIKeyByKey(hash)
+			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
 					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
@@ -185,8 +186,9 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 
 		// Try API key authentication
 		if store != nil {
-			key, err := store.GetAPIKeyByKey(providedToken)
-			if err == nil && subtle.ConstantTimeCompare([]byte(providedToken), []byte(key.Key)) == 1 {
+			hash := auth.HashToken(providedToken)
+			key, err := store.GetAPIKeyByKey(hash)
+			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
 					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)

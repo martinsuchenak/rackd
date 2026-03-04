@@ -44,9 +44,10 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 	}
 
 	// Create API key associated with the test user
+	keySecret := "secret-token"
 	key := &model.APIKey{
 		Name:   "test-key",
-		Key:    "secret-token",
+		Key:    auth.HashToken(keySecret),
 		UserID: testUser.ID,
 	}
 	if err := store.CreateAPIKey(key); err != nil {
@@ -60,7 +61,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 	})
 
 	r := httptest.NewRequest("GET", "/", nil)
-	r.Header.Set("Authorization", "Bearer secret-token")
+	r.Header.Set("Authorization", "Bearer "+keySecret)
 	w := httptest.NewRecorder()
 
 	handler(w, r)
@@ -159,9 +160,10 @@ func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 
 	// Create expired API key
 	expired := time.Now().Add(-1 * time.Hour)
+	expiredSecret := "expired-token"
 	key := &model.APIKey{
 		Name:      "expired-key",
-		Key:       "expired-token",
+		Key:       auth.HashToken(expiredSecret),
 		ExpiresAt: &expired,
 	}
 	if err := store.CreateAPIKey(key); err != nil {
@@ -174,7 +176,7 @@ func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 	})
 
 	r := httptest.NewRequest("GET", "/", nil)
-	r.Header.Set("Authorization", "Bearer expired-token")
+	r.Header.Set("Authorization", "Bearer "+expiredSecret)
 	w := httptest.NewRecorder()
 
 	handler(w, r)

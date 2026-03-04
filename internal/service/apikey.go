@@ -55,14 +55,15 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	}
 
 	key.ID = uuid.Must(uuid.NewV7()).String()
-	key.Key = uuid.Must(uuid.NewV7()).String()
+	plaintextKey := uuid.Must(uuid.NewV7()).String()
+	key.Key = auth.HashToken(plaintextKey)
 	key.CreatedAt = time.Now()
 
 	if err := s.store.CreateAPIKey(key); err != nil {
 		return "", err
 	}
 
-	return key.Key, nil
+	return plaintextKey, nil
 }
 
 func (s *APIKeyService) Get(ctx context.Context, id string) (*model.APIKey, error) {

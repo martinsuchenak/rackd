@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -103,9 +104,10 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 	defer store.Close()
 
 	// Create an API key
+	apiKeySecret := "test-token-12345"
 	key := &model.APIKey{
 		Name: "test-key",
-		Key:  "test-token-12345",
+		Key:  auth.HashToken(apiKeySecret),
 	}
 	if err := store.CreateAPIKey(key); err != nil {
 		t.Fatalf("failed to create API key: %v", err)
@@ -114,7 +116,7 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key.Key)
+	req.Header.Set("Authorization", "Bearer "+apiKeySecret)
 	w := httptest.NewRecorder()
 
 	srv.HandleRequest(w, req)
@@ -162,9 +164,10 @@ func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
 	defer store.Close()
 
 	// Create an API key
+	apiKeySecret := "test-token-12345"
 	key := &model.APIKey{
 		Name: "test-key",
-		Key:  "test-token-12345",
+		Key:  auth.HashToken(apiKeySecret),
 	}
 	if err := store.CreateAPIKey(key); err != nil {
 		t.Fatalf("failed to create API key: %v", err)
@@ -173,7 +176,7 @@ func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", key.Key)
+	req.Header.Set("Authorization", apiKeySecret) // Purposefully missing "Bearer "
 	w := httptest.NewRecorder()
 
 	srv.HandleRequest(w, req)

@@ -39,6 +39,10 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	network, err := h.svc.Networks.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -50,6 +54,10 @@ func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	network, err := h.svc.Networks.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -88,6 +96,10 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	if err := h.svc.Networks.Delete(r.Context(), id); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -98,6 +110,10 @@ func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	devices, err := h.svc.Networks.GetDevices(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -109,6 +125,10 @@ func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	utilization, err := h.svc.Networks.GetUtilization(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -120,6 +140,10 @@ func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	pools, err := h.svc.Pools.ListByNetwork(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -131,6 +155,10 @@ func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 	networkID := r.PathValue("id")
 
+	if networkID == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	var pool model.NetworkPool
 	if err := json.NewDecoder(r.Body).Decode(&pool); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
@@ -148,6 +176,10 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	pool, err := h.svc.Pools.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -159,6 +191,10 @@ func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	pool, err := h.svc.Pools.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -202,6 +238,10 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	if err := h.svc.Pools.Delete(r.Context(), id); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -212,6 +252,10 @@ func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	ip, err := h.svc.Pools.GetNextIP(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -223,6 +267,10 @@ func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	heatmap, err := h.svc.Pools.GetHeatmap(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -252,6 +300,10 @@ func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
 		return
 	}
+	if len(networks) > 100 {
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		return
+	}
 
 	result, err := h.svc.Bulk.CreateNetworks(r.Context(), networks)
 	if err != nil {
@@ -267,6 +319,10 @@ func (h *Handler) bulkDeleteNetworks(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		return
+	}
+	if len(req.IDs) > 100 {
+		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
 		return
 	}
 

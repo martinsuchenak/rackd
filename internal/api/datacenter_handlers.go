@@ -42,6 +42,10 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	dc, err := h.svc.Datacenters.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -53,6 +57,10 @@ func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	dc, err := h.svc.Datacenters.Get(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)
@@ -90,6 +98,10 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	if err := h.svc.Datacenters.Delete(r.Context(), id); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -100,6 +112,10 @@ func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if id == "" {
+		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		return
+	}
 	devices, err := h.svc.Datacenters.GetDevices(r.Context(), id)
 	if err != nil {
 		h.handleServiceError(w, err)

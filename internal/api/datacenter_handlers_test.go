@@ -90,7 +90,7 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 	apiKey := &model.APIKey{
 		ID:     "test-key-id",
 		Name:   "test-key",
-		Key:    testAPIKeyValue,
+		Key:    auth.HashToken(testAPIKeyValue),
 		UserID: testUser.ID,
 	}
 	if err := store.CreateAPIKey(apiKey); err != nil {
