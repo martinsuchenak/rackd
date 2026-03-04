@@ -58,14 +58,6 @@ func (b *UIConfigBuilder) SetEdition(edition string) {
 	b.config.Edition = edition
 }
 
-func (b *UIConfigBuilder) AddFeature(name string) {
-	b.config.Features = append(b.config.Features, name)
-}
-
-func (b *UIConfigBuilder) AddNavItem(item NavItem) {
-	b.config.NavItems = append(b.config.NavItems, item)
-}
-
 func (b *UIConfigBuilder) SetUser(user *UserInfo) {
 	b.config.UserInfo = user
 }

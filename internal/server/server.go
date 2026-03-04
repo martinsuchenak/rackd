@@ -23,17 +23,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Feature interface for extensions
-type Feature interface {
-	Name() string
-	RegisterRoutes(mux *http.ServeMux)
-	RegisterMCPTools(mcpServer *mcp.Server)
-	ConfigureUI(builder *api.UIConfigBuilder)
-}
-
-// Run starts the server with optional features
-func Run(cfg *config.Config, store storage.ExtendedStorage, features ...Feature) error {
-	return RunWithCustomRoutes(cfg, store, nil, features...)
+// Run starts the server
+func Run(cfg *config.Config, store storage.ExtendedStorage) error {
+	return RunWithCustomRoutes(cfg, store, nil)
 }
 
 // RunWithAdvancedFeatures starts the server with credentials, profiles, and scheduled scans features
@@ -44,7 +36,6 @@ func RunWithAdvancedFeatures(
 	profileStore storage.ProfileStorage,
 	scheduledStore storage.ScheduledScanStorage,
 	encryptionKey []byte,
-	features ...Feature,
 ) error {
 	mux := http.NewServeMux()
 
@@ -151,29 +142,8 @@ func RunWithAdvancedFeatures(
 	mcpHandler := api.RateLimitMiddleware(mcpLimiter, cfg.TrustProxy)(http.HandlerFunc(mcpServer.HandleRequest))
 	mux.Handle("POST /mcp", mcpHandler)
 
-	// UI config with nav items for new features
+	// UI config (minimal)
 	uiBuilder := api.NewUIConfigBuilder()
-	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15, RequiredPermissions: []api.PermissionCheck{{Resource: "users", Action: "list"}}})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Roles", Path: "/roles", Icon: "shield", Order: 16, RequiredPermissions: []api.PermissionCheck{{Resource: "roles", Action: "list"}}})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Credentials", Path: "/credentials", Icon: "key", Order: 50})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Scan Profiles", Path: "/scan-profiles", Icon: "cog", Order: 51})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Scheduled Scans", Path: "/scheduled-scans", Icon: "clock", Order: 52})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
-
-	// Add DNS nav items if DNS service is available
-	if services.DNS != nil {
-		uiBuilder.AddNavItem(api.NavItem{Label: "DNS Providers", Path: "/dns/providers", Icon: "server", Order: 57})
-		uiBuilder.AddNavItem(api.NavItem{Label: "DNS Zones", Path: "/dns/zones", Icon: "globe", Order: 58})
-	}
-
-	// Register features
-	for _, f := range features {
-		log.Info("Registering feature", "name", f.Name())
-		f.RegisterRoutes(mux)
-		f.RegisterMCPTools(mcpServer)
-		f.ConfigureUI(uiBuilder)
-	}
 
 	// UI config endpoint
 	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager, store))
@@ -225,8 +195,8 @@ func RunWithAdvancedFeatures(
 	return <-errCh
 }
 
-// RunWithCustomRoutes starts the server with optional features and custom route registration
-func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, registerRoutes func(mux *http.ServeMux), features ...Feature) error {
+// RunWithCustomRoutes starts the server with custom route registration
+func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, registerRoutes func(mux *http.ServeMux)) error {
 	mux := http.NewServeMux()
 
 	// Register custom routes if provided
@@ -304,19 +274,8 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	mcpHandler := api.RateLimitMiddleware(mcpLimiter, cfg.TrustProxy)(http.HandlerFunc(mcpServer.HandleRequest))
 	mux.Handle("POST /mcp", mcpHandler)
 
-	// UI config
+	// UI config (minimal)
 	uiBuilder := api.NewUIConfigBuilder()
-	uiBuilder.AddNavItem(api.NavItem{Label: "Users", Path: "/users", Icon: "user", Order: 15, RequiredPermissions: []api.PermissionCheck{{Resource: "users", Action: "list"}}})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Webhooks", Path: "/webhooks", Icon: "zap", Order: 53, RequiredPermissions: []api.PermissionCheck{{Resource: "webhook", Action: "list"}}})
-	uiBuilder.AddNavItem(api.NavItem{Label: "Custom Fields", Path: "/custom-fields", Icon: "tag", Order: 54, RequiredPermissions: []api.PermissionCheck{{Resource: "custom-fields", Action: "list"}}})
-
-	// Register features
-	for _, f := range features {
-		log.Info("Registering feature", "name", f.Name())
-		f.RegisterRoutes(mux)
-		f.RegisterMCPTools(mcpServer)
-		f.ConfigureUI(uiBuilder)
-	}
 
 	// UI config endpoint
 	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager, store))

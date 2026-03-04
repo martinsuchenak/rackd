@@ -1,24 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rackd - IPAM &amp; Device Inventory</title>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/output.css">
-  <style>[x-cloak] { display: none !important; }</style>
+  <style>
+    [x-cloak] {
+      display: none !important;
+    }
+  </style>
   <script>
     // Apply stored theme immediately to prevent flash of wrong theme
-    (function() {
+    (function () {
       var theme = localStorage.getItem('theme') || 'system';
       var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) document.documentElement.classList.add('dark');
     })();
   </script>
 </head>
+
 <body class="min-h-screen">
   <!-- Skip link for accessibility -->
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50 focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center">
+  <a href="#main-content"
+    class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-4 py-2 rounded z-50 focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center">
     Skip to main content
   </a>
 
@@ -40,336 +47,410 @@
     <!-- Main app layout (hidden on login and OAuth consent) -->
     <template x-if="!route.startsWith('/login') && !route.startsWith('/mcp-oauth/authorize')">
       <div>
-    <!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
-           :class="{ '-translate-x-full': !sidebarOpen }"
-           role="navigation" aria-label="Main navigation">
-      <div class="flex items-center h-16 px-6 border-b border-[var(--sidebar-border)]">
-        <a href="/" @click.prevent="navigate('/')" class="flex items-center gap-2 focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] rounded-lg p-1">
-          <div class="rackd-logo-icon rounded-xl flex-shrink-0" style="width: 32px; height: 32px; padding: 4px;">
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;" aria-hidden="true">
-              <rect class="rack-frame" x="15" y="5" width="70" height="90" rx="8" />
-              <rect class="rack-unit" x="25" y="15" width="50" height="12" rx="2" />
-              <rect x="25" y="32" width="50" height="12" rx="2" fill="#3B82F6"/>
-              <rect class="rack-unit" x="25" y="49" width="50" height="12" rx="2" />
-              <rect x="25" y="66" width="50" height="12" rx="2" fill="#06B6D4"/>
-              <circle cx="68" cy="21" r="2" fill="#10B981"/>
-              <circle cx="68" cy="38" r="2" fill="#10B981"/>
-              <circle cx="68" cy="55" r="2" fill="#EF4444"/>
-              <circle cx="68" cy="72" r="2" fill="#10B981"/>
-            </svg>
-          </div>
-          <span class="text-xl font-bold font-mono" style="line-height: 1; letter-spacing: -0.02em;">
-            <span style="color: var(--core-blue)">Rack</span><span style="color: var(--accent-cyan)">d</span>
-          </span>
-        </a>
-      </div>
-      <nav class="p-4 space-y-1" aria-label="Primary">
-        <!-- Dashboard is always first (order: 0) -->
-        <a href="/" @click.prevent="navigate('/')"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
-           :class="route === '/' ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
-           :aria-current="route === '/' ? 'page' : null">
-          Dashboard
-        </a>
-        <!-- Dynamic items from config -->
-        <template x-for="item in navItems" :key="item.path">
-          <a :href="item.path"
-             @click.prevent="navigate(item.path)"
-             class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
-             :class="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
-             :aria-current="route.startsWith(item.path) || (item.path === '/networks' && route.startsWith('/pools')) ? 'page' : null">
-            <span x-text="item.label"></span>
-            <span x-show="item.badge && item.badge() > 0"
-                  class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
-                  x-text="item.badge ? item.badge() : 0"></span>
-          </a>
-        </template>
-      </nav>
-    </aside>
-
-    <!-- Mobile sidebar overlay -->
-    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak aria-hidden="true"></div>
-
-    <!-- Main content area -->
-    <div class="md:ml-64 min-h-screen flex flex-col">
-      <!-- Top bar -->
-      <header class="sticky top-0 z-20 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-4">
-        <button @click="sidebarOpen = !sidebarOpen"
-                class="md:hidden p-2 text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] rounded-md focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label="Toggle sidebar"
-                :aria-expanded="sidebarOpen">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-        </button>
-
-        <!-- Global Search -->
-        <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block" role="search">
-          <label for="global-search" class="sr-only">Search devices, networks, datacenters</label>
-          <input id="global-search" 
-                 type="search" 
-                 x-model="query" 
-                 @input="onInput()" 
-                 @keydown="onKeyDown($event)"
-                 @focus="onFocus()" 
-                 @blur="onBlur()"
-                 placeholder="Search devices, networks, datacenters..."
-                 role="combobox"
-                 aria-autocomplete="list"
-                 aria-describedby="search-instructions"
-                 aria-controls="search-results"
-                 :aria-activedescendant="selectedIndex >= 0 ? 'search-result-' + selectedIndex : undefined"
-                 :aria-expanded="showResults && (results.length > 0 || loading)"
-                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-[var(--input-background)] text-gray-900 dark:text-gray-50 placeholder:text-gray-600 dark:placeholder:text-gray-400 focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px]">
-          <span id="search-instructions" class="sr-only">Type to search. Use arrow keys to navigate results, Enter to select, Escape to close.</span>
-          <div x-show="showResults && (results.length > 0 || loading)" x-cloak
-               id="search-results"
-               class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
-               role="listbox" aria-label="Search results">
-            <div x-show="loading" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">Searching...</div>
-            <template x-for="(result, index) in results" :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
-              <a :id="'search-result-' + index"
-                 :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
-                 @click.prevent="selectResult(result)"
-                 @mouseenter="selectedIndex = index"
-                 class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]"
-                 :class="{ 'bg-[var(--muted)]': index === selectedIndex }"
-                 role="option"
-                 :aria-selected="index === selectedIndex">
-                <div class="flex items-center gap-2">
-                  <span x-show="result.type === 'device'" class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100 rounded font-medium">Device</span>
-                  <span x-show="result.type === 'network'" class="px-1.5 py-0.5 text-xs bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded font-medium">Network</span>
-                  <span x-show="result.type === 'datacenter'" class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100 rounded font-medium">Datacenter</span>
-                  <span class="font-medium" x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
-                </div>
-                <div class="text-xs text-gray-800 dark:text-gray-200 ml-14" x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''"></div>
-              </a>
-            </template>
-            <div x-show="!loading && results.length === 0 && query.trim()" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">No results found</div>
-          </div>
-        </div>
-
-        <div class="flex-1"></div>
-
-        <!-- Theme Toggle -->
-        <div x-data="themeToggle">
-          <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
-                  class="p-2 rounded-md text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  :aria-label="'Current theme: ' + theme + '. Click to change.'">
-            <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-            <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-            </svg>
-            <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- User Menu -->
-        <div x-data="userMenu" class="relative" @click.outside="close()">
-          <button @click="toggle()" class="flex items-center gap-2 p-1 rounded-md hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px] cursor-pointer transition-colors" :aria-expanded="open" aria-haspopup="true">
-            <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-200 text-sm font-medium" x-text="initial"></div>
-            <span class="text-sm font-medium text-gray-800 dark:text-gray-200 hidden sm:inline" x-text="username"></span>
-            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-
-          <!-- Dropdown -->
-          <div x-show="open" x-cloak x-transition class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1" role="menu">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="username"></p>
-              <p x-show="roleNames" class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="roleNames"></p>
-            </div>
-            <button @click="openEditProfile()" class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Edit Profile</button>
-            <button @click="openChangePassword()" class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Change Password</button>
-            <button @click="openPermissionsModal()" class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">My Permissions</button>
-            <div class="border-t border-gray-200 dark:border-gray-700"></div>
-            <button @click="logout()" class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]" role="menuitem">Sign Out</button>
-          </div>
-
-          <!-- Edit Profile Modal -->
-          <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" @keydown.escape.window="closeEditModal()">
-            <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="showEditModal">
-              <button @click="closeEditModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <h2 id="profile-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit Profile</h2>
-              <div x-show="error" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm" role="alert" x-text="error"></div>
-              <form @submit.prevent="saveProfile()">
-                <div class="space-y-4">
-                  <div>
-                    <label for="profile-email" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
-                    <input id="profile-email" type="email" x-model="editForm.email"
-                           :aria-invalid="!!validationErrors.email"
-                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                           :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                    <p x-show="validationErrors.email" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.email"></p>
-                  </div>
-                  <div>
-                    <label for="profile-fullname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
-                    <input id="profile-fullname" type="text" x-model="editForm.full_name"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-                  </div>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-                  <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
-                    <span x-show="!saving">Save Changes</span>
-                    <span x-show="saving">Saving...</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Change Password Modal -->
-          <div x-show="showPasswordModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="my-password-modal-title" @keydown.escape.window="closePasswordModal()">
-            <div class="fixed inset-0 bg-black/50" @click="closePasswordModal()" aria-hidden="true"></div>
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="showPasswordModal">
-              <button @click="closePasswordModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <h2 id="my-password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Change Password</h2>
-              <div x-show="error" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm" role="alert" x-text="error"></div>
-              <form @submit.prevent="doChangePassword()">
-                <div class="space-y-4">
-                  <div>
-                    <label for="my-old-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span aria-hidden="true">*</span></label>
-                    <input id="my-old-password" type="password" x-model="passwordForm.old_password" required
-                           :aria-invalid="!!validationErrors.old_password"
-                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                           :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                    <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.old_password"></p>
-                  </div>
-                  <div>
-                    <label for="my-new-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span aria-hidden="true">*</span></label>
-                    <input id="my-new-password" type="password" x-model="passwordForm.new_password" required
-                           :aria-invalid="!!validationErrors.new_password"
-                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                           :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                    <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.new_password"></p>
-                  </div>
-                  <div>
-                    <label for="my-confirm-password" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span aria-hidden="true">*</span></label>
-                    <input id="my-confirm-password" type="password" x-model="passwordForm.confirm_password" required
-                           :aria-invalid="!!validationErrors.confirm_password"
-                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                           :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                    <p x-show="validationErrors.confirm_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.confirm_password"></p>
-                  </div>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" @click="closePasswordModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-                  <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
-                    <span x-show="!saving">Change Password</span>
-                    <span x-show="saving">Changing...</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- My Permissions Modal -->
-          <div x-show="showPermissionsModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="permissions-modal-title" @keydown.escape.window="closePermissionsModal()">
-            <div class="fixed inset-0 bg-black/50" @click="closePermissionsModal()" aria-hidden="true"></div>
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] flex flex-col" x-trap.inert.noscroll="showPermissionsModal">
-              <button @click="closePermissionsModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <h2 id="permissions-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">My Permissions</h2>
-
-              <div class="mb-4">
-                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Roles</h3>
-                <div class="flex flex-wrap gap-2">
-                  <template x-for="role in userRoles" :key="role.id">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                          :class="role.is_system ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'"
-                          x-text="role.name"></span>
-                  </template>
-                  <span x-show="userRoles.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No roles assigned</span>
-                </div>
-              </div>
-
-              <div class="mb-4">
-                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Permissions (<span x-text="userPermissions.length"></span>)</h3>
-                <div x-show="userPermissions.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No permissions assigned</div>
-              </div>
-
-              <div class="flex-1 overflow-y-auto">
-                <template x-for="(perms, resource) in groupedPermissions" :key="resource">
-                  <div class="mb-4">
-                    <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2" x-text="resource"></h4>
-                    <div class="flex flex-wrap gap-2">
-                      <template x-for="perm in perms" :key="perm.id">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono"
-                              class="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                              x-text="perm.action"></span>
-                      </template>
-                    </div>
-                  </div>
-                </template>
-              </div>
-
-              <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button @click="closePermissionsModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- Page content -->
-      <main id="main-content" class="flex-1 p-6" role="main" @nav.window="navigate($event.detail)">
-
-        <!-- Access Denied -->
-        <template x-if="accessDenied">
-          <div class="flex flex-col items-center justify-center py-16">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-8 max-w-md w-full text-center">
-              <div class="mx-auto w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v.01M12 9v2m0-6a9 9 0 110 18 9 9 0 010-18z"/>
+        <!-- Sidebar -->
+        <aside
+          class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
+          :class="{ '-translate-x-full': !sidebarOpen }" role="navigation" aria-label="Main navigation">
+          <div class="flex items-center h-16 px-6 border-b border-[var(--sidebar-border)]">
+            <a href="/" @click.prevent="navigate('/')"
+              class="flex items-center gap-2 focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] rounded-lg p-1">
+              <div class="rackd-logo-icon rounded-xl flex-shrink-0" style="width: 32px; height: 32px; padding: 4px;">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"
+                  style="width: 100%; height: 100%;" aria-hidden="true">
+                  <rect class="rack-frame" x="15" y="5" width="70" height="90" rx="8" />
+                  <rect class="rack-unit" x="25" y="15" width="50" height="12" rx="2" />
+                  <rect x="25" y="32" width="50" height="12" rx="2" fill="#3B82F6" />
+                  <rect class="rack-unit" x="25" y="49" width="50" height="12" rx="2" />
+                  <rect x="25" y="66" width="50" height="12" rx="2" fill="#06B6D4" />
+                  <circle cx="68" cy="21" r="2" fill="#10B981" />
+                  <circle cx="68" cy="38" r="2" fill="#10B981" />
+                  <circle cx="68" cy="55" r="2" fill="#EF4444" />
+                  <circle cx="68" cy="72" r="2" fill="#10B981" />
                 </svg>
               </div>
-              <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h1>
-              <p class="text-gray-600 dark:text-gray-400 mb-6">You don't have permission to access this page. Contact your administrator if you need access.</p>
-              <button @click="navigate('/')" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">Go to Dashboard</button>
+              <span class="text-xl font-bold font-mono" style="line-height: 1; letter-spacing: -0.02em;">
+                <span style="color: var(--core-blue)">Rack</span><span style="color: var(--accent-cyan)">d</span>
+              </span>
+            </a>
+          </div>
+          <nav class="p-4 space-y-1" aria-label="Primary">
+            <!-- Sidebar items from router -->
+            <template x-for="item in navItems" :key="item.path">
+              <a :href="item.path" @click.prevent="navigate(item.path)"
+                class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
+                :class="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
+                :aria-current="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'page' : null">
+                <span x-text="item.label"></span>
+                <span x-show="item.badge && item.badge() > 0"
+                  class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
+                  x-text="item.badge ? item.badge() : 0"></span>
+              </a>
+            </template>
+          </nav>
+        </aside>
+
+        <!-- Mobile sidebar overlay -->
+        <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak
+          aria-hidden="true"></div>
+
+        <!-- Main content area -->
+        <div class="md:ml-64 min-h-screen flex flex-col">
+          <!-- Top bar -->
+          <header
+            class="sticky top-0 z-20 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-4">
+            <button @click="sidebarOpen = !sidebarOpen"
+              class="md:hidden p-2 text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] rounded-md focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Toggle sidebar" :aria-expanded="sidebarOpen">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <!-- Global Search -->
+            <div x-data="globalSearch" class="relative flex-1 max-w-md hidden sm:block" role="search">
+              <label for="global-search" class="sr-only">Search devices, networks, datacenters</label>
+              <input id="global-search" type="search" x-model="query" @input="onInput()" @keydown="onKeyDown($event)"
+                @focus="onFocus()" @blur="onBlur()" placeholder="Search devices, networks, datacenters..."
+                role="combobox" aria-autocomplete="list" aria-describedby="search-instructions"
+                aria-controls="search-results"
+                :aria-activedescendant="selectedIndex >= 0 ? 'search-result-' + selectedIndex : undefined"
+                :aria-expanded="showResults && (results.length > 0 || loading)"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-[var(--input-background)] text-gray-900 dark:text-gray-50 placeholder:text-gray-600 dark:placeholder:text-gray-400 focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px]">
+              <span id="search-instructions" class="sr-only">Type to search. Use arrow keys to navigate results, Enter
+                to select, Escape to close.</span>
+              <div x-show="showResults && (results.length > 0 || loading)" x-cloak id="search-results"
+                class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
+                role="listbox" aria-label="Search results">
+                <div x-show="loading" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status"
+                  aria-live="polite">Searching...</div>
+                <template x-for="(result, index) in results"
+                  :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
+                  <a :id="'search-result-' + index"
+                    :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
+                    @click.prevent="selectResult(result)" @mouseenter="selectedIndex = index"
+                    class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]"
+                    :class="{ 'bg-[var(--muted)]': index === selectedIndex }" role="option"
+                    :aria-selected="index === selectedIndex">
+                    <div class="flex items-center gap-2">
+                      <span x-show="result.type === 'device'"
+                        class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100 rounded font-medium">Device</span>
+                      <span x-show="result.type === 'network'"
+                        class="px-1.5 py-0.5 text-xs bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded font-medium">Network</span>
+                      <span x-show="result.type === 'datacenter'"
+                        class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100 rounded font-medium">Datacenter</span>
+                      <span class="font-medium"
+                        x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
+                    </div>
+                    <div class="text-xs text-gray-800 dark:text-gray-200 ml-14"
+                      x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''">
+                    </div>
+                  </a>
+                </template>
+                <div x-show="!loading && results.length === 0 && query.trim()"
+                  class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status" aria-live="polite">No results found
+                </div>
+              </div>
             </div>
-          </div>
-        </template>
 
-        <template x-if="!accessDenied">
-          <div>
-        <include src="partials/pages/dashboard.html"></include>
-        <include src="partials/pages/devices.html"></include>
-        <include src="partials/pages/networks.html"></include>
-        <include src="partials/pages/datacenters.html"></include>
-        <include src="partials/pages/discovery.html"></include>
-        <include src="partials/pages/users.html"></include>
-        <include src="partials/pages/roles.html"></include>
-        <include src="partials/pages/scan-profiles.html"></include>
-        <include src="partials/pages/oauth-clients.html"></include>
-        <include src="partials/pages/conflicts.html"></include>
-        <include src="partials/pages/webhooks.html"></include>
-        <include src="partials/pages/custom-fields.html"></include>
-        <include src="partials/pages/circuits.html"></include>
-        <include src="partials/pages/nat.html"></include>
-        <include src="partials/pages/dns-providers.html"></include>
-        <include src="partials/pages/dns-zones.html"></include>
-        <include src="partials/pages/dns-records.html"></include>
+            <div class="flex-1"></div>
 
-        <!-- Extension pages slot -->
-        <template x-for="page in (extensionPage ? [extensionPage] : [])" :key="page.path">
-          <div x-html="page.render()" x-init="$nextTick(() => Alpine.initTree($el))"></div>
-        </template>
-          </div>
-        </template>
+            <!-- Theme Toggle -->
+            <div x-data="themeToggle">
+              <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"
+                class="p-2 rounded-md text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-w-[44px] min-h-[44px] flex items-center justify-center"
+                :aria-label="'Current theme: ' + theme + '. Click to change.'">
+                <svg x-show="theme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg x-show="theme === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <svg x-show="theme === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
 
-      </main>
-    </div>
+            <!-- User Menu -->
+            <div x-data="userMenu" class="relative" @click.outside="close()">
+              <button @click="toggle()"
+                class="flex items-center gap-2 p-1 rounded-md hover:bg-[var(--muted)] focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px] cursor-pointer transition-colors"
+                :aria-expanded="open" aria-haspopup="true">
+                <div
+                  class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-200 text-sm font-medium"
+                  x-text="initial"></div>
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-200 hidden sm:inline"
+                  x-text="username"></span>
+                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <!-- Dropdown -->
+              <div x-show="open" x-cloak x-transition
+                class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1"
+                role="menu">
+                <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="username"></p>
+                  <p x-show="roleNames" class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="roleNames">
+                  </p>
+                </div>
+                <button @click="openEditProfile()"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]"
+                  role="menuitem">Edit Profile</button>
+                <button @click="openChangePassword()"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]"
+                  role="menuitem">Change Password</button>
+                <button @click="openPermissionsModal()"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]"
+                  role="menuitem">My Permissions</button>
+                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                <button @click="logout()"
+                  class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer min-h-[44px]"
+                  role="menuitem">Sign Out</button>
+              </div>
+
+              <!-- Edit Profile Modal -->
+              <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="profile-modal-title"
+                @keydown.escape.window="closeEditModal()">
+                <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+                  x-trap.inert.noscroll="showEditModal">
+                  <button @click="closeEditModal()"
+                    class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    aria-label="Close dialog">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <h2 id="profile-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit
+                    Profile</h2>
+                  <div x-show="error"
+                    class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm"
+                    role="alert" x-text="error"></div>
+                  <form @submit.prevent="saveProfile()">
+                    <div class="space-y-4">
+                      <div>
+                        <label for="profile-email"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
+                        <input id="profile-email" type="email" x-model="editForm.email"
+                          :aria-invalid="!!validationErrors.email"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                        <p x-show="validationErrors.email" class="mt-1 text-sm text-red-700 dark:text-red-300"
+                          role="alert" x-text="validationErrors.email"></p>
+                      </div>
+                      <div>
+                        <label for="profile-fullname"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
+                        <input id="profile-fullname" type="text" x-model="editForm.full_name"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                      <button type="button" @click="closeEditModal()"
+                        class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+                      <button type="submit" :disabled="saving"
+                        class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                        <span x-show="!saving">Save Changes</span>
+                        <span x-show="saving">Saving...</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Change Password Modal -->
+              <div x-show="showPasswordModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="my-password-modal-title"
+                @keydown.escape.window="closePasswordModal()">
+                <div class="fixed inset-0 bg-black/50" @click="closePasswordModal()" aria-hidden="true"></div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+                  x-trap.inert.noscroll="showPasswordModal">
+                  <button @click="closePasswordModal()"
+                    class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    aria-label="Close dialog">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <h2 id="my-password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">
+                    Change Password</h2>
+                  <div x-show="error"
+                    class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm"
+                    role="alert" x-text="error"></div>
+                  <form @submit.prevent="doChangePassword()">
+                    <div class="space-y-4">
+                      <div>
+                        <label for="my-old-password"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span
+                            aria-hidden="true">*</span></label>
+                        <input id="my-old-password" type="password" x-model="passwordForm.old_password" required
+                          :aria-invalid="!!validationErrors.old_password"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                        <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300"
+                          role="alert" x-text="validationErrors.old_password"></p>
+                      </div>
+                      <div>
+                        <label for="my-new-password"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span
+                            aria-hidden="true">*</span></label>
+                        <input id="my-new-password" type="password" x-model="passwordForm.new_password" required
+                          :aria-invalid="!!validationErrors.new_password"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                        <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300"
+                          role="alert" x-text="validationErrors.new_password"></p>
+                      </div>
+                      <div>
+                        <label for="my-confirm-password"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password
+                          <span aria-hidden="true">*</span></label>
+                        <input id="my-confirm-password" type="password" x-model="passwordForm.confirm_password" required
+                          :aria-invalid="!!validationErrors.confirm_password"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                        <p x-show="validationErrors.confirm_password"
+                          class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                          x-text="validationErrors.confirm_password"></p>
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                      <button type="button" @click="closePasswordModal()"
+                        class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+                      <button type="submit" :disabled="saving"
+                        class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+                        <span x-show="!saving">Change Password</span>
+                        <span x-show="saving">Changing...</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- My Permissions Modal -->
+              <div x-show="showPermissionsModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="permissions-modal-title"
+                @keydown.escape.window="closePermissionsModal()">
+                <div class="fixed inset-0 bg-black/50" @click="closePermissionsModal()" aria-hidden="true"></div>
+                <div
+                  class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] flex flex-col"
+                  x-trap.inert.noscroll="showPermissionsModal">
+                  <button @click="closePermissionsModal()"
+                    class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    aria-label="Close dialog">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <h2 id="permissions-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">My
+                    Permissions</h2>
+
+                  <div class="mb-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Roles</h3>
+                    <div class="flex flex-wrap gap-2">
+                      <template x-for="role in userRoles" :key="role.id">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="role.is_system ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'"
+                          x-text="role.name"></span>
+                      </template>
+                      <span x-show="userRoles.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No roles
+                        assigned</span>
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Permissions (<span
+                        x-text="userPermissions.length"></span>)</h3>
+                    <div x-show="userPermissions.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No
+                      permissions assigned</div>
+                  </div>
+
+                  <div class="flex-1 overflow-y-auto">
+                    <template x-for="(perms, resource) in groupedPermissions" :key="resource">
+                      <div class="mb-4">
+                        <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+                          x-text="resource"></h4>
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="perm in perms" :key="perm.id">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono"
+                              class="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                              x-text="perm.action"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button @click="closePermissionsModal()"
+                      class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <!-- Page content -->
+          <main id="main-content" class="flex-1 p-6" role="main" @nav.window="navigate($event.detail)">
+
+            <!-- Access Denied -->
+            <template x-if="accessDenied">
+              <div class="flex flex-col items-center justify-center py-16">
+                <div
+                  class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-8 max-w-md w-full text-center">
+                  <div
+                    class="mx-auto w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v.01M12 9v2m0-6a9 9 0 110 18 9 9 0 010-18z" />
+                    </svg>
+                  </div>
+                  <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h1>
+                  <p class="text-gray-600 dark:text-gray-400 mb-6">You don't have permission to access this page.
+                    Contact your administrator if you need access.</p>
+                  <button @click="navigate('/')"
+                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">Go
+                    to Dashboard</button>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="!accessDenied">
+              <div>
+                <include src="partials/pages/dashboard.html"></include>
+                <include src="partials/pages/devices.html"></include>
+                <include src="partials/pages/networks.html"></include>
+                <include src="partials/pages/datacenters.html"></include>
+                <include src="partials/pages/discovery.html"></include>
+                <include src="partials/pages/users.html"></include>
+                <include src="partials/pages/roles.html"></include>
+                <include src="partials/pages/scan-profiles.html"></include>
+                <include src="partials/pages/oauth-clients.html"></include>
+                <include src="partials/pages/conflicts.html"></include>
+                <include src="partials/pages/webhooks.html"></include>
+                <include src="partials/pages/custom-fields.html"></include>
+                <include src="partials/pages/circuits.html"></include>
+                <include src="partials/pages/nat.html"></include>
+                <include src="partials/pages/dns-providers.html"></include>
+                <include src="partials/pages/dns-zones.html"></include>
+                <include src="partials/pages/dns-records.html"></include>
+                <include src="partials/pages/credentials.html"></include>
+                <include src="partials/pages/scheduled-scans.html"></include>
+              </div>
+            </template>
+          </main>
+        </div>
       </div>
     </template>
   </div>
@@ -377,68 +458,61 @@
   <!-- Toast notifications container -->
   <div x-data="toast" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
     <template x-for="item in toasts" :key="item.id">
-      <div x-show="true"
-           x-transition:enter="transition ease-out duration-300"
-           x-transition:enter-start="opacity-0 translate-x-4"
-           x-transition:enter-end="opacity-100 translate-x-0"
-           x-transition:leave="transition ease-in duration-200"
-           x-transition:leave-start="opacity-100 translate-x-0"
-           x-transition:leave-end="opacity-0 translate-x-4"
-           class="pointer-events-auto min-w-[300px] max-w-md p-4 rounded-lg shadow-lg border"
-           :class="{
-             'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700': item.type === 'info',
-             'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800': item.type === 'success',
-             'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800': item.type === 'error',
-             'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800': item.type === 'warning'
-           }"
-           role="alert"
-           :aria-live="item.type === 'error' ? 'assertive' : 'polite'">
+      <div x-show="true" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-x-0"
+        x-transition:leave-end="opacity-0 translate-x-4"
+        class="pointer-events-auto min-w-[300px] max-w-md p-4 rounded-lg shadow-lg border" :class="{
+                 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700': item.type === 'info',
+                 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800': item.type === 'success',
+                 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800': item.type === 'error',
+                 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800': item.type === 'warning'
+               }" role="alert" :aria-live="item.type === 'error' ? 'assertive' : 'polite'">
         <div class="flex items-start gap-3">
           <!-- Icon -->
           <div x-show="item.type === 'success'" class="flex-shrink-0 text-green-600 dark:text-green-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div x-show="item.type === 'error'" class="flex-shrink-0 text-red-600 dark:text-red-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div x-show="item.type === 'warning'" class="flex-shrink-0 text-yellow-600 dark:text-yellow-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <div x-show="item.type === 'info'" class="flex-shrink-0 text-blue-600 dark:text-blue-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
 
           <!-- Message -->
-          <p class="flex-1 text-sm font-medium"
-             :class="{
-               'text-gray-900 dark:text-gray-100': item.type === 'info',
-               'text-green-900 dark:text-green-100': item.type === 'success',
-               'text-red-900 dark:text-red-100': item.type === 'error',
-               'text-yellow-900 dark:text-yellow-100': item.type === 'warning'
-             }"
-             x-text="item.message"></p>
+          <p class="flex-1 text-sm font-medium" :class="{
+                   'text-gray-900 dark:text-gray-100': item.type === 'info',
+                   'text-green-900 dark:text-green-100': item.type === 'success',
+                   'text-red-900 dark:text-red-100': item.type === 'error',
+                   'text-yellow-900 dark:text-yellow-100': item.type === 'warning'
+                 }" x-text="item.message"></p>
 
           <!-- Close button -->
           <button @click="remove(item.id)"
-                  class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Close notification">
-            <svg class="w-4 h-4"
-                 :class="{
-                   'text-gray-500 dark:text-gray-400': item.type === 'info',
-                   'text-green-700 dark:text-green-300': item.type === 'success',
-                   'text-red-700 dark:text-red-300': item.type === 'error',
-                   'text-yellow-700 dark:text-yellow-300': item.type === 'warning'
-                 }"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Close notification">
+            <svg class="w-4 h-4" :class="{
+                       'text-gray-500 dark:text-gray-400': item.type === 'info',
+                       'text-green-700 dark:text-green-300': item.type === 'success',
+                       'text-red-700 dark:text-red-300': item.type === 'error',
+                       'text-yellow-700 dark:text-yellow-300': item.type === 'warning'
+                     }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -448,4 +522,5 @@
 
   <script type="module" src="/app.js"></script>
 </body>
+
 </html>

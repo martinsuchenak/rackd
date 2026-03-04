@@ -10,7 +10,6 @@ The web interface features:
 - **Accessibility**: WCAG AAA compliant with keyboard navigation and screen reader support
 - **Real-time Updates**: Live data updates without page refreshes
 - **Global Search**: Search across devices, networks, and datacenters
-- **Extension Support**: Plugin architecture for additional features
 
 ## Navigation
 
@@ -21,7 +20,6 @@ The left sidebar provides access to all main sections:
 - **Networks** - Network and subnet management  
 - **Datacenters** - Physical location tracking
 - **Discovery** - Network scanning and device discovery
-- **Extension Pages** - Dynamically loaded additional features
 
 ### Top Bar
 - **Mobile Menu Toggle** - Hamburger menu for mobile devices
@@ -81,7 +79,7 @@ Network scanning and device discovery:
 - **Promote Devices**: Convert discovered devices to managed devices
 - **Scan History**: Previous scan results and status
 
-## Extension Pages
+## Internal Pages
 
 ### Pools (`/pools`)
 IP address pool management (when available):
@@ -141,12 +139,10 @@ Consistent modal interface for:
 - Single-page application routing
 - Browser history management
 - Sidebar state management
-- Extension page integration
 
 **Navigation** (`nav`):
 - Dynamic navigation items
 - Feature detection
-- Extension integration
 
 **Global Search** (`globalSearch`):
 - Debounced search input
@@ -195,7 +191,7 @@ Consistent modal interface for:
 - Device promotion
 - Status tracking
 
-### Extension Components
+### Additional Components
 
 **Credentials** (`credentialsList`, `credentialForm`):
 - Credential management
@@ -271,16 +267,6 @@ The UI uses CSS custom properties for theming:
   --text-primary: #111827;
   /* ... */
 }
-```
-
-### Extension API
-Register custom pages:
-```javascript
-window.rackdRegisterPage('/custom', () => `
-  <div x-data="customComponent">
-    <!-- Custom page content -->
-  </div>
-`);
 ```
 
 ### Component Registration

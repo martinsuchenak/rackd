@@ -15,10 +15,9 @@ import { networkList, networkDetail, networkForm } from './components/networks';
 import { poolDetail, poolForm } from './components/pools';
 import { datacenterList, datacenterDetail, datacenterForm } from './components/datacenters';
 import { discoveryList, scanForm, scanDetail, promoteForm } from './components/discovery';
-import { credentialsList, credentialForm, credentialsPageTemplate } from './components/credentials';
-import { profileList, profileForm, profilesPageTemplate } from './components/profiles';
-import { scheduledScansList, scheduledScanForm, scheduledScansPageTemplate } from './components/scheduled-scans';
+import { credentialsList } from './components/credentials';
 import { scanProfilesList } from './components/scan-profiles';
+import { scheduledScansList } from './components/scheduled-scans';
 import { login } from './components/login';
 import { usersList } from './components/users';
 import { rolesList } from './components/roles';
@@ -47,66 +46,31 @@ function updatePageTitle(route: string) {
     '/datacenters': 'Datacenters',
     '/datacenters/detail': 'Datacenter Details',
     '/discovery': 'Discovery',
+    '/credentials': 'Credentials',
     '/scan-profiles': 'Scan Profiles',
+    '/scheduled-scans': 'Scheduled Scans',
     '/conflicts': 'IP Conflicts',
+    '/webhooks': 'Webhooks',
+    '/custom-fields': 'Custom Fields',
     '/circuits': 'Circuits',
     '/nat': 'NAT Mappings',
     '/dns/providers': 'DNS Providers',
     '/dns/zones': 'DNS Zones',
     '/dns/records': 'DNS Records',
+    '/users': 'User Management',
+    '/roles': 'Role Management',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
 }
-
-// Page registry for extensions
-interface ExtensionPage {
-  path: string;
-  render: () => string; // Returns HTML template with x-data binding
-}
-
-const extensionPages: ExtensionPage[] = [];
-
-// Scan type registry for extensions
-interface ScanType {
-  value: string;
-  label: string;
-  description?: string;
-}
-
-const baseScanTypes: ScanType[] = [
-  { value: 'quick', label: 'Quick', description: 'ICMP ping' },
-  { value: 'full', label: 'Full', description: 'TCP port scan' },
-];
-
-const extensionScanTypes: ScanType[] = [];
 
 declare global {
   interface Window {
     Alpine: typeof Alpine;
     rackdAPI: RackdAPI;
     rackdConfig: UIConfig | null;
-    rackdRegisterPage: (path: string, render: () => string) => void;
-    rackdExtensionPages: ExtensionPage[];
-    rackdRegisterScanType: (type: ScanType) => void;
-    rackdScanTypes: ScanType[];
   }
 }
-
-// Extension API - for plugins
-window.rackdRegisterPage = (path: string, render: () => string) => {
-  extensionPages.push({ path, render });
-};
-
-window.rackdRegisterScanType = (type: ScanType) => {
-  extensionScanTypes.push(type);
-  // Update the exposed array
-  window.rackdScanTypes = [...baseScanTypes, ...extensionScanTypes];
-};
-
-// Expose for components
-window.rackdExtensionPages = extensionPages;
-window.rackdScanTypes = [...baseScanTypes];
 
 // Route permission requirements - maps route prefixes to required permissions
 const routePermissions: { prefix: string; resource: string; action: string }[] = [
@@ -117,6 +81,13 @@ const routePermissions: { prefix: string; resource: string; action: string }[] =
   { prefix: '/pools', resource: 'networks', action: 'list' },
   { prefix: '/datacenters', resource: 'datacenters', action: 'list' },
   { prefix: '/discovery', resource: 'discovery', action: 'list' },
+  { prefix: '/credentials', resource: 'credentials', action: 'list' },
+  { prefix: '/scan-profiles', resource: 'discovery', action: 'list' },
+  { prefix: '/scheduled-scans', resource: 'discovery', action: 'list' },
+  { prefix: '/webhooks', resource: 'webhooks', action: 'list' },
+  { prefix: '/custom-fields', resource: 'custom-fields', action: 'list' },
+  { prefix: '/dns', resource: 'dns', action: 'list' },
+  { prefix: '/conflicts', resource: 'conflicts', action: 'list' },
 ];
 
 function checkRoutePermission(path: string): boolean {
@@ -144,15 +115,27 @@ function router() {
     // Nav items from config, filtered by user permissions
     get navItems() {
       const base = [
+        { label: 'Dashboard', path: '/', order: 0 },
         { label: 'Devices', path: '/devices', order: 10 },
         { label: 'Networks', path: '/networks', order: 20 },
         { label: 'Datacenters', path: '/datacenters', order: 30 },
         { label: 'Discovery', path: '/discovery', order: 40 },
+        { label: 'Credentials', path: '/credentials', order: 42, required_permissions: [{ resource: 'credentials', action: 'list' }] },
+        { label: 'Scan Profiles', path: '/scan-profiles', order: 44, required_permissions: [{ resource: 'discovery', action: 'list' }] },
+        { label: 'Scheduled Scans', path: '/scheduled-scans', order: 46, required_permissions: [{ resource: 'discovery', action: 'list' }] },
         { label: 'Conflicts', path: '/conflicts', order: 50, badge: () => this.activeConflictCount },
+        { label: 'Webhooks', path: '/webhooks', order: 51, required_permissions: [{ resource: 'webhooks', action: 'list' }] },
+        { label: 'Custom Fields', path: '/custom-fields', order: 52, required_permissions: [{ resource: 'custom-fields', action: 'list' }] },
         { label: 'Circuits', path: '/circuits', order: 55 },
         { label: 'NAT', path: '/nat', order: 56 },
+        { label: 'DNS Providers', path: '/dns/providers', order: 57, required_permissions: [{ resource: 'dns', action: 'list' }] },
+        { label: 'DNS Zones', path: '/dns/zones', order: 58, required_permissions: [{ resource: 'dns', action: 'list' }] },
+        { label: 'Users', path: '/users', order: 90, required_permissions: [{ resource: 'users', action: 'list' }] },
+        { label: 'Roles', path: '/roles', order: 91, required_permissions: [{ resource: 'roles', action: 'list' }] },
       ];
-      const dynamic = window.rackdConfig?.nav_items ?? [];
+      const dynamic = (window.rackdConfig?.nav_items ?? []).filter(
+        (item: any) => !base.some((b) => (b.path === item.path || (b.path === '/' && item.path === '')) || b.label === item.label)
+      );
       const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
       const userPermissions = window.rackdConfig?.user?.permissions ?? [];
       return allItems.filter((item: any) => {
@@ -167,17 +150,7 @@ function router() {
       });
     },
 
-    // Check if current route is an extension page
-    get extensionPage() {
-      return window.rackdExtensionPages?.find(
-        (p) => this.route === p.path || this.route.startsWith(p.path + '?')
-      );
-    },
 
-    // Get rendered content for extension page
-    get extensionContent() {
-      return this.extensionPage?.render() || '';
-    },
 
     init() {
       this.accessDenied = !checkRoutePermission(this.route);
@@ -244,6 +217,27 @@ function themeToggle() {
       applyTheme(t);
     },
   };
+}
+
+interface PermissionsStore {
+  permissions: Permission[];
+  roles: Role[];
+  loaded: boolean;
+  can(resource: string, action: string): boolean;
+  canList(resource: string): boolean;
+  canRead(resource: string): boolean;
+  canCreate(resource: string): boolean;
+  canUpdate(resource: string): boolean;
+  canDelete(resource: string): boolean;
+  hasAnyPermission(resource: string, ...actions: string[]): boolean;
+  hasAllPermissions(resource: string, ...actions: string[]): boolean;
+}
+
+interface ToastStore {
+  success: (msg: string) => void;
+  error: (msg: string) => void;
+  info: (msg: string) => void;
+  warning: (msg: string) => void;
 }
 
 // Permissions store for checking user permissions (accessible as $store.permissions in all components)
@@ -345,11 +339,8 @@ async function init(): Promise<void> {
 
   // Credentials, Profiles, Scheduled Scans components
   Alpine.data('credentialsList', credentialsList);
-  Alpine.data('credentialForm', credentialForm);
-  Alpine.data('profileList', profileList);
-  Alpine.data('profileForm', profileForm);
+  Alpine.data('scanProfilesList', scanProfilesList);
   Alpine.data('scheduledScansList', scheduledScansList);
-  Alpine.data('scheduledScanForm', scheduledScanForm);
 
   // Auth & user management
   Alpine.data('login', login);
@@ -371,17 +362,17 @@ async function init(): Promise<void> {
         const config = await api.getConfig();
         window.rackdConfig = config;
         // Reinitialize permissions store with updated data
-        const permissionsStore = Alpine.store('permissions');
+        const permissionsStore = Alpine.store('permissions') as PermissionsStore;
         if (permissionsStore) {
           const userPermissions: Permission[] = (config.user?.permissions ?? []) as any;
           const userRoles: Role[] = (config.user?.roles ?? []) as any;
           permissionsStore.permissions = userPermissions;
           permissionsStore.roles = userRoles;
-          Alpine.store('toast')?.success('Permissions refreshed successfully');
+          (Alpine.store('toast') as ToastStore)?.success('Permissions refreshed successfully');
         }
       } catch (error) {
         console.error('Failed to refresh permissions:', error);
-        Alpine.store('toast')?.error('Failed to refresh permissions. Please reload the page.');
+        (Alpine.store('toast') as ToastStore)?.error('Failed to refresh permissions. Please reload the page.');
       }
     });
   });
@@ -405,12 +396,6 @@ async function init(): Promise<void> {
     toast.success(event.detail.message);
   });
 
-  // Register pages for credentials, scheduled scans (scan-profiles uses direct HTML include)
-  window.rackdRegisterPage('/credentials', credentialsPageTemplate);
-  window.rackdRegisterPage('/scheduled-scans', scheduledScansPageTemplate);
-
-  // Register scan profiles component (page uses direct HTML include)
-  Alpine.data('scanProfilesList', scanProfilesList);
   // Conflicts component
   Alpine.data('conflictList', conflictList);
   Alpine.data('webhookComponent', webhookComponent);
@@ -421,13 +406,6 @@ async function init(): Promise<void> {
   Alpine.data('dnsProvidersComponent', dnsProvidersComponent);
   Alpine.data('dnsZonesComponent', dnsZonesComponent);
   Alpine.data('dnsRecordsComponent', dnsRecordsComponent);
-
-  // Register deep scan type
-  window.rackdRegisterScanType({
-    value: 'deep',
-    label: 'Deep',
-    description: 'Comprehensive scan with SNMP/SSH',
-  });
 
   // Expose Alpine globally
   window.Alpine = Alpine;

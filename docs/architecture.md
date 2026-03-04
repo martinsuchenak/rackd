@@ -125,7 +125,7 @@ rackd/
 │   ├── storage/          # Storage layer & SQLite impl
 │   ├── ui/               # Embedded UI assets
 │   └── worker/           # Background workers
-├── pkg/                   # Public API (for extensions)
+├── pkg/                   # Public API packages
 │   ├── rackd/            # Public types
 │   └── server/           # Server package
 ├── webui/                 # Frontend source code

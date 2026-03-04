@@ -3,7 +3,7 @@
 **Date:** 2026-03-04
 **Review Scope:** Complete codebase review including API, MCP, CLI, Service Layer, Storage, Discovery, Web UI, and Tests
 **Reviewers:** Security Reviewer, Code Reviewer (OMC Agents)
-**Last Updated:** 2026-03-04
+**Last Updated:** 2026-03-04 (Updated after Extension Refactor)
 
 ---
 
@@ -81,6 +81,12 @@
 17. **SNMPv2c Community String Transmitted in Cleartext**
     - **Module:** Discovery
     - **Fix Applied:** Introduced a `DISCOVERY_SNMPV2C_ENABLED` configuration parameter. SNMPv2c is now disabled by default and gracefully handles unpermitted scans. Administrator must explicitly flip to `true` to use cleartext device discovery scanning.
+18. **Potential XSS and Code Injection via UI Extensions**
+    - **Module:** Web UI / Server
+    - **Fix Applied:** Completely removed the extension system. All "extension" pages were refactored into built-in, statically defined components. Removed `x-html` usage from `index.html` and deleted the backend UI extension registration logic, eliminating a major remote code execution/injection vector.
+19. **UI Navigation Consistency and Dead Links**
+    - **Module:** Web UI
+    - **Fix Applied:** Statically defined all sidebar navigation items in the frontend, corrected permission resource names (pluralized `webhooks`), and implemented a robust deduplication logic based on both path and label to prevent ghost entries and ensure sidebars correctly reflect available features.
 
 ---
 
@@ -93,12 +99,6 @@
 
 
 
-### H-6: Potential XSS via Extension Pages
-**Module:** Web UI
-**Category:** Injection (XSS)
-**Location:** `/webui/src/index.html:366`
-**Issue:** Extension pages use `x-html` to inject arbitrary HTML content. If an extension is compromised, it could inject XSS payloads.
-**Remediation:** Verify if there are any extensions in use. If not, remove the extension functionality. If yes, implement CSP and consider using DOMPurify for sanitization.
 
 ### H-7: Missing Context Propagation in Storage
 **Module:** Storage Layer

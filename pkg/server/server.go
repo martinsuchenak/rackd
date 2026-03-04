@@ -7,77 +7,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/martinsuchenak/rackd/internal/api"
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/log"
-	intmcp "github.com/martinsuchenak/rackd/internal/mcp"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/server"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/rackd"
 )
-
-// featureAdapter wraps a public Feature to implement internal Feature
-type featureAdapter struct {
-	f rackd.Feature
-}
-
-func (a *featureAdapter) Name() string {
-	return a.f.Name()
-}
-
-func (a *featureAdapter) RegisterRoutes(mux *http.ServeMux) {
-	a.f.RegisterRoutes(mux)
-}
-
-func (a *featureAdapter) RegisterMCPTools(mcpServer *intmcp.Server) {
-	a.f.RegisterMCPTools(mcpServer.Inner())
-}
-
-func (a *featureAdapter) ConfigureUI(builder *api.UIConfigBuilder) {
-	a.f.ConfigureUI(&uiBuilderAdapter{builder})
-}
-
-// uiBuilderAdapter wraps internal UIConfigBuilder to implement public interface
-type uiBuilderAdapter struct {
-	b *api.UIConfigBuilder
-}
-
-func (a *uiBuilderAdapter) SetEdition(edition string) {
-	a.b.SetEdition(edition)
-}
-
-func (a *uiBuilderAdapter) AddFeature(name string) {
-	a.b.AddFeature(name)
-}
-
-func (a *uiBuilderAdapter) AddNavItem(item rackd.NavItem) {
-	a.b.AddNavItem(api.NavItem{
-		Label: item.Label,
-		Path:  item.Path,
-		Icon:  item.Icon,
-		Order: item.Order,
-	})
-}
-
-func (a *uiBuilderAdapter) SetUser(user *rackd.UserInfo) {
-	if user == nil {
-		a.b.SetUser(nil)
-		return
-	}
-	// Convert string roles to model.Role
-	roles := make([]model.Role, len(user.Roles))
-	for i, roleName := range user.Roles {
-		roles[i] = model.Role{Name: roleName}
-	}
-	a.b.SetUser(&api.UserInfo{
-		ID:          user.ID,
-		Username:    user.Username,
-		Email:       user.Email,
-		Roles:       roles,
-		Permissions: []model.Permission{},
-	})
-}
 
 // StorageAdapter wraps internal storage to implement public interfaces
 type StorageAdapter struct {
@@ -436,19 +372,14 @@ func convertDiscoveryScanToInternal(s *rackd.DiscoveryScan) *model.DiscoveryScan
 	}
 }
 
-// Run starts the server with optional features
-func Run(cfg *config.Config, store *StorageAdapter, features ...rackd.Feature) error {
-	return RunWithCustomRoutes(cfg, store, nil, features...)
+// Run starts the server
+func Run(cfg *config.Config, store *StorageAdapter) error {
+	return RunWithCustomRoutes(cfg, store, nil)
 }
 
-// RunWithCustomRoutes starts the server with optional features and custom route registration
-func RunWithCustomRoutes(cfg *config.Config, store *StorageAdapter, registerRoutes func(mux *http.ServeMux), features ...rackd.Feature) error {
-	// Convert public features to internal features
-	internalFeatures := make([]server.Feature, len(features))
-	for i, f := range features {
-		internalFeatures[i] = &featureAdapter{f}
-	}
-	return server.RunWithCustomRoutes(cfg, store.internal, registerRoutes, internalFeatures...)
+// RunWithCustomRoutes starts the server with custom route registration
+func RunWithCustomRoutes(cfg *config.Config, store *StorageAdapter, registerRoutes func(mux *http.ServeMux)) error {
+	return server.RunWithCustomRoutes(cfg, store.internal, registerRoutes)
 }
 
 // LoadConfig loads configuration from environment
