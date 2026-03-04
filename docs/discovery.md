@@ -122,7 +122,7 @@ rackd credential create \
   --snmp-community public
 ```
 
-**Security Warning**: SNMPv2c transmits community strings in cleartext. Use only on trusted networks.
+**Security Warning**: SNMPv2c transmits community strings in cleartext. By default, Rackd disables SNMPv2c discovery scans. To use SNMPv2c, you must explicitly set `DISCOVERY_SNMPV2C_ENABLED=true` in your configuration. Use only on trusted networks.
 
 #### SNMPv3 (Secure)
 ```bash
@@ -307,7 +307,7 @@ SNMP scanning discovers network infrastructure devices and detailed system infor
 #### SNMPv2c
 - **Security**: Community string authentication
 - **Encryption**: None (cleartext transmission)
-- **Use Case**: Internal networks only
+- **Use Case**: Internal networks only (Disabled by default, requires `DISCOVERY_SNMPV2C_ENABLED=true`)
 
 #### SNMPv3
 - **Security**: User-based authentication and encryption

@@ -18,10 +18,10 @@
 | MCP Server (`/internal/mcp/`) | 0 | 2 | 4 | 2 | MEDIUM |
 | Service Layer (`/internal/service/`) | 2 | 3 | 6 | 3 | HIGH |
 | CLI Commands (`/cmd/`) | 2 | 3 | 5 | 3 | HIGH |
-| Discovery (`/internal/discovery/`) | 1 | 3 | 5 | 4 | HIGH |
+| Discovery (`/internal/discovery/`) | 1 | 2 | 5 | 4 | HIGH |
 | Web UI (`/webui/src/`) | 1 | 2 | 3 | 2 | HIGH |
 | Tests | 0 | 1 | 5 | 4 | MEDIUM |
-| **TOTAL** | **7** | **24** | **47** | **30** | **HIGH** |
+| **TOTAL** | **7** | **23** | **47** | **30** | **HIGH** |
 
 ---
 
@@ -78,6 +78,9 @@
 16. **Token Passed via Command Line Flag**
     - **Module:** CLI Commands 
     - **Fix Applied:** Replaced the `--token` flag with `--token-env` and `--token-file` in the `dns provider create` and `dns provider update` subcommands, precluding the possibility of API credentials lingering in process namespaces or shell history.
+17. **SNMPv2c Community String Transmitted in Cleartext**
+    - **Module:** Discovery
+    - **Fix Applied:** Introduced a `DISCOVERY_SNMPV2C_ENABLED` configuration parameter. SNMPv2c is now disabled by default and gracefully handles unpermitted scans. Administrator must explicitly flip to `true` to use cleartext device discovery scanning.
 
 ---
 
@@ -88,12 +91,7 @@
 
 ## 3. 🟠 Open High Issues
 
-### H-5: SNMPv2c Community String Transmitted in Cleartext
-**Module:** Discovery
-**Category:** Sensitive Data Exposure
-**Location:** `/internal/discovery/snmp.go:61-65`
-**Issue:** SNMPv2c transmits community strings in cleartext over the network.
-**Remediation:** Add configuration flag to disable SNMPv2c in production.
+
 
 ### H-6: Potential XSS via Extension Pages
 **Module:** Web UI

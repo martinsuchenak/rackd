@@ -56,6 +56,7 @@ See [Audit Trail](audit.md) for detailed documentation.
 | `DISCOVERY_TIMEOUT` | `5s` | Timeout for individual device discovery attempts |
 | `DISCOVERY_CLEANUP_DAYS` | `30` | Days to keep discovery history before cleanup |
 | `DISCOVERY_SCAN_ON_STARTUP` | `false` | Whether to run discovery scan immediately on startup |
+| `DISCOVERY_SNMPV2C_ENABLED` | `false` | If false, prevents SNMPv2c discovery scans across the infrastructure. Enable if SNMPv2c required. |
 
 ## Configuration Examples
 

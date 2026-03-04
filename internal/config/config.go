@@ -10,31 +10,32 @@ import (
 )
 
 type Config struct {
-	DataDir                string
-	ListenAddr             string
-	LogFormat              string
-	LogLevel               string
-	DiscoveryInterval      time.Duration
-	DiscoveryMaxConcurrent int
-	DiscoveryTimeout       time.Duration
-	DiscoveryCleanupDays   int
-	DiscoveryScanOnStartup bool
-	RateLimitEnabled       bool
-	RateLimitRequests      int
-	RateLimitWindow        time.Duration
-	AuditEnabled           bool
-	AuditRetentionDays     int
-	SessionTTL             time.Duration
-	SessionStoreType       string
-	ValkeyURL              string
-	LoginRateLimitRequests int
-	LoginRateLimitWindow   time.Duration
-	CookieSecure           bool
-	TrustProxy             bool
-	InitialAdminUsername   string
-	InitialAdminPassword   string
-	InitialAdminEmail      string
-	InitialAdminFullName   string
+	DataDir                 string
+	ListenAddr              string
+	LogFormat               string
+	LogLevel                string
+	DiscoveryInterval       time.Duration
+	DiscoveryMaxConcurrent  int
+	DiscoveryTimeout        time.Duration
+	DiscoveryCleanupDays    int
+	DiscoveryScanOnStartup  bool
+	DiscoverySNMPv2cEnabled bool
+	RateLimitEnabled        bool
+	RateLimitRequests       int
+	RateLimitWindow         time.Duration
+	AuditEnabled            bool
+	AuditRetentionDays      int
+	SessionTTL              time.Duration
+	SessionStoreType        string
+	ValkeyURL               string
+	LoginRateLimitRequests  int
+	LoginRateLimitWindow    time.Duration
+	CookieSecure            bool
+	TrustProxy              bool
+	InitialAdminUsername    string
+	InitialAdminPassword    string
+	InitialAdminEmail       string
+	InitialAdminFullName    string
 
 	// OAuth 2.1 for MCP
 	MCPOAuthEnabled         bool
@@ -56,31 +57,32 @@ func Load() *Config {
 	env.Load()
 
 	cfg = Config{
-		DataDir:                getEnv("DATA_DIR", "./data"),
-		ListenAddr:             getEnv("LISTEN_ADDR", ":8080"),
-		LogFormat:              getEnv("LOG_FORMAT", "text"),
-		LogLevel:               getEnv("LOG_LEVEL", "info"),
-		DiscoveryInterval:      getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
-		DiscoveryMaxConcurrent: getIntEnv("DISCOVERY_MAX_CONCURRENT", 10),
-		DiscoveryTimeout:       getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
-		DiscoveryCleanupDays:   getIntEnv("DISCOVERY_CLEANUP_DAYS", 30),
-		DiscoveryScanOnStartup: getBoolEnv("DISCOVERY_SCAN_ON_STARTUP", false),
-		RateLimitEnabled:       getBoolEnv("RATE_LIMIT_ENABLED", false),
-		RateLimitRequests:      getIntEnv("RATE_LIMIT_REQUESTS", 100),
-		RateLimitWindow:        getDurationEnv("RATE_LIMIT_WINDOW", 1*time.Minute),
-		AuditEnabled:           getBoolEnv("AUDIT_ENABLED", false),
-		AuditRetentionDays:     getIntEnv("AUDIT_RETENTION_DAYS", 90),
-		SessionTTL:             getDurationEnv("SESSION_TTL", 24*time.Hour),
-		SessionStoreType:       getEnv("SESSION_STORE_TYPE", "sqlite"),
-		ValkeyURL:              getEnv("VALKEY_URL", "redis://localhost:6379/0"),
-		LoginRateLimitRequests: getIntEnv("LOGIN_RATE_LIMIT_REQUESTS", 5),
-		LoginRateLimitWindow:   getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
-		CookieSecure:           getBoolEnv("COOKIE_SECURE", false),
-		TrustProxy:             getBoolEnv("TRUST_PROXY", false),
-		InitialAdminUsername:   getEnv("INITIAL_ADMIN_USERNAME", ""),
-		InitialAdminPassword:   getEnv("INITIAL_ADMIN_PASSWORD", ""),
-		InitialAdminEmail:      getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),
-		InitialAdminFullName:   getEnv("INITIAL_ADMIN_FULL_NAME", "System Administrator"),
+		DataDir:                 getEnv("DATA_DIR", "./data"),
+		ListenAddr:              getEnv("LISTEN_ADDR", ":8080"),
+		LogFormat:               getEnv("LOG_FORMAT", "text"),
+		LogLevel:                getEnv("LOG_LEVEL", "info"),
+		DiscoveryInterval:       getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
+		DiscoveryMaxConcurrent:  getIntEnv("DISCOVERY_MAX_CONCURRENT", 10),
+		DiscoveryTimeout:        getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
+		DiscoveryCleanupDays:    getIntEnv("DISCOVERY_CLEANUP_DAYS", 30),
+		DiscoveryScanOnStartup:  getBoolEnv("DISCOVERY_SCAN_ON_STARTUP", false),
+		DiscoverySNMPv2cEnabled: getBoolEnv("DISCOVERY_SNMPV2C_ENABLED", false),
+		RateLimitEnabled:        getBoolEnv("RATE_LIMIT_ENABLED", false),
+		RateLimitRequests:       getIntEnv("RATE_LIMIT_REQUESTS", 100),
+		RateLimitWindow:         getDurationEnv("RATE_LIMIT_WINDOW", 1*time.Minute),
+		AuditEnabled:            getBoolEnv("AUDIT_ENABLED", false),
+		AuditRetentionDays:      getIntEnv("AUDIT_RETENTION_DAYS", 90),
+		SessionTTL:              getDurationEnv("SESSION_TTL", 24*time.Hour),
+		SessionStoreType:        getEnv("SESSION_STORE_TYPE", "sqlite"),
+		ValkeyURL:               getEnv("VALKEY_URL", "redis://localhost:6379/0"),
+		LoginRateLimitRequests:  getIntEnv("LOGIN_RATE_LIMIT_REQUESTS", 5),
+		LoginRateLimitWindow:    getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
+		CookieSecure:            getBoolEnv("COOKIE_SECURE", false),
+		TrustProxy:              getBoolEnv("TRUST_PROXY", false),
+		InitialAdminUsername:    getEnv("INITIAL_ADMIN_USERNAME", ""),
+		InitialAdminPassword:    getEnv("INITIAL_ADMIN_PASSWORD", ""),
+		InitialAdminEmail:       getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),
+		InitialAdminFullName:    getEnv("INITIAL_ADMIN_FULL_NAME", "System Administrator"),
 
 		MCPOAuthEnabled:         getBoolEnv("MCP_OAUTH_ENABLED", false),
 		MCPOAuthIssuerURL:       getEnv("MCP_OAUTH_ISSUER_URL", ""),
@@ -150,7 +152,7 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v, RateLimitEnabled:%v, RateLimitRequests:%d, RateLimitWindow:%v}",
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v, DiscoverySNMPv2cEnabled:%v, RateLimitEnabled:%v, RateLimitRequests:%d, RateLimitWindow:%v}",
 		c.DataDir,
 		c.ListenAddr,
 		c.LogFormat,
@@ -160,6 +162,7 @@ func (c *Config) String() string {
 		c.DiscoveryTimeout,
 		c.DiscoveryCleanupDays,
 		c.DiscoveryScanOnStartup,
+		c.DiscoverySNMPv2cEnabled,
 		c.RateLimitEnabled,
 		c.RateLimitRequests,
 		c.RateLimitWindow,

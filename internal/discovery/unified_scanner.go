@@ -36,7 +36,7 @@ type UnifiedScanner struct {
 	mu              sync.RWMutex
 }
 
-func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkStorage, credStore credentials.Storage, timeout time.Duration) *UnifiedScanner {
+func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkStorage, credStore credentials.Storage, timeout time.Duration, snmpV2cEnabled bool) *UnifiedScanner {
 	arpScanner := NewARPScanner()
 	// Load ARP table asynchronously to avoid blocking server startup
 	go arpScanner.LoadARPTable()
@@ -48,7 +48,7 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 		scans:           make(map[string]*model.DiscoveryScan),
 		cancelFuncs:     make(map[string]context.CancelFunc),
 		arpScanner:      arpScanner,
-		snmpScanner:     NewSNMPScanner(credStore, timeout),
+		snmpScanner:     NewSNMPScanner(credStore, timeout, snmpV2cEnabled),
 		sshScanner:      NewSSHScanner(credStore, timeout),
 		bannerGrabber:   NewBannerGrabber(2 * time.Second),
 		osFingerprinter: NewOSFingerprinter(2 * time.Second),

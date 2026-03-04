@@ -13,13 +13,14 @@ import (
 )
 
 type SNMPScanner struct {
-	credStore credentials.Storage
-	timeout   time.Duration
-	retries   int
+	credStore  credentials.Storage
+	timeout    time.Duration
+	retries    int
+	v2cEnabled bool
 }
 
-func NewSNMPScanner(credStore credentials.Storage, timeout time.Duration) *SNMPScanner {
-	return &SNMPScanner{credStore: credStore, timeout: timeout, retries: 2}
+func NewSNMPScanner(credStore credentials.Storage, timeout time.Duration, v2cEnabled bool) *SNMPScanner {
+	return &SNMPScanner{credStore: credStore, timeout: timeout, retries: 2, v2cEnabled: v2cEnabled}
 }
 
 type SNMPResult struct {
@@ -59,6 +60,9 @@ func (s *SNMPScanner) Scan(ctx context.Context, ip string, credentialID string) 
 
 	switch cred.Type {
 	case "snmp_v2c":
+		if !s.v2cEnabled {
+			return nil, fmt.Errorf("SNMPv2c is disabled by configuration (cleartext credentials)")
+		}
 		// WARNING: SNMPv2c transmits community string in cleartext.
 		// Use only on trusted networks. Consider SNMPv3 for production.
 		client.Version = gosnmp.Version2c
@@ -262,6 +266,9 @@ func (s *SNMPScanner) IsAvailable(ip string, cred *model.Credential) bool {
 		Retries: 1,
 	}
 	if cred.Type == "snmp_v2c" {
+		if !s.v2cEnabled {
+			return false
+		}
 		client.Version = gosnmp.Version2c
 		client.Community = cred.SNMPCommunity
 	} else {
