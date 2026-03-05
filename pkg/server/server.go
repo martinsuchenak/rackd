@@ -30,7 +30,7 @@ func (s *StorageAdapter) Close() error {
 
 // DeviceStorage methods
 func (s *StorageAdapter) GetDevice(id string) (*rackd.Device, error) {
-	d, err := s.internal.GetDevice(id)
+	d, err := s.internal.GetDevice(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (s *StorageAdapter) ListDevices(filter *rackd.DeviceFilter) ([]rackd.Device
 			NetworkID:    filter.NetworkID,
 		}
 	}
-	devices, err := s.internal.ListDevices(internalFilter)
+	devices, err := s.internal.ListDevices(context.Background(), internalFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *StorageAdapter) ListDevices(filter *rackd.DeviceFilter) ([]rackd.Device
 }
 
 func (s *StorageAdapter) SearchDevices(query string) ([]rackd.Device, error) {
-	devices, err := s.internal.SearchDevices(query)
+	devices, err := s.internal.SearchDevices(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (s *StorageAdapter) SearchDevices(query string) ([]rackd.Device, error) {
 
 // NetworkStorage methods
 func (s *StorageAdapter) GetNetwork(id string) (*rackd.Network, error) {
-	n, err := s.internal.GetNetwork(id)
+	n, err := s.internal.GetNetwork(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *StorageAdapter) ListNetworks(filter *rackd.NetworkFilter) ([]rackd.Netw
 			VLANID:       filter.VLANID,
 		}
 	}
-	networks, err := s.internal.ListNetworks(internalFilter)
+	networks, err := s.internal.ListNetworks(context.Background(), internalFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (s *StorageAdapter) UpdateDiscoveredDevice(ctx context.Context, device *rac
 }
 
 func (s *StorageAdapter) GetDiscoveredDevice(id string) (*rackd.DiscoveredDevice, error) {
-	d, err := s.internal.GetDiscoveredDevice(id)
+	d, err := s.internal.GetDiscoveredDevice(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (s *StorageAdapter) GetDiscoveredDevice(id string) (*rackd.DiscoveredDevice
 }
 
 func (s *StorageAdapter) GetDiscoveredDeviceByIP(networkID, ip string) (*rackd.DiscoveredDevice, error) {
-	d, err := s.internal.GetDiscoveredDeviceByIP(networkID, ip)
+	d, err := s.internal.GetDiscoveredDeviceByIP(context.Background(), networkID, ip)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (s *StorageAdapter) GetDiscoveredDeviceByIP(networkID, ip string) (*rackd.D
 }
 
 func (s *StorageAdapter) ListDiscoveredDevices(networkID string) ([]rackd.DiscoveredDevice, error) {
-	devices, err := s.internal.ListDiscoveredDevices(networkID)
+	devices, err := s.internal.ListDiscoveredDevices(context.Background(), networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s *StorageAdapter) UpdateDiscoveryScan(ctx context.Context, scan *rackd.Di
 }
 
 func (s *StorageAdapter) GetDiscoveryScan(id string) (*rackd.DiscoveryScan, error) {
-	scan, err := s.internal.GetDiscoveryScan(id)
+	scan, err := s.internal.GetDiscoveryScan(context.Background(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (s *StorageAdapter) GetDiscoveryScan(id string) (*rackd.DiscoveryScan, erro
 }
 
 func (s *StorageAdapter) ListDiscoveryScans(networkID string) ([]rackd.DiscoveryScan, error) {
-	scans, err := s.internal.ListDiscoveryScans(networkID)
+	scans, err := s.internal.ListDiscoveryScans(context.Background(), networkID)
 	if err != nil {
 		return nil, err
 	}

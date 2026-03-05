@@ -46,7 +46,7 @@ func TestSnapshotOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// List snapshots to retrieve it
-	snapshots, err := storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID})
+	snapshots, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 	})
 
 	// Filter by type
-	networkSnapshots, err := storage.ListSnapshots(&model.SnapshotFilter{Type: model.SnapshotTypeNetwork})
+	networkSnapshots, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{Type: model.SnapshotTypeNetwork})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 		t.Errorf("expected 2 network snapshots, got %d", len(networkSnapshots))
 	}
 
-	poolSnapshots, err := storage.ListSnapshots(&model.SnapshotFilter{Type: model.SnapshotTypePool})
+	poolSnapshots, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{Type: model.SnapshotTypePool})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 	}
 
 	// Filter by resource ID
-	filtered, err := storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID})
+	filtered, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestSnapshotOperations_ListWithTimeFilter(t *testing.T) {
 
 	// Filter by After
 	after := now.Add(-90 * time.Minute) // 1.5 hours ago
-	filtered, err := storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID, After: &after})
+	filtered, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID, After: &after})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestSnapshotOperations_ListWithTimeFilter(t *testing.T) {
 
 	// Filter by Before
 	before := now.Add(-90 * time.Minute)
-	filtered, err = storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID, Before: &before})
+	filtered, err = storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID, Before: &before})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestSnapshotOperations_ListWithLimit(t *testing.T) {
 	}
 
 	// List with limit
-	filtered, err := storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID, Limit: 5})
+	filtered, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID, Limit: 5})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestSnapshotOperations_GetLatestSnapshots(t *testing.T) {
 	})
 
 	// Get latest snapshots
-	latest, err := storage.GetLatestSnapshots(model.SnapshotTypeNetwork)
+	latest, err := storage.GetLatestSnapshots(context.Background(), model.SnapshotTypeNetwork)
 	if err != nil {
 		t.Fatalf("GetLatestSnapshots failed: %v", err)
 	}
@@ -271,13 +271,13 @@ func TestSnapshotOperations_DeleteOldSnapshots(t *testing.T) {
 	})
 
 	// Delete snapshots older than 7 days
-	err := storage.DeleteOldSnapshots(7)
+	err := storage.DeleteOldSnapshots(context.Background(), 7)
 	if err != nil {
 		t.Fatalf("DeleteOldSnapshots failed: %v", err)
 	}
 
 	// Verify only recent snapshot remains
-	snapshots, err := storage.ListSnapshots(&model.SnapshotFilter{ResourceID: network.ID})
+	snapshots, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestSnapshotOperations_GetUtilizationTrend(t *testing.T) {
 	}
 
 	// Get trend for last 5 days
-	trend, err := storage.GetUtilizationTrend(model.SnapshotTypeNetwork, network.ID, 5)
+	trend, err := storage.GetUtilizationTrend(context.Background(), model.SnapshotTypeNetwork, network.ID, 5)
 	if err != nil {
 		t.Fatalf("GetUtilizationTrend failed: %v", err)
 	}
@@ -331,7 +331,7 @@ func TestSnapshotOperations_GetUtilizationTrendEmpty(t *testing.T) {
 	defer storage.Close()
 
 	// Get trend for non-existent resource
-	trend, err := storage.GetUtilizationTrend(model.SnapshotTypeNetwork, "non-existent-id", 30)
+	trend, err := storage.GetUtilizationTrend(context.Background(), model.SnapshotTypeNetwork, "non-existent-id", 30)
 	if err != nil {
 		t.Fatalf("GetUtilizationTrend failed: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestDashboardStats_EmptyDatabase(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -391,7 +391,7 @@ func TestDashboardStats_WithDevices(t *testing.T) {
 		storage.CreateDevice(context.Background(), d)
 	}
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -436,7 +436,7 @@ func TestDashboardStats_WithNetworksAndPools(t *testing.T) {
 	}
 	storage.CreateNetworkPool(context.Background(), pool)
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestDashboardStats_WithDiscoveredDevices(t *testing.T) {
 		LastSeen:  now,
 	})
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -511,7 +511,7 @@ func TestDashboardStats_RecentDiscoveriesLimit(t *testing.T) {
 		})
 	}
 
-	stats, err := storage.GetDashboardStats(7, 5)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 5)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestDashboardStats_StaleDevices(t *testing.T) {
 	device := &model.Device{Name: "active-device", Status: model.DeviceStatusActive}
 	storage.CreateDevice(context.Background(), device)
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}
@@ -568,7 +568,7 @@ func TestDashboardStats_NetworkUtilization(t *testing.T) {
 		},
 	})
 
-	stats, err := storage.GetDashboardStats(7, 10)
+	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
 		t.Fatalf("GetDashboardStats failed: %v", err)
 	}

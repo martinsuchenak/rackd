@@ -178,7 +178,7 @@ func TestGetScanStatus_FromCache(t *testing.T) {
 
 	scan, _ := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 
-	status, err := scanner.GetScanStatus(scan.ID)
+	status, err := scanner.GetScanStatus(context.Background(), scan.ID)
 	if err != nil {
 		t.Fatalf("GetScanStatus failed: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestGetScanStatus_FromStorage(t *testing.T) {
 	}
 	store.CreateDiscoveryScan(ctx, scan)
 
-	status, err := scanner.GetScanStatus("scan-123")
+	status, err := scanner.GetScanStatus(context.Background(), "scan-123")
 	if err != nil {
 		t.Fatalf("GetScanStatus failed: %v", err)
 	}

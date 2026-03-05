@@ -53,7 +53,7 @@ func TestGetUser(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	user, err := db.GetUser(created.ID)
+	user, err := db.GetUser(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUser() error = %v", err)
 	}
@@ -75,7 +75,7 @@ func TestGetUserNotFound(t *testing.T) {
 	db := newTestStorage(t)
 	defer db.Close()
 
-	_, err := db.GetUser("nonexistent")
+	_, err := db.GetUser(context.Background(), "nonexistent")
 	if err == nil {
 		t.Error("GetUser() expected error, got nil")
 	}
@@ -87,7 +87,7 @@ func TestGetUserByID(t *testing.T) {
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
-	user, err := db.GetUser(created.ID)
+	user, err := db.GetUser(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUser() error = %v", err)
 	}
@@ -103,7 +103,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
-	user, err := db.GetUserByUsername("testuser")
+	user, err := db.GetUserByUsername(context.Background(), "testuser")
 	if err != nil {
 		t.Fatalf("GetUserByUsername() error = %v", err)
 	}
@@ -119,7 +119,7 @@ func TestGetUserByEmail(t *testing.T) {
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
-	user, err := db.GetUserByEmail("test@example.com")
+	user, err := db.GetUserByEmail(context.Background(), "test@example.com")
 	if err != nil {
 		t.Fatalf("GetUserByEmail() error = %v", err)
 	}
@@ -137,7 +137,7 @@ func TestListUsers(t *testing.T) {
 	_, _ = createUser(t, db, "user2", "user2@example.com")
 	_, _ = createUser(t, db, "user3", "user3@example.com")
 
-	users, err := db.ListUsers(nil)
+	users, err := db.ListUsers(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListUsers() error = %v", err)
 	}
@@ -159,7 +159,7 @@ func TestListUsersFilter(t *testing.T) {
 		Username: "admin",
 	}
 
-	users, err := db.ListUsers(filter)
+	users, err := db.ListUsers(context.Background(), filter)
 	if err != nil {
 		t.Fatalf("ListUsers() error = %v", err)
 	}
@@ -189,7 +189,7 @@ func TestUpdateUser(t *testing.T) {
 		t.Fatalf("UpdateUser() error = %v", err)
 	}
 
-	user, err := db.GetUser(created.ID)
+	user, err := db.GetUser(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUser() after update error = %v", err)
 	}
@@ -214,7 +214,7 @@ func TestDeleteUser(t *testing.T) {
 		t.Fatalf("DeleteUser() error = %v", err)
 	}
 
-	_, err = db.GetUser(created.ID)
+	_, err = db.GetUser(context.Background(), created.ID)
 	if err == nil {
 		t.Error("GetUser() after DeleteUser() expected error, got nil")
 	}
@@ -226,12 +226,12 @@ func TestUpdateUserLastLogin(t *testing.T) {
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
-	err := db.UpdateUserLastLogin(created.ID, created.CreatedAt)
+	err := db.UpdateUserLastLogin(context.Background(), created.ID, created.CreatedAt)
 	if err != nil {
 		t.Fatalf("UpdateUserLastLogin() error = %v", err)
 	}
 
-	user, err := db.GetUser(created.ID)
+	user, err := db.GetUser(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUser() after update error = %v", err)
 	}
@@ -252,12 +252,12 @@ func TestUpdateUserPassword(t *testing.T) {
 		t.Fatalf("Failed to hash new password: %v", err)
 	}
 
-	err = db.UpdateUserPassword(created.ID, newHash)
+	err = db.UpdateUserPassword(context.Background(), created.ID, newHash)
 	if err != nil {
 		t.Fatalf("UpdateUserPassword() error = %v", err)
 	}
 
-	user, err := db.GetUser(created.ID)
+	user, err := db.GetUser(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUser() after update error = %v", err)
 	}

@@ -32,11 +32,11 @@ func (m *mockScanner) Scan(ctx context.Context, network *model.Network, scanType
 	}, nil
 }
 
-func (m *mockScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
+func (m *mockScanner) GetScanStatus(ctx context.Context, scanID string) (*model.DiscoveryScan, error) {
 	return &model.DiscoveryScan{ID: scanID, Status: model.ScanStatusCompleted}, nil
 }
 
-func (m *mockScanner) CancelScan(scanID string) error {
+func (m *mockScanner) CancelScan(ctx context.Context, scanID string) error {
 	return nil
 }
 

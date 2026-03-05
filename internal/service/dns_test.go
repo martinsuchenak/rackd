@@ -396,7 +396,7 @@ func newLinkTestStorage() *linkTestStorage {
 	}
 }
 
-func (s *linkTestStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
+func (s *linkTestStorage) GetDNSRecord(_ context.Context, id string) (*model.DNSRecord, error) {
 	if r, ok := s.records[id]; ok {
 		// Return a copy to avoid aliasing
 		cp := *r
@@ -405,7 +405,7 @@ func (s *linkTestStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
 	return nil, storage.ErrDNSRecordNotFound
 }
 
-func (s *linkTestStorage) GetDevice(id string) (*model.Device, error) {
+func (s *linkTestStorage) GetDevice(_ context.Context, id string) (*model.Device, error) {
 	if d, ok := s.devices[id]; ok {
 		// Return a copy
 		cp := *d
@@ -418,7 +418,7 @@ func (s *linkTestStorage) GetDevice(id string) (*model.Device, error) {
 	return nil, storage.ErrDeviceNotFound
 }
 
-func (s *linkTestStorage) GetDNSZone(id string) (*model.DNSZone, error) {
+func (s *linkTestStorage) GetDNSZone(_ context.Context, id string) (*model.DNSZone, error) {
 	if z, ok := s.zones[id]; ok {
 		cp := *z
 		return &cp, nil
@@ -681,7 +681,6 @@ func TestLinkRecord_AlreadyLinkedRejects(t *testing.T) {
 	})
 }
 
-
 // promoteTestStorage extends linkTestStorage with CreateDevice and ListDNSZones
 // support needed by PromoteRecord → DeviceService.Create.
 type promoteTestStorage struct {
@@ -716,7 +715,7 @@ func (s *promoteTestStorage) CreateDevice(_ context.Context, device *model.Devic
 	return nil
 }
 
-func (s *promoteTestStorage) ListDNSZones(_ *model.DNSZoneFilter) ([]model.DNSZone, error) {
+func (s *promoteTestStorage) ListDNSZones(_ context.Context, _ *model.DNSZoneFilter) ([]model.DNSZone, error) {
 	return nil, nil // No auto-sync zones needed for promote tests
 }
 

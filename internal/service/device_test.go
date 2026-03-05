@@ -30,7 +30,7 @@ func newStubStorage(zones []model.DNSZone) *stubStorage {
 	}
 }
 
-func (s *stubStorage) ListDNSZones(filter *model.DNSZoneFilter) ([]model.DNSZone, error) {
+func (s *stubStorage) ListDNSZones(_ context.Context, filter *model.DNSZoneFilter) ([]model.DNSZone, error) {
 	var out []model.DNSZone
 	for _, z := range s.zones {
 		if filter.AutoSync != nil && *filter.AutoSync != z.AutoSync {
@@ -41,7 +41,7 @@ func (s *stubStorage) ListDNSZones(filter *model.DNSZoneFilter) ([]model.DNSZone
 	return out, nil
 }
 
-func (s *stubStorage) GetDNSZone(id string) (*model.DNSZone, error) {
+func (s *stubStorage) GetDNSZone(_ context.Context, id string) (*model.DNSZone, error) {
 	for i := range s.zones {
 		if s.zones[i].ID == id {
 			return &s.zones[i], nil
@@ -50,14 +50,14 @@ func (s *stubStorage) GetDNSZone(id string) (*model.DNSZone, error) {
 	return nil, storage.ErrDNSZoneNotFound
 }
 
-func (s *stubStorage) GetDevice(id string) (*model.Device, error) {
+func (s *stubStorage) GetDevice(_ context.Context, id string) (*model.Device, error) {
 	if d, ok := s.devices[id]; ok {
 		return d, nil
 	}
 	return nil, storage.ErrDeviceNotFound
 }
 
-func (s *stubStorage) GetDNSRecordByName(zoneID, name string, recordType string) (*model.DNSRecord, error) {
+func (s *stubStorage) GetDNSRecordByName(_ context.Context, zoneID, name string, recordType string) (*model.DNSRecord, error) {
 	return nil, storage.ErrDNSRecordNotFound
 }
 
@@ -70,7 +70,7 @@ func (s *stubStorage) UpdateDNSRecord(_ context.Context, _ *model.DNSRecord) err
 	return nil
 }
 
-func (s *stubStorage) GetDNSProvider(id string) (*model.DNSProviderConfig, error) {
+func (s *stubStorage) GetDNSProvider(_ context.Context, id string) (*model.DNSProviderConfig, error) {
 	return nil, storage.ErrDNSProviderNotFound
 }
 
@@ -78,7 +78,7 @@ func (s *stubStorage) HasPermission(_ context.Context, _, _, _ string) (bool, er
 	return true, nil
 }
 
-func (s *stubStorage) DB() *sql.DB { return nil }
+func (s *stubStorage) DB() *sql.DB  { return nil }
 func (s *stubStorage) Close() error { return nil }
 
 // buildTestServices creates a DeviceService wired to a DNSService backed by

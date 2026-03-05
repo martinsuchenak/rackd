@@ -30,7 +30,7 @@ func TestBootstrapInitialAdmin(t *testing.T) {
 		t.Fatalf("BootstrapInitialAdmin() error = %v", err)
 	}
 
-	users, err := db.ListUsers(nil)
+	users, err := db.ListUsers(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListUsers() error = %v", err)
 	}
@@ -65,7 +65,7 @@ func TestBootstrapInitialAdminSkipsIfExists(t *testing.T) {
 		t.Fatalf("BootstrapInitialAdmin() error = %v", err)
 	}
 
-	users, err := db.ListUsers(nil)
+	users, err := db.ListUsers(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListUsers() error = %v", err)
 	}
@@ -94,7 +94,7 @@ func TestBootstrapInitialAdminNoConfig(t *testing.T) {
 		t.Fatalf("BootstrapInitialAdmin() should not error when no config, got: %v", err)
 	}
 
-	users, err := db.ListUsers(nil)
+	users, err := db.ListUsers(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListUsers() error = %v", err)
 	}
@@ -108,12 +108,12 @@ func TestCreateInitialAdmin(t *testing.T) {
 	db := newTestStorage(t)
 	defer db.Close()
 
-	err := db.CreateInitialAdmin("testadmin", "admin@test.com", "Test Admin", "testpassword123")
+	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "testpassword123")
 	if err != nil {
 		t.Fatalf("CreateInitialAdmin() error = %v", err)
 	}
 
-	user, err := db.GetUserByUsername("testadmin")
+	user, err := db.GetUserByUsername(context.Background(), "testadmin")
 	if err != nil {
 		t.Fatalf("GetUserByUsername() error = %v", err)
 	}
@@ -139,12 +139,12 @@ func TestCreateInitialAdminAlreadyExists(t *testing.T) {
 	db := newTestStorage(t)
 	defer db.Close()
 
-	err := db.CreateInitialAdmin("testadmin", "admin@test.com", "Test Admin", "testpassword123")
+	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "testpassword123")
 	if err != nil {
 		t.Fatalf("First CreateInitialAdmin() error = %v", err)
 	}
 
-	err = db.CreateInitialAdmin("testadmin", "admin2@test.com", "Test Admin 2", "testpassword123")
+	err = db.CreateInitialAdmin(context.Background(), "testadmin", "admin2@test.com", "Test Admin 2", "testpassword123")
 	if err == nil {
 		t.Error("CreateInitialAdmin() should error when user already exists")
 	}
@@ -154,7 +154,7 @@ func TestCreateInitialAdminInvalidPassword(t *testing.T) {
 	db := newTestStorage(t)
 	defer db.Close()
 
-	err := db.CreateInitialAdmin("testadmin", "admin@test.com", "Test Admin", "short")
+	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "short")
 	if err == nil {
 		t.Error("CreateInitialAdmin() should error for short password")
 	}
@@ -164,12 +164,12 @@ func TestCreateInitialAdminMissingFields(t *testing.T) {
 	db := newTestStorage(t)
 	defer db.Close()
 
-	err := db.CreateInitialAdmin("", "admin@test.com", "Test Admin", "testpassword123")
+	err := db.CreateInitialAdmin(context.Background(), "", "admin@test.com", "Test Admin", "testpassword123")
 	if err == nil {
 		t.Error("CreateInitialAdmin() should error for missing username")
 	}
 
-	err = db.CreateInitialAdmin("testadmin", "admin@test.com", "Test Admin", "")
+	err = db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "")
 	if err == nil {
 		t.Error("CreateInitialAdmin() should error for missing password")
 	}

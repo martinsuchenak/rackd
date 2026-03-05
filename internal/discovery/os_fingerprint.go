@@ -111,10 +111,8 @@ func (f *OSFingerprinter) classifyOS(ttl uint8) string {
 		return OSTypeLinux // or macOS — both use initial TTL 64
 	case ttl <= 128:
 		return OSTypeWindows
-	case ttl <= 255:
-		return OSTypeNetwork
 	default:
-		return OSTypeUnknown
+		return OSTypeNetwork
 	}
 }
 
