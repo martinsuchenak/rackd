@@ -74,7 +74,7 @@ func RunWithAdvancedFeatures(
 		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
 	}
 
-	scanner := discovery.NewUnifiedScanner(store, store, credStore, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
+	scanner := discovery.NewUnifiedScanner(store, credStore, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 
@@ -239,7 +239,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
 	}
 
-	scanner := discovery.NewUnifiedScanner(store, store, nil, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
+	scanner := discovery.NewUnifiedScanner(store, nil, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
 

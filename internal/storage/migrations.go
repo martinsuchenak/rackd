@@ -228,6 +228,12 @@ var migrations = []*Migration{
 		Up:      migrateAddSessionsUp,
 		Down:    migrateAddSessionsDown,
 	},
+	{
+		Version: "20260305080000",
+		Name:    "add_ssh_host_keys",
+		Up:      migrateAddSSHHostKeysUp,
+		Down:    migrateAddSSHHostKeysDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2801,6 +2807,29 @@ func migrateAddSessionsUp(ctx context.Context, tx *sql.Tx) error {
 func migrateAddSessionsDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS sessions`); err != nil {
 		return fmt.Errorf("failed to drop sessions table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddSSHHostKeysUp creates the ssh_host_keys table
+func migrateAddSSHHostKeysUp(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS ssh_host_keys (
+			host TEXT PRIMARY KEY,
+			key_data BLOB NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create ssh_host_keys table: %w", err)
+	}
+	return nil
+}
+
+// migrateAddSSHHostKeysDown drops the ssh_host_keys table
+func migrateAddSSHHostKeysDown(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS ssh_host_keys`); err != nil {
+		return fmt.Errorf("failed to drop ssh_host_keys table: %w", err)
 	}
 	return nil
 }

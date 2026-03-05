@@ -316,6 +316,12 @@ type DNSStorage interface {
 	GetDNSRecordByName(ctx context.Context, zoneID, name string, recordType string) (*model.DNSRecord, error)
 }
 
+// SSHHostKeyStorage defines SSH host key persistence operations
+type SSHHostKeyStorage interface {
+	GetSSHHostKey(ctx context.Context, host string) ([]byte, error)
+	SaveSSHHostKey(ctx context.Context, host string, key []byte) error
+}
+
 // Storage is the base interface
 type Storage interface {
 	DeviceStorage
@@ -343,6 +349,7 @@ type ExtendedStorage interface {
 	CircuitStorage
 	NATStorage
 	DNSStorage
+	SSHHostKeyStorage
 	Close() error
 	DB() *sql.DB
 }

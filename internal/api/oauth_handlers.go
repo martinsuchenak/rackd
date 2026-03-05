@@ -130,15 +130,24 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !body.Approved {
-		redirectWithError(w, r, body.RedirectURI, "access_denied", "User denied the request", body.State)
+	// Validate the client and redirect URI first to prevent open redirect
+	_, _, err := h.svc.OAuth.ValidateAuthRequest(body.ClientID, body.RedirectURI, "code", body.Scope, body.CodeChallenge, body.CodeChallengeMethod)
+	if err != nil {
+		if errors.Is(err, service.ErrOAuthInvalidRedirectURI) || errors.Is(err, service.ErrOAuthInvalidClient) {
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", err.Error())
+			return
+		}
+		// Other validation errors should be passed back to the valid redirect URI
+		h.writeJSON(w, http.StatusOK, map[string]string{
+			"redirect_uri": buildErrorRedirectURL(body.RedirectURI, "invalid_request", err.Error(), body.State),
+		})
 		return
 	}
 
-	// Validate the request again
-	_, _, err := h.svc.OAuth.ValidateAuthRequest(body.ClientID, body.RedirectURI, "code", body.Scope, body.CodeChallenge, body.CodeChallengeMethod)
-	if err != nil {
-		redirectWithError(w, r, body.RedirectURI, "invalid_request", err.Error(), body.State)
+	if !body.Approved {
+		h.writeJSON(w, http.StatusOK, map[string]string{
+			"redirect_uri": buildErrorRedirectURL(body.RedirectURI, "access_denied", "User denied the request", body.State),
+		})
 		return
 	}
 
@@ -318,6 +327,21 @@ func buildRedirectURL(redirectURI, code, state string) string {
 	}
 	q := u.Query()
 	q.Set("code", code)
+	if state != "" {
+		q.Set("state", state)
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func buildErrorRedirectURL(redirectURI, errorCode, description, state string) string {
+	u, err := url.Parse(redirectURI)
+	if err != nil {
+		return redirectURI
+	}
+	q := u.Query()
+	q.Set("error", errorCode)
+	q.Set("error_description", description)
 	if state != "" {
 		q.Set("state", state)
 	}

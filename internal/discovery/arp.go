@@ -3,6 +3,7 @@ package discovery
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -65,7 +66,11 @@ func (s *ARPScanner) loadLinuxARP() error {
 			ip := fields[0]
 			mac := fields[3]
 			if mac != "00:00:00:00:00:00" {
-				s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+				if net.ParseIP(ip) != nil {
+					if _, err := net.ParseMAC(mac); err == nil {
+						s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+					}
+				}
 			}
 		}
 	}
@@ -111,7 +116,11 @@ func (s *ARPScanner) loadDarwinARP() error {
 		}
 
 		if ip != "" && mac != "" && mac != "00:00:00:00:00:00" && mac != "(incomplete)" {
-			s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+			if net.ParseIP(ip) != nil {
+				if _, err := net.ParseMAC(mac); err == nil {
+					s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+				}
+			}
 		}
 	}
 

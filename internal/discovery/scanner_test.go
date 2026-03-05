@@ -22,7 +22,7 @@ func newTestUnifiedScanner(t *testing.T) (*UnifiedScanner, storage.ExtendedStora
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 
-	return NewUnifiedScanner(store, store, nil, 100*time.Millisecond, true), store
+	return NewUnifiedScanner(store, nil, 100*time.Millisecond, true), store
 }
 
 // Helper function tests

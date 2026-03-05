@@ -108,6 +108,12 @@
 27. **API Key Printed to Server Logs**
     - **Module:** API
     - **Fix Applied:** In `internal/api/apikey_handlers.go`, the secret generated `key` string was inadvertently printed to the server logs because instead of logging the safe properties, the code directly outputted the generated secret block. Changed the logging logic to only output the identifier `newKey.ID`.
+28. **Discovery Vulnerabilities (ARP & SSH TOFU)**
+    - **Module:** Discovery / Storage
+    - **Fix Applied:** Added robust IP and MAC address validation inside the ARP scanner. Implemented Trust-On-First-Use (TOFU) host key persistence using `ssh_host_keys` SQLite table to prevent SSH man-in-the-middle attacks.
+29. **OAuth Redirect URI Trust Issue**
+    - **Module:** Web UI & API
+    - **Fix Applied:** Repaired `oauthAuthorizeSubmit` where an unvalidated JSON-supplied `redirect_uri` could be utilized in error redirection, bypassing URI strict matching. Enforced `ValidateAuthRequest` *before* handling user denial/approval, and shifted redirect handling to be JSON-aware for SPA. Hardcoded mock API keys in test fixtures were also modernized.
 
 ---
 
@@ -117,11 +123,10 @@
 ---
 
 ## 3. 🟠 Open High Issues
-### H-12: Additional High Issues from Extended Review
-- **Discovery:** Missing input validation for IP addresses in ARP scanner. Trust-On-First-Use (TOFU) issue for SSH host keys.
-- **Web UI & Tests:** OAuth redirect URI trust issue. Hardcoded test API key patterns.
+*(All identified high issues have been fixed)*
 
 ---
+
 
 ## 🟡 Open Medium Issues
 
