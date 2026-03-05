@@ -37,6 +37,12 @@ interface NetworkListData {
   openEditModal(network: Network): void;
   closeModal(): void;
   saveNetwork(): Promise<void>;
+  getNetworkDetailLink(network: Network): string;
+  getDevicesLink(network: Network): string;
+  getVlanLabel(network: Network): string;
+  getDevicesAriaLabel(network: Network): string;
+  getEditAriaLabel(network: Network): string;
+  getDeleteAriaLabel(network: Network): string;
 }
 
 export function networkList() {
@@ -245,6 +251,30 @@ export function networkList() {
         this.saving = false;
       }
     },
+
+    getNetworkDetailLink(n: Network): string {
+      return `/networks/detail?id=${n.id}`;
+    },
+
+    getDevicesLink(n: Network): string {
+      return `/devices?network=${n.id}`;
+    },
+
+    getVlanLabel(n: Network): string {
+      return n.vlan_id?.toString() || '-';
+    },
+
+    getDevicesAriaLabel(n: Network): string {
+      return `View devices in ${n.name}`;
+    },
+
+    getEditAriaLabel(n: Network): string {
+      return `Edit ${n.name}`;
+    },
+
+    getDeleteAriaLabel(n: Network): string {
+      return `Delete ${n.name}`;
+    },
   };
 }
 
@@ -307,6 +337,23 @@ interface NetworkDetailData {
   getMoreNetworkDevicesCount(): number;
   firstDevices(): Device[];
   hasEditPoolTags(): boolean;
+  getNetworkName(): string;
+  getNetworkSubnet(): string;
+  getNetworkVlanId(): string;
+  getNetworkDatacenterId(): string | undefined;
+  getNetworkDescription(): string;
+  getUtilizationAriaLabel(): string;
+  getUtilizationWidthStyle(): string;
+  getPoolDetailLink(pool: NetworkPool): string;
+  getPoolRange(pool: NetworkPool): string;
+  getPoolTags(pool: NetworkPool): string[];
+  getEditPoolAriaLabel(pool: NetworkPool): string;
+  getDeletePoolAriaLabel(pool: NetworkPool): string;
+  getDevicesLink(): string;
+  getDeviceDetailLink(device: Device): string;
+  getDeviceFirstIP(device: Device): string;
+  getDeviceMakeModel(device: Device): string;
+  getDeletePoolTargetName(): string;
 }
 
 export function networkDetail(): NetworkDetailData {
@@ -587,8 +634,78 @@ export function networkDetail(): NetworkDetailData {
     },
 
     hasEditPoolTags(): boolean {
-      return !!(this.editPool && this.editPool.tags && this.editPool.tags.length > 0);
-    }
+      return !!(this.editPool.tags && this.editPool.tags.length > 0);
+    },
+
+    getNetworkName(): string {
+      return this.network?.name || '';
+    },
+
+    getNetworkSubnet(): string {
+      return this.network?.subnet || '';
+    },
+
+    getNetworkVlanId(): string {
+      return this.network?.vlan_id?.toString() || '-';
+    },
+
+    getNetworkDatacenterId(): string | undefined {
+      return this.network?.datacenter_id;
+    },
+
+    getNetworkDescription(): string {
+      return this.network?.description || '-';
+    },
+
+    getUtilizationAriaLabel(): string {
+      const percent = (typeof (this as any).utilizationPercent === 'function') ? (this as any).utilizationPercent() : 0;
+      return `Network utilization: ${percent} percent`;
+    },
+
+    getUtilizationWidthStyle(): string {
+      const percent = (typeof (this as any).utilizationPercent === 'function') ? (this as any).utilizationPercent() : 0;
+      return `width: ${percent}%`;
+    },
+
+    getPoolDetailLink(pool: NetworkPool): string {
+      return `/pools/detail?id=${pool.id}`;
+    },
+
+    getPoolRange(pool: NetworkPool): string {
+      return `${pool.start_ip} - ${pool.end_ip}`;
+    },
+
+    getPoolTags(pool: NetworkPool): string[] {
+      return pool.tags || [];
+    },
+
+    getEditPoolAriaLabel(pool: NetworkPool): string {
+      return `Edit pool ${pool.name}`;
+    },
+
+    getDeletePoolAriaLabel(pool: NetworkPool): string {
+      return `Delete pool ${pool.name}`;
+    },
+
+    getDevicesLink(): string {
+      return `/devices?network=${this.network?.id || ''}`;
+    },
+
+    getDeviceDetailLink(device: Device): string {
+      return `/devices/detail?id=${device.id}`;
+    },
+
+    getDeviceFirstIP(device: Device): string {
+      return (device.addresses && device.addresses[0]) ? device.addresses[0].ip : '-';
+    },
+
+    getDeviceMakeModel(device: Device): string {
+      return device.make_model || '-';
+    },
+
+    getDeletePoolTargetName(): string {
+      return this.deletePoolTarget?.name || '';
+    },
   };
 }
 

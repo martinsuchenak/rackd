@@ -117,7 +117,7 @@
               </td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                  :class="getAutoSyncClass(zone.auto_sync)" x-text="zone.auto_sync ? 'Enabled' : 'Disabled'"></span>
+                  :class="getAutoSyncClass(zone.auto_sync)" x-text="getAutoSyncLabel(zone.auto_sync)"></span>
               </td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
@@ -175,9 +175,8 @@
                 <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <input id="create-name" type="text" x-model="formData.name" placeholder="example.com" required
                 aria-required="true" :aria-invalid="!!validationErrors.name"
-                :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
-                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                :aria-describedby="getAriaDescribedBy('create-name-error', !!validationErrors.name)"
+                :class="getInputClass(!!validationErrors.name)">
               <p x-show="validationErrors.name" id="create-name-error"
                 class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
             </div>
@@ -187,15 +186,16 @@
                   aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <select id="create-provider" x-model="formData.provider_id" required aria-required="true"
                 :aria-invalid="!!validationErrors.provider_id"
-                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                :class="validationErrors.provider_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                :aria-describedby="getAriaDescribedBy('create-provider-error', !!validationErrors.provider_id)"
+                :class="getInputClass(!!validationErrors.provider_id)">
                 <option value="">Select Provider</option>
                 <template x-for="provider in providers" :key="provider.id">
                   <option :value="provider.id" x-text="provider.name"></option>
                 </template>
               </select>
-              <p x-show="validationErrors.provider_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                x-text="validationErrors.provider_id"></p>
+              <p x-show="validationErrors.provider_id" id="create-provider-error"
+                class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.provider_id">
+              </p>
             </div>
             <div>
               <label for="create-network"
@@ -214,10 +214,10 @@
                   TTL</label>
                 <input id="create-ttl" type="number" x-model.number="formData.ttl" min="0"
                   :aria-invalid="!!validationErrors.ttl"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.ttl"></p>
+                  :aria-describedby="getAriaDescribedBy('create-ttl-error', !!validationErrors.ttl)"
+                  :class="getInputClass(!!validationErrors.ttl)">
+                <p x-show="validationErrors.ttl" id="create-ttl-error"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
               </div>
               <div class="flex items-end">
                 <label class="flex items-center gap-2 p-2 cursor-pointer">
@@ -291,10 +291,10 @@
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="getEditInputId(selectedZone.id, 'edit-name')" type="text" x-model="formData.name" required
                   aria-required="true" :aria-invalid="!!validationErrors.name"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.name"></p>
+                  :aria-describedby="getAriaDescribedBy(getEditInputId(selectedZone.id, 'edit-name-error'), !!validationErrors.name)"
+                  :class="getInputClass(!!validationErrors.name)">
+                <p x-show="validationErrors.name" :id="getEditInputId(selectedZone.id, 'edit-name-error')"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
               </div>
               <div>
                 <label :for="getEditInputId(selectedZone.id, 'edit-network')"
@@ -313,10 +313,10 @@
                     class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Default TTL</label>
                   <input :id="getEditInputId(selectedZone.id, 'edit-ttl')" type="number" x-model.number="formData.ttl"
                     min="0" :aria-invalid="!!validationErrors.ttl"
-                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                    :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                    x-text="validationErrors.ttl"></p>
+                    :aria-describedby="getAriaDescribedBy(getEditInputId(selectedZone.id, 'edit-ttl-error'), !!validationErrors.ttl)"
+                    :class="getInputClass(!!validationErrors.ttl)">
+                  <p x-show="validationErrors.ttl" :id="getEditInputId(selectedZone.id, 'edit-ttl-error')"
+                    class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
                 </div>
                 <div class="flex items-end">
                   <label class="flex items-center gap-2 p-2 cursor-pointer">
@@ -384,9 +384,7 @@
           <h2 id="sync-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Sync Zone</h2>
           <p class="text-gray-800 dark:text-gray-200 mb-4">Sync all records for <strong
               x-text="getSelectedZoneName()"></strong> to the DNS provider?</p>
-          <div x-show="syncResult" class="mb-4 p-3 rounded-md"
-            :class="isSyncResultSuccess() ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'"
-            role="alert">
+          <div x-show="syncResult" class="mb-4 p-3 rounded-md" :class="getSyncResultClass()" role="alert">
             <p x-text="getSyncResultMessage()"></p>
             <p x-show="getSyncResultDetails()" class="mt-1 text-sm" x-text="getSyncResultDetails()">
             </p>
@@ -422,9 +420,7 @@
             Records</h2>
           <p class="text-gray-800 dark:text-gray-200 mb-4">Import existing DNS records from <strong
               x-text="getSelectedZoneName()"></strong> into rackd?</p>
-          <div x-show="syncResult" class="mb-4 p-3 rounded-md"
-            :class="syncResult && syncResult.success ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'"
-            role="alert">
+          <div x-show="syncResult" class="mb-4 p-3 rounded-md" :class="getSyncResultClass()" role="alert">
             <p x-text="syncResult && syncResult.message"></p>
             <p x-show="syncResult && syncResult.details" class="mt-1 text-sm" x-text="syncResult && syncResult.details">
             </p>

@@ -117,10 +117,8 @@
           <!-- Conflict Header -->
           <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <span class="px-2 py-1 text-xs font-medium rounded-full" :class="{
-                      'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300': conflict.type === 'duplicate_ip',
-                      'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300': conflict.type === 'overlapping_subnet'
-                    }" x-text="conflict.type === 'duplicate_ip' ? 'Duplicate IP' : 'Overlapping Subnet'"></span>
+              <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getConflictTypeClass(conflict)"
+                x-text="getConflictTypeLabel(conflict)"></span>
               <span class="font-mono text-sm text-gray-900 dark:text-white"
                 x-text="conflict.ip_address || conflict.description"></span>
             </div>
@@ -147,8 +145,8 @@
                       <span class="font-medium text-gray-900 dark:text-white"
                         x-text="getDeviceName(conflict, index)"></span>
                     </div>
-                    <a :href="'/devices/detail?id=' + deviceId"
-                      @click.prevent="$dispatch('nav', '/devices/detail?id=' + deviceId)"
+                    <a :href="getConflictDetailLink(conflict, deviceId)"
+                      @click.prevent="$dispatch('nav', getConflictDetailLink(conflict, deviceId))"
                       class="px-3 py-1.5 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer">
                       View Device
                     </a>
@@ -180,8 +178,8 @@
                           x-text="getSubnet(conflict, index)"></span>
                       </div>
                     </div>
-                    <a :href="'/networks/detail?id=' + networkId"
-                      @click.prevent="$dispatch('nav', '/networks/detail?id=' + networkId)"
+                    <a :href="getConflictDetailLink(conflict, networkId)"
+                      @click.prevent="$dispatch('nav', getConflictDetailLink(conflict, networkId))"
                       class="px-3 py-1.5 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer">
                       View Network
                     </a>

@@ -608,6 +608,24 @@ export function usersList() {
 
     getUserRoles(user: User | null): Role[] {
       return user?.roles || [];
+    },
+
+    canUpdateRoles(): boolean {
+      // @ts-ignore - Alpine store access
+      return Alpine.store('permissions').canUpdate('roles');
+    },
+
+    canListRoles(): boolean {
+      // @ts-ignore - Alpine store access
+      return Alpine.store('permissions').canList('roles');
+    },
+
+    getLastLoginLabel(user: User): string {
+      return user.last_login_at ? this.formatDate(user.last_login_at) : 'Never';
+    },
+
+    getSelectedUserRolesCount(): number {
+      return this.selectedUser?.roles?.length || 0;
     }
   };
 }

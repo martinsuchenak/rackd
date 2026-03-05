@@ -70,16 +70,20 @@ interface DNSProvidersData {
 
   // Form helpers
   validateForm(): boolean;
+  getInputClass(hasError: boolean): string;
+  getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined;
 
   // Utilities
   formatDate(dateStr: string): string;
   formatType(type: DNSProviderType): string;
   hasProviders(): boolean;
   getProviderAriaLabel(providerName: string, action: string): string;
+  getProviderDescription(provider: DNSProvider): string;
   getEditInputId(id: string, prefix: string): string;
   getSelectedProviderName(): string;
   getTestResultMessage(): string;
   isTestResultSuccess(): boolean;
+  getTestResultClass(): string;
 }
 
 export function dnsProvidersComponent(): DNSProvidersData {
@@ -196,8 +200,21 @@ export function dnsProvidersComponent(): DNSProvidersData {
       return action + ' ' + providerName;
     },
 
+    getProviderDescription(provider: DNSProvider): string {
+      return provider.description || '-';
+    },
+
     getEditInputId(id: string, prefix: string): string {
       return prefix + '-' + id;
+    },
+
+    getInputClass(hasError: boolean): string {
+      const base = 'w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]';
+      return hasError ? `${base} border-red-600 dark:border-red-400` : `${base} border-gray-300 dark:border-gray-600`;
+    },
+
+    getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined {
+      return hasError ? errorId : undefined;
     },
 
     validateForm(): boolean {
@@ -326,6 +343,12 @@ export function dnsProvidersComponent(): DNSProvidersData {
 
     isTestResultSuccess(): boolean {
       return this.testResult ? this.testResult.success : false;
+    },
+
+    getTestResultClass(): string {
+      return this.isTestResultSuccess()
+        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+        : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
     }
   };
 }
@@ -406,6 +429,8 @@ interface DNSZonesData {
 
   // Form helpers
   validateForm(): boolean;
+  getInputClass(hasError: boolean): string;
+  getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined;
 
   // Utilities
   formatDate(dateStr: string): string;
@@ -422,6 +447,8 @@ interface DNSZonesData {
   getSyncResultMessage(): string;
   getSyncResultDetails(): string;
   isSyncResultSuccess(): boolean;
+  getSyncResultClass(): string;
+  getAutoSyncLabel(autoSync: boolean): string;
 }
 
 export function dnsZonesComponent(): DNSZonesData {
@@ -784,6 +811,15 @@ export function dnsZonesComponent(): DNSZonesData {
       return prefix + '-' + id;
     },
 
+    getInputClass(hasError: boolean): string {
+      const base = 'w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]';
+      return hasError ? `${base} border-red-600 dark:border-red-400` : `${base} border-gray-300 dark:border-gray-600`;
+    },
+
+    getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined {
+      return hasError ? errorId : undefined;
+    },
+
     getSelectedZoneName(): string {
       return this.selectedZone ? this.selectedZone.name : '';
     },
@@ -798,6 +834,16 @@ export function dnsZonesComponent(): DNSZonesData {
 
     isSyncResultSuccess(): boolean {
       return this.syncResult ? this.syncResult.success : false;
+    },
+
+    getSyncResultClass(): string {
+      return (this.syncResult && this.syncResult.success)
+        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+        : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
+    },
+
+    getAutoSyncLabel(autoSync: boolean): string {
+      return autoSync ? 'Enabled' : 'Disabled';
     }
   };
 }
@@ -896,6 +942,8 @@ interface DNSRecordsData {
 
   // Form helpers
   validateForm(): boolean;
+  getInputClass(hasError: boolean, additionalClasses?: string): string;
+  getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined;
 
   // Utilities
   formatDate(dateStr: string): string;
@@ -1118,6 +1166,16 @@ export function dnsRecordsComponent(): DNSRecordsData {
 
     getEditInputId(id: string, prefix: string): string {
       return prefix + '-' + id;
+    },
+
+    getInputClass(hasError: boolean, additionalClasses?: string): string {
+      const base = 'w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]';
+      const classes = hasError ? `${base} border-red-600 dark:border-red-400` : `${base} border-gray-300 dark:border-gray-600`;
+      return additionalClasses ? `${classes} ${additionalClasses}` : classes;
+    },
+
+    getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined {
+      return hasError ? errorId : undefined;
     },
 
     get filteredDevices(): Device[] {

@@ -8,7 +8,7 @@
         <button @click="$dispatch('nav', '/devices')"
           class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mr-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 transition-colors"
           aria-label="Back to devices list">&larr;</button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="device && device.name"></h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="getDeviceName()"></h1>
       </div>
       <div class="flex gap-2">
         <button x-show="$store.permissions.canUpdate('devices')" @click="openEditModal()"
@@ -24,32 +24,31 @@
       <dl class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Hostname</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.hostname || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getHostname()"></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Make/Model</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.make_model || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getMakeModel()"></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">OS</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.os || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getOs()"></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Datacenter</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white"
-            x-text="getDatacenterName(device && device.datacenter_id)"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(getDatacenterId())"></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Location</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.location || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getLocation()"></dd>
         </div>
         <div>
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Username</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.username || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getUsername()"></dd>
         </div>
         <div class="md:col-span-2 lg:col-span-3">
           <dt class="text-sm font-medium text-gray-600 dark:text-gray-400">Description</dt>
-          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="device && device.description || '-'"></dd>
+          <dd class="mt-1 font-medium text-gray-900 dark:text-white" x-text="getDescription()"></dd>
         </div>
       </dl>
       <!-- Tags -->
@@ -103,9 +102,9 @@
       <div
         class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-700 flex gap-6 text-sm text-gray-600 dark:text-gray-400">
         <span>Created: <span class="font-medium text-gray-900 dark:text-white"
-            x-text="formatDate(device && device.created_at)"></span></span>
+            x-text="formatDate(getCreatedAt())"></span></span>
         <span>Updated: <span class="font-medium text-gray-900 dark:text-white"
-            x-text="formatDate(device && device.updated_at)"></span></span>
+            x-text="formatDate(getUpdatedAt())"></span></span>
       </div>
     </div>
 
@@ -131,19 +130,19 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
-            <template x-for="addr in device && device.addresses || []" :key="addr.ip + (addr.port || '')">
+            <template x-for="addr in getAddresses()" :key="addr.ip + (addr.port || '')">
               <tr class="text-sm hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="py-3 pr-4 font-mono text-gray-900 dark:text-white" x-text="addr.ip"></td>
-                <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="addr.port || '-'"></td>
+                <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="getAddressPort(addr)"></td>
                 <td class="py-3 pr-4">
                   <span
                     class="px-2 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600"
-                    x-text="addr.type || '-'"></span>
+                    x-text="getAddressType(addr)"></span>
                 </td>
-                <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="addr.label || '-'"></td>
+                <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="getAddressLabel(addr)"></td>
                 <td class="py-3 pr-4 text-gray-700 dark:text-gray-300" x-text="getNetworkName(addr.network_id)">
                 </td>
-                <td class="py-3 text-gray-700 dark:text-gray-300" x-text="addr.switch_port || '-'"></td>
+                <td class="py-3 text-gray-700 dark:text-gray-300" x-text="getAddressSwitchPort(addr)"></td>
               </tr>
             </template>
           </tbody>
@@ -190,8 +189,8 @@
                   <span class="px-2 py-0.5 text-xs rounded font-medium" :class="getRelationshipTypeClass(rel.type)"
                     x-text="formatRelationshipType(rel.type)"></span>
                   <span class="text-gray-700 dark:text-gray-300" x-text="getRelationshipDirection(rel)"></span>
-                  <a :href="'/devices/detail?id=' + getRelationshipTargetId(rel)"
-                    @click.prevent="$dispatch('nav', '/devices/detail?id=' + getRelationshipTargetId(rel))"
+                  <a :href="getRelationshipTargetLink(rel)"
+                    @click.prevent="$dispatch('nav', getRelationshipTargetLink(rel))"
                     class="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors font-medium"
                     x-text="getRelatedDeviceName(rel)"></a>
                 </div>

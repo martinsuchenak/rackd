@@ -28,6 +28,10 @@ interface ConflictListData {
   getNetworkName(conflict: Conflict, index: number): string;
   getSubnet(conflict: Conflict, index: number): string;
   getDeviceIdCount(conflict: Conflict): number;
+  getConflictTypeLabel(conflict: Conflict): string;
+  getConflictTypeClass(conflict: Conflict): string;
+  getConflictDetailLink(conflict: Conflict, id: string): string;
+  getTotalConflictCount(): number;
 }
 
 export function conflictList(): ConflictListData {
@@ -135,6 +139,25 @@ export function conflictList(): ConflictListData {
 
     getDeviceIdCount(conflict: Conflict): number {
       return conflict.device_ids?.length || 0;
+    },
+
+    getConflictTypeLabel(conflict: Conflict): string {
+      return conflict.type === 'duplicate_ip' ? 'Duplicate IP' : 'Overlapping Subnet';
+    },
+
+    getConflictTypeClass(conflict: Conflict): string {
+      if (conflict.type === 'duplicate_ip') {
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
+      }
+      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
+    },
+
+    getConflictDetailLink(conflict: Conflict, id: string): string {
+      return conflict.type === 'duplicate_ip' ? `/devices/detail?id=${id}` : `/networks/detail?id=${id}`;
+    },
+
+    getTotalConflictCount(): number {
+      return (this.summary.duplicate_ips || 0) + (this.summary.overlapping_subnets || 0);
     }
   };
 }

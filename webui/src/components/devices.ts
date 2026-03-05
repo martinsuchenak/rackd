@@ -36,6 +36,12 @@ interface DeviceListData {
   hasCustomFieldDefinitions(): boolean;
   hasEditDeviceTags(): boolean;
   hasEditDeviceDomains(): boolean;
+  getDeviceDetailLink(device: Device): string;
+  getNetworkDetailLink(networkId: string): string;
+  getPoolDetailLink(poolId: string): string;
+  getMakeModelLabel(device: Device): string;
+  getEditAriaLabel(device: Device): string;
+  getDeleteAriaLabel(device: Device): string;
 }
 
 export function deviceList() {
@@ -591,7 +597,31 @@ export function deviceList() {
 
     hasEditDeviceDomains(): boolean {
       return !!(this.editDevice.domains && this.editDevice.domains.length > 0);
-    }
+    },
+
+    getDeviceDetailLink(d: Device): string {
+      return `/devices/detail?id=${d.id}`;
+    },
+
+    getNetworkDetailLink(id: string): string {
+      return `/networks/detail?id=${id}`;
+    },
+
+    getPoolDetailLink(id: string): string {
+      return `/pools/detail?id=${id}`;
+    },
+
+    getMakeModelLabel(d: Device): string {
+      return d.make_model || '-';
+    },
+
+    getEditAriaLabel(d: Device): string {
+      return `Edit ${d.name}`;
+    },
+
+    getDeleteAriaLabel(d: Device): string {
+      return `Delete ${d.name}`;
+    },
   };
 }
 
@@ -628,6 +658,22 @@ interface DeviceDetailData {
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  getDeviceName(): string;
+  getHostname(): string;
+  getMakeModel(): string;
+  getOs(): string;
+  getDatacenterId(): string | undefined;
+  getLocation(): string;
+  getUsername(): string;
+  getDescription(): string;
+  getCreatedAt(): string | undefined;
+  getUpdatedAt(): string | undefined;
+  getAddresses(): Address[];
+  getAddressPort(addr: Address): string;
+  getAddressType(addr: Address): string;
+  getAddressLabel(addr: Address): string;
+  getAddressSwitchPort(addr: Address): string;
+  getRelationshipTargetLink(rel: DeviceRelationship): string;
 }
 
 export function deviceDetail() {
@@ -1145,7 +1191,72 @@ export function deviceDetail() {
 
     formatRelationshipType(type: string): string {
       return type.replace(/_/g, ' ');
-    }
+    },
+
+    getDeviceName(): string {
+      return this.device?.name || '';
+    },
+
+    getHostname(): string {
+      return this.device?.hostname || '-';
+    },
+
+    getMakeModel(): string {
+      return this.device?.make_model || '-';
+    },
+
+    getOs(): string {
+      return this.device?.os || '-';
+    },
+
+    getDatacenterId(): string | undefined {
+      return this.device?.datacenter_id;
+    },
+
+    getLocation(): string {
+      return this.device?.location || '-';
+    },
+
+    getUsername(): string {
+      return this.device?.username || '-';
+    },
+
+    getDescription(): string {
+      return this.device?.description || '-';
+    },
+
+    getCreatedAt(): string | undefined {
+      return this.device?.created_at;
+    },
+
+    getUpdatedAt(): string | undefined {
+      return this.device?.updated_at;
+    },
+
+    getAddresses(): Address[] {
+      return this.device?.addresses || [];
+    },
+
+    getAddressPort(addr: Address): string {
+      return addr.port?.toString() || '-';
+    },
+
+    getAddressType(addr: Address): string {
+      return addr.type || '-';
+    },
+
+    getAddressLabel(addr: Address): string {
+      return addr.label || '-';
+    },
+
+    getAddressSwitchPort(addr: Address): string {
+      return addr.switch_port || '-';
+    },
+
+    getRelationshipTargetLink(rel: DeviceRelationship): string {
+      const targetId = rel.parent_id === this.device?.id ? rel.child_id : rel.parent_id;
+      return `/devices/detail?id=${targetId}`;
+    },
   };
 }
 

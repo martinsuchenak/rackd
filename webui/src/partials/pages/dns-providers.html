@@ -88,7 +88,7 @@
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs"
-                  x-text="provider.description || '-'"></div>
+                  x-text="getProviderDescription(provider)"></div>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(provider.created_at)"></div>
@@ -135,9 +135,8 @@
                 <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <input id="create-name" type="text" x-model="formData.name" required aria-required="true"
                 :aria-invalid="!!validationErrors.name"
-                :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
-                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                :aria-describedby="getAriaDescribedBy('create-name-error', !!validationErrors.name)"
+                :class="getInputClass(!!validationErrors.name)">
               <p x-show="validationErrors.name" id="create-name-error"
                 class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
             </div>
@@ -157,20 +156,20 @@
                   aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <input id="create-endpoint" type="url" x-model="formData.endpoint" placeholder="https://dns.example.com"
                 required aria-required="true" :aria-invalid="!!validationErrors.endpoint"
-                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                :class="validationErrors.endpoint ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-              <p x-show="validationErrors.endpoint" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                x-text="validationErrors.endpoint"></p>
+                :aria-describedby="getAriaDescribedBy('create-endpoint-error', !!validationErrors.endpoint)"
+                :class="getInputClass(!!validationErrors.endpoint)">
+              <p x-show="validationErrors.endpoint" id="create-endpoint-error"
+                class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.endpoint"></p>
             </div>
             <div>
               <label for="create-token" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">API
                 Token <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <input id="create-token" type="password" x-model="formData.token" required aria-required="true"
                 :aria-invalid="!!validationErrors.token"
-                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                :class="validationErrors.token ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-              <p x-show="validationErrors.token" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                x-text="validationErrors.token"></p>
+                :aria-describedby="getAriaDescribedBy('create-token-error', !!validationErrors.token)"
+                :class="getInputClass(!!validationErrors.token)">
+              <p x-show="validationErrors.token" id="create-token-error"
+                class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.token"></p>
             </div>
             <div>
               <label for="create-description"
@@ -217,10 +216,10 @@
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="getEditInputId(selectedProvider.id, 'edit-name')" type="text" x-model="formData.name"
                   required aria-required="true" :aria-invalid="!!validationErrors.name"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.name"></p>
+                  :aria-describedby="getAriaDescribedBy(getEditInputId(selectedProvider.id, 'edit-name-error'), !!validationErrors.name)"
+                  :class="getInputClass(!!validationErrors.name)">
+                <p x-show="validationErrors.name" :id="getEditInputId(selectedProvider.id, 'edit-name-error')"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
               </div>
               <div>
                 <label :for="getEditInputId(selectedProvider.id, 'edit-endpoint')"
@@ -228,10 +227,11 @@
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="getEditInputId(selectedProvider.id, 'edit-endpoint')" type="url" x-model="formData.endpoint"
                   required aria-required="true" :aria-invalid="!!validationErrors.endpoint"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.endpoint ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.endpoint" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.endpoint"></p>
+                  :aria-describedby="getAriaDescribedBy(getEditInputId(selectedProvider.id, 'edit-endpoint-error'), !!validationErrors.endpoint)"
+                  :class="getInputClass(!!validationErrors.endpoint)">
+                <p x-show="validationErrors.endpoint" :id="getEditInputId(selectedProvider.id, 'edit-endpoint-error')"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.endpoint">
+                </p>
               </div>
               <div>
                 <label :for="getEditInputId(selectedProvider.id, 'edit-token')"
@@ -281,9 +281,7 @@
           </h2>
           <p class="text-gray-800 dark:text-gray-200 mb-4">Test connection to <strong
               x-text="getSelectedProviderName()"></strong>?</p>
-          <div x-show="testResult" class="mb-4 p-3 rounded-md"
-            :class="isTestResultSuccess() ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'"
-            role="alert">
+          <div x-show="testResult" class="mb-4 p-3 rounded-md" :class="getTestResultClass()" role="alert">
             <p x-text="getTestResultMessage()"></p>
           </div>
           <div class="flex justify-end gap-3">

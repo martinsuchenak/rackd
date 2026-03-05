@@ -8,7 +8,7 @@
         <button @click="$dispatch('nav', '/networks')"
           class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mr-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 transition-colors"
           aria-label="Back to networks list">&larr;</button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="network && network.name"></h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="getNetworkName()"></h1>
       </div>
       <div class="flex gap-2">
         <button x-show="$store.permissions.canUpdate('networks')" @click="openEditModal()"
@@ -21,28 +21,28 @@
       <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <dt class="text-sm text-gray-600 dark:text-gray-400">Subnet</dt>
-          <dd class="font-medium text-gray-900 dark:text-white" x-text="network && network.subnet"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="getNetworkSubnet()"></dd>
         </div>
         <div>
           <dt class="text-sm text-gray-600 dark:text-gray-400">VLAN ID</dt>
-          <dd class="font-medium text-gray-900 dark:text-white" x-text="network && network.vlan_id || '-'"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="getNetworkVlanId()"></dd>
         </div>
         <div>
           <dt class="text-sm text-gray-600 dark:text-gray-400">Datacenter</dt>
-          <dd class="font-medium text-gray-900 dark:text-white"
-            x-text="getDatacenterName(network && network.datacenter_id)"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="getDatacenterName(getNetworkDatacenterId())">
+          </dd>
         </div>
         <div>
           <dt class="text-sm text-gray-600 dark:text-gray-400">Description</dt>
-          <dd class="font-medium text-gray-900 dark:text-white" x-text="network && network.description || '-'"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="getNetworkDescription()"></dd>
         </div>
       </dl>
       <div x-show="utilization" class="mt-6">
         <h3 class="text-sm text-gray-600 dark:text-gray-400 mb-2">Utilization</h3>
         <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4" role="progressbar"
           :aria-valuenow="utilizationPercent()" aria-valuemin="0" aria-valuemax="100"
-          :aria-label="'Network utilization: ' + utilizationPercent() + ' percent'">
-          <div class="bg-blue-600 h-4 rounded-full" :style="'width: ' + utilizationPercent() + '%'"></div>
+          :aria-label="getUtilizationAriaLabel()">
+          <div class="bg-blue-600 h-4 rounded-full" :style="getUtilizationWidthStyle()"></div>
         </div>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1"><span x-text="utilizationPercent()"></span>% used</p>
       </div>
@@ -80,16 +80,15 @@
             <template x-for="pool in pools" :key="pool.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <a :href="'/pools/detail?id=' + pool.id"
-                    @click.prevent="$dispatch('nav', '/pools/detail?id=' + pool.id)"
+                  <a :href="getPoolDetailLink(pool)" @click.prevent="$dispatch('nav', getPoolDetailLink(pool))"
                     class="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                     x-text="pool.name"></a>
                 </td>
-                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="pool.start_ip + ' - ' + pool.end_ip">
+                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="getPoolRange(pool)">
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex flex-wrap gap-1">
-                    <template x-for="tag in (pool.tags || [])" :key="tag">
+                    <template x-for="tag in getPoolTags(pool)" :key="tag">
                       <span
                         class="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded"
                         x-text="tag"></span>
@@ -99,10 +98,10 @@
                 <td class="px-6 py-4 text-right">
                   <button x-show="$store.permissions.canUpdate('networks')" @click="openEditPoolModal(pool)"
                     class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline mr-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
-                    :aria-label="'Edit pool ' + pool.name">Edit</button>
+                    :aria-label="getEditPoolAriaLabel(pool)">Edit</button>
                   <button x-show="$store.permissions.canDelete('networks')" @click="confirmDeletePool(pool)"
                     class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
-                    :aria-label="'Delete pool ' + pool.name">Delete</button>
+                    :aria-label="getDeletePoolAriaLabel(pool)">Delete</button>
                 </td>
               </tr>
             </template>
@@ -115,7 +114,7 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Devices</h2>
-        <button @click="$dispatch('nav', '/devices?network=' + network.id)"
+        <button @click="$dispatch('nav', getDevicesLink())"
           class="px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors">View
           All →</button>
       </div>
@@ -144,13 +143,11 @@
             <template x-for="device in firstDevices()" :key="device.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <a :href="'/devices/detail?id=' + device.id"
-                    @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)"
+                  <a :href="getDeviceDetailLink(device)" @click.prevent="$dispatch('nav', getDeviceDetailLink(device))"
                     class="text-blue-700 dark:text-blue-300 hover:underline cursor-pointer" x-text="device.name"></a>
                 </td>
-                <td class="px-6 py-4 text-gray-600 dark:text-gray-400"
-                  x-text="(device.addresses && device.addresses[0]) ? device.addresses[0].ip : '-'"></td>
-                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="device.make_model || '-'"></td>
+                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="getDeviceFirstIP(device)"></td>
+                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="getDeviceMakeModel(device)"></td>
               </tr>
             </template>
           </tbody>
@@ -234,7 +231,7 @@
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Pool</h3>
       <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong
-          x-text="deletePoolTarget && deletePoolTarget.name"></strong>?</p>
+          x-text="getDeletePoolTargetName()"></strong>?</p>
       <div class="flex justify-end gap-3">
         <button @click="cancelDeletePool()"
           class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>

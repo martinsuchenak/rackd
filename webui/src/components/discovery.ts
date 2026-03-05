@@ -49,6 +49,19 @@ interface DiscoveryListData {
   getDiscoveredDevicesCountLabel(): string;
   hasOldScans(): boolean;
   getPromoteVendorPlaceholder(): string;
+  getNetworkOptionLabel(network: Network): string;
+  getScanProgressLabel(scan: DiscoveryScan): string;
+  getScanHostsLabel(scan: DiscoveryScan): string;
+  getFoundHostsLabel(scan: DiscoveryScan): string;
+  getHostnameLabel(device: DiscoveredDevice): string;
+  getMacAddressLabel(device: DiscoveredDevice): string;
+  getOsGuessLabel(device: DiscoveredDevice): string;
+  getVendorLabel(device: DiscoveredDevice): string;
+  getLimitedPorts(device: DiscoveredDevice, limit: number): number[];
+  getLimitedServices(device: DiscoveredDevice, limit: number): any[];
+  getServiceTitle(service: any): string;
+  getConfidenceLabel(device: DiscoveredDevice | null): string;
+  getServiceLabel(service: any): string;
 }
 
 export function discoveryList() {
@@ -445,6 +458,48 @@ export function discoveryList() {
     },
     hasOldScans(): boolean {
       return this.scans.some((s) => s.status === 'completed' || s.status === 'failed');
+    },
+    getNetworkOptionLabel(n: Network): string {
+      return `${n.name} (${n.subnet})`;
+    },
+    getScanProgressLabel(s: DiscoveryScan): string {
+      return `${Math.round(s.progress_percent)}%`;
+    },
+    getScanHostsLabel(s: DiscoveryScan): string {
+      return `${s.scanned_hosts}/${s.total_hosts} hosts`;
+    },
+    getFoundHostsLabel(s: DiscoveryScan): string {
+      return `${s.found_hosts} found`;
+    },
+    getHostnameLabel(d: DiscoveredDevice): string {
+      return d.hostname || '-';
+    },
+    getMacAddressLabel(d: DiscoveredDevice): string {
+      return d.mac_address || '-';
+    },
+    getOsGuessLabel(d: DiscoveredDevice): string {
+      return d.os_guess || '-';
+    },
+    getVendorLabel(d: DiscoveredDevice): string {
+      return d.vendor || '-';
+    },
+    getLimitedPorts(d: DiscoveredDevice, limit: number): number[] {
+      return (d.open_ports || []).slice(0, limit);
+    },
+    getLimitedServices(d: DiscoveredDevice, limit: number): any[] {
+      return (d.services || []).slice(0, limit);
+    },
+    getServiceTitle(svc: any): string {
+      if (!svc) return '';
+      return `${svc.protocol}/${svc.port}${svc.version ? ' ' + svc.version : ''}`;
+    },
+    getConfidenceLabel(d: DiscoveredDevice | null): string {
+      const conf = d ? d.confidence : 0;
+      return `${conf}/10`;
+    },
+    getServiceLabel(svc: any): string {
+      if (!svc) return '';
+      return `${svc.protocol}/${svc.port}`;
     },
   };
 }

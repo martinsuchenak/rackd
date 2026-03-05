@@ -193,10 +193,10 @@
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="getEditInputId(selectedRecord.id, 'edit-name')" type="text" x-model="formData.name" required
                   aria-required="true" :aria-invalid="!!validationErrors.name"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.name"></p>
+                  :aria-describedby="getAriaDescribedBy(getEditInputId(selectedRecord.id, 'edit-name-error'), !!validationErrors.name)"
+                  :class="getInputClass(!!validationErrors.name)">
+                <p x-show="validationErrors.name" :id="getEditInputId(selectedRecord.id, 'edit-name-error')"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -205,8 +205,8 @@
                       aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                   <select :id="getEditInputId(selectedRecord.id, 'edit-type')" x-model="formData.type" required
                     aria-required="true" :aria-invalid="!!validationErrors.type"
-                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                    :class="validationErrors.type ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    :aria-describedby="getAriaDescribedBy(getEditInputId(selectedRecord.id, 'edit-type-error'), !!validationErrors.type)"
+                    :class="getInputClass(!!validationErrors.type)">
                     <option value="A">A</option>
                     <option value="AAAA">AAAA</option>
                     <option value="CNAME">CNAME</option>
@@ -216,8 +216,8 @@
                     <option value="PTR">PTR</option>
                     <option value="SRV">SRV</option>
                   </select>
-                  <p x-show="validationErrors.type" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                    x-text="validationErrors.type"></p>
+                  <p x-show="validationErrors.type" :id="getEditInputId(selectedRecord.id, 'edit-type-error')"
+                    class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.type"></p>
                 </div>
                 <div>
                   <label :for="getEditInputId(selectedRecord.id, 'edit-ttl')"
@@ -225,10 +225,10 @@
                       aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                   <input :id="getEditInputId(selectedRecord.id, 'edit-ttl')" type="number" x-model.number="formData.ttl"
                     min="0" required aria-required="true" :aria-invalid="!!validationErrors.ttl"
-                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                    :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                    x-text="validationErrors.ttl"></p>
+                    :aria-describedby="getAriaDescribedBy(getEditInputId(selectedRecord.id, 'edit-ttl-error'), !!validationErrors.ttl)"
+                    :class="getInputClass(!!validationErrors.ttl)">
+                  <p x-show="validationErrors.ttl" :id="getEditInputId(selectedRecord.id, 'edit-ttl-error')"
+                    class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
                 </div>
               </div>
               <div>
@@ -237,10 +237,10 @@
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <textarea :id="getEditInputId(selectedRecord.id, 'edit-value')" x-model="formData.value" rows="3"
                   required aria-required="true" :aria-invalid="!!validationErrors.value"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 font-mono text-sm"
-                  :class="validationErrors.value ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'"></textarea>
-                <p x-show="validationErrors.value" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
-                  x-text="validationErrors.value"></p>
+                  :aria-describedby="getAriaDescribedBy(getEditInputId(selectedRecord.id, 'edit-value-error'), !!validationErrors.value)"
+                  :class="getInputClass(!!validationErrors.value, 'font-mono text-sm')"></textarea>
+                <p x-show="validationErrors.value" :id="getEditInputId(selectedRecord.id, 'edit-value-error')"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.value"></p>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Enter the record value. For multiple values
                   (like MX records), enter each on a new line.</p>
               </div>

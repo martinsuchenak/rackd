@@ -109,15 +109,15 @@
           <template x-for="d in pagedDevices" :key="d.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <a :href="'/devices/detail?id=' + d.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + d.id)"
-                  class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                <a :href="getDeviceDetailLink(d)" @click.prevent="$dispatch('nav', getDeviceDetailLink(d))"
+                  class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded transition-colors"
                   x-text="d.name"></a>
               </td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getDeviceIP(d)"></td>
               <td class="px-6 py-4">
                 <template x-if="getDeviceNetworkId(d)">
-                  <a :href="'/networks/detail?id=' + getDeviceNetworkId(d)"
-                    @click.prevent="$dispatch('nav', '/networks/detail?id=' + getDeviceNetworkId(d))"
+                  <a :href="getNetworkDetailLink(getDeviceNetworkId(d))"
+                    @click.prevent="$dispatch('nav', getNetworkDetailLink(getDeviceNetworkId(d)))"
                     class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer"
                     x-text="getNetworkName(getDeviceNetworkId(d))"></a>
                 </template>
@@ -125,14 +125,14 @@
               </td>
               <td class="px-6 py-4">
                 <template x-if="getDevicePoolId(d)">
-                  <a :href="'/pools/detail?id=' + getDevicePoolId(d)"
-                    @click.prevent="$dispatch('nav', '/pools/detail?id=' + getDevicePoolId(d))"
+                  <a :href="getPoolDetailLink(getDevicePoolId(d))"
+                    @click.prevent="$dispatch('nav', getPoolDetailLink(getDevicePoolId(d)))"
                     class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer"
                     x-text="getPoolName(getDevicePoolId(d))"></a>
                 </template>
                 <span x-show="!getDevicePoolId(d)" class="text-gray-500 dark:text-gray-400">-</span>
               </td>
-              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="d.make_model || '-'"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getMakeModelLabel(d)"></td>
               <td class="px-6 py-4">
                 <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusBadgeClass(d.status)"
                   x-text="d.status || 'unknown'"></span>
@@ -141,10 +141,10 @@
                 <div class="inline-flex gap-1">
                   <button x-show="$store.permissions.canUpdate('devices')" @click="openEditModal(d)"
                     class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
-                    :aria-label="'Edit ' + d.name">Edit</button>
+                    :aria-label="getEditAriaLabel(d)">Edit</button>
                   <button x-show="$store.permissions.canDelete('devices')" @click="confirmDelete(d)"
                     class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
-                    :aria-label="'Delete ' + d.name">Delete</button>
+                    :aria-label="getDeleteAriaLabel(d)">Delete</button>
                 </div>
               </td>
             </tr>

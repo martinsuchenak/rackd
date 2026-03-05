@@ -69,5 +69,19 @@ export function oauthClients() {
         hour: '2-digit', minute: '2-digit',
       });
     },
+
+    getClientTypeLabel(client: OAuthClient): string {
+      return client.is_confidential ? 'Confidential' : 'Public';
+    },
+
+    getClientTypeClass(client: OAuthClient): string {
+      return client.is_confidential
+        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+        : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+    },
+
+    getDeleteTargetName(): string {
+      return this.deleteTarget?.client_name || '';
+    },
   };
 }

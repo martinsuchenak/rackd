@@ -120,15 +120,18 @@
 31. **Wildcard Scope Privilege Escalation (M-5)**
     - **Module:** Authentication
     - **Fix Applied:** Removed wildcard (`*`) scope bypass in `IntersectScopes`. Clients are no longer granted full access simply by requesting `*`; they must explicitly request allowed scopes. 
-32. **OAuth Authorization Code Replay Window (M-25)**
+31. **OAuth Authorization Code Replay Window (M-25)**
     - **Module:** Service Layer
     - **Fix Applied:** Repositioned `MarkAuthorizationCodeUsed` earlier in the `ExchangeCode` flow so that the code is instantly burned before executing PKCE or client verification. This ensures that any concurrent or invalid exchange completely burns the code without race conditions.
-33. **Privilege Escalation in User and Role Management**
+32. **Privilege Escalation in User and Role Management**
     - **Module:** Service Layer
     - **Fix Applied:** Implemented strict admin checks in `UserService` and `RoleService`. Non-admin users can no longer create admins, update other admins, delete admins, reset admin passwords, or assign/revoke the 'admin' or system roles. This prevents lateral movement and privilege escalation by users with limited management permissions.
-34. **Localhost Bypass in Rate Limiting (M-11)**
-    - **Module:** API Handlers / Rate Limiting
-    - **Fix Applied:** Removed the special-case bypass for requests originating from localhost (127.0.0.1, ::1). All clients are now subject to the same rate limiting rules, preventing local attackers from bypassing security controls on sensitive endpoints.
+33. **Localhost Bypass in Rate Limiting (M-11)**
+   - **Module:** API Handlers / Rate Limiting
+   - **Fix Applied:** Removed the special-case bypass for requests originating from localhost (127.0.0.1, ::1). All clients are now subject to the same rate limiting rules, preventing local attackers from bypassing security controls on sensitive endpoints.
+34. **CSP Hardening & Script Injection Prevention (M-7)**
+   - **Module:** API Handlers / Web UI
+   - **Fix Applied:** Hardened CSP policy in `internal/api/middleware.go` by removing `'unsafe-eval'` and `'unsafe-inline'` for scripts. Switched to Alpine.js CSP-friendly build and refactored multiple UI components (`users`, `nat`, `conflicts`) to use safe helper methods instead of complex inline expressions that require `eval`.
 
 ---
 
@@ -155,11 +158,9 @@
 | # | Issue | Location |
 |---|-------|----------|
 | M-6 | Missing CSRF protection for session auth | `/internal/api/middleware.go` |
-| M-7 | CSP allows 'unsafe-eval' and 'unsafe-inline' | `/internal/api/middleware.go:218-222` |
 | M-8 | Potential info leakage in error responses | `/internal/api/handlers.go:342-371` |
 | M-9 | Missing CORS configuration | Entire API layer |
 | M-10 | No request timeout enforcement | `/internal/api/handlers.go` |
-| M-11 | Localhost bypass in rate limiting | `/internal/api/ratelimit.go:132-136` |
 
 ### Storage Layer Module
 | # | Issue | Location |
@@ -310,10 +311,11 @@
 *(All critical issues documented in this review have been successfully resolved)*
 
 ### Short Term (This Month) - HIGH
-1. Add configuration to disable SNMPv2c in production
-2. Add SSRF protection for webhook URLs
-3. Address Silent Decryption Failures in Credentials module
-4. Fix Context Propagation in Storage routines
+1. Full UI audit for CSP compatibility (fix remaining Alpine expression errors)
+2. Add configuration to disable SNMPv2c in production
+3. Add SSRF protection for webhook URLs
+4. Address Silent Decryption Failures in Credentials module
+5. Fix Context Propagation in Storage routines
 
 ### Medium Term (Next Quarter)
 1. Implement CSP for Web UI (mitigate XSS)

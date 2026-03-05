@@ -53,6 +53,14 @@ interface GraphData {
   showNodeTooltip(device: Device): void;
   hideNodeTooltip(): void;
   destroy(): void;
+
+  hasActiveFilters(): boolean;
+  getHoveredNodeStatusClass(): string;
+  getHoveredNodeAddressLabel(): string;
+  getFilteredDevicesCount(): number;
+  getFilteredRelationshipsCount(): number;
+  getTotalDevicesCount(): number;
+  hasTotalDevicesMismatch(): boolean;
 }
 
 export function deviceGraph(): GraphData {
@@ -282,7 +290,7 @@ export function deviceGraph(): GraphData {
           startAngle: 0,
           // Grid options
           spacingFactor: 1.5
-        },
+        } as any,
         minZoom: 0.2,
         maxZoom: 3,
         wheelSensitivity: 0.3
@@ -453,6 +461,47 @@ export function deviceGraph(): GraphData {
         this.cy.destroy();
         this.cy = null;
       }
+    },
+
+    hasActiveFilters(): boolean {
+      return this.filters.status.length > 0 ||
+        this.filters.relationshipTypes.length > 0 ||
+        !!this.filters.datacenterId ||
+        !!this.filters.search;
+    },
+
+    getHoveredNodeStatusClass(): string {
+      if (!this.hoveredNode) return '';
+      const classes: Record<string, string> = {
+        'active': 'text-green-600 dark:text-green-400',
+        'planned': 'text-blue-600 dark:text-blue-400',
+        'maintenance': 'text-yellow-600 dark:text-yellow-400',
+        'decommissioned': 'text-gray-600 dark:text-gray-400'
+      };
+      return classes[this.hoveredNode.status] || '';
+    },
+
+    getHoveredNodeAddressLabel(): string {
+      if (!this.hoveredNode || !this.hoveredNode.addresses) return '';
+      const count = this.hoveredNode.addresses.length;
+      if (count === 0) return '';
+      return `${count} IP address${count > 1 ? 'es' : ''}`;
+    },
+
+    getFilteredDevicesCount(): number {
+      return this.filteredDevices.length;
+    },
+
+    getFilteredRelationshipsCount(): number {
+      return this.filteredRelationships.length;
+    },
+
+    getTotalDevicesCount(): number {
+      return this.devices.length;
+    },
+
+    hasTotalDevicesMismatch(): boolean {
+      return this.devices.length !== this.filteredDevices.length;
     }
   };
 }

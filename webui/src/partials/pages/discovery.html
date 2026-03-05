@@ -17,7 +17,7 @@
         class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="">All Networks</option>
         <template x-for="n in networks" :key="n.id">
-          <option :value="n.id" x-text="n.name + ' (' + n.subnet + ')'"></option>
+          <option :value="n.id" x-text="getNetworkOptionLabel(n)"></option>
         </template>
       </select>
       <div class="text-sm text-gray-500 dark:text-gray-400" x-text="getDiscoveredDevicesCountLabel()"></div>
@@ -45,13 +45,13 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       <span x-text="s.scan_type + ' scan'"></span>
                       <span x-show="hasScanProgress(s)" class="ml-2">
-                        <span x-text="Math.round(s.progress_percent)"></span>%
+                        <span x-text="getScanProgressLabel(s)"></span>
                       </span>
                       <span x-show="hasScanHosts(s)" class="ml-2">
-                        <span x-text="s.scanned_hosts"></span>/<span x-text="s.total_hosts"></span> hosts
+                        <span x-text="getScanHostsLabel(s)"></span>
                       </span>
                       <span x-show="hasFoundHosts(s)" class="ml-2 text-green-600 dark:text-green-400">
-                        <span x-text="s.found_hosts"></span> found
+                        <span x-text="getFoundHostsLabel(s)"></span>
                       </span>
                     </div>
                   </div>
@@ -141,17 +141,17 @@
                   <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"
                     x-text="d.ip"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300"
-                    x-text="d.hostname || '-'"></td>
+                    x-text="getHostnameLabel(d)"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-                    x-text="d.mac_address || '-'"></td>
+                    x-text="getMacAddressLabel(d)"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300"
-                    x-text="d.os_guess || '-'"></td>
+                    x-text="getOsGuessLabel(d)"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-                    x-text="d.vendor || '-'"></td>
+                    x-text="getVendorLabel(d)"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm">
                     <template x-if="hasPortCount(d, 0)">
                       <div class="flex flex-wrap gap-1">
-                        <template x-for="port in d.open_ports.slice(0, 6)" :key="port">
+                        <template x-for="port in getLimitedPorts(d, 6)" :key="port">
                           <span
                             class="px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                             x-text="port"></span>
@@ -170,11 +170,10 @@
                   <td class="px-4 py-3 text-sm">
                     <template x-if="hasServiceCount(d, 0)">
                       <div class="flex flex-wrap gap-1">
-                        <template x-for="svc in d.services.slice(0, 4)" :key="svc.port + svc.service">
+                        <template x-for="svc in getLimitedServices(d, 4)" :key="svc.port + svc.service">
                           <span
                             class="px-1.5 py-0.5 text-xs rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            x-text="svc.service"
-                            :title="svc.protocol + '/' + svc.port + (svc.version ? ' ' + svc.version : '')">
+                            x-text="svc.service" :title="getServiceTitle(svc)">
                           </span>
                         </template>
                         <template x-if="hasServiceCount(d, 4)">
@@ -192,7 +191,7 @@
                     x-text="formatDate(d.last_seen)"></td>
                   <td class="px-4 py-3 whitespace-nowrap text-center text-sm">
                     <span class="px-2 py-0.5 text-xs rounded-full" :class="getConfidenceBadgeClass(d.confidence)"
-                      x-text="d.confidence + '/' + 10">
+                      x-text="getConfidenceLabel(d)">
                     </span>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-right text-sm">

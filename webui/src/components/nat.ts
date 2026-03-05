@@ -310,7 +310,29 @@ export function natComponent() {
     },
 
     formatAddress(ip: string, port: number): string {
-      return `${ip}:${port}`;
+      return port ? `${ip}:${port}` : ip;
     },
+
+    getMappingDetailLink(mapping: NATMapping): string {
+      return `/nat/detail?id=${mapping.id}`;
+    },
+
+    getProtocolClass(mapping: NATMapping): string {
+      if (mapping.protocol === 'tcp') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+      if (mapping.protocol === 'udp') return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    },
+
+    getStatusLabel(mapping: NATMapping): string {
+      return mapping.enabled ? 'Enabled' : 'Disabled';
+    },
+
+    getStatusClass(mapping: NATMapping): string {
+      return mapping.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+    },
+
+    getDeviceDetailLink(deviceId: string): string {
+      return `/devices/detail?id=${deviceId}`;
+    }
   };
 }
