@@ -105,7 +105,7 @@
 25. **Webhook SSRF Vulnerability & DNS Rebinding**
     - **Module:** Service / Webhooks
     - **Fix Applied:** Validating raw URL matches was insufficient to block SSRF when attackers utilize DNS rebinding or hostname redirection. Implemented `SafeDialContext` and applied `NewSecureHTTPClient(timeout)` which correctly resolves the DNS mapping first and verifies the actual IP dialed is not a loopback address or AWS/GCP cloud metadata IP block (`169.254.x.x`). It allows standard private intranet routing (`10.x.x.x`) to remain functional for legitimate use.
-26. **API Key Printed to Server Logs**
+27. **API Key Printed to Server Logs**
     - **Module:** API
     - **Fix Applied:** In `internal/api/apikey_handlers.go`, the secret generated `key` string was inadvertently printed to the server logs because instead of logging the safe properties, the code directly outputted the generated secret block. Changed the logging logic to only output the identifier `newKey.ID`.
 
@@ -119,7 +119,6 @@
 ## 3. 🟠 Open High Issues
 ### H-12: Additional High Issues from Extended Review
 - **Discovery:** Missing input validation for IP addresses in ARP scanner. Trust-On-First-Use (TOFU) issue for SSH host keys.
-- **Service Layer / API:** Self-privilege escalation via user update. OAuth client credentials scope validation missing.
 - **Web UI & Tests:** OAuth redirect URI trust issue. Hardcoded test API key patterns.
 
 ---

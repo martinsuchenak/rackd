@@ -341,9 +341,12 @@ func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTo
 		return nil, errors.New("client has no associated user")
 	}
 
-	scope := req.Scope
-	if scope == "" {
-		scope = client.Scope
+	scope := client.Scope
+	if req.Scope != "" {
+		requestedScopes := auth.ParseScopes(req.Scope)
+		allowedScopes := auth.ParseScopes(client.Scope)
+		effectiveScopes := auth.IntersectScopes(requestedScopes, allowedScopes)
+		scope = auth.JoinScopes(effectiveScopes)
 	}
 
 	accessPlain, accessHash, err := auth.GenerateOAuthToken()
