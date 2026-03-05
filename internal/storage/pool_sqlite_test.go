@@ -48,7 +48,7 @@ func TestPoolOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get pool
-	retrieved, err := storage.GetNetworkPool(pool.ID)
+	retrieved, err := storage.GetNetworkPool(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkPool failed: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestPoolOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkPool("non-existent-id")
+	_, err := storage.GetNetworkPool(context.Background(), "non-existent-id")
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound, got %v", err)
 	}
@@ -114,7 +114,7 @@ func TestPoolOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkPool("")
+	_, err := storage.GetNetworkPool(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -153,7 +153,7 @@ func TestPoolOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetNetworkPool(pool.ID)
+	retrieved, err := storage.GetNetworkPool(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkPool failed: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestPoolOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetNetworkPool(pool.ID)
+	_, err := storage.GetNetworkPool(context.Background(), pool.ID)
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound after deletion, got %v", err)
 	}
@@ -286,7 +286,7 @@ func TestPoolOperations_DeleteWithAddresses(t *testing.T) {
 	}
 
 	// Verify device still exists but address has no pool
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -341,7 +341,7 @@ func TestPoolOperations_ListAll(t *testing.T) {
 	}
 
 	// List all pools
-	result, err := storage.ListNetworkPools(nil)
+	result, err := storage.ListNetworkPools(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}
@@ -373,7 +373,7 @@ func TestPoolOperations_ListWithNetworkFilter(t *testing.T) {
 	})
 
 	// Filter by network
-	result, err := storage.ListNetworkPools(&model.NetworkPoolFilter{NetworkID: network1.ID})
+	result, err := storage.ListNetworkPools(context.Background(), &model.NetworkPoolFilter{NetworkID: network1.ID})
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestPoolOperations_ListWithTagsFilter(t *testing.T) {
 	})
 
 	// Filter by single tag
-	result, err := storage.ListNetworkPools(&model.NetworkPoolFilter{Tags: []string{"dhcp"}})
+	result, err := storage.ListNetworkPools(context.Background(), &model.NetworkPoolFilter{Tags: []string{"dhcp"}})
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}
@@ -415,7 +415,7 @@ func TestPoolOperations_ListWithTagsFilter(t *testing.T) {
 	}
 
 	// Filter by multiple tags (AND logic)
-	result, err = storage.ListNetworkPools(&model.NetworkPoolFilter{Tags: []string{"dhcp", "production"}})
+	result, err = storage.ListNetworkPools(context.Background(), &model.NetworkPoolFilter{Tags: []string{"dhcp", "production"}})
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestPoolOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	result, err := storage.ListNetworkPools(nil)
+	result, err := storage.ListNetworkPools(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}
@@ -460,7 +460,7 @@ func TestPoolOperations_EmptyTagsNotNil(t *testing.T) {
 	}
 
 	// Get pool
-	retrieved, err := storage.GetNetworkPool(pool.ID)
+	retrieved, err := storage.GetNetworkPool(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkPool failed: %v", err)
 	}
@@ -492,7 +492,7 @@ func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 	storage.CreateNetworkPool(context.Background(), pool)
 
 	// Get first available IP
-	ip, err := storage.GetNextAvailableIP(pool.ID)
+	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNextAvailableIP failed: %v", err)
 	}
@@ -510,7 +510,7 @@ func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Get next available IP (should skip used one)
-	ip, err = storage.GetNextAvailableIP(pool.ID)
+	ip, err = storage.GetNextAvailableIP(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNextAvailableIP failed: %v", err)
 	}
@@ -546,7 +546,7 @@ func TestPoolOperations_GetNextAvailableIP_AllUsed(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Try to get next available IP
-	_, err := storage.GetNextAvailableIP(pool.ID)
+	_, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
 	if err != ErrIPNotAvailable {
 		t.Errorf("expected ErrIPNotAvailable, got %v", err)
 	}
@@ -556,7 +556,7 @@ func TestPoolOperations_GetNextAvailableIP_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNextAvailableIP("non-existent-pool")
+	_, err := storage.GetNextAvailableIP(context.Background(), "non-existent-pool")
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound, got %v", err)
 	}
@@ -566,7 +566,7 @@ func TestPoolOperations_GetNextAvailableIP_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNextAvailableIP("")
+	_, err := storage.GetNextAvailableIP(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -607,7 +607,7 @@ func TestPoolOperations_ValidateIPInPool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.ip, func(t *testing.T) {
-			valid, err := storage.ValidateIPInPool(pool.ID, tt.ip)
+			valid, err := storage.ValidateIPInPool(context.Background(), pool.ID, tt.ip)
 			if err != nil {
 				t.Fatalf("ValidateIPInPool failed: %v", err)
 			}
@@ -622,7 +622,7 @@ func TestPoolOperations_ValidateIPInPool_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.ValidateIPInPool("non-existent-pool", "192.168.1.100")
+	_, err := storage.ValidateIPInPool(context.Background(), "non-existent-pool", "192.168.1.100")
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound, got %v", err)
 	}
@@ -632,7 +632,7 @@ func TestPoolOperations_ValidateIPInPool_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.ValidateIPInPool("", "192.168.1.100")
+	_, err := storage.ValidateIPInPool(context.Background(), "", "192.168.1.100")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -654,7 +654,7 @@ func TestPoolOperations_ValidateIPInPool_InvalidIP(t *testing.T) {
 	}
 	storage.CreateNetworkPool(context.Background(), pool)
 
-	_, err := storage.ValidateIPInPool(pool.ID, "invalid-ip")
+	_, err := storage.ValidateIPInPool(context.Background(), pool.ID, "invalid-ip")
 	if err == nil {
 		t.Error("expected error for invalid IP")
 	}
@@ -691,7 +691,7 @@ func TestPoolOperations_GetPoolHeatmap(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Get heatmap
-	heatmap, err := storage.GetPoolHeatmap(pool.ID)
+	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetPoolHeatmap failed: %v", err)
 	}
@@ -742,7 +742,7 @@ func TestPoolOperations_GetPoolHeatmap_Empty(t *testing.T) {
 	}
 	storage.CreateNetworkPool(context.Background(), pool)
 
-	heatmap, err := storage.GetPoolHeatmap(pool.ID)
+	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetPoolHeatmap failed: %v", err)
 	}
@@ -762,7 +762,7 @@ func TestPoolOperations_GetPoolHeatmap_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetPoolHeatmap("non-existent-pool")
+	_, err := storage.GetPoolHeatmap(context.Background(), "non-existent-pool")
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound, got %v", err)
 	}
@@ -772,7 +772,7 @@ func TestPoolOperations_GetPoolHeatmap_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetPoolHeatmap("")
+	_, err := storage.GetPoolHeatmap(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -794,7 +794,7 @@ func TestPoolOperations_GetPoolHeatmap_SingleIP(t *testing.T) {
 	}
 	storage.CreateNetworkPool(context.Background(), pool)
 
-	heatmap, err := storage.GetPoolHeatmap(pool.ID)
+	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetPoolHeatmap failed: %v", err)
 	}
@@ -901,7 +901,7 @@ func TestPoolOperations_LargeRange(t *testing.T) {
 	storage.CreateNetworkPool(context.Background(), pool)
 
 	// Get first available IP
-	ip, err := storage.GetNextAvailableIP(pool.ID)
+	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNextAvailableIP failed: %v", err)
 	}
@@ -932,7 +932,7 @@ func TestNetworkPoolUpdateTags(t *testing.T) {
 		t.Fatalf("UpdateNetworkPool failed: %v", err)
 	}
 
-	got, _ := storage.GetNetworkPool(pool.ID)
+	got, _ := storage.GetNetworkPool(context.Background(), pool.ID)
 	if len(got.Tags) != 3 {
 		t.Errorf("expected 3 tags, got %d", len(got.Tags))
 	}
@@ -960,7 +960,7 @@ func TestPoolUpdateClearTags(t *testing.T) {
 		t.Fatalf("UpdateNetworkPool failed: %v", err)
 	}
 
-	got, _ := storage.GetNetworkPool(pool.ID)
+	got, _ := storage.GetNetworkPool(context.Background(), pool.ID)
 	if len(got.Tags) != 0 {
 		t.Errorf("expected 0 tags, got %d", len(got.Tags))
 	}
@@ -993,7 +993,7 @@ func TestGetNextAvailableIPWithGaps(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Should return first gap: 101
-	ip, err := storage.GetNextAvailableIP(pool.ID)
+	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetNextAvailableIP failed: %v", err)
 	}
@@ -1025,7 +1025,7 @@ func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
 	}
 	storage.CreateDevice(context.Background(), device)
 
-	heatmap, err := storage.GetPoolHeatmap(pool.ID)
+	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetPoolHeatmap failed: %v", err)
 	}
@@ -1064,7 +1064,7 @@ func TestListNetworkPoolsWithCombinedFilters(t *testing.T) {
 	})
 
 	// Filter by network and tags
-	result, err := storage.ListNetworkPools(&model.NetworkPoolFilter{NetworkID: network.ID, Tags: []string{"dhcp"}})
+	result, err := storage.ListNetworkPools(context.Background(), &model.NetworkPoolFilter{NetworkID: network.ID, Tags: []string{"dhcp"}})
 	if err != nil {
 		t.Fatalf("ListNetworkPools failed: %v", err)
 	}

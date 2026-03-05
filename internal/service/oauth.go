@@ -15,15 +15,15 @@ import (
 )
 
 var (
-	ErrOAuthInvalidClient       = errors.New("invalid client_id")
-	ErrOAuthInvalidRedirectURI  = errors.New("invalid redirect_uri")
-	ErrOAuthInvalidResponseType = errors.New("unsupported response_type")
-	ErrOAuthInvalidGrantType    = errors.New("unsupported grant_type")
+	ErrOAuthInvalidClient        = errors.New("invalid client_id")
+	ErrOAuthInvalidRedirectURI   = errors.New("invalid redirect_uri")
+	ErrOAuthInvalidResponseType  = errors.New("unsupported response_type")
+	ErrOAuthInvalidGrantType     = errors.New("unsupported grant_type")
 	ErrOAuthInvalidCodeChallenge = errors.New("code_challenge required for public clients")
-	ErrOAuthInvalidCodeVerifier = errors.New("invalid code_verifier")
-	ErrOAuthInvalidClientSecret = errors.New("invalid client_secret")
-	ErrOAuthClientNameRequired  = errors.New("client_name is required")
-	ErrOAuthRedirectURIRequired = errors.New("at least one redirect_uri is required")
+	ErrOAuthInvalidCodeVerifier  = errors.New("invalid code_verifier")
+	ErrOAuthInvalidClientSecret  = errors.New("invalid client_secret")
+	ErrOAuthClientNameRequired   = errors.New("client_name is required")
+	ErrOAuthRedirectURIRequired  = errors.New("at least one redirect_uri is required")
 )
 
 type OAuthService struct {
@@ -124,7 +124,7 @@ func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClien
 // ValidateAuthRequest validates an authorization request and returns the client
 // and the effective scopes for the consent screen.
 func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, scope, codeChallenge, codeChallengeMethod string) (*model.OAuthClient, []string, error) {
-	client, err := s.store.GetOAuthClient(clientID)
+	client, err := s.store.GetOAuthClient(context.Background(), clientID)
 	if err != nil {
 		return nil, nil, ErrOAuthInvalidClient
 	}
@@ -186,7 +186,7 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 	}
 
 	codeHash := auth.HashToken(req.Code)
-	code, err := s.store.GetAuthorizationCode(codeHash)
+	code, err := s.store.GetAuthorizationCode(ctx, codeHash)
 	if err != nil {
 		return nil, err
 	}
@@ -205,13 +205,13 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 	if code.CodeChallenge != "" {
 		if !auth.ValidatePKCE(req.CodeVerifier, code.CodeChallenge, code.CodeChallengeMethod) {
 			// Mark code as used to prevent replay
-			s.store.MarkAuthorizationCodeUsed(codeHash)
+			s.store.MarkAuthorizationCodeUsed(ctx, codeHash)
 			return nil, ErrOAuthInvalidCodeVerifier
 		}
 	}
 
 	// Mark code as used
-	if err := s.store.MarkAuthorizationCodeUsed(codeHash); err != nil {
+	if err := s.store.MarkAuthorizationCodeUsed(ctx, codeHash); err != nil {
 		return nil, err
 	}
 
@@ -268,7 +268,7 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 	}
 
 	refreshHash := auth.HashToken(req.RefreshToken)
-	refreshToken, err := s.store.GetOAuthTokenByHash(refreshHash)
+	refreshToken, err := s.store.GetOAuthTokenByHash(ctx, refreshHash)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 
 // ClientCredentials handles the client_credentials grant for confidential clients.
 func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
-	client, err := s.store.GetOAuthClient(req.ClientID)
+	client, err := s.store.GetOAuthClient(ctx, req.ClientID)
 	if err != nil {
 		return nil, ErrOAuthInvalidClient
 	}
@@ -374,7 +374,7 @@ func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTo
 // ValidateAccessToken validates an opaque access token and returns the token record.
 func (s *OAuthService) ValidateAccessToken(token string) (*model.OAuthToken, error) {
 	tokenHash := auth.HashToken(token)
-	oauthToken, err := s.store.GetOAuthTokenByHash(tokenHash)
+	oauthToken, err := s.store.GetOAuthTokenByHash(context.Background(), tokenHash)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +386,7 @@ func (s *OAuthService) ValidateAccessToken(token string) (*model.OAuthToken, err
 
 // ResolveCallerFromOAuthToken builds a Caller from a validated OAuth token.
 func (s *OAuthService) ResolveCallerFromOAuthToken(token *model.OAuthToken, remoteAddr string) (*Caller, error) {
-	user, err := s.store.GetUser(token.UserID)
+	user, err := s.store.GetUser(context.Background(), token.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint str
 	tokenHash := auth.HashToken(token)
 
 	// Try to find the token (ignore expiry/revocation errors for revocation endpoint)
-	oauthToken, err := s.store.GetOAuthTokenByHash(tokenHash)
+	oauthToken, err := s.store.GetOAuthTokenByHash(ctx, tokenHash)
 	if err != nil {
 		// Per RFC 7009, revocation of an invalid token should succeed silently
 		log.Debug("OAuth token revocation: token not found", "error", err)
@@ -423,13 +423,13 @@ func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint str
 	}
 
 	// Revoke the token
-	if err := s.store.RevokeOAuthToken(oauthToken.ID); err != nil {
+	if err := s.store.RevokeOAuthToken(ctx, oauthToken.ID); err != nil {
 		return err
 	}
 
 	// If revoking a refresh token, also revoke associated access tokens
 	if oauthToken.TokenType == "refresh" && oauthToken.ParentTokenID != "" {
-		s.store.RevokeOAuthToken(oauthToken.ParentTokenID)
+		s.store.RevokeOAuthToken(ctx, oauthToken.ParentTokenID)
 	}
 
 	return nil
@@ -437,13 +437,13 @@ func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint str
 
 // ListClients lists all registered OAuth clients.
 func (s *OAuthService) ListClients(ctx context.Context) ([]model.OAuthClient, error) {
-	return s.store.ListOAuthClients("")
+	return s.store.ListOAuthClients(ctx, "")
 }
 
 // DeleteClient deletes an OAuth client and revokes its tokens.
 func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error {
 	// Revoke all tokens for this client first
-	s.store.RevokeOAuthTokensByClient(clientID)
+	s.store.RevokeOAuthTokensByClient(ctx, clientID)
 	return s.store.DeleteOAuthClient(ctx, clientID)
 }
 
@@ -481,10 +481,10 @@ func (s *OAuthService) StartCleanup() {
 		for {
 			select {
 			case <-ticker.C:
-				if err := s.store.CleanupExpiredCodes(); err != nil {
+				if err := s.store.CleanupExpiredCodes(context.Background()); err != nil {
 					log.Error("Failed to cleanup expired OAuth codes", "error", err)
 				}
-				if err := s.store.CleanupExpiredTokens(); err != nil {
+				if err := s.store.CleanupExpiredTokens(context.Background()); err != nil {
 					log.Error("Failed to cleanup expired OAuth tokens", "error", err)
 				}
 			case <-s.stopCleanup:

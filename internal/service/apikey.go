@@ -36,7 +36,7 @@ func (s *APIKeyService) List(ctx context.Context, filter *model.APIKeyFilter) ([
 		}
 	}
 
-	return s.store.ListAPIKeys(filter)
+	return s.store.ListAPIKeys(ctx, filter)
 }
 
 func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, error) {
@@ -59,7 +59,7 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	key.Key = auth.HashToken(plaintextKey)
 	key.CreatedAt = time.Now()
 
-	if err := s.store.CreateAPIKey(key); err != nil {
+	if err := s.store.CreateAPIKey(ctx, key); err != nil {
 		return "", err
 	}
 
@@ -71,7 +71,7 @@ func (s *APIKeyService) Get(ctx context.Context, id string) (*model.APIKey, erro
 		return nil, err
 	}
 
-	key, err := s.store.GetAPIKey(id)
+	key, err := s.store.GetAPIKey(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *APIKeyService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	key, err := s.store.GetAPIKey(id)
+	key, err := s.store.GetAPIKey(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *APIKeyService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	return s.store.DeleteAPIKey(id)
+	return s.store.DeleteAPIKey(ctx, id)
 }
 
 // requireOwnership verifies the caller owns the key or is an admin.

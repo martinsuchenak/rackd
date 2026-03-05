@@ -47,8 +47,7 @@ func (s *SQLiteStorage) UpdateRelationshipNotes(ctx context.Context, parentID, c
 	return nil
 }
 
-func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelationship, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) GetRelationships(ctx context.Context, deviceID string) ([]model.DeviceRelationship, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT parent_id, child_id, type, notes, created_at
 		FROM device_relationships
@@ -70,8 +69,7 @@ func (s *SQLiteStorage) GetRelationships(deviceID string) ([]model.DeviceRelatio
 	return rels, rows.Err()
 }
 
-func (s *SQLiteStorage) ListAllRelationships() ([]model.DeviceRelationship, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListAllRelationships(ctx context.Context) ([]model.DeviceRelationship, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT parent_id, child_id, type, notes, created_at
 		FROM device_relationships
@@ -92,8 +90,7 @@ func (s *SQLiteStorage) ListAllRelationships() ([]model.DeviceRelationship, erro
 	return rels, rows.Err()
 }
 
-func (s *SQLiteStorage) GetRelatedDevices(deviceID, relationshipType string) ([]model.Device, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) GetRelatedDevices(ctx context.Context, deviceID, relationshipType string) ([]model.Device, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT d.id, d.name, d.description, d.make_model, d.os, d.datacenter_id,
 		       d.username, d.location, d.created_at, d.updated_at

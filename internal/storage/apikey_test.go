@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ func TestAPIKeyOperations(t *testing.T) {
 	store := newTestStorage(t)
 	defer store.Close()
 
+	ctx := context.Background()
+
 	// Create API key
 	key := &model.APIKey{
 		Name:        "test-key",
@@ -18,7 +21,7 @@ func TestAPIKeyOperations(t *testing.T) {
 		Description: "Test API key",
 	}
 
-	if err := store.CreateAPIKey(key); err != nil {
+	if err := store.CreateAPIKey(ctx, key); err != nil {
 		t.Fatalf("CreateAPIKey failed: %v", err)
 	}
 
@@ -27,7 +30,7 @@ func TestAPIKeyOperations(t *testing.T) {
 	}
 
 	// Get by ID
-	retrieved, err := store.GetAPIKey(key.ID)
+	retrieved, err := store.GetAPIKey(ctx, key.ID)
 	if err != nil {
 		t.Fatalf("GetAPIKey failed: %v", err)
 	}
@@ -37,7 +40,7 @@ func TestAPIKeyOperations(t *testing.T) {
 	}
 
 	// Get by key string
-	byKey, err := store.GetAPIKeyByKey(key.Key)
+	byKey, err := store.GetAPIKeyByKey(ctx, key.Key)
 	if err != nil {
 		t.Fatalf("GetAPIKeyByKey failed: %v", err)
 	}
@@ -47,7 +50,7 @@ func TestAPIKeyOperations(t *testing.T) {
 	}
 
 	// List
-	keys, err := store.ListAPIKeys(nil)
+	keys, err := store.ListAPIKeys(ctx, nil)
 	if err != nil {
 		t.Fatalf("ListAPIKeys failed: %v", err)
 	}
@@ -58,11 +61,11 @@ func TestAPIKeyOperations(t *testing.T) {
 
 	// Update last used
 	now := time.Now()
-	if err := store.UpdateAPIKeyLastUsed(key.ID, now); err != nil {
+	if err := store.UpdateAPIKeyLastUsed(ctx, key.ID, now); err != nil {
 		t.Fatalf("UpdateAPIKeyLastUsed failed: %v", err)
 	}
 
-	updated, err := store.GetAPIKey(key.ID)
+	updated, err := store.GetAPIKey(ctx, key.ID)
 	if err != nil {
 		t.Fatalf("GetAPIKey failed: %v", err)
 	}
@@ -72,12 +75,12 @@ func TestAPIKeyOperations(t *testing.T) {
 	}
 
 	// Delete
-	if err := store.DeleteAPIKey(key.ID); err != nil {
+	if err := store.DeleteAPIKey(ctx, key.ID); err != nil {
 		t.Fatalf("DeleteAPIKey failed: %v", err)
 	}
 
 	// Verify deleted
-	_, err = store.GetAPIKey(key.ID)
+	_, err = store.GetAPIKey(ctx, key.ID)
 	if err == nil {
 		t.Error("Expected error when getting deleted key")
 	}
@@ -94,11 +97,12 @@ func TestAPIKeyExpiration(t *testing.T) {
 		ExpiresAt: &expired,
 	}
 
-	if err := store.CreateAPIKey(key); err != nil {
+	ctx := context.Background()
+	if err := store.CreateAPIKey(ctx, key); err != nil {
 		t.Fatalf("CreateAPIKey failed: %v", err)
 	}
 
-	retrieved, err := store.GetAPIKey(key.ID)
+	retrieved, err := store.GetAPIKey(ctx, key.ID)
 	if err != nil {
 		t.Fatalf("GetAPIKey failed: %v", err)
 	}

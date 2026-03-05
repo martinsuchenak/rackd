@@ -40,7 +40,7 @@ func TestCustomFieldDefinition_CreateAndGet(t *testing.T) {
 	}
 
 	// Get definition
-	retrieved, err := storage.GetCustomFieldDefinition(def.ID)
+	retrieved, err := storage.GetCustomFieldDefinition(context.Background(), def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldDefinition failed: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestCustomFieldDefinition_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetCustomFieldDefinition("non-existent-id")
+	_, err := storage.GetCustomFieldDefinition(context.Background(), "non-existent-id")
 	if err != ErrCustomFieldNotFound {
 		t.Errorf("expected ErrCustomFieldNotFound, got %v", err)
 	}
@@ -86,7 +86,7 @@ func TestCustomFieldDefinition_GetByKey(t *testing.T) {
 	}
 
 	// Get by key
-	retrieved, err := storage.GetCustomFieldDefinitionByKey("cost_center")
+	retrieved, err := storage.GetCustomFieldDefinitionByKey(context.Background(), "cost_center")
 	if err != nil {
 		t.Fatalf("GetCustomFieldDefinitionByKey failed: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestCustomFieldDefinition_GetByKey(t *testing.T) {
 	}
 
 	// Non-existent key
-	_, err = storage.GetCustomFieldDefinitionByKey("non_existent")
+	_, err = storage.GetCustomFieldDefinitionByKey(context.Background(), "non_existent")
 	if err != ErrCustomFieldNotFound {
 		t.Errorf("expected ErrCustomFieldNotFound, got %v", err)
 	}
@@ -158,7 +158,7 @@ func TestCustomFieldDefinition_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetCustomFieldDefinition(def.ID)
+	retrieved, err := storage.GetCustomFieldDefinition(context.Background(), def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldDefinition failed: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestCustomFieldDefinition_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetCustomFieldDefinition(def.ID)
+	_, err = storage.GetCustomFieldDefinition(context.Background(), def.ID)
 	if err != ErrCustomFieldNotFound {
 		t.Errorf("expected ErrCustomFieldNotFound after deletion, got %v", err)
 	}
@@ -246,7 +246,7 @@ func TestCustomFieldDefinition_List(t *testing.T) {
 	}
 
 	// List all
-	list, err := storage.ListCustomFieldDefinitions(nil)
+	list, err := storage.ListCustomFieldDefinitions(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListCustomFieldDefinitions failed: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestCustomFieldDefinition_List(t *testing.T) {
 
 	// Filter by type
 	filter := &model.CustomFieldDefinitionFilter{Type: "number"}
-	list, err = storage.ListCustomFieldDefinitions(filter)
+	list, err = storage.ListCustomFieldDefinitions(context.Background(), filter)
 	if err != nil {
 		t.Fatalf("ListCustomFieldDefinitions with filter failed: %v", err)
 	}
@@ -285,7 +285,7 @@ func TestCustomFieldDefinition_SelectTypeWithOptions(t *testing.T) {
 		t.Fatalf("CreateCustomFieldDefinition failed: %v", err)
 	}
 
-	retrieved, err := storage.GetCustomFieldDefinition(def.ID)
+	retrieved, err := storage.GetCustomFieldDefinition(context.Background(), def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldDefinition failed: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestCustomFieldValue_SetAndGet(t *testing.T) {
 	}
 
 	// Get value
-	retrieved, err := storage.GetCustomFieldValue(device.ID, def.ID)
+	retrieved, err := storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValue failed: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestCustomFieldValue_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetCustomFieldValue(device.ID, def.ID)
+	retrieved, err := storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValue failed: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestCustomFieldValue_NumberType(t *testing.T) {
 		t.Fatalf("SetCustomFieldValue failed: %v", err)
 	}
 
-	retrieved, err := storage.GetCustomFieldValue(device.ID, def.ID)
+	retrieved, err := storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValue failed: %v", err)
 	}
@@ -473,7 +473,7 @@ func TestCustomFieldValue_BoolType(t *testing.T) {
 		t.Fatalf("SetCustomFieldValue failed: %v", err)
 	}
 
-	retrieved, err := storage.GetCustomFieldValue(device.ID, def.ID)
+	retrieved, err := storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValue failed: %v", err)
 	}
@@ -512,7 +512,7 @@ func TestCustomFieldValue_SelectType(t *testing.T) {
 		t.Fatalf("SetCustomFieldValue failed: %v", err)
 	}
 
-	retrieved, err := storage.GetCustomFieldValue(device.ID, def.ID)
+	retrieved, err := storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValue failed: %v", err)
 	}
@@ -557,7 +557,7 @@ func TestCustomFieldValue_GetValuesForDevice(t *testing.T) {
 	}
 
 	// Get all values for device
-	retrieved, err := storage.GetCustomFieldValues(device.ID)
+	retrieved, err := storage.GetCustomFieldValues(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValues failed: %v", err)
 	}
@@ -597,7 +597,7 @@ func TestCustomFieldValue_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetCustomFieldValue(device.ID, def.ID)
+	_, err = storage.GetCustomFieldValue(context.Background(), device.ID, def.ID)
 	if err != ErrCustomFieldNotFound {
 		t.Errorf("expected ErrCustomFieldNotFound, got %v", err)
 	}
@@ -637,7 +637,7 @@ func TestCustomFieldValue_DeleteForDevice(t *testing.T) {
 	}
 
 	// Verify
-	values, err := storage.GetCustomFieldValues(device.ID)
+	values, err := storage.GetCustomFieldValues(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValues failed: %v", err)
 	}
@@ -675,7 +675,7 @@ func TestCustomFieldValue_DeleteOnDefinitionDelete(t *testing.T) {
 	}
 
 	// Verify value is also deleted
-	values, err := storage.GetCustomFieldValues(device.ID)
+	values, err := storage.GetCustomFieldValues(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetCustomFieldValues failed: %v", err)
 	}
@@ -688,7 +688,7 @@ func TestCustomFieldValue_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetCustomFieldValue("non-existent-device", "non-existent-field")
+	_, err := storage.GetCustomFieldValue(context.Background(), "non-existent-device", "non-existent-field")
 	if err != ErrCustomFieldNotFound {
 		t.Errorf("expected ErrCustomFieldNotFound, got %v", err)
 	}

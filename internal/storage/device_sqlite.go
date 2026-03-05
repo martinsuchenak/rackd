@@ -13,12 +13,10 @@ import (
 // Device operations
 
 // GetDevice retrieves a device by ID with its addresses, tags, and domains
-func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
+func (s *SQLiteStorage) GetDevice(ctx context.Context, id string) (*model.Device, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Get the device
 	device := &model.Device{}
@@ -75,7 +73,7 @@ func (s *SQLiteStorage) GetDevice(id string) (*model.Device, error) {
 	device.Domains = domains
 
 	// Get custom fields with definitions to get typed values
-	customFieldsWithDefs, err := s.GetCustomFieldValuesWithDefinitions(id)
+	customFieldsWithDefs, err := s.GetCustomFieldValuesWithDefinitions(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device custom fields: %w", err)
 	}
@@ -484,8 +482,7 @@ func (s *SQLiteStorage) deleteDeviceInTx(ctx context.Context, tx *sql.Tx, id str
 }
 
 // ListDevices retrieves devices matching the filter criteria
-func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFilter) ([]model.Device, error) {
 
 	query := `SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location,
 	          status, decommission_date, status_changed_at, status_changed_by, created_at, updated_at
@@ -607,12 +604,10 @@ func (s *SQLiteStorage) ListDevices(filter *model.DeviceFilter) ([]model.Device,
 }
 
 // SearchDevices performs a full-text search across device fields using FTS5
-func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
+func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]model.Device, error) {
 	if query == "" {
-		return s.ListDevices(nil)
+		return s.ListDevices(ctx, nil)
 	}
-
-	ctx := context.Background()
 	ftsQuery := escapeFTSQuery(query)
 	likePattern := "%" + query + "%"
 
@@ -717,8 +712,7 @@ func (s *SQLiteStorage) SearchDevices(query string) ([]model.Device, error) {
 }
 
 // GetDeviceStatusCounts returns the count of devices by status
-func (s *SQLiteStorage) GetDeviceStatusCounts() (map[model.DeviceStatus]int, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) GetDeviceStatusCounts(ctx context.Context) (map[model.DeviceStatus]int, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT status, COUNT(*) as count
 		FROM devices

@@ -39,7 +39,7 @@ func TestNetworkOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get network
-	retrieved, err := storage.GetNetwork(network.ID)
+	retrieved, err := storage.GetNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetwork failed: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestNetworkOperations_CreateWithDatacenter(t *testing.T) {
 		t.Fatalf("CreateNetwork failed: %v", err)
 	}
 
-	retrieved, err := storage.GetNetwork(network.ID)
+	retrieved, err := storage.GetNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetwork failed: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestNetworkOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetwork("non-existent-id")
+	_, err := storage.GetNetwork(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
 		t.Errorf("expected ErrNetworkNotFound, got %v", err)
 	}
@@ -102,7 +102,7 @@ func TestNetworkOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetwork("")
+	_, err := storage.GetNetwork(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -135,7 +135,7 @@ func TestNetworkOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetNetwork(network.ID)
+	retrieved, err := storage.GetNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetwork failed: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestNetworkOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetNetwork(network.ID)
+	_, err := storage.GetNetwork(context.Background(), network.ID)
 	if err != ErrNetworkNotFound {
 		t.Errorf("expected ErrNetworkNotFound after deletion, got %v", err)
 	}
@@ -236,7 +236,7 @@ func TestNetworkOperations_DeleteWithAddresses(t *testing.T) {
 	}
 
 	// Verify device still exists but address has no network
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestNetworkOperations_ListAll(t *testing.T) {
 	}
 
 	// List all networks
-	result, err := storage.ListNetworks(nil)
+	result, err := storage.ListNetworks(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListNetworks failed: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestNetworkOperations_ListWithNameFilter(t *testing.T) {
 	storage.CreateNetwork(context.Background(), &model.Network{Name: "Staging", Subnet: "10.0.0.0/16"})
 
 	// Filter by name
-	result, err := storage.ListNetworks(&model.NetworkFilter{Name: "Production"})
+	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{Name: "Production"})
 	if err != nil {
 		t.Fatalf("ListNetworks failed: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestNetworkOperations_ListWithDatacenterFilter(t *testing.T) {
 	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", DatacenterID: dc2.ID})
 
 	// Filter by datacenter
-	result, err := storage.ListNetworks(&model.NetworkFilter{DatacenterID: dc1.ID})
+	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{DatacenterID: dc1.ID})
 	if err != nil {
 		t.Fatalf("ListNetworks failed: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestNetworkOperations_ListWithVLANFilter(t *testing.T) {
 	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", VLANID: 200})
 
 	// Filter by VLAN
-	result, err := storage.ListNetworks(&model.NetworkFilter{VLANID: 100})
+	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{VLANID: 100})
 	if err != nil {
 		t.Fatalf("ListNetworks failed: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestNetworkOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	result, err := storage.ListNetworks(nil)
+	result, err := storage.ListNetworks(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListNetworks failed: %v", err)
 	}
@@ -411,7 +411,7 @@ func TestNetworkOperations_GetNetworkDevices(t *testing.T) {
 	storage.CreateDevice(context.Background(), device3)
 
 	// Get devices in network
-	devices, err := storage.GetNetworkDevices(network.ID)
+	devices, err := storage.GetNetworkDevices(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkDevices failed: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestNetworkOperations_GetNetworkDevicesNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkDevices("non-existent-id")
+	_, err := storage.GetNetworkDevices(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
 		t.Errorf("expected ErrNetworkNotFound, got %v", err)
 	}
@@ -441,7 +441,7 @@ func TestNetworkOperations_GetNetworkDevicesEmpty(t *testing.T) {
 		t.Fatalf("CreateNetwork failed: %v", err)
 	}
 
-	devices, err := storage.GetNetworkDevices(network.ID)
+	devices, err := storage.GetNetworkDevices(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkDevices failed: %v", err)
 	}
@@ -458,7 +458,7 @@ func TestNetworkOperations_GetNetworkDevicesInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkDevices("")
+	_, err := storage.GetNetworkDevices(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -487,7 +487,7 @@ func TestNetworkOperations_GetNetworkUtilization(t *testing.T) {
 	}
 
 	// Get utilization
-	util, err := storage.GetNetworkUtilization(network.ID)
+	util, err := storage.GetNetworkUtilization(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkUtilization failed: %v", err)
 	}
@@ -515,7 +515,7 @@ func TestNetworkOperations_GetNetworkUtilizationNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkUtilization("non-existent-id")
+	_, err := storage.GetNetworkUtilization(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
 		t.Errorf("expected ErrNetworkNotFound, got %v", err)
 	}
@@ -525,7 +525,7 @@ func TestNetworkOperations_GetNetworkUtilizationInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNetworkUtilization("")
+	_, err := storage.GetNetworkUtilization(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -541,7 +541,7 @@ func TestNetworkOperations_GetNetworkUtilizationEmpty(t *testing.T) {
 		t.Fatalf("CreateNetwork failed: %v", err)
 	}
 
-	util, err := storage.GetNetworkUtilization(network.ID)
+	util, err := storage.GetNetworkUtilization(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetNetworkUtilization failed: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestNetworkUtilizationInvalidSubnet(t *testing.T) {
 	network := &model.Network{Name: "BadNet", Subnet: "invalid-cidr"}
 	storage.CreateNetwork(context.Background(), network)
 
-	_, err := storage.GetNetworkUtilization(network.ID)
+	_, err := storage.GetNetworkUtilization(context.Background(), network.ID)
 	if err == nil {
 		t.Error("expected error for invalid CIDR")
 	}
@@ -645,7 +645,7 @@ func TestDeleteNetworkWithPools(t *testing.T) {
 	}
 
 	// Verify pool is deleted
-	_, err := storage.GetNetworkPool(pool.ID)
+	_, err := storage.GetNetworkPool(context.Background(), pool.ID)
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound after network deletion, got %v", err)
 	}
@@ -663,7 +663,7 @@ func TestNetworkWithZeroVLAN(t *testing.T) {
 	}
 	storage.CreateNetwork(context.Background(), network)
 
-	got, _ := storage.GetNetwork(network.ID)
+	got, _ := storage.GetNetwork(context.Background(), network.ID)
 	if got.VLANID != 0 {
 		t.Errorf("expected VLAN 0, got %d", got.VLANID)
 	}

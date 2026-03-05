@@ -22,7 +22,7 @@ func (s *ScanProfileService) List(ctx context.Context) ([]model.ScanProfile, err
 		return nil, err
 	}
 
-	return s.store.List()
+	return s.store.List(ctx)
 }
 
 func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProfile) error {
@@ -30,7 +30,7 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 		return err
 	}
 
-	if err := s.store.Create(profile); err != nil {
+	if err := s.store.Create(ctx, profile); err != nil {
 		return ValidationErrors{{Field: "profile", Message: err.Error()}}
 	}
 
@@ -42,7 +42,7 @@ func (s *ScanProfileService) Get(ctx context.Context, id string) (*model.ScanPro
 		return nil, err
 	}
 
-	profile, err := s.store.Get(id)
+	profile, err := s.store.Get(ctx, id)
 	if errors.Is(err, storage.ErrProfileNotFound) {
 		return nil, ErrNotFound
 	}
@@ -55,7 +55,7 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 	}
 
 	profile.ID = id
-	if err := s.store.Update(profile); err != nil {
+	if err := s.store.Update(ctx, profile); err != nil {
 		if errors.Is(err, storage.ErrProfileNotFound) {
 			return ErrNotFound
 		}
@@ -70,7 +70,7 @@ func (s *ScanProfileService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	err := s.store.Delete(id)
+	err := s.store.Delete(ctx, id)
 	if errors.Is(err, storage.ErrProfileNotFound) {
 		return ErrNotFound
 	}

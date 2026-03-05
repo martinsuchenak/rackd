@@ -76,7 +76,7 @@ func (w *Worker) handleEvent(event model.Event) {
 	ctx := context.Background()
 
 	// Get all webhooks subscribed to this event
-	webhooks, err := w.store.GetWebhooksForEvent(event.Type)
+	webhooks, err := w.store.GetWebhooksForEvent(ctx, event.Type)
 	if err != nil {
 		log.Printf("failed to get webhooks for event %s: %v", event.Type, err)
 		return

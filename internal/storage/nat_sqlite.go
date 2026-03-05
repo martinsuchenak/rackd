@@ -40,7 +40,7 @@ func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NAT
 }
 
 // GetNATMapping retrieves a NAT mapping by ID
-func (s *SQLiteStorage) GetNATMapping(id string) (*model.NATMapping, error) {
+func (s *SQLiteStorage) GetNATMapping(ctx context.Context, id string) (*model.NATMapping, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
@@ -49,7 +49,7 @@ func (s *SQLiteStorage) GetNATMapping(id string) (*model.NATMapping, error) {
 	var tagsJSON string
 	var deviceID, datacenterID, networkID sql.NullString
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, external_ip, external_port, internal_ip, internal_port,
 			protocol, device_id, description, enabled, datacenter_id, network_id,
 			tags, created_at, updated_at
@@ -87,7 +87,7 @@ func (s *SQLiteStorage) GetNATMapping(id string) (*model.NATMapping, error) {
 }
 
 // ListNATMappings lists NAT mappings with optional filtering
-func (s *SQLiteStorage) ListNATMappings(filter *model.NATFilter) ([]model.NATMapping, error) {
+func (s *SQLiteStorage) ListNATMappings(ctx context.Context, filter *model.NATFilter) ([]model.NATMapping, error) {
 	query := `SELECT id, name, external_ip, external_port, internal_ip, internal_port,
 		protocol, device_id, description, enabled, datacenter_id, network_id,
 		tags, created_at, updated_at
@@ -139,7 +139,7 @@ func (s *SQLiteStorage) ListNATMappings(filter *model.NATFilter) ([]model.NATMap
 
 	query += " ORDER BY name"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list NAT mappings: %w", err)
 	}
@@ -241,11 +241,11 @@ func (s *SQLiteStorage) DeleteNATMapping(ctx context.Context, id string) error {
 }
 
 // GetNATMappingsByDevice retrieves all NAT mappings for a device
-func (s *SQLiteStorage) GetNATMappingsByDevice(deviceID string) ([]model.NATMapping, error) {
-	return s.ListNATMappings(&model.NATFilter{DeviceID: deviceID})
+func (s *SQLiteStorage) GetNATMappingsByDevice(ctx context.Context, deviceID string) ([]model.NATMapping, error) {
+	return s.ListNATMappings(ctx, &model.NATFilter{DeviceID: deviceID})
 }
 
 // GetNATMappingsByDatacenter retrieves all NAT mappings for a datacenter
-func (s *SQLiteStorage) GetNATMappingsByDatacenter(datacenterID string) ([]model.NATMapping, error) {
-	return s.ListNATMappings(&model.NATFilter{DatacenterID: datacenterID})
+func (s *SQLiteStorage) GetNATMappingsByDatacenter(ctx context.Context, datacenterID string) ([]model.NATMapping, error) {
+	return s.ListNATMappings(ctx, &model.NATFilter{DatacenterID: datacenterID})
 }

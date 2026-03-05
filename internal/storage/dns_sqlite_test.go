@@ -43,7 +43,7 @@ func TestDNSProviderOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get provider
-	retrieved, err := storage.GetDNSProvider(provider.ID)
+	retrieved, err := storage.GetDNSProvider(context.Background(), provider.ID)
 	if err != nil {
 		t.Fatalf("GetDNSProvider failed: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestDNSProviderOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDNSProvider("non-existent-id")
+	_, err := storage.GetDNSProvider(context.Background(), "non-existent-id")
 	if err != ErrDNSProviderNotFound {
 		t.Errorf("expected ErrDNSProviderNotFound, got %v", err)
 	}
@@ -107,7 +107,7 @@ func TestDNSProviderOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDNSProvider(provider.ID)
+	retrieved, err := storage.GetDNSProvider(context.Background(), provider.ID)
 	if err != nil {
 		t.Fatalf("GetDNSProvider failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestDNSProviderOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetDNSProvider(provider.ID)
+	_, err = storage.GetDNSProvider(context.Background(), provider.ID)
 	if err != ErrDNSProviderNotFound {
 		t.Errorf("expected ErrDNSProviderNotFound, got %v", err)
 	}
@@ -191,7 +191,7 @@ func TestDNSProviderOperations_List(t *testing.T) {
 	}
 
 	// List all
-	providers, err := storage.ListDNSProviders(nil)
+	providers, err := storage.ListDNSProviders(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDNSProviders failed: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestDNSProviderOperations_List(t *testing.T) {
 	}
 
 	// Filter by type
-	technitiumProviders, err := storage.ListDNSProviders(&model.DNSProviderFilter{
+	technitiumProviders, err := storage.ListDNSProviders(context.Background(), &model.DNSProviderFilter{
 		Type: model.DNSProviderTypeTechnitium,
 	})
 	if err != nil {
@@ -227,7 +227,7 @@ func TestDNSProviderOperations_GetByName(t *testing.T) {
 	}
 
 	// Get by name
-	retrieved, err := storage.GetDNSProviderByName("Unique Provider Name")
+	retrieved, err := storage.GetDNSProviderByName(context.Background(), "Unique Provider Name")
 	if err != nil {
 		t.Fatalf("GetDNSProviderByName failed: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestDNSProviderOperations_GetByName(t *testing.T) {
 	}
 
 	// Get non-existent name
-	_, err = storage.GetDNSProviderByName("non-existent-name")
+	_, err = storage.GetDNSProviderByName(context.Background(), "non-existent-name")
 	if err != ErrDNSProviderNotFound {
 		t.Errorf("expected ErrDNSProviderNotFound, got %v", err)
 	}
@@ -300,7 +300,7 @@ func TestDNSProviderOperations_AllTypes(t *testing.T) {
 		}
 
 		// Verify
-		retrieved, err := storage.GetDNSProvider(provider.ID)
+		retrieved, err := storage.GetDNSProvider(context.Background(), provider.ID)
 		if err != nil {
 			t.Fatalf("GetDNSProvider failed: %v", err)
 		}
@@ -330,11 +330,11 @@ func TestDNSZoneOperations_CreateAndGet(t *testing.T) {
 	}
 
 	zone := &model.DNSZone{
-		Name:       "example.com",
-		ProviderID: provider.ID,
-		AutoSync:   true,
-		CreatePTR:  true,
-		TTL:        3600,
+		Name:        "example.com",
+		ProviderID:  provider.ID,
+		AutoSync:    true,
+		CreatePTR:   true,
+		TTL:         3600,
 		Description: "Primary zone",
 	}
 
@@ -358,7 +358,7 @@ func TestDNSZoneOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get zone
-	retrieved, err := storage.GetDNSZone(zone.ID)
+	retrieved, err := storage.GetDNSZone(context.Background(), zone.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZone failed: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestDNSZoneOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDNSZone("non-existent-id")
+	_, err := storage.GetDNSZone(context.Background(), "non-existent-id")
 	if err != ErrDNSZoneNotFound {
 		t.Errorf("expected ErrDNSZoneNotFound, got %v", err)
 	}
@@ -410,11 +410,11 @@ func TestDNSZoneOperations_Update(t *testing.T) {
 
 	// Create zone
 	zone := &model.DNSZone{
-		Name:       "example.com",
-		ProviderID: provider.ID,
-		AutoSync:   true,
-		CreatePTR:  true,
-		TTL:        3600,
+		Name:        "example.com",
+		ProviderID:  provider.ID,
+		AutoSync:    true,
+		CreatePTR:   true,
+		TTL:         3600,
 		Description: "Original description",
 	}
 	if err := storage.CreateDNSZone(context.Background(), zone); err != nil {
@@ -443,7 +443,7 @@ func TestDNSZoneOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDNSZone(zone.ID)
+	retrieved, err := storage.GetDNSZone(context.Background(), zone.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZone failed: %v", err)
 	}
@@ -509,7 +509,7 @@ func TestDNSZoneOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetDNSZone(zone.ID)
+	_, err = storage.GetDNSZone(context.Background(), zone.ID)
 	if err != ErrDNSZoneNotFound {
 		t.Errorf("expected ErrDNSZoneNotFound, got %v", err)
 	}
@@ -550,7 +550,7 @@ func TestDNSZoneOperations_List(t *testing.T) {
 	}
 
 	// List all
-	zones, err := storage.ListDNSZones(nil)
+	zones, err := storage.ListDNSZones(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDNSZones failed: %v", err)
 	}
@@ -559,7 +559,7 @@ func TestDNSZoneOperations_List(t *testing.T) {
 	}
 
 	// Filter by provider
-	providerZones, err := storage.ListDNSZones(&model.DNSZoneFilter{
+	providerZones, err := storage.ListDNSZones(context.Background(), &model.DNSZoneFilter{
 		ProviderID: provider.ID,
 	})
 	if err != nil {
@@ -571,7 +571,7 @@ func TestDNSZoneOperations_List(t *testing.T) {
 
 	// Filter by auto_sync
 	autoSync := true
-	autoSyncZones, err := storage.ListDNSZones(&model.DNSZoneFilter{
+	autoSyncZones, err := storage.ListDNSZones(context.Background(), &model.DNSZoneFilter{
 		AutoSync: &autoSync,
 	})
 	if err != nil {
@@ -608,7 +608,7 @@ func TestDNSZoneOperations_GetByName(t *testing.T) {
 	}
 
 	// Get by name
-	retrieved, err := storage.GetDNSZoneByName("unique.example.com")
+	retrieved, err := storage.GetDNSZoneByName(context.Background(), "unique.example.com")
 	if err != nil {
 		t.Fatalf("GetDNSZoneByName failed: %v", err)
 	}
@@ -618,7 +618,7 @@ func TestDNSZoneOperations_GetByName(t *testing.T) {
 	}
 
 	// Get non-existent name
-	_, err = storage.GetDNSZoneByName("non-existent.example.com")
+	_, err = storage.GetDNSZoneByName(context.Background(), "non-existent.example.com")
 	if err != ErrDNSZoneNotFound {
 		t.Errorf("expected ErrDNSZoneNotFound, got %v", err)
 	}
@@ -672,7 +672,7 @@ func TestDNSZoneOperations_GetByProvider(t *testing.T) {
 	}
 
 	// Get zones by provider1
-	zones, err := storage.GetDNSZonesByProvider(provider1.ID)
+	zones, err := storage.GetDNSZonesByProvider(context.Background(), provider1.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZonesByProvider failed: %v", err)
 	}
@@ -681,7 +681,7 @@ func TestDNSZoneOperations_GetByProvider(t *testing.T) {
 	}
 
 	// Get zones by provider2
-	zones, err = storage.GetDNSZonesByProvider(provider2.ID)
+	zones, err = storage.GetDNSZonesByProvider(context.Background(), provider2.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZonesByProvider failed: %v", err)
 	}
@@ -734,7 +734,7 @@ func TestDNSZoneOperations_GetByNetwork(t *testing.T) {
 	}
 
 	// Get zones by network
-	zones, err := storage.GetDNSZonesByNetwork(network.ID)
+	zones, err := storage.GetDNSZonesByNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZonesByNetwork failed: %v", err)
 	}
@@ -772,7 +772,7 @@ func TestDNSZoneOperations_WithPTRZone(t *testing.T) {
 	}
 
 	// Verify
-	retrieved, err := storage.GetDNSZone(zone.ID)
+	retrieved, err := storage.GetDNSZone(context.Background(), zone.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZone failed: %v", err)
 	}
@@ -823,7 +823,7 @@ func TestDNSZoneOperations_WithNetwork(t *testing.T) {
 	}
 
 	// Verify
-	retrieved, err := storage.GetDNSZone(zone.ID)
+	retrieved, err := storage.GetDNSZone(context.Background(), zone.ID)
 	if err != nil {
 		t.Fatalf("GetDNSZone failed: %v", err)
 	}
@@ -889,7 +889,7 @@ func TestDNSRecordOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get record
-	retrieved, err := storage.GetDNSRecord(record.ID)
+	retrieved, err := storage.GetDNSRecord(context.Background(), record.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecord failed: %v", err)
 	}
@@ -915,7 +915,7 @@ func TestDNSRecordOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDNSRecord("non-existent-id")
+	_, err := storage.GetDNSRecord(context.Background(), "non-existent-id")
 	if err != ErrDNSRecordNotFound {
 		t.Errorf("expected ErrDNSRecordNotFound, got %v", err)
 	}
@@ -947,11 +947,11 @@ func TestDNSRecordOperations_Update(t *testing.T) {
 
 	// Create record
 	record := &model.DNSRecord{
-		ZoneID:     zone.ID,
-		Name:       "www",
-		Type:       string(model.DNSRecordTypeA),
-		Value:      "192.168.1.10",
-		TTL:        300,
+		ZoneID: zone.ID,
+		Name:   "www",
+		Type:   string(model.DNSRecordTypeA),
+		Value:  "192.168.1.10",
+		TTL:    300,
 	}
 	if err := storage.CreateDNSRecord(context.Background(), record); err != nil {
 		t.Fatalf("CreateDNSRecord failed: %v", err)
@@ -978,7 +978,7 @@ func TestDNSRecordOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDNSRecord(record.ID)
+	retrieved, err := storage.GetDNSRecord(context.Background(), record.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecord failed: %v", err)
 	}
@@ -1052,7 +1052,7 @@ func TestDNSRecordOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetDNSRecord(record.ID)
+	_, err = storage.GetDNSRecord(context.Background(), record.ID)
 	if err != ErrDNSRecordNotFound {
 		t.Errorf("expected ErrDNSRecordNotFound, got %v", err)
 	}
@@ -1104,7 +1104,7 @@ func TestDNSRecordOperations_List(t *testing.T) {
 	}
 
 	// List all
-	records, err := storage.ListDNSRecords(nil)
+	records, err := storage.ListDNSRecords(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDNSRecords failed: %v", err)
 	}
@@ -1113,7 +1113,7 @@ func TestDNSRecordOperations_List(t *testing.T) {
 	}
 
 	// Filter by zone
-	zoneRecords, err := storage.ListDNSRecords(&model.DNSRecordFilter{
+	zoneRecords, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{
 		ZoneID: zone.ID,
 	})
 	if err != nil {
@@ -1124,7 +1124,7 @@ func TestDNSRecordOperations_List(t *testing.T) {
 	}
 
 	// Filter by type
-	typeRecords, err := storage.ListDNSRecords(&model.DNSRecordFilter{
+	typeRecords, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{
 		Type: string(model.DNSRecordTypeA),
 	})
 	if err != nil {
@@ -1136,7 +1136,7 @@ func TestDNSRecordOperations_List(t *testing.T) {
 
 	// Filter by sync status
 	syncStatus := model.RecordSyncStatusSynced
-	syncedRecords, err := storage.ListDNSRecords(&model.DNSRecordFilter{
+	syncedRecords, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{
 		SyncStatus: &syncStatus,
 	})
 	if err != nil {
@@ -1184,7 +1184,7 @@ func TestDNSRecordOperations_GetByName(t *testing.T) {
 	}
 
 	// Get by name
-	retrieved, err := storage.GetDNSRecordByName(zone.ID, "www", string(model.DNSRecordTypeA))
+	retrieved, err := storage.GetDNSRecordByName(context.Background(), zone.ID, "www", string(model.DNSRecordTypeA))
 	if err != nil {
 		t.Fatalf("GetDNSRecordByName failed: %v", err)
 	}
@@ -1194,7 +1194,7 @@ func TestDNSRecordOperations_GetByName(t *testing.T) {
 	}
 
 	// Get non-existent
-	_, err = storage.GetDNSRecordByName(zone.ID, "nonexistent", string(model.DNSRecordTypeA))
+	_, err = storage.GetDNSRecordByName(context.Background(), zone.ID, "nonexistent", string(model.DNSRecordTypeA))
 	if err != ErrDNSRecordNotFound {
 		t.Errorf("expected ErrDNSRecordNotFound, got %v", err)
 	}
@@ -1255,7 +1255,7 @@ func TestDNSRecordOperations_GetByDevice(t *testing.T) {
 	}
 
 	// Get records by device
-	records, err := storage.GetDNSRecordsByDevice(device.ID)
+	records, err := storage.GetDNSRecordsByDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecordsByDevice failed: %v", err)
 	}
@@ -1264,7 +1264,7 @@ func TestDNSRecordOperations_GetByDevice(t *testing.T) {
 	}
 
 	// Get records for non-existent device
-	_, err = storage.GetDNSRecordsByDevice("non-existent-device-id")
+	_, err = storage.GetDNSRecordsByDevice(context.Background(), "non-existent-device-id")
 	if err != ErrDeviceNotFound {
 		t.Errorf("expected ErrDeviceNotFound, got %v", err)
 	}
@@ -1336,7 +1336,7 @@ func TestDNSRecordOperations_DeleteByZone(t *testing.T) {
 	}
 
 	// Verify zone1 records are deleted
-	zone1Records, err := storage.ListDNSRecords(&model.DNSRecordFilter{ZoneID: zone1.ID})
+	zone1Records, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{ZoneID: zone1.ID})
 	if err != nil {
 		t.Fatalf("ListDNSRecords failed: %v", err)
 	}
@@ -1345,7 +1345,7 @@ func TestDNSRecordOperations_DeleteByZone(t *testing.T) {
 	}
 
 	// Verify zone2 records still exist
-	zone2Records, err := storage.ListDNSRecords(&model.DNSRecordFilter{ZoneID: zone2.ID})
+	zone2Records, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{ZoneID: zone2.ID})
 	if err != nil {
 		t.Fatalf("ListDNSRecords failed: %v", err)
 	}
@@ -1443,7 +1443,7 @@ func TestDNSRecordOperations_DeleteByDevice(t *testing.T) {
 	}
 
 	// Verify device1 records are deleted
-	device1Records, err := storage.GetDNSRecordsByDevice(device1.ID)
+	device1Records, err := storage.GetDNSRecordsByDevice(context.Background(), device1.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecordsByDevice failed: %v", err)
 	}
@@ -1452,7 +1452,7 @@ func TestDNSRecordOperations_DeleteByDevice(t *testing.T) {
 	}
 
 	// Verify device2 records still exist
-	device2Records, err := storage.GetDNSRecordsByDevice(device2.ID)
+	device2Records, err := storage.GetDNSRecordsByDevice(context.Background(), device2.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecordsByDevice failed: %v", err)
 	}
@@ -1520,7 +1520,7 @@ func TestDNSRecordOperations_WithDevice(t *testing.T) {
 	}
 
 	// Verify
-	retrieved, err := storage.GetDNSRecord(record.ID)
+	retrieved, err := storage.GetDNSRecord(context.Background(), record.ID)
 	if err != nil {
 		t.Fatalf("GetDNSRecord failed: %v", err)
 	}
@@ -1578,7 +1578,7 @@ func TestDNSRecordOperations_AllRecordTypes(t *testing.T) {
 		}
 
 		// Verify
-		retrieved, err := storage.GetDNSRecord(record.ID)
+		retrieved, err := storage.GetDNSRecord(context.Background(), record.ID)
 		if err != nil {
 			t.Fatalf("GetDNSRecord failed: %v", err)
 		}
@@ -1633,7 +1633,7 @@ func TestDNSRecordOperations_ZoneDeleteCascade(t *testing.T) {
 	}
 
 	// Verify all records are deleted
-	records, err := storage.ListDNSRecords(&model.DNSRecordFilter{ZoneID: zone.ID})
+	records, err := storage.ListDNSRecords(context.Background(), &model.DNSRecordFilter{ZoneID: zone.ID})
 	if err != nil {
 		t.Fatalf("ListDNSRecords failed: %v", err)
 	}
@@ -1692,7 +1692,7 @@ func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
 		}
 
 		// Retrieve device to get the generated address ID
-		retrieved, err := store.GetDevice(device.ID)
+		retrieved, err := store.GetDevice(ctx, device.ID)
 		if err != nil {
 			rt.Fatalf("GetDevice failed: %v", err)
 		}
@@ -1725,7 +1725,7 @@ func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
 		}
 
 		// Retrieve and verify AddressID matches (create round-trip)
-		got, err := store.GetDNSRecord(record.ID)
+		got, err := store.GetDNSRecord(ctx, record.ID)
 		if err != nil {
 			rt.Fatalf("GetDNSRecord failed: %v", err)
 		}
@@ -1756,7 +1756,7 @@ func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
 		}
 
 		// Retrieve and verify the updated AddressID
-		got2, err := store.GetDNSRecord(record.ID)
+		got2, err := store.GetDNSRecord(ctx, record.ID)
 		if err != nil {
 			rt.Fatalf("GetDNSRecord after update failed: %v", err)
 		}
@@ -1870,7 +1870,7 @@ func TestDNSRecordLinkStatusFilter(t *testing.T) {
 
 		// Filter by "linked" — should return exactly the linked records
 		linkedStatus := "linked"
-		linkedResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+		linkedResults, err := store.ListDNSRecords(ctx, &model.DNSRecordFilter{
 			ZoneID:     zone.ID,
 			LinkStatus: &linkedStatus,
 		})
@@ -1895,7 +1895,7 @@ func TestDNSRecordLinkStatusFilter(t *testing.T) {
 
 		// Filter by "unlinked" — should return exactly the unlinked records
 		unlinkedStatus := "unlinked"
-		unlinkedResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+		unlinkedResults, err := store.ListDNSRecords(ctx, &model.DNSRecordFilter{
 			ZoneID:     zone.ID,
 			LinkStatus: &unlinkedStatus,
 		})
@@ -1919,7 +1919,7 @@ func TestDNSRecordLinkStatusFilter(t *testing.T) {
 		}
 
 		// Filter with nil LinkStatus — should return all records in the zone
-		allResults, err := store.ListDNSRecords(&model.DNSRecordFilter{
+		allResults, err := store.ListDNSRecords(ctx, &model.DNSRecordFilter{
 			ZoneID: zone.ID,
 		})
 		if err != nil {

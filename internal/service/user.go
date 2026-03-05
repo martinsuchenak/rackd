@@ -38,7 +38,7 @@ func (s *UserService) List(ctx context.Context, filter *model.UserFilter) ([]mod
 		return nil, err
 	}
 
-	users, err := s.store.ListUsers(filter)
+	users, err := s.store.ListUsers(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 		return nil, errs
 	}
 
-	if existing, _ := s.store.GetUserByUsername(req.Username); existing != nil {
+	if existing, _ := s.store.GetUserByUsername(ctx, req.Username); existing != nil {
 		return nil, fmt.Errorf("username: %w", ErrAlreadyExists)
 	}
 
@@ -107,7 +107,7 @@ func (s *UserService) Get(ctx context.Context, id string) (*model.UserResponse, 
 		return nil, err
 	}
 
-	user, err := s.store.GetUser(id)
+	user, err := s.store.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrNotFound
@@ -133,7 +133,7 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 		}
 	}
 
-	user, err := s.store.GetUser(id)
+	user, err := s.store.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrNotFound
@@ -207,7 +207,7 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 8 characters"}}
 	}
 
-	user, err := s.store.GetUser(id)
+	user, err := s.store.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return ErrNotFound
@@ -249,7 +249,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 8 characters"}}
 	}
 
-	user, err := s.store.GetUser(id)
+	user, err := s.store.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return ErrNotFound
@@ -298,7 +298,7 @@ func (s *UserService) GetCurrentUserWithPermissions(ctx context.Context) (*model
 		return nil, ErrUnauthenticated
 	}
 
-	user, err := s.store.GetUser(caller.UserID)
+	user, err := s.store.GetUser(ctx, caller.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrNotFound

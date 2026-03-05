@@ -63,12 +63,10 @@ func (s *SQLiteStorage) createDNSProviderInTx(ctx context.Context, tx *sql.Tx, p
 }
 
 // GetDNSProvider retrieves a DNS provider by ID
-func (s *SQLiteStorage) GetDNSProvider(id string) (*model.DNSProviderConfig, error) {
+func (s *SQLiteStorage) GetDNSProvider(ctx context.Context, id string) (*model.DNSProviderConfig, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	provider := &model.DNSProviderConfig{}
 	err := s.db.QueryRowContext(ctx, `
@@ -90,12 +88,10 @@ func (s *SQLiteStorage) GetDNSProvider(id string) (*model.DNSProviderConfig, err
 }
 
 // GetDNSProviderByName retrieves a DNS provider by name
-func (s *SQLiteStorage) GetDNSProviderByName(name string) (*model.DNSProviderConfig, error) {
+func (s *SQLiteStorage) GetDNSProviderByName(ctx context.Context, name string) (*model.DNSProviderConfig, error) {
 	if name == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	provider := &model.DNSProviderConfig{}
 	err := s.db.QueryRowContext(ctx, `
@@ -117,8 +113,7 @@ func (s *SQLiteStorage) GetDNSProviderByName(name string) (*model.DNSProviderCon
 }
 
 // ListDNSProviders retrieves all DNS providers matching the filter criteria
-func (s *SQLiteStorage) ListDNSProviders(filter *model.DNSProviderFilter) ([]model.DNSProviderConfig, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListDNSProviders(ctx context.Context, filter *model.DNSProviderFilter) ([]model.DNSProviderConfig, error) {
 
 	query := `SELECT id, name, type, endpoint, token, description, created_at, updated_at FROM dns_provider_configs`
 	var args []any
@@ -308,12 +303,10 @@ func (s *SQLiteStorage) createDNSZoneInTx(ctx context.Context, tx *sql.Tx, zone 
 }
 
 // GetDNSZone retrieves a DNS zone by ID
-func (s *SQLiteStorage) GetDNSZone(id string) (*model.DNSZone, error) {
+func (s *SQLiteStorage) GetDNSZone(ctx context.Context, id string) (*model.DNSZone, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	zone := &model.DNSZone{}
 	var networkID, ptrZone, lastSyncError sql.NullString
@@ -354,12 +347,10 @@ func (s *SQLiteStorage) GetDNSZone(id string) (*model.DNSZone, error) {
 }
 
 // GetDNSZoneByName retrieves a DNS zone by name
-func (s *SQLiteStorage) GetDNSZoneByName(name string) (*model.DNSZone, error) {
+func (s *SQLiteStorage) GetDNSZoneByName(ctx context.Context, name string) (*model.DNSZone, error) {
 	if name == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	zone := &model.DNSZone{}
 	var networkID, ptrZone, lastSyncError sql.NullString
@@ -400,8 +391,7 @@ func (s *SQLiteStorage) GetDNSZoneByName(name string) (*model.DNSZone, error) {
 }
 
 // ListDNSZones retrieves all DNS zones matching the filter criteria
-func (s *SQLiteStorage) ListDNSZones(filter *model.DNSZoneFilter) ([]model.DNSZone, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListDNSZones(ctx context.Context, filter *model.DNSZoneFilter) ([]model.DNSZone, error) {
 
 	query := `SELECT id, name, provider_id, network_id, auto_sync, create_ptr, ptr_zone,
 	        ttl, description, last_sync_at, last_sync_status, last_sync_error, created_at, updated_at
@@ -574,12 +564,10 @@ func (s *SQLiteStorage) deleteDNSZoneInTx(ctx context.Context, tx *sql.Tx, id st
 }
 
 // GetDNSZonesByNetwork retrieves all DNS zones for a specific network
-func (s *SQLiteStorage) GetDNSZonesByNetwork(networkID string) ([]model.DNSZone, error) {
+func (s *SQLiteStorage) GetDNSZonesByNetwork(ctx context.Context, networkID string) ([]model.DNSZone, error) {
 	if networkID == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	query := `SELECT id, name, provider_id, network_id, auto_sync, create_ptr, ptr_zone,
 	        ttl, description, last_sync_at, last_sync_status, last_sync_error, created_at, updated_at
@@ -634,12 +622,12 @@ func (s *SQLiteStorage) GetDNSZonesByNetwork(networkID string) ([]model.DNSZone,
 }
 
 // GetDNSZonesByProvider retrieves all DNS zones for a specific provider
-func (s *SQLiteStorage) GetDNSZonesByProvider(providerID string) ([]model.DNSZone, error) {
+func (s *SQLiteStorage) GetDNSZonesByProvider(ctx context.Context, providerID string) ([]model.DNSZone, error) {
 	if providerID == "" {
 		return nil, ErrInvalidID
 	}
 
-	return s.ListDNSZones(&model.DNSZoneFilter{ProviderID: providerID})
+	return s.ListDNSZones(ctx, &model.DNSZoneFilter{ProviderID: providerID})
 }
 
 // ========================================
@@ -713,12 +701,10 @@ func (s *SQLiteStorage) createDNSRecordInTx(ctx context.Context, tx *sql.Tx, rec
 }
 
 // GetDNSRecord retrieves a DNS record by ID
-func (s *SQLiteStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
+func (s *SQLiteStorage) GetDNSRecord(ctx context.Context, id string) (*model.DNSRecord, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	record := &model.DNSRecord{}
 	var deviceID, addressID, errorMessage sql.NullString
@@ -758,12 +744,10 @@ func (s *SQLiteStorage) GetDNSRecord(id string) (*model.DNSRecord, error) {
 }
 
 // GetDNSRecordByName retrieves a DNS record by zone, name, and type
-func (s *SQLiteStorage) GetDNSRecordByName(zoneID, name string, recordType string) (*model.DNSRecord, error) {
+func (s *SQLiteStorage) GetDNSRecordByName(ctx context.Context, zoneID, name string, recordType string) (*model.DNSRecord, error) {
 	if zoneID == "" || name == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	record := &model.DNSRecord{}
 	var deviceID, addressID, errorMessage sql.NullString
@@ -803,8 +787,7 @@ func (s *SQLiteStorage) GetDNSRecordByName(zoneID, name string, recordType strin
 }
 
 // ListDNSRecords retrieves all DNS records matching the filter criteria
-func (s *SQLiteStorage) ListDNSRecords(filter *model.DNSRecordFilter) ([]model.DNSRecord, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListDNSRecords(ctx context.Context, filter *model.DNSRecordFilter) ([]model.DNSRecord, error) {
 
 	query := `SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 	        FROM dns_records`
@@ -1016,14 +999,13 @@ func (s *SQLiteStorage) DeleteDNSRecordsByDevice(ctx context.Context, deviceID s
 }
 
 // GetDNSRecordsByDevice retrieves all DNS records for a specific device
-func (s *SQLiteStorage) GetDNSRecordsByDevice(deviceID string) ([]model.DNSRecord, error) {
+func (s *SQLiteStorage) GetDNSRecordsByDevice(ctx context.Context, deviceID string) ([]model.DNSRecord, error) {
 	if deviceID == "" {
 		return nil, ErrInvalidID
 	}
 
 	// Check if device exists
 	var exists bool
-	ctx := context.Background()
 	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, deviceID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check device existence: %w", err)

@@ -11,16 +11,16 @@ import (
 
 // APIKeyStorage defines the interface for API key storage
 type APIKeyStorage interface {
-	CreateAPIKey(key *model.APIKey) error
-	GetAPIKey(id string) (*model.APIKey, error)
-	GetAPIKeyByKey(key string) (*model.APIKey, error)
-	ListAPIKeys(filter *model.APIKeyFilter) ([]model.APIKey, error)
-	UpdateAPIKeyLastUsed(id string, lastUsed time.Time) error
-	DeleteAPIKey(id string) error
+	CreateAPIKey(ctx context.Context, key *model.APIKey) error
+	GetAPIKey(ctx context.Context, id string) (*model.APIKey, error)
+	GetAPIKeyByKey(ctx context.Context, key string) (*model.APIKey, error)
+	ListAPIKeys(ctx context.Context, filter *model.APIKeyFilter) ([]model.APIKey, error)
+	UpdateAPIKeyLastUsed(ctx context.Context, id string, lastUsed time.Time) error
+	DeleteAPIKey(ctx context.Context, id string) error
 }
 
 // CreateAPIKey creates a new API key
-func (s *SQLiteStorage) CreateAPIKey(key *model.APIKey) error {
+func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) error {
 	if key.ID == "" {
 		key.ID = newUUID()
 	}
@@ -28,7 +28,6 @@ func (s *SQLiteStorage) CreateAPIKey(key *model.APIKey) error {
 		key.CreatedAt = time.Now()
 	}
 
-	ctx := context.Background()
 	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at)
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
@@ -49,12 +48,11 @@ func (s *SQLiteStorage) CreateAPIKey(key *model.APIKey) error {
 }
 
 // GetAPIKey retrieves an API key by ID
-func (s *SQLiteStorage) GetAPIKey(id string) (*model.APIKey, error) {
+func (s *SQLiteStorage) GetAPIKey(ctx context.Context, id string) (*model.APIKey, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
 
-	ctx := context.Background()
 	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys WHERE id = ?`
 
@@ -83,12 +81,11 @@ func (s *SQLiteStorage) GetAPIKey(id string) (*model.APIKey, error) {
 }
 
 // GetAPIKeyByKey retrieves an API key by the key string
-func (s *SQLiteStorage) GetAPIKeyByKey(keyStr string) (*model.APIKey, error) {
+func (s *SQLiteStorage) GetAPIKeyByKey(ctx context.Context, keyStr string) (*model.APIKey, error) {
 	if keyStr == "" {
 		return nil, fmt.Errorf("key cannot be empty")
 	}
 
-	ctx := context.Background()
 	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys WHERE key = ?`
 
@@ -117,8 +114,7 @@ func (s *SQLiteStorage) GetAPIKeyByKey(keyStr string) (*model.APIKey, error) {
 }
 
 // ListAPIKeys retrieves all API keys matching the filter
-func (s *SQLiteStorage) ListAPIKeys(filter *model.APIKeyFilter) ([]model.APIKey, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFilter) ([]model.APIKey, error) {
 	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
 	          FROM api_keys`
 	var conditions []string
@@ -180,12 +176,11 @@ func (s *SQLiteStorage) ListAPIKeys(filter *model.APIKeyFilter) ([]model.APIKey,
 }
 
 // UpdateAPIKeyLastUsed updates the last used timestamp
-func (s *SQLiteStorage) UpdateAPIKeyLastUsed(id string, lastUsed time.Time) error {
+func (s *SQLiteStorage) UpdateAPIKeyLastUsed(ctx context.Context, id string, lastUsed time.Time) error {
 	if id == "" {
 		return ErrInvalidID
 	}
 
-	ctx := context.Background()
 	query := `UPDATE api_keys SET last_used_at = ? WHERE id = ?`
 
 	_, err := s.db.ExecContext(ctx, query, lastUsed, id)
@@ -197,12 +192,10 @@ func (s *SQLiteStorage) UpdateAPIKeyLastUsed(id string, lastUsed time.Time) erro
 }
 
 // DeleteAPIKey deletes an API key
-func (s *SQLiteStorage) DeleteAPIKey(id string) error {
+func (s *SQLiteStorage) DeleteAPIKey(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Check if key exists
 	var exists bool

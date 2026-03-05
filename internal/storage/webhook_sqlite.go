@@ -33,11 +33,11 @@ func (s *SQLiteStorage) CreateWebhook(ctx context.Context, webhook *model.Webhoo
 }
 
 // GetWebhook retrieves a webhook by ID
-func (s *SQLiteStorage) GetWebhook(id string) (*model.Webhook, error) {
+func (s *SQLiteStorage) GetWebhook(ctx context.Context, id string) (*model.Webhook, error) {
 	webhook := &model.Webhook{}
 	var eventsJSON string
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, url, secret, events, active, description, created_at, updated_at, created_by
 		FROM webhooks WHERE id = ?
 	`, id).Scan(&webhook.ID, &webhook.Name, &webhook.URL, &webhook.Secret, &eventsJSON,
@@ -58,7 +58,7 @@ func (s *SQLiteStorage) GetWebhook(id string) (*model.Webhook, error) {
 }
 
 // ListWebhooks retrieves webhooks matching filter criteria
-func (s *SQLiteStorage) ListWebhooks(filter *model.WebhookFilter) ([]model.Webhook, error) {
+func (s *SQLiteStorage) ListWebhooks(ctx context.Context, filter *model.WebhookFilter) ([]model.Webhook, error) {
 	query := `SELECT id, name, url, secret, events, active, description, created_at, updated_at, created_by
 		FROM webhooks WHERE 1=1`
 	var args []any
@@ -77,7 +77,7 @@ func (s *SQLiteStorage) ListWebhooks(filter *model.WebhookFilter) ([]model.Webho
 
 	query += " ORDER BY created_at DESC"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +138,12 @@ func (s *SQLiteStorage) DeleteWebhook(ctx context.Context, id string) error {
 }
 
 // GetWebhooksForEvent retrieves all active webhooks subscribed to a specific event
-func (s *SQLiteStorage) GetWebhooksForEvent(eventType model.EventType) ([]model.Webhook, error) {
+func (s *SQLiteStorage) GetWebhooksForEvent(ctx context.Context, eventType model.EventType) ([]model.Webhook, error) {
 	// Use LIKE to find webhooks that include this event type in their JSON array
 	query := `SELECT id, name, url, secret, events, active, description, created_at, updated_at, created_by
 		FROM webhooks WHERE active = 1 AND events LIKE ?`
 
-	rows, err := s.db.Query(query, "%"+string(eventType)+"%")
+	rows, err := s.db.QueryContext(ctx, query, "%"+string(eventType)+"%")
 	if err != nil {
 		return nil, err
 	}
@@ -186,10 +186,10 @@ func (s *SQLiteStorage) CreateDelivery(ctx context.Context, delivery *model.Webh
 }
 
 // GetDelivery retrieves a delivery by ID
-func (s *SQLiteStorage) GetDelivery(id string) (*model.WebhookDelivery, error) {
+func (s *SQLiteStorage) GetDelivery(ctx context.Context, id string) (*model.WebhookDelivery, error) {
 	delivery := &model.WebhookDelivery{}
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, webhook_id, event_type, payload, response_code, response_body, error, duration_ms, status, attempt_number, next_retry, created_at
 		FROM webhook_deliveries WHERE id = ?
 	`, id).Scan(&delivery.ID, &delivery.WebhookID, &delivery.EventType, &delivery.Payload,
@@ -207,7 +207,7 @@ func (s *SQLiteStorage) GetDelivery(id string) (*model.WebhookDelivery, error) {
 }
 
 // ListDeliveries retrieves deliveries matching filter criteria
-func (s *SQLiteStorage) ListDeliveries(filter *model.DeliveryFilter) ([]model.WebhookDelivery, error) {
+func (s *SQLiteStorage) ListDeliveries(ctx context.Context, filter *model.DeliveryFilter) ([]model.WebhookDelivery, error) {
 	query := `SELECT id, webhook_id, event_type, payload, response_code, response_body, error, duration_ms, status, attempt_number, next_retry, created_at
 		FROM webhook_deliveries WHERE 1=1`
 	var args []any
@@ -247,7 +247,7 @@ func (s *SQLiteStorage) ListDeliveries(filter *model.DeliveryFilter) ([]model.We
 		args = append(args, filter.Limit)
 	}
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -280,14 +280,14 @@ func (s *SQLiteStorage) UpdateDelivery(ctx context.Context, delivery *model.Webh
 }
 
 // DeleteOldDeliveries removes delivery records older than specified days
-func (s *SQLiteStorage) DeleteOldDeliveries(olderThanDays int) error {
+func (s *SQLiteStorage) DeleteOldDeliveries(ctx context.Context, olderThanDays int) error {
 	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.Exec(`DELETE FROM webhook_deliveries WHERE created_at < ?`, cutoff)
+	_, err := s.db.ExecContext(ctx, `DELETE FROM webhook_deliveries WHERE created_at < ?`, cutoff)
 	return err
 }
 
 // GetPendingDeliveries retrieves deliveries that are pending retry
-func (s *SQLiteStorage) GetPendingDeliveries(limit int) ([]model.WebhookDelivery, error) {
+func (s *SQLiteStorage) GetPendingDeliveries(ctx context.Context, limit int) ([]model.WebhookDelivery, error) {
 	query := `SELECT id, webhook_id, event_type, payload, response_code, response_body, error, duration_ms, status, attempt_number, next_retry, created_at
 		FROM webhook_deliveries
 		WHERE status IN (?, ?) AND next_retry IS NOT NULL AND next_retry <= ?
@@ -297,7 +297,7 @@ func (s *SQLiteStorage) GetPendingDeliveries(limit int) ([]model.WebhookDelivery
 		query += " LIMIT ?"
 	}
 
-	rows, err := s.db.Query(query, model.DeliveryStatusPending, model.DeliveryStatusRetrying, time.Now().UTC(), limit)
+	rows, err := s.db.QueryContext(ctx, query, model.DeliveryStatusPending, model.DeliveryStatusRetrying, time.Now().UTC(), limit)
 	if err != nil {
 		return nil, err
 	}

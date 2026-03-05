@@ -21,7 +21,7 @@ func (s *AuditService) List(ctx context.Context, filter *model.AuditFilter) ([]m
 	if err := requirePermission(ctx, s.store, "audit", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListAuditLogs(filter)
+	return s.store.ListAuditLogs(ctx, filter)
 }
 
 func (s *AuditService) Get(ctx context.Context, id string) (*model.AuditLog, error) {
@@ -29,7 +29,7 @@ func (s *AuditService) Get(ctx context.Context, id string) (*model.AuditLog, err
 		return nil, err
 	}
 
-	log, err := s.store.GetAuditLog(id)
+	log, err := s.store.GetAuditLog(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrAuditLogNotFound) {
 			return nil, ErrNotFound
@@ -45,7 +45,7 @@ func (s *AuditService) Export(ctx context.Context, filter *model.AuditFilter, fo
 		return nil, err
 	}
 
-	logs, err := s.store.ListAuditLogs(filter)
+	logs, err := s.store.ListAuditLogs(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

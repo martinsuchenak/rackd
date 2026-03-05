@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 // CreateAuditLog creates a new audit log entry
-func (s *SQLiteStorage) CreateAuditLog(log *model.AuditLog) error {
+func (s *SQLiteStorage) CreateAuditLog(ctx context.Context, log *model.AuditLog) error {
 	if log.ID == "" {
 		log.ID = uuid.New().String()
 	}
@@ -17,7 +18,7 @@ func (s *SQLiteStorage) CreateAuditLog(log *model.AuditLog) error {
 		log.Timestamp = time.Now()
 	}
 
-	_, err := s.db.Exec(`
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error, log.Source)
@@ -26,7 +27,7 @@ func (s *SQLiteStorage) CreateAuditLog(log *model.AuditLog) error {
 }
 
 // ListAuditLogs retrieves audit logs with optional filtering
-func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditLog, error) {
+func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFilter) ([]model.AuditLog, error) {
 	query := `SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source FROM audit_logs WHERE 1=1`
 	args := []interface{}{}
 
@@ -72,7 +73,7 @@ func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditL
 		}
 	}
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +97,10 @@ func (s *SQLiteStorage) ListAuditLogs(filter *model.AuditFilter) ([]model.AuditL
 }
 
 // GetAuditLog retrieves a single audit log by ID
-func (s *SQLiteStorage) GetAuditLog(id string) (*model.AuditLog, error) {
+func (s *SQLiteStorage) GetAuditLog(ctx context.Context, id string) (*model.AuditLog, error) {
 	var log model.AuditLog
 	var source sql.NullString
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source
 		FROM audit_logs WHERE id = ?
 	`, id).Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error, &source)
@@ -114,8 +115,8 @@ func (s *SQLiteStorage) GetAuditLog(id string) (*model.AuditLog, error) {
 }
 
 // DeleteOldAuditLogs deletes audit logs older than specified days
-func (s *SQLiteStorage) DeleteOldAuditLogs(olderThanDays int) error {
+func (s *SQLiteStorage) DeleteOldAuditLogs(ctx context.Context, olderThanDays int) error {
 	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.Exec("DELETE FROM audit_logs WHERE timestamp < ?", cutoff)
+	_, err := s.db.ExecContext(ctx, "DELETE FROM audit_logs WHERE timestamp < ?", cutoff)
 	return err
 }

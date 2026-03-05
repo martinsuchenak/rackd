@@ -22,7 +22,7 @@ func (s *NATService) List(ctx context.Context, filter *model.NATFilter) ([]model
 		return nil, err
 	}
 
-	return s.store.ListNATMappings(filter)
+	return s.store.ListNATMappings(ctx, filter)
 }
 
 // Get returns a single NAT mapping by ID
@@ -31,7 +31,7 @@ func (s *NATService) Get(ctx context.Context, id string) (*model.NATMapping, err
 		return nil, err
 	}
 
-	mapping, err := s.store.GetNATMapping(id)
+	mapping, err := s.store.GetNATMapping(ctx, id)
 	if err != nil {
 		if err == storage.ErrNATNotFound {
 			return nil, ErrNotFound
@@ -109,7 +109,7 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 		return nil, err
 	}
 
-	mapping, err := s.store.GetNATMapping(id)
+	mapping, err := s.store.GetNATMapping(ctx, id)
 	if err != nil {
 		if err == storage.ErrNATNotFound {
 			return nil, ErrNotFound
@@ -202,7 +202,7 @@ func (s *NATService) GetByDevice(ctx context.Context, deviceID string) ([]model.
 		return nil, err
 	}
 
-	return s.store.GetNATMappingsByDevice(deviceID)
+	return s.store.GetNATMappingsByDevice(ctx, deviceID)
 }
 
 // GetByDatacenter returns all NAT mappings for a datacenter
@@ -211,5 +211,5 @@ func (s *NATService) GetByDatacenter(ctx context.Context, datacenterID string) (
 		return nil, err
 	}
 
-	return s.store.GetNATMappingsByDatacenter(datacenterID)
+	return s.store.GetNATMappingsByDatacenter(ctx, datacenterID)
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/internal/metrics"
@@ -9,7 +10,7 @@ import (
 // metricsHandler serves Prometheus-compatible metrics
 func (h *Handler) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	// Update current counts
-	h.updateMetricsCounts()
+	h.updateMetricsCounts(r.Context())
 
 	// Export metrics
 	m := metrics.Get()
@@ -21,23 +22,23 @@ func (h *Handler) metricsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // updateMetricsCounts updates gauge metrics with current counts
-func (h *Handler) updateMetricsCounts() {
+func (h *Handler) updateMetricsCounts(ctx context.Context) {
 	m := metrics.Get()
 
 	// Get device count
-	devices, err := h.store.ListDevices(nil)
+	devices, err := h.store.ListDevices(ctx, nil)
 	if err == nil {
 		m.SetDeviceCount(int64(len(devices)))
 	}
 
 	// Get network count
-	networks, err := h.store.ListNetworks(nil)
+	networks, err := h.store.ListNetworks(ctx, nil)
 	if err == nil {
 		m.SetNetworkCount(int64(len(networks)))
 	}
 
 	// Get datacenter count
-	datacenters, err := h.store.ListDatacenters(nil)
+	datacenters, err := h.store.ListDatacenters(ctx, nil)
 	if err == nil {
 		m.SetDatacenterCount(int64(len(datacenters)))
 	}

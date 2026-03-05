@@ -33,7 +33,7 @@ func (s *DiscoveryService) StartScan(ctx context.Context, networkID, scanType st
 		return nil, ValidationErrors{{Field: "network_id", Message: "Network ID is required"}}
 	}
 
-	network, err := s.store.GetNetwork(networkID)
+	network, err := s.store.GetNetwork(ctx, networkID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (s *DiscoveryService) ListScans(ctx context.Context, networkID string) ([]m
 	if err := requirePermission(ctx, s.store, "discovery", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListDiscoveryScans(networkID)
+	return s.store.ListDiscoveryScans(ctx, networkID)
 }
 
 func (s *DiscoveryService) GetScan(ctx context.Context, id string) (*model.DiscoveryScan, error) {
@@ -65,7 +65,7 @@ func (s *DiscoveryService) GetScan(ctx context.Context, id string) (*model.Disco
 		return nil, err
 	}
 
-	scan, err := s.store.GetDiscoveryScan(id)
+	scan, err := s.store.GetDiscoveryScan(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrScanNotFound) {
 			return nil, ErrNotFound
@@ -81,7 +81,7 @@ func (s *DiscoveryService) CancelScan(ctx context.Context, id string) error {
 	}
 
 	if s.scanner != nil {
-		if err := s.scanner.CancelScan(id); err != nil {
+		if err := s.scanner.CancelScan(ctx, id); err != nil {
 			if err == discovery.ErrScanNotFound {
 				return ErrNotFound
 			}
@@ -114,7 +114,7 @@ func (s *DiscoveryService) ListDevices(ctx context.Context, networkID string) ([
 	if err := requirePermission(ctx, s.store, "discovery", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListDiscoveredDevices(networkID)
+	return s.store.ListDiscoveredDevices(ctx, networkID)
 }
 
 func (s *DiscoveryService) GetDevice(ctx context.Context, id string) (*model.DiscoveredDevice, error) {
@@ -122,7 +122,7 @@ func (s *DiscoveryService) GetDevice(ctx context.Context, id string) (*model.Dis
 		return nil, err
 	}
 
-	device, err := s.store.GetDiscoveredDevice(id)
+	device, err := s.store.GetDiscoveredDevice(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			return nil, ErrNotFound
@@ -167,7 +167,7 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		return nil, ValidationErrors{{Field: "name", Message: "Device name is required"}}
 	}
 
-	discovered, err := s.store.GetDiscoveredDevice(discoveredID)
+	discovered, err := s.store.GetDiscoveredDevice(ctx, discoveredID)
 	if err != nil {
 		if errors.Is(err, storage.ErrDiscoveryNotFound) {
 			return nil, ErrNotFound
@@ -248,7 +248,7 @@ func (s *DiscoveryService) ListRules(ctx context.Context) ([]model.DiscoveryRule
 	if err := requirePermission(ctx, s.store, "discovery", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListDiscoveryRules()
+	return s.store.ListDiscoveryRules(ctx)
 }
 
 func (s *DiscoveryService) GetRule(ctx context.Context, id string) (*model.DiscoveryRule, error) {
@@ -256,7 +256,7 @@ func (s *DiscoveryService) GetRule(ctx context.Context, id string) (*model.Disco
 		return nil, err
 	}
 
-	rule, err := s.store.GetDiscoveryRule(id)
+	rule, err := s.store.GetDiscoveryRule(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrRuleNotFound) {
 			return nil, ErrNotFound

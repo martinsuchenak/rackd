@@ -50,7 +50,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 		Key:    auth.HashToken(keySecret),
 		UserID: testUser.ID,
 	}
-	if err := store.CreateAPIKey(key); err != nil {
+	if err := store.CreateAPIKey(context.Background(), key); err != nil {
 		t.Fatalf("Failed to create API key: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 		Key:       auth.HashToken(expiredSecret),
 		ExpiresAt: &expired,
 	}
-	if err := store.CreateAPIKey(key); err != nil {
+	if err := store.CreateAPIKey(context.Background(), key); err != nil {
 		t.Fatalf("Failed to create API key: %v", err)
 	}
 

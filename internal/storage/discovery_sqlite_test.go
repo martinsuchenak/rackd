@@ -47,7 +47,7 @@ func TestDiscoveredDeviceCRUD(t *testing.T) {
 	}
 
 	// Get device
-	got, err := storage.GetDiscoveredDevice(device.ID)
+	got, err := storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDiscoveredDevice failed: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestDiscoveredDeviceCRUD(t *testing.T) {
 	if err := storage.UpdateDiscoveredDevice(context.Background(), device); err != nil {
 		t.Fatalf("UpdateDiscoveredDevice failed: %v", err)
 	}
-	got, _ = storage.GetDiscoveredDevice(device.ID)
+	got, _ = storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if got.Hostname != "updated-host" || got.Confidence != 95 {
 		t.Errorf("update failed: got %+v", got)
 	}
@@ -76,7 +76,7 @@ func TestDiscoveredDeviceCRUD(t *testing.T) {
 	if err := storage.DeleteDiscoveredDevice(context.Background(), device.ID); err != nil {
 		t.Fatalf("DeleteDiscoveredDevice failed: %v", err)
 	}
-	_, err = storage.GetDiscoveredDevice(device.ID)
+	_, err = storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if err != ErrDiscoveryNotFound {
 		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
 	}
@@ -99,7 +99,7 @@ func TestDiscoveredDeviceByIP(t *testing.T) {
 	}
 	storage.CreateDiscoveredDevice(context.Background(), device)
 
-	got, err := storage.GetDiscoveredDeviceByIP(network.ID, "192.168.1.50")
+	got, err := storage.GetDiscoveredDeviceByIP(context.Background(), network.ID, "192.168.1.50")
 	if err != nil {
 		t.Fatalf("GetDiscoveredDeviceByIP failed: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestDiscoveredDeviceByIP(t *testing.T) {
 	}
 
 	// Not found
-	_, err = storage.GetDiscoveredDeviceByIP(network.ID, "192.168.1.99")
+	_, err = storage.GetDiscoveredDeviceByIP(context.Background(), network.ID, "192.168.1.99")
 	if err != ErrDiscoveryNotFound {
 		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
 	}
@@ -131,7 +131,7 @@ func TestListDiscoveredDevices(t *testing.T) {
 	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.2.1", NetworkID: network2.ID})
 
 	// List all
-	all, err := storage.ListDiscoveredDevices("")
+	all, err := storage.ListDiscoveredDevices(context.Background(), "")
 	if err != nil {
 		t.Fatalf("ListDiscoveredDevices failed: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestListDiscoveredDevices(t *testing.T) {
 	}
 
 	// List by network
-	net1Devices, err := storage.ListDiscoveredDevices(network1.ID)
+	net1Devices, err := storage.ListDiscoveredDevices(context.Background(), network1.ID)
 	if err != nil {
 		t.Fatalf("ListDiscoveredDevices failed: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestPromoteDiscoveredDevice(t *testing.T) {
 		t.Fatalf("PromoteDiscoveredDevice failed: %v", err)
 	}
 
-	got, _ := storage.GetDiscoveredDevice(discovered.ID)
+	got, _ := storage.GetDiscoveredDevice(context.Background(), discovered.ID)
 	if got.PromotedToDeviceID != device.ID {
 		t.Errorf("promoted_to_device_id mismatch: got %s", got.PromotedToDeviceID)
 	}
@@ -201,7 +201,7 @@ func TestDiscoveryScanCRUD(t *testing.T) {
 		t.Error("scan ID should be set")
 	}
 
-	got, err := storage.GetDiscoveryScan(scan.ID)
+	got, err := storage.GetDiscoveryScan(context.Background(), scan.ID)
 	if err != nil {
 		t.Fatalf("GetDiscoveryScan failed: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestDiscoveryScanCRUD(t *testing.T) {
 	if err := storage.UpdateDiscoveryScan(context.Background(), scan); err != nil {
 		t.Fatalf("UpdateDiscoveryScan failed: %v", err)
 	}
-	got, _ = storage.GetDiscoveryScan(scan.ID)
+	got, _ = storage.GetDiscoveryScan(context.Background(), scan.ID)
 	if got.Status != model.ScanStatusRunning || got.ScannedHosts != 50 {
 		t.Errorf("update failed: got %+v", got)
 	}
@@ -235,7 +235,7 @@ func TestListDiscoveryScans(t *testing.T) {
 	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusCompleted})
 	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusRunning})
 
-	scans, err := storage.ListDiscoveryScans(network.ID)
+	scans, err := storage.ListDiscoveryScans(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("ListDiscoveryScans failed: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestDiscoveryRuleCRUD(t *testing.T) {
 		t.Fatalf("SaveDiscoveryRule failed: %v", err)
 	}
 
-	got, err := storage.GetDiscoveryRuleByNetwork(network.ID)
+	got, err := storage.GetDiscoveryRuleByNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("GetDiscoveryRuleByNetwork failed: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestDiscoveryRuleCRUD(t *testing.T) {
 	if err := storage.SaveDiscoveryRule(context.Background(), rule); err != nil {
 		t.Fatalf("SaveDiscoveryRule update failed: %v", err)
 	}
-	got, _ = storage.GetDiscoveryRuleByNetwork(network.ID)
+	got, _ = storage.GetDiscoveryRuleByNetwork(context.Background(), network.ID)
 	if got.Enabled || got.IntervalHours != 12 {
 		t.Errorf("update failed: got %+v", got)
 	}
@@ -300,7 +300,7 @@ func TestListDiscoveryRules(t *testing.T) {
 	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network1.ID, Enabled: true})
 	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false})
 
-	rules, err := storage.ListDiscoveryRules()
+	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
 		t.Fatalf("ListDiscoveryRules failed: %v", err)
 	}
@@ -329,11 +329,11 @@ func TestCleanupOldDiscoveries(t *testing.T) {
 	storage.PromoteDiscoveredDevice(context.Background(), promoted.ID, device.ID)
 
 	// Cleanup with 0 days should remove non-promoted devices
-	if err := storage.CleanupOldDiscoveries(0); err != nil {
+	if err := storage.CleanupOldDiscoveries(context.Background(), 0); err != nil {
 		t.Fatalf("CleanupOldDiscoveries failed: %v", err)
 	}
 
-	devices, _ := storage.ListDiscoveredDevices(network.ID)
+	devices, _ := storage.ListDiscoveredDevices(context.Background(), network.ID)
 	if len(devices) != 1 {
 		t.Errorf("expected 1 device (promoted), got %d", len(devices))
 	}
@@ -349,17 +349,17 @@ func TestDiscoveryNotFoundErrors(t *testing.T) {
 	}
 	defer storage.Close()
 
-	_, err = storage.GetDiscoveredDevice("nonexistent")
+	_, err = storage.GetDiscoveredDevice(context.Background(), "nonexistent")
 	if err != ErrDiscoveryNotFound {
 		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
 	}
 
-	_, err = storage.GetDiscoveryScan("nonexistent")
+	_, err = storage.GetDiscoveryScan(context.Background(), "nonexistent")
 	if err != ErrScanNotFound {
 		t.Errorf("expected ErrScanNotFound, got %v", err)
 	}
 
-	_, err = storage.GetDiscoveryRule("nonexistent")
+	_, err = storage.GetDiscoveryRule(context.Background(), "nonexistent")
 	if err != ErrRuleNotFound {
 		t.Errorf("expected ErrRuleNotFound, got %v", err)
 	}
@@ -399,7 +399,7 @@ func TestDiscoveryInvalidIDs(t *testing.T) {
 	}
 
 	// GetDiscoveredDevice with non-existent ID returns not found
-	_, err = storage.GetDiscoveredDevice("nonexistent")
+	_, err = storage.GetDiscoveredDevice(context.Background(), "nonexistent")
 	if err != ErrDiscoveryNotFound {
 		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
 	}
@@ -417,7 +417,7 @@ func TestDiscoveryInvalidIDs(t *testing.T) {
 	}
 
 	// GetDiscoveredDeviceByIP with non-existent network returns not found
-	_, err = storage.GetDiscoveredDeviceByIP("nonexistent", "192.168.1.1")
+	_, err = storage.GetDiscoveredDeviceByIP(context.Background(), "nonexistent", "192.168.1.1")
 	if err != ErrDiscoveryNotFound {
 		t.Errorf("expected ErrDiscoveryNotFound, got %v", err)
 	}
@@ -437,7 +437,7 @@ func TestDiscoveryScanInvalidIDs(t *testing.T) {
 	}
 
 	// GetDiscoveryScan with non-existent ID
-	_, err = storage.GetDiscoveryScan("nonexistent")
+	_, err = storage.GetDiscoveryScan(context.Background(), "nonexistent")
 	if err != ErrScanNotFound {
 		t.Errorf("expected ErrScanNotFound, got %v", err)
 	}
@@ -451,7 +451,7 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	storage.CreateNetwork(context.Background(), network)
 
 	// GetDiscoveryRuleByNetwork with non-existent network ID
-	_, err := storage.GetDiscoveryRuleByNetwork("nonexistent")
+	_, err := storage.GetDiscoveryRuleByNetwork(context.Background(), "nonexistent")
 	if err != ErrRuleNotFound {
 		t.Errorf("expected ErrRuleNotFound, got %v", err)
 	}
@@ -469,7 +469,7 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	}
 
 	// Verify rule was saved
-	got, err := storage.GetDiscoveryRuleByNetwork(network.ID)
+	got, err := storage.GetDiscoveryRuleByNetwork(context.Background(), network.ID)
 	if err != nil {
 		t.Errorf("GetDiscoveryRuleByNetwork failed: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	}
 
 	// Test GetDiscoveryRule by ID
-	gotByID, err := storage.GetDiscoveryRule(got.ID)
+	gotByID, err := storage.GetDiscoveryRule(context.Background(), got.ID)
 	if err != nil {
 		t.Errorf("GetDiscoveryRule by ID failed: %v", err)
 	}
@@ -491,7 +491,7 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 	if err != nil {
 		t.Errorf("DeleteDiscoveryRule failed: %v", err)
 	}
-	_, err = storage.GetDiscoveryRule(got.ID)
+	_, err = storage.GetDiscoveryRule(context.Background(), got.ID)
 	if err != ErrRuleNotFound {
 		t.Errorf("expected ErrRuleNotFound after delete, got %v", err)
 	}
@@ -508,11 +508,11 @@ func TestCleanupOldDiscoveriesWithDays(t *testing.T) {
 	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
 
 	// Cleanup with 30 days should not remove recent devices
-	if err := storage.CleanupOldDiscoveries(30); err != nil {
+	if err := storage.CleanupOldDiscoveries(context.Background(), 30); err != nil {
 		t.Fatalf("CleanupOldDiscoveries failed: %v", err)
 	}
 
-	devices, _ := storage.ListDiscoveredDevices(network.ID)
+	devices, _ := storage.ListDiscoveredDevices(context.Background(), network.ID)
 	if len(devices) != 1 {
 		t.Errorf("expected 1 device (recent), got %d", len(devices))
 	}
@@ -548,7 +548,7 @@ func TestDiscoveryScanWithAllFields(t *testing.T) {
 		t.Fatalf("UpdateDiscoveryScan failed: %v", err)
 	}
 
-	got, _ := storage.GetDiscoveryScan(scan.ID)
+	got, _ := storage.GetDiscoveryScan(context.Background(), scan.ID)
 	if got.Status != model.ScanStatusCompleted {
 		t.Errorf("expected completed status, got %s", got.Status)
 	}
@@ -578,7 +578,7 @@ func TestDiscoveredDeviceWithServices(t *testing.T) {
 	}
 	storage.CreateDiscoveredDevice(context.Background(), device)
 
-	got, _ := storage.GetDiscoveredDevice(device.ID)
+	got, _ := storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if len(got.OpenPorts) != 5 {
 		t.Errorf("expected 5 open ports, got %d", len(got.OpenPorts))
 	}
@@ -594,7 +594,7 @@ func TestListDiscoveryScansEmpty(t *testing.T) {
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
 	storage.CreateNetwork(context.Background(), network)
 
-	scans, err := storage.ListDiscoveryScans(network.ID)
+	scans, err := storage.ListDiscoveryScans(context.Background(), network.ID)
 	if err != nil {
 		t.Fatalf("ListDiscoveryScans failed: %v", err)
 	}
@@ -607,7 +607,7 @@ func TestListDiscoveryRulesEmpty(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	rules, err := storage.ListDiscoveryRules()
+	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
 		t.Fatalf("ListDiscoveryRules failed: %v", err)
 	}
@@ -635,7 +635,7 @@ func TestDiscoveryScanWithError(t *testing.T) {
 		t.Fatalf("CreateDiscoveryScan failed: %v", err)
 	}
 
-	got, _ := storage.GetDiscoveryScan(scan.ID)
+	got, _ := storage.GetDiscoveryScan(context.Background(), scan.ID)
 	if got.ErrorMessage != "Connection timeout" {
 		t.Errorf("expected error message, got '%s'", got.ErrorMessage)
 	}
@@ -657,7 +657,7 @@ func TestListDiscoveryScansAllNetworks(t *testing.T) {
 	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network2.ID, Status: model.ScanStatusCompleted})
 
 	// List all scans (empty network ID)
-	scans, err := storage.ListDiscoveryScans("")
+	scans, err := storage.ListDiscoveryScans(context.Background(), "")
 	if err != nil {
 		t.Fatalf("ListDiscoveryScans failed: %v", err)
 	}
@@ -693,7 +693,7 @@ func TestDiscoveredDeviceUpdate(t *testing.T) {
 		t.Fatalf("UpdateDiscoveredDevice failed: %v", err)
 	}
 
-	got, _ := storage.GetDiscoveredDevice(device.ID)
+	got, _ := storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if got.Hostname != "updated-host" {
 		t.Errorf("hostname not updated")
 	}
@@ -721,7 +721,7 @@ func TestDiscoveryRuleWithAllFields(t *testing.T) {
 	}
 	storage.SaveDiscoveryRule(context.Background(), rule)
 
-	got, _ := storage.GetDiscoveryRuleByNetwork(network.ID)
+	got, _ := storage.GetDiscoveryRuleByNetwork(context.Background(), network.ID)
 	if got.ScanType != model.ScanTypeDeep {
 		t.Errorf("expected deep scan type, got %s", got.ScanType)
 	}
@@ -748,7 +748,7 @@ func TestListDiscoveryRulesMultiple(t *testing.T) {
 	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false, ScanType: model.ScanTypeFull})
 	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network3.ID, Enabled: true, ScanType: model.ScanTypeDeep})
 
-	rules, err := storage.ListDiscoveryRules()
+	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
 		t.Fatalf("ListDiscoveryRules failed: %v", err)
 	}

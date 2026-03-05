@@ -35,11 +35,11 @@ func (m *mockDiscoveryScanner) Scan(ctx context.Context, network *model.Network,
 	return scan, nil
 }
 
-func (m *mockDiscoveryScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
-	return m.store.GetDiscoveryScan(scanID)
+func (m *mockDiscoveryScanner) GetScanStatus(ctx context.Context, scanID string) (*model.DiscoveryScan, error) {
+	return m.store.GetDiscoveryScan(context.Background(), scanID)
 }
 
-func (m *mockDiscoveryScanner) CancelScan(scanID string) error {
+func (m *mockDiscoveryScanner) CancelScan(ctx context.Context, scanID string) error {
 	return nil
 }
 
@@ -109,7 +109,7 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 		Name: "test-key",
 		Key:  auth.HashToken(apiKeySecret),
 	}
-	if err := store.CreateAPIKey(key); err != nil {
+	if err := store.CreateAPIKey(context.Background(), key); err != nil {
 		t.Fatalf("failed to create API key: %v", err)
 	}
 
@@ -169,7 +169,7 @@ func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
 		Name: "test-key",
 		Key:  auth.HashToken(apiKeySecret),
 	}
-	if err := store.CreateAPIKey(key); err != nil {
+	if err := store.CreateAPIKey(context.Background(), key); err != nil {
 		t.Fatalf("failed to create API key: %v", err)
 	}
 
@@ -360,7 +360,7 @@ func TestDiscoveryScan(t *testing.T) {
 		"subnet": "172.16.0.0/24",
 	})
 
-	networks, _ := store.ListNetworks(nil)
+	networks, _ := store.ListNetworks(context.Background(), nil)
 	if len(networks) == 0 {
 		t.Fatal("expected network to be created")
 	}
@@ -394,7 +394,7 @@ func TestAddRelationship_InvalidType(t *testing.T) {
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "parent"})
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "child"})
 
-	devices, _ := store.ListDevices(nil)
+	devices, _ := store.ListDevices(context.Background(), nil)
 	if len(devices) < 2 {
 		t.Fatal("expected 2 devices")
 	}
@@ -418,7 +418,7 @@ func TestAddRelationship_ValidType(t *testing.T) {
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "parent"})
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "child"})
 
-	devices, _ := store.ListDevices(nil)
+	devices, _ := store.ListDevices(context.Background(), nil)
 	if len(devices) < 2 {
 		t.Fatal("expected 2 devices")
 	}
@@ -440,8 +440,7 @@ func TestGetRelationships(t *testing.T) {
 
 	// Create a device
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "test"})
-
-	devices, _ := store.ListDevices(nil)
+	devices, _ := store.ListDevices(context.Background(), nil)
 	if len(devices) == 0 {
 		t.Fatal("expected device")
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -13,11 +14,11 @@ import (
 var ErrProfileNotFound = errors.New("scan profile not found")
 
 type ProfileStorage interface {
-	Create(profile *model.ScanProfile) error
-	Update(profile *model.ScanProfile) error
-	Get(id string) (*model.ScanProfile, error)
-	List() ([]model.ScanProfile, error)
-	Delete(id string) error
+	Create(ctx context.Context, profile *model.ScanProfile) error
+	Update(ctx context.Context, profile *model.ScanProfile) error
+	Get(ctx context.Context, id string) (*model.ScanProfile, error)
+	List(ctx context.Context) ([]model.ScanProfile, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type SQLiteProfileStorage struct {
@@ -61,15 +62,15 @@ func (s *SQLiteProfileStorage) seedDefaults() error {
 		{ID: "default-deep", Name: "Deep Scan", ScanType: "deep", Ports: []int{22, 80, 443, 3389, 8080, 8443, 3306, 5432}, EnableSNMP: true, EnableSSH: true, TimeoutSec: 60, MaxWorkers: 10},
 	}
 	for _, p := range defaults {
-		existing, _ := s.Get(p.ID)
+		existing, _ := s.Get(context.Background(), p.ID)
 		if existing == nil {
-			s.Create(&p)
+			s.Create(context.Background(), &p)
 		}
 	}
 	return nil
 }
 
-func (s *SQLiteProfileStorage) Create(profile *model.ScanProfile) error {
+func (s *SQLiteProfileStorage) Create(ctx context.Context, profile *model.ScanProfile) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
@@ -88,7 +89,7 @@ func (s *SQLiteProfileStorage) Create(profile *model.ScanProfile) error {
 	return err
 }
 
-func (s *SQLiteProfileStorage) Update(profile *model.ScanProfile) error {
+func (s *SQLiteProfileStorage) Update(ctx context.Context, profile *model.ScanProfile) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
@@ -109,13 +110,13 @@ func (s *SQLiteProfileStorage) Update(profile *model.ScanProfile) error {
 	return nil
 }
 
-func (s *SQLiteProfileStorage) Get(id string) (*model.ScanProfile, error) {
-	row := s.db.QueryRow(`SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles WHERE id=?`, id)
+func (s *SQLiteProfileStorage) Get(ctx context.Context, id string) (*model.ScanProfile, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles WHERE id=?`, id)
 	return s.scanProfile(row)
 }
 
-func (s *SQLiteProfileStorage) List() ([]model.ScanProfile, error) {
-	rows, err := s.db.Query(`SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles ORDER BY name`)
+func (s *SQLiteProfileStorage) List(ctx context.Context) ([]model.ScanProfile, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +140,8 @@ func (s *SQLiteProfileStorage) List() ([]model.ScanProfile, error) {
 	return profiles, rows.Err()
 }
 
-func (s *SQLiteProfileStorage) Delete(id string) error {
-	res, err := s.db.Exec(`DELETE FROM scan_profiles WHERE id=?`, id)
+func (s *SQLiteProfileStorage) Delete(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM scan_profiles WHERE id=?`, id)
 	if err != nil {
 		return err
 	}

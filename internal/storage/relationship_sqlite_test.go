@@ -34,7 +34,7 @@ func TestRelationshipCRUD(t *testing.T) {
 	}
 
 	// Get relationships
-	rels, err := storage.GetRelationships(device1.ID)
+	rels, err := storage.GetRelationships(context.Background(), device1.ID)
 	if err != nil {
 		t.Fatalf("GetRelationships failed: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestRelationshipCRUD(t *testing.T) {
 	}
 
 	// Verify removed
-	rels, err = storage.GetRelationships(device1.ID)
+	rels, err = storage.GetRelationships(context.Background(), device1.ID)
 	if err != nil {
 		t.Fatalf("GetRelationships failed: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestGetRelatedDevices(t *testing.T) {
 	storage.AddRelationship(context.Background(), parent.ID, child2.ID, model.RelationshipConnectedTo, "")
 
 	// Get related by type
-	related, err := storage.GetRelatedDevices(parent.ID, model.RelationshipContains)
+	related, err := storage.GetRelatedDevices(context.Background(), parent.ID, model.RelationshipContains)
 	if err != nil {
 		t.Fatalf("GetRelatedDevices failed: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestAddRelationshipIdempotent(t *testing.T) {
 	}
 
 	// Should still have only one relationship
-	rels, _ := storage.GetRelationships(device1.ID)
+	rels, _ := storage.GetRelationships(context.Background(), device1.ID)
 	if len(rels) != 1 {
 		t.Errorf("expected 1 relationship, got %d", len(rels))
 	}
@@ -141,7 +141,7 @@ func TestRelationshipInvalidIDs(t *testing.T) {
 	}
 
 	// GetRelationships with valid ID
-	rels, err := storage.GetRelationships(device1.ID)
+	rels, err := storage.GetRelationships(context.Background(), device1.ID)
 	if err != nil {
 		t.Errorf("GetRelationships failed: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestRelationshipInvalidIDs(t *testing.T) {
 	}
 
 	// GetRelatedDevices with valid ID
-	related, err := storage.GetRelatedDevices(device1.ID, model.RelationshipContains)
+	related, err := storage.GetRelatedDevices(context.Background(), device1.ID, model.RelationshipContains)
 	if err != nil {
 		t.Errorf("GetRelatedDevices failed: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestGetRelatedDevicesEmpty(t *testing.T) {
 	device := &model.Device{Name: "Lonely"}
 	storage.CreateDevice(context.Background(), device)
 
-	related, err := storage.GetRelatedDevices(device.ID, model.RelationshipContains)
+	related, err := storage.GetRelatedDevices(context.Background(), device.ID, model.RelationshipContains)
 	if err != nil {
 		t.Fatalf("GetRelatedDevices failed: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestDeleteDeviceWithRelationships(t *testing.T) {
 	}
 
 	// Verify relationship is gone
-	rels, _ := storage.GetRelationships(child.ID)
+	rels, _ := storage.GetRelationships(context.Background(), child.ID)
 	if len(rels) != 0 {
 		t.Errorf("expected 0 relationships after parent deletion, got %d", len(rels))
 	}

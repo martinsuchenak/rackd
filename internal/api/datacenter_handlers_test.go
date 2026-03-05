@@ -93,7 +93,7 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 		Key:    auth.HashToken(testAPIKeyValue),
 		UserID: testUser.ID,
 	}
-	if err := store.CreateAPIKey(apiKey); err != nil {
+	if err := store.CreateAPIKey(context.Background(), apiKey); err != nil {
 		t.Fatalf("failed to create test API key: %v", err)
 	}
 

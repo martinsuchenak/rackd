@@ -20,7 +20,7 @@ func (s *NetworkService) List(ctx context.Context, filter *model.NetworkFilter) 
 	if err := requirePermission(ctx, s.store, "networks", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListNetworks(filter)
+	return s.store.ListNetworks(ctx, filter)
 }
 
 func (s *NetworkService) Create(ctx context.Context, network *model.Network) error {
@@ -44,7 +44,7 @@ func (s *NetworkService) Get(ctx context.Context, id string) (*model.Network, er
 		return nil, err
 	}
 
-	network, err := s.store.GetNetwork(id)
+	network, err := s.store.GetNetwork(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return nil, ErrNotFound
@@ -94,14 +94,14 @@ func (s *NetworkService) GetDevices(ctx context.Context, networkID string) ([]mo
 	}
 
 	// Verify network exists before listing devices
-	if _, err := s.store.GetNetwork(networkID); err != nil {
+	if _, err := s.store.GetNetwork(ctx, networkID); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
 
-	return s.store.GetNetworkDevices(networkID)
+	return s.store.GetNetworkDevices(ctx, networkID)
 }
 
 func (s *NetworkService) GetUtilization(ctx context.Context, networkID string) (*model.NetworkUtilization, error) {
@@ -109,7 +109,7 @@ func (s *NetworkService) GetUtilization(ctx context.Context, networkID string) (
 		return nil, err
 	}
 
-	utilization, err := s.store.GetNetworkUtilization(networkID)
+	utilization, err := s.store.GetNetworkUtilization(ctx, networkID)
 	if err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return nil, ErrNotFound
@@ -124,5 +124,5 @@ func (s *NetworkService) Search(ctx context.Context, query string) ([]model.Netw
 		return nil, err
 	}
 
-	return s.store.SearchNetworks(query)
+	return s.store.SearchNetworks(ctx, query)
 }

@@ -38,7 +38,7 @@ func TestConflictOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get conflict
-	retrieved, err := storage.GetConflict(conflict.ID)
+	retrieved, err := storage.GetConflict(context.Background(), conflict.ID)
 	if err != nil {
 		t.Fatalf("GetConflict failed: %v", err)
 	}
@@ -68,9 +68,9 @@ func TestConflictOperations_CreateOverlappingSubnet(t *testing.T) {
 	defer storage.Close()
 
 	conflict := &model.Conflict{
-		Type:        model.ConflictTypeOverlappingSubnet,
-		Status:      model.ConflictStatusActive,
-		Description: "Subnets 10.0.0.0/24 and 10.0.0.0/16 overlap",
+		Type:         model.ConflictTypeOverlappingSubnet,
+		Status:       model.ConflictStatusActive,
+		Description:  "Subnets 10.0.0.0/24 and 10.0.0.0/16 overlap",
 		NetworkIDs:   []string{"network-1", "network-2"},
 		NetworkNames: []string{"Prod Network", "Dev Network"},
 		Subnets:      []string{"10.0.0.0/24", "10.0.0.0/16"},
@@ -81,7 +81,7 @@ func TestConflictOperations_CreateOverlappingSubnet(t *testing.T) {
 		t.Fatalf("CreateConflict failed: %v", err)
 	}
 
-	retrieved, err := storage.GetConflict(conflict.ID)
+	retrieved, err := storage.GetConflict(context.Background(), conflict.ID)
 	if err != nil {
 		t.Fatalf("GetConflict failed: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestConflictOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetConflict("non-existent-id")
+	_, err := storage.GetConflict(context.Background(), "non-existent-id")
 	if err == nil {
 		t.Error("expected error for non-existent conflict")
 	}
@@ -111,7 +111,7 @@ func TestConflictOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetConflict("")
+	_, err := storage.GetConflict(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -135,7 +135,7 @@ func TestConflictOperations_ListAll(t *testing.T) {
 	})
 
 	// List all conflicts
-	conflicts, err := storage.ListConflicts(nil)
+	conflicts, err := storage.ListConflicts(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListConflicts failed: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestConflictOperations_ListWithTypeFilter(t *testing.T) {
 	})
 
 	// Filter by type
-	conflicts, err := storage.ListConflicts(&model.ConflictFilter{
+	conflicts, err := storage.ListConflicts(context.Background(), &model.ConflictFilter{
 		Type: model.ConflictTypeDuplicateIP,
 	})
 	if err != nil {
@@ -197,7 +197,7 @@ func TestConflictOperations_ListWithStatusFilter(t *testing.T) {
 	})
 
 	// Filter by status
-	conflicts, err := storage.ListConflicts(&model.ConflictFilter{
+	conflicts, err := storage.ListConflicts(context.Background(), &model.ConflictFilter{
 		Status: model.ConflictStatusActive,
 	})
 	if err != nil {
@@ -216,7 +216,7 @@ func TestConflictOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	conflicts, err := storage.ListConflicts(nil)
+	conflicts, err := storage.ListConflicts(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListConflicts failed: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestConflictOperations_UpdateStatus(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetConflict(conflict.ID)
+	retrieved, err := storage.GetConflict(context.Background(), conflict.ID)
 	if err != nil {
 		t.Fatalf("GetConflict failed: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestConflictOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetConflict(conflict.ID)
+	_, err := storage.GetConflict(context.Background(), conflict.ID)
 	if err == nil {
 		t.Error("expected error after deletion")
 	}
@@ -375,7 +375,7 @@ func TestConflictOperations_FindOverlappingSubnets(t *testing.T) {
 
 	// Create networks with overlapping subnets
 	network1 := &model.Network{Name: "Network1", Subnet: "10.0.0.0/24"}
-	network2 := &model.Network{Name: "Network2", Subnet: "10.0.0.0/16"} // Overlaps with network1
+	network2 := &model.Network{Name: "Network2", Subnet: "10.0.0.0/16"}    // Overlaps with network1
 	network3 := &model.Network{Name: "Network3", Subnet: "192.168.1.0/24"} // No overlap
 
 	storage.CreateNetwork(context.Background(), network1)
@@ -472,7 +472,7 @@ func TestConflictOperations_GetConflictsByDeviceID(t *testing.T) {
 	storage.CreateConflict(context.Background(), conflict)
 
 	// Get conflicts by device ID
-	conflicts, err := storage.GetConflictsByDeviceID(device.ID)
+	conflicts, err := storage.GetConflictsByDeviceID(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetConflictsByDeviceID failed: %v", err)
 	}
@@ -486,7 +486,7 @@ func TestConflictOperations_GetConflictsByDeviceIDInvalid(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetConflictsByDeviceID("")
+	_, err := storage.GetConflictsByDeviceID(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -507,7 +507,7 @@ func TestConflictOperations_GetConflictsByIP(t *testing.T) {
 	storage.CreateConflict(context.Background(), conflict)
 
 	// Get conflicts by IP
-	conflicts, err := storage.GetConflictsByIP("10.0.0.100")
+	conflicts, err := storage.GetConflictsByIP(context.Background(), "10.0.0.100")
 	if err != nil {
 		t.Fatalf("GetConflictsByIP failed: %v", err)
 	}
@@ -525,7 +525,7 @@ func TestConflictOperations_GetConflictsByIPInvalid(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetConflictsByIP("")
+	_, err := storage.GetConflictsByIP(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -569,7 +569,7 @@ func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 	}
 
 	// Verify conflict1 is now resolved
-	retrieved1, _ := storage.GetConflict(conflict1.ID)
+	retrieved1, _ := storage.GetConflict(context.Background(), conflict1.ID)
 	if retrieved1.Status != model.ConflictStatusResolved {
 		t.Errorf("expected conflict1 to be resolved, got %s", retrieved1.Status)
 	}
@@ -578,7 +578,7 @@ func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 	}
 
 	// Verify conflict2 status hasn't changed
-	retrieved2, _ := storage.GetConflict(conflict2.ID)
+	retrieved2, _ := storage.GetConflict(context.Background(), conflict2.ID)
 	if retrieved2.Status != model.ConflictStatusResolved {
 		t.Errorf("conflict2 should still be resolved")
 	}
@@ -612,7 +612,7 @@ func TestConflictOperations_ListOrderedByDetectedAt(t *testing.T) {
 		IPAddress:   "10.0.0.2",
 	})
 
-	conflicts, err := storage.ListConflicts(nil)
+	conflicts, err := storage.ListConflicts(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListConflicts failed: %v", err)
 	}
@@ -648,7 +648,7 @@ func TestConflictOperations_WithResolvedTimestamp(t *testing.T) {
 		t.Fatalf("UpdateConflictStatus failed: %v", err)
 	}
 
-	retrieved, err := storage.GetConflict(conflict.ID)
+	retrieved, err := storage.GetConflict(context.Background(), conflict.ID)
 	if err != nil {
 		t.Fatalf("GetConflict failed: %v", err)
 	}

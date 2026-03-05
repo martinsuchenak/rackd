@@ -49,7 +49,7 @@ func TestDeviceOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get device
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestDeviceOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDevice("non-existent-id")
+	_, err := storage.GetDevice(context.Background(), "non-existent-id")
 	if err != ErrDeviceNotFound {
 		t.Errorf("expected ErrDeviceNotFound, got %v", err)
 	}
@@ -98,7 +98,7 @@ func TestDeviceOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDevice("")
+	_, err := storage.GetDevice(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -135,7 +135,7 @@ func TestDeviceOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestDeviceOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetDevice(device.ID)
+	_, err := storage.GetDevice(context.Background(), device.ID)
 	if err != ErrDeviceNotFound {
 		t.Errorf("expected ErrDeviceNotFound after deletion, got %v", err)
 	}
@@ -250,7 +250,7 @@ func TestDeviceOperations_ListAll(t *testing.T) {
 	}
 
 	// List all devices
-	result, err := storage.ListDevices(nil)
+	result, err := storage.ListDevices(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestDeviceOperations_ListWithTagsFilter(t *testing.T) {
 	storage.CreateDevice(context.Background(), device3)
 
 	// Filter by single tag
-	result, err := storage.ListDevices(&model.DeviceFilter{Tags: []string{"production"}})
+	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{Tags: []string{"production"}})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestDeviceOperations_ListWithTagsFilter(t *testing.T) {
 	}
 
 	// Filter by multiple tags (AND logic)
-	result, err = storage.ListDevices(&model.DeviceFilter{Tags: []string{"production", "web"}})
+	result, err = storage.ListDevices(context.Background(), &model.DeviceFilter{Tags: []string{"production", "web"}})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestDeviceOperations_ListWithDatacenterFilter(t *testing.T) {
 	storage.CreateDevice(context.Background(), device3)
 
 	// Filter by datacenter
-	result, err := storage.ListDevices(&model.DeviceFilter{DatacenterID: dc.ID})
+	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{DatacenterID: dc.ID})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestDeviceOperations_Search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result, err := storage.SearchDevices(tt.query)
+			result, err := storage.SearchDevices(context.Background(), tt.query)
 			if err != nil {
 				t.Fatalf("SearchDevices failed: %v", err)
 			}
@@ -377,7 +377,7 @@ func TestDeviceOperations_SearchEmpty(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Empty search returns all
-	result, err := storage.SearchDevices("")
+	result, err := storage.SearchDevices(context.Background(), "")
 	if err != nil {
 		t.Fatalf("SearchDevices failed: %v", err)
 	}
@@ -397,7 +397,7 @@ func TestDeviceOperations_EmptyArraysNotNil(t *testing.T) {
 	}
 
 	// Get device
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -466,7 +466,7 @@ func TestListDevicesWithNetworkFilter(t *testing.T) {
 	storage.CreateDevice(context.Background(), device2)
 
 	// Filter by network
-	result, err := storage.ListDevices(&model.DeviceFilter{NetworkID: network.ID})
+	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{NetworkID: network.ID})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -517,7 +517,7 @@ func TestDeviceWithAllFields(t *testing.T) {
 	}
 
 	// Retrieve and verify all fields
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -560,7 +560,7 @@ func TestSearchDevicesWithSpecialCharacters(t *testing.T) {
 	storage.CreateDevice(context.Background(), device)
 
 	// Search should handle special SQL characters
-	result, err := storage.SearchDevices("server-01")
+	result, err := storage.SearchDevices(context.Background(), "server-01")
 	if err != nil {
 		t.Fatalf("SearchDevices failed: %v", err)
 	}
@@ -590,7 +590,7 @@ func TestDeviceUpdateClearArrays(t *testing.T) {
 		t.Fatalf("UpdateDevice failed: %v", err)
 	}
 
-	got, _ := storage.GetDevice(device.ID)
+	got, _ := storage.GetDevice(context.Background(), device.ID)
 	if len(got.Tags) != 0 {
 		t.Errorf("expected 0 tags, got %d", len(got.Tags))
 	}
@@ -624,7 +624,7 @@ func TestSearchDevicesMultipleMatches(t *testing.T) {
 	})
 
 	// Search for "web" should match 2 devices
-	result, err := storage.SearchDevices("web")
+	result, err := storage.SearchDevices(context.Background(), "web")
 	if err != nil {
 		t.Fatalf("SearchDevices failed: %v", err)
 	}
@@ -633,7 +633,7 @@ func TestSearchDevicesMultipleMatches(t *testing.T) {
 	}
 
 	// Search for "production" should match 2 devices
-	result, err = storage.SearchDevices("production")
+	result, err = storage.SearchDevices(context.Background(), "production")
 	if err != nil {
 		t.Fatalf("SearchDevices failed: %v", err)
 	}
@@ -657,7 +657,7 @@ func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 	}
 	storage.CreateDevice(context.Background(), device)
 
-	got, _ := storage.GetDevice(device.ID)
+	got, _ := storage.GetDevice(context.Background(), device.ID)
 	if len(got.Addresses) != 4 {
 		t.Errorf("expected 4 addresses, got %d", len(got.Addresses))
 	}
@@ -695,7 +695,7 @@ func TestDeviceStatus_DefaultStatus(t *testing.T) {
 	}
 
 	// Get device and verify default status is active
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -723,7 +723,7 @@ func TestDeviceStatus_CreateWithStatus(t *testing.T) {
 		t.Fatalf("CreateDevice failed: %v", err)
 	}
 
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -749,7 +749,7 @@ func TestDeviceStatus_UpdateStatus(t *testing.T) {
 		t.Fatalf("UpdateDevice failed: %v", err)
 	}
 
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -784,7 +784,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	}
 
 	// Filter by planned status
-	result, err := storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusPlanned})
+	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{Status: model.DeviceStatusPlanned})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -793,7 +793,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	}
 
 	// Filter by active status
-	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusActive})
+	result, err = storage.ListDevices(context.Background(), &model.DeviceFilter{Status: model.DeviceStatusActive})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -802,7 +802,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	}
 
 	// Filter by maintenance status
-	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusMaintenance})
+	result, err = storage.ListDevices(context.Background(), &model.DeviceFilter{Status: model.DeviceStatusMaintenance})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -811,7 +811,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	}
 
 	// Filter by decommissioned status
-	result, err = storage.ListDevices(&model.DeviceFilter{Status: model.DeviceStatusDecommissioned})
+	result, err = storage.ListDevices(context.Background(), &model.DeviceFilter{Status: model.DeviceStatusDecommissioned})
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -840,7 +840,7 @@ func TestDeviceStatus_StatusCounts(t *testing.T) {
 	}
 
 	// Get status counts
-	counts, err := storage.GetDeviceStatusCounts()
+	counts, err := storage.GetDeviceStatusCounts(context.Background())
 	if err != nil {
 		t.Fatalf("GetDeviceStatusCounts failed: %v", err)
 	}
@@ -875,7 +875,7 @@ func TestDeviceStatus_DecommissionDate(t *testing.T) {
 		t.Fatalf("CreateDevice failed: %v", err)
 	}
 
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -940,7 +940,7 @@ func TestAddressID_StorageRoundTrip(t *testing.T) {
 		}
 
 		// Retrieve device
-		retrieved, err := store.GetDevice(device.ID)
+		retrieved, err := store.GetDevice(context.Background(), device.ID)
 		if err != nil {
 			rt.Fatalf("GetDevice failed: %v", err)
 		}
@@ -960,7 +960,7 @@ func TestAddressID_StorageRoundTrip(t *testing.T) {
 		}
 
 		// Verify round-trip: a second retrieval returns the same Address.IDs
-		retrieved2, err := store.GetDevice(device.ID)
+		retrieved2, err := store.GetDevice(context.Background(), device.ID)
 		if err != nil {
 			rt.Fatalf("second GetDevice failed: %v", err)
 		}

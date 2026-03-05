@@ -20,7 +20,7 @@ func (s *DatacenterService) List(ctx context.Context, filter *model.DatacenterFi
 	if err := requirePermission(ctx, s.store, "datacenters", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListDatacenters(filter)
+	return s.store.ListDatacenters(ctx, filter)
 }
 
 func (s *DatacenterService) Create(ctx context.Context, dc *model.Datacenter) error {
@@ -40,7 +40,7 @@ func (s *DatacenterService) Get(ctx context.Context, id string) (*model.Datacent
 		return nil, err
 	}
 
-	dc, err := s.store.GetDatacenter(id)
+	dc, err := s.store.GetDatacenter(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			return nil, ErrNotFound
@@ -86,14 +86,14 @@ func (s *DatacenterService) GetDevices(ctx context.Context, datacenterID string)
 	}
 
 	// Verify datacenter exists before listing devices
-	if _, err := s.store.GetDatacenter(datacenterID); err != nil {
+	if _, err := s.store.GetDatacenter(ctx, datacenterID); err != nil {
 		if errors.Is(err, storage.ErrDatacenterNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
 
-	return s.store.GetDatacenterDevices(datacenterID)
+	return s.store.GetDatacenterDevices(ctx, datacenterID)
 }
 
 func (s *DatacenterService) Search(ctx context.Context, query string) ([]model.Datacenter, error) {
@@ -101,5 +101,5 @@ func (s *DatacenterService) Search(ctx context.Context, query string) ([]model.D
 		return nil, err
 	}
 
-	return s.store.SearchDatacenters(query)
+	return s.store.SearchDatacenters(ctx, query)
 }

@@ -87,6 +87,9 @@
 19. **UI Navigation Consistency and Dead Links**
     - **Module:** Web UI
     - **Fix Applied:** Statically defined all sidebar navigation items in the frontend, corrected permission resource names (pluralized `webhooks`), and implemented a robust deduplication logic based on both path and label to prevent ghost entries and ensure sidebars correctly reflect available features.
+20. **Missing Context Propagation in Storage**
+    - **Module:** Storage Layer
+    - **Fix Applied:** Updated storage, service, API, and discovery interfaces to accept `context.Context` as the first parameter. Propagated the context down through all layers, rectifying missing contexts leading to potential goroutine leaks or blocking operations. Fixed test suite to use correct context parameters.
 
 ---
 
@@ -96,17 +99,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-
-
-
-
-### H-7: Missing Context Propagation in Storage
-**Module:** Storage Layer
-**Category:** Context Usage
-**Location:** Multiple files (e.g., `device_sqlite.go:21`, `user_sqlite.go:64`)
-**Issue:** Methods use `context.Background()` or no context at all, preventing timeout propagation.
-**Remediation:** Update interface to accept `context.Context` as first parameter.
-
 ### H-8: Goroutine Leak in Audit Logging
 **Module:** Storage Layer
 **Category:** Resource Management

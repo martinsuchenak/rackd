@@ -55,7 +55,7 @@ func TestReservationOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get reservation
-	retrieved, err := storage.GetReservation(reservation.ID)
+	retrieved, err := storage.GetReservation(context.Background(), reservation.ID)
 	if err != nil {
 		t.Fatalf("GetReservation failed: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestReservationOperations_CreateWithExpiration(t *testing.T) {
 		t.Fatalf("CreateReservation failed: %v", err)
 	}
 
-	retrieved, err := storage.GetReservation(reservation.ID)
+	retrieved, err := storage.GetReservation(context.Background(), reservation.ID)
 	if err != nil {
 		t.Fatalf("GetReservation failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestReservationOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetReservation("non-existent-id")
+	_, err := storage.GetReservation(context.Background(), "non-existent-id")
 	if err == nil {
 		t.Error("expected error for non-existent reservation")
 	}
@@ -137,7 +137,7 @@ func TestReservationOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetReservation("")
+	_, err := storage.GetReservation(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -266,7 +266,7 @@ func TestReservationOperations_ListAll(t *testing.T) {
 	})
 
 	// List all reservations
-	reservations, err := storage.ListReservations(nil)
+	reservations, err := storage.ListReservations(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListReservations failed: %v", err)
 	}
@@ -304,7 +304,7 @@ func TestReservationOperations_ListWithPoolFilter(t *testing.T) {
 	})
 
 	// Filter by pool1
-	reservations, err := storage.ListReservations(&model.ReservationFilter{PoolID: pool1.ID})
+	reservations, err := storage.ListReservations(context.Background(), &model.ReservationFilter{PoolID: pool1.ID})
 	if err != nil {
 		t.Fatalf("ListReservations failed: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestReservationOperations_ListWithStatusFilter(t *testing.T) {
 	})
 
 	// Filter by active status
-	reservations, err := storage.ListReservations(&model.ReservationFilter{Status: model.ReservationStatusActive})
+	reservations, err := storage.ListReservations(context.Background(), &model.ReservationFilter{Status: model.ReservationStatusActive})
 	if err != nil {
 		t.Fatalf("ListReservations failed: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestReservationOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetReservation(reservation.ID)
+	retrieved, err := storage.GetReservation(context.Background(), reservation.ID)
 	if err != nil {
 		t.Fatalf("GetReservation failed: %v", err)
 	}
@@ -454,7 +454,7 @@ func TestReservationOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetReservation(reservation.ID)
+	_, err = storage.GetReservation(context.Background(), reservation.ID)
 	if err == nil {
 		t.Error("expected error after deletion")
 	}
@@ -501,7 +501,7 @@ func TestReservationOperations_GetByPool(t *testing.T) {
 	})
 
 	// Get reservations by pool
-	reservations, err := storage.GetReservationsByPool(pool.ID)
+	reservations, err := storage.GetReservationsByPool(context.Background(), pool.ID)
 	if err != nil {
 		t.Fatalf("GetReservationsByPool failed: %v", err)
 	}
@@ -515,7 +515,7 @@ func TestReservationOperations_GetByPoolInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetReservationsByPool("")
+	_, err := storage.GetReservationsByPool(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -558,7 +558,7 @@ func TestReservationOperations_GetByUser(t *testing.T) {
 	})
 
 	// Get reservations by user
-	reservations, err := storage.GetReservationsByUser("admin")
+	reservations, err := storage.GetReservationsByUser(context.Background(), "admin")
 	if err != nil {
 		t.Fatalf("GetReservationsByUser failed: %v", err)
 	}
@@ -585,7 +585,7 @@ func TestReservationOperations_IsIPReserved(t *testing.T) {
 	storage.CreateNetworkPool(context.Background(), pool)
 
 	// Check IP not reserved
-	isReserved, err := storage.IsIPReserved(pool.ID, "192.168.1.100")
+	isReserved, err := storage.IsIPReserved(context.Background(), pool.ID, "192.168.1.100")
 	if err != nil {
 		t.Fatalf("IsIPReserved failed: %v", err)
 	}
@@ -602,7 +602,7 @@ func TestReservationOperations_IsIPReserved(t *testing.T) {
 	})
 
 	// Check IP is now reserved
-	isReserved, err = storage.IsIPReserved(pool.ID, "192.168.1.100")
+	isReserved, err = storage.IsIPReserved(context.Background(), pool.ID, "192.168.1.100")
 	if err != nil {
 		t.Fatalf("IsIPReserved failed: %v", err)
 	}
@@ -658,7 +658,7 @@ func TestReservationOperations_ExpireReservations(t *testing.T) {
 	}
 
 	// Verify the expired reservation
-	reservations, _ := storage.ListReservations(&model.ReservationFilter{Status: model.ReservationStatusExpired})
+	reservations, _ := storage.ListReservations(context.Background(), &model.ReservationFilter{Status: model.ReservationStatusExpired})
 	if len(reservations) != 1 {
 		t.Errorf("expected 1 expired reservation, got %d", len(reservations))
 	}
@@ -690,7 +690,7 @@ func TestReservationOperations_GetReservationByIP(t *testing.T) {
 	})
 
 	// Get by IP
-	reservation, err := storage.GetReservationByIP(pool.ID, "192.168.1.100")
+	reservation, err := storage.GetReservationByIP(context.Background(), pool.ID, "192.168.1.100")
 	if err != nil {
 		t.Fatalf("GetReservationByIP failed: %v", err)
 	}
@@ -716,7 +716,7 @@ func TestReservationOperations_GetReservationByIPNotFound(t *testing.T) {
 	}
 	storage.CreateNetworkPool(context.Background(), pool)
 
-	_, err := storage.GetReservationByIP(pool.ID, "192.168.1.100")
+	_, err := storage.GetReservationByIP(context.Background(), pool.ID, "192.168.1.100")
 	if err != ErrReservationNotFound {
 		t.Errorf("expected ErrReservationNotFound, got %v", err)
 	}

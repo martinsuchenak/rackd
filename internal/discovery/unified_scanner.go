@@ -62,8 +62,8 @@ func NewUnifiedScanner(store storage.DiscoveryStorage, netStore storage.NetworkS
 	}
 }
 
-func (s *UnifiedScanner) GetNetwork(id string) (*model.Network, error) {
-	return s.netStorage.GetNetwork(id)
+func (s *UnifiedScanner) GetNetwork(ctx context.Context, id string) (*model.Network, error) {
+	return s.netStorage.GetNetwork(ctx, id)
 }
 
 func (s *UnifiedScanner) ScanAdvanced(ctx context.Context, network *model.Network, profile *model.ScanProfile, snmpCredID, sshCredID string) (*model.DiscoveryScan, error) {
@@ -129,17 +129,17 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 	return scan, nil
 }
 
-func (s *UnifiedScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
+func (s *UnifiedScanner) GetScanStatus(ctx context.Context, scanID string) (*model.DiscoveryScan, error) {
 	s.mu.RLock()
 	scan, ok := s.scans[scanID]
 	s.mu.RUnlock()
 	if ok {
 		return scan, nil
 	}
-	return s.storage.GetDiscoveryScan(scanID)
+	return s.storage.GetDiscoveryScan(ctx, scanID)
 }
 
-func (s *UnifiedScanner) CancelScan(scanID string) error {
+func (s *UnifiedScanner) CancelScan(ctx context.Context, scanID string) error {
 	s.mu.Lock()
 	scan, ok := s.scans[scanID]
 	if !ok {
@@ -176,7 +176,7 @@ func (s *UnifiedScanner) CancelScan(scanID string) error {
 	s.mu.Unlock()
 
 	// Persist status to database
-	if err := s.storage.UpdateDiscoveryScan(context.Background(), scan); err != nil {
+	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Printf("discovery: failed to update cancelled scan %s: %v", scanID, err)
 	}
 
@@ -283,7 +283,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 
 			device := s.discoverHostWithOptions(ctx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
-				existing, _ := s.storage.GetDiscoveredDeviceByIP(network.ID, ip)
+				existing, _ := s.storage.GetDiscoveredDeviceByIP(ctx, network.ID, ip)
 				if existing != nil {
 					device.ID = existing.ID
 					device.FirstSeen = existing.FirstSeen

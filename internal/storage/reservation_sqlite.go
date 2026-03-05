@@ -34,7 +34,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	}
 
 	// Validate IP is in pool range
-	inRange, err := s.ValidateIPInPool(reservation.PoolID, reservation.IPAddress)
+	inRange, err := s.ValidateIPInPool(ctx, reservation.PoolID, reservation.IPAddress)
 	if err != nil {
 		return fmt.Errorf("failed to validate IP in pool: %w", err)
 	}
@@ -54,7 +54,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	}
 
 	// Check if IP is already reserved
-	isReserved, err := s.IsIPReserved(reservation.PoolID, reservation.IPAddress)
+	isReserved, err := s.IsIPReserved(ctx, reservation.PoolID, reservation.IPAddress)
 	if err != nil {
 		return fmt.Errorf("failed to check reservation: %w", err)
 	}
@@ -96,12 +96,10 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 }
 
 // GetReservation retrieves a reservation by ID
-func (s *SQLiteStorage) GetReservation(id string) (*model.Reservation, error) {
+func (s *SQLiteStorage) GetReservation(ctx context.Context, id string) (*model.Reservation, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	var reservation model.Reservation
 	var hostname, purpose, notes sql.NullString
@@ -141,12 +139,10 @@ func (s *SQLiteStorage) GetReservation(id string) (*model.Reservation, error) {
 }
 
 // GetReservationByIP retrieves a reservation by pool ID and IP address
-func (s *SQLiteStorage) GetReservationByIP(poolID, ip string) (*model.Reservation, error) {
+func (s *SQLiteStorage) GetReservationByIP(ctx context.Context, poolID, ip string) (*model.Reservation, error) {
 	if poolID == "" || ip == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	var reservation model.Reservation
 	var hostname, purpose, notes sql.NullString
@@ -186,8 +182,7 @@ func (s *SQLiteStorage) GetReservationByIP(poolID, ip string) (*model.Reservatio
 }
 
 // ListReservations retrieves reservations matching filter criteria
-func (s *SQLiteStorage) ListReservations(filter *model.ReservationFilter) ([]model.Reservation, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListReservations(ctx context.Context, filter *model.ReservationFilter) ([]model.Reservation, error) {
 
 	query := `SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 	          expires_at, status, notes, created_at, updated_at
@@ -272,12 +267,10 @@ func (s *SQLiteStorage) DeleteReservation(ctx context.Context, id string) error 
 }
 
 // GetReservationsByPool retrieves all reservations for a specific pool
-func (s *SQLiteStorage) GetReservationsByPool(poolID string) ([]model.Reservation, error) {
+func (s *SQLiteStorage) GetReservationsByPool(ctx context.Context, poolID string) ([]model.Reservation, error) {
 	if poolID == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
@@ -294,12 +287,10 @@ func (s *SQLiteStorage) GetReservationsByPool(poolID string) ([]model.Reservatio
 }
 
 // GetReservationsByUser retrieves all reservations made by a specific user
-func (s *SQLiteStorage) GetReservationsByUser(userID string) ([]model.Reservation, error) {
+func (s *SQLiteStorage) GetReservationsByUser(ctx context.Context, userID string) ([]model.Reservation, error) {
 	if userID == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
@@ -335,12 +326,10 @@ func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
 }
 
 // IsIPReserved checks if an IP address is reserved in a pool
-func (s *SQLiteStorage) IsIPReserved(poolID, ip string) (bool, error) {
+func (s *SQLiteStorage) IsIPReserved(ctx context.Context, poolID, ip string) (bool, error) {
 	if poolID == "" || ip == "" {
 		return false, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	var count int
 	err := s.db.QueryRowContext(ctx, `

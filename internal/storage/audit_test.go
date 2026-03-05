@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func TestAuditLog(t *testing.T) {
 		Source:     "api",
 	}
 
-	err := store.CreateAuditLog(log)
+	err := store.CreateAuditLog(context.Background(), log)
 	if err != nil {
 		t.Fatalf("Failed to create audit log: %v", err)
 	}
@@ -34,7 +35,7 @@ func TestAuditLog(t *testing.T) {
 	}
 
 	// Get audit log
-	retrieved, err := store.GetAuditLog(log.ID)
+	retrieved, err := store.GetAuditLog(context.Background(), log.ID)
 	if err != nil {
 		t.Fatalf("Failed to get audit log: %v", err)
 	}
@@ -62,13 +63,13 @@ func TestListAuditLogs(t *testing.T) {
 	}
 
 	for _, log := range logs {
-		if err := store.CreateAuditLog(log); err != nil {
+		if err := store.CreateAuditLog(context.Background(), log); err != nil {
 			t.Fatalf("Failed to create audit log: %v", err)
 		}
 	}
 
 	// List all
-	all, err := store.ListAuditLogs(&model.AuditFilter{})
+	all, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{})
 	if err != nil {
 		t.Fatalf("Failed to list audit logs: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestListAuditLogs(t *testing.T) {
 	}
 
 	// Filter by resource
-	deviceLogs, err := store.ListAuditLogs(&model.AuditFilter{Resource: "device"})
+	deviceLogs, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Resource: "device"})
 	if err != nil {
 		t.Fatalf("Failed to list device logs: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestListAuditLogs(t *testing.T) {
 	}
 
 	// Filter by resource ID
-	dev1Logs, err := store.ListAuditLogs(&model.AuditFilter{ResourceID: "dev-1"})
+	dev1Logs, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{ResourceID: "dev-1"})
 	if err != nil {
 		t.Fatalf("Failed to list dev-1 logs: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestListAuditLogs(t *testing.T) {
 	}
 
 	// Filter by action
-	createLogs, err := store.ListAuditLogs(&model.AuditFilter{Action: "create"})
+	createLogs, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Action: "create"})
 	if err != nil {
 		t.Fatalf("Failed to list create logs: %v", err)
 	}
@@ -108,7 +109,7 @@ func TestListAuditLogs(t *testing.T) {
 	}
 
 	// Filter by source
-	apiLogs, err := store.ListAuditLogs(&model.AuditFilter{Source: "api"})
+	apiLogs, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Source: "api"})
 	if err != nil {
 		t.Fatalf("Failed to list api logs: %v", err)
 	}
@@ -129,13 +130,13 @@ func TestAuditLogPagination(t *testing.T) {
 			Resource: "device",
 			Status:   "success",
 		}
-		if err := store.CreateAuditLog(log); err != nil {
+		if err := store.CreateAuditLog(context.Background(), log); err != nil {
 			t.Fatalf("Failed to create audit log: %v", err)
 		}
 	}
 
 	// Get first page
-	page1, err := store.ListAuditLogs(&model.AuditFilter{Limit: 5, Offset: 0})
+	page1, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Limit: 5, Offset: 0})
 	if err != nil {
 		t.Fatalf("Failed to get page 1: %v", err)
 	}
@@ -145,7 +146,7 @@ func TestAuditLogPagination(t *testing.T) {
 	}
 
 	// Get second page
-	page2, err := store.ListAuditLogs(&model.AuditFilter{Limit: 5, Offset: 5})
+	page2, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Limit: 5, Offset: 5})
 	if err != nil {
 		t.Fatalf("Failed to get page 2: %v", err)
 	}
@@ -171,7 +172,7 @@ func TestDeleteOldAuditLogs(t *testing.T) {
 		Resource:  "device",
 		Status:    "success",
 	}
-	if err := store.CreateAuditLog(oldLog); err != nil {
+	if err := store.CreateAuditLog(context.Background(), oldLog); err != nil {
 		t.Fatalf("Failed to create old log: %v", err)
 	}
 
@@ -181,23 +182,23 @@ func TestDeleteOldAuditLogs(t *testing.T) {
 		Resource: "device",
 		Status:   "success",
 	}
-	if err := store.CreateAuditLog(recentLog); err != nil {
+	if err := store.CreateAuditLog(context.Background(), recentLog); err != nil {
 		t.Fatalf("Failed to create recent log: %v", err)
 	}
 
 	// Delete logs older than 90 days
-	if err := store.DeleteOldAuditLogs(90); err != nil {
+	if err := store.DeleteOldAuditLogs(context.Background(), 90); err != nil {
 		t.Fatalf("Failed to delete old logs: %v", err)
 	}
 
 	// Verify old log is gone
-	_, err := store.GetAuditLog(oldLog.ID)
+	_, err := store.GetAuditLog(context.Background(), oldLog.ID)
 	if err != ErrAuditLogNotFound {
 		t.Error("Expected old log to be deleted")
 	}
 
 	// Verify recent log still exists
-	_, err = store.GetAuditLog(recentLog.ID)
+	_, err = store.GetAuditLog(context.Background(), recentLog.ID)
 	if err != nil {
 		t.Error("Expected recent log to still exist")
 	}
@@ -219,14 +220,14 @@ func TestAuditLogTimeFilter(t *testing.T) {
 	}
 
 	for _, log := range logs {
-		if err := store.CreateAuditLog(log); err != nil {
+		if err := store.CreateAuditLog(context.Background(), log); err != nil {
 			t.Fatalf("Failed to create audit log: %v", err)
 		}
 	}
 
 	// Filter by start time
 	startTime := now.Add(-1 * time.Hour)
-	filtered, err := store.ListAuditLogs(&model.AuditFilter{StartTime: &startTime})
+	filtered, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{StartTime: &startTime})
 	if err != nil {
 		t.Fatalf("Failed to filter by start time: %v", err)
 	}
@@ -237,7 +238,7 @@ func TestAuditLogTimeFilter(t *testing.T) {
 
 	// Filter by end time
 	endTime := now.Add(1 * time.Hour)
-	filtered, err = store.ListAuditLogs(&model.AuditFilter{EndTime: &endTime})
+	filtered, err = store.ListAuditLogs(context.Background(), &model.AuditFilter{EndTime: &endTime})
 	if err != nil {
 		t.Fatalf("Failed to filter by end time: %v", err)
 	}

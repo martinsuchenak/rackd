@@ -105,12 +105,10 @@ func (s *SQLiteStorage) getPoolTags(ctx context.Context, poolID string) ([]strin
 }
 
 // GetNetworkPool retrieves a network pool by ID
-func (s *SQLiteStorage) GetNetworkPool(id string) (*model.NetworkPool, error) {
+func (s *SQLiteStorage) GetNetworkPool(ctx context.Context, id string) (*model.NetworkPool, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	pool := &model.NetworkPool{}
 	err := s.db.QueryRowContext(ctx, `
@@ -235,8 +233,7 @@ func (s *SQLiteStorage) DeleteNetworkPool(ctx context.Context, id string) error 
 }
 
 // ListNetworkPools retrieves pools matching the filter criteria
-func (s *SQLiteStorage) ListNetworkPools(filter *model.NetworkPoolFilter) ([]model.NetworkPool, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.NetworkPoolFilter) ([]model.NetworkPool, error) {
 
 	query := `SELECT id, network_id, name, start_ip, end_ip, description, created_at, updated_at FROM network_pools`
 	var args []any
@@ -302,15 +299,13 @@ func (s *SQLiteStorage) ListNetworkPools(filter *model.NetworkPoolFilter) ([]mod
 }
 
 // GetNextAvailableIP finds the first unused IP address in a pool's range
-func (s *SQLiteStorage) GetNextAvailableIP(poolID string) (string, error) {
+func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (string, error) {
 	if poolID == "" {
 		return "", ErrInvalidID
 	}
 
-	ctx := context.Background()
-
 	// Get the pool
-	pool, err := s.GetNetworkPool(poolID)
+	pool, err := s.GetNetworkPool(ctx, poolID)
 	if err != nil {
 		return "", err
 	}
@@ -395,13 +390,13 @@ func incrementIP(ip net.IP, endIP net.IP) bool {
 }
 
 // ValidateIPInPool checks if an IP address is within a pool's range
-func (s *SQLiteStorage) ValidateIPInPool(poolID, ip string) (bool, error) {
+func (s *SQLiteStorage) ValidateIPInPool(ctx context.Context, poolID, ip string) (bool, error) {
 	if poolID == "" {
 		return false, ErrInvalidID
 	}
 
 	// Get the pool
-	pool, err := s.GetNetworkPool(poolID)
+	pool, err := s.GetNetworkPool(ctx, poolID)
 	if err != nil {
 		return false, err
 	}
@@ -454,15 +449,13 @@ func ipInRange(ip, start, end net.IP) bool {
 }
 
 // GetPoolHeatmap returns the status of all IPs in a pool's range
-func (s *SQLiteStorage) GetPoolHeatmap(poolID string) ([]IPStatus, error) {
+func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IPStatus, error) {
 	if poolID == "" {
 		return nil, ErrInvalidID
 	}
 
-	ctx := context.Background()
-
 	// Get the pool
-	pool, err := s.GetNetworkPool(poolID)
+	pool, err := s.GetNetworkPool(ctx, poolID)
 	if err != nil {
 		return nil, err
 	}

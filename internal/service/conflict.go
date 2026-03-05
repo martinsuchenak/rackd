@@ -21,7 +21,7 @@ func (s *ConflictService) List(ctx context.Context, filter *model.ConflictFilter
 		return nil, err
 	}
 
-	conflicts, err := s.store.ListConflicts(filter)
+	conflicts, err := s.store.ListConflicts(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (s *ConflictService) Get(ctx context.Context, id string) (*model.Conflict, 
 		return nil, err
 	}
 
-	conflict, err := s.store.GetConflict(id)
+	conflict, err := s.store.GetConflict(ctx, id)
 	if err != nil {
 		return nil, ErrNotFound
 	}
@@ -60,7 +60,7 @@ func (s *ConflictService) Resolve(ctx context.Context, resolution *model.Conflic
 	}
 
 	// Get the conflict to determine its type
-	conflict, err := s.store.GetConflict(resolution.ConflictID)
+	conflict, err := s.store.GetConflict(ctx, resolution.ConflictID)
 	if err != nil {
 		return ErrNotFound
 	}
@@ -82,7 +82,7 @@ func (s *ConflictService) Resolve(ctx context.Context, resolution *model.Conflic
 
 // resolveDuplicateIP removes the IP from devices that should not have it
 func (s *ConflictService) resolveDuplicateIP(ctx context.Context, resolution *model.ConflictResolution, _ string) error {
-	conflict, err := s.store.GetConflict(resolution.ConflictID)
+	conflict, err := s.store.GetConflict(ctx, resolution.ConflictID)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (s *ConflictService) resolveDuplicateIP(ctx context.Context, resolution *mo
 		}
 
 		// Get the device
-		device, err := s.store.GetDevice(deviceID)
+		device, err := s.store.GetDevice(ctx, deviceID)
 		if err != nil {
 			continue // Skip if device not found
 		}
@@ -132,7 +132,7 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 	// Store any new conflicts
 	for _, conflict := range conflicts {
 		// Check if conflict already exists for this IP
-		existing, err := s.store.GetConflictsByIP(conflict.IPAddress)
+		existing, err := s.store.GetConflictsByIP(ctx, conflict.IPAddress)
 		if err == nil && len(existing) > 0 {
 			// Update existing conflict if still active
 			for _, ex := range existing {
@@ -166,7 +166,7 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 	// Store any new conflicts
 	for _, conflict := range conflicts {
 		// Check if this exact conflict already exists
-		existing, err := s.store.ListConflicts(&model.ConflictFilter{
+		existing, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
 			Type:   model.ConflictTypeOverlappingSubnet,
 			Status: model.ConflictStatusActive,
 		})
@@ -217,7 +217,7 @@ func (s *ConflictService) GetConflictsByDevice(ctx context.Context, deviceID str
 		return nil, err
 	}
 
-	return s.store.GetConflictsByDeviceID(deviceID)
+	return s.store.GetConflictsByDeviceID(ctx, deviceID)
 }
 
 // Delete removes a conflict (requires conflict:delete permission)
@@ -243,7 +243,7 @@ func (s *ConflictService) GetSummary(ctx context.Context) (map[string]int, error
 		return nil, err
 	}
 
-	conflicts, err := s.store.ListConflicts(&model.ConflictFilter{
+	conflicts, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
 		Status: model.ConflictStatusActive,
 	})
 	if err != nil {

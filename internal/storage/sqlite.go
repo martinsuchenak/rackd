@@ -189,7 +189,7 @@ func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resource
 			Status:     "success",
 		}
 
-		if err := s.CreateAuditLog(auditLog); err != nil {
+		if err := s.CreateAuditLog(context.Background(), auditLog); err != nil {
 			log.Error("Failed to create audit log", "error", err)
 		}
 	}()

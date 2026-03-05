@@ -76,7 +76,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 // get CallerTypeAPIKey which bypasses RBAC.
 func resolveAPIKeyCaller(store storage.ExtendedStorage, key *model.APIKey, ip, source string) *service.Caller {
 	if key.UserID != "" {
-		user, err := store.GetUser(key.UserID)
+		user, err := store.GetUser(context.Background(), key.UserID)
 		if err == nil && user.IsActive {
 			return &service.Caller{
 				Type:      service.CallerTypeUser,
@@ -114,7 +114,7 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 		// Try API key authentication
 		if store != nil {
 			hash := auth.HashToken(providedToken)
-			key, err := store.GetAPIKeyByKey(hash)
+			key, err := store.GetAPIKeyByKey(r.Context(), hash)
 			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
@@ -126,7 +126,7 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 
 				// Update last used (async, don't block request)
 				go func() {
-					store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+					store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
@@ -187,7 +187,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 		// Try API key authentication
 		if store != nil {
 			hash := auth.HashToken(providedToken)
-			key, err := store.GetAPIKeyByKey(hash)
+			key, err := store.GetAPIKeyByKey(r.Context(), hash)
 			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
 				// Check expiration
 				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
@@ -199,7 +199,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 
 				// Update last used (async, don't block request)
 				go func() {
-					store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+					store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
 				}()
 
 				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)

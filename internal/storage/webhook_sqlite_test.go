@@ -43,7 +43,7 @@ func TestWebhookOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get webhook
-	retrieved, err := storage.GetWebhook(webhook.ID)
+	retrieved, err := storage.GetWebhook(context.Background(), webhook.ID)
 	if err != nil {
 		t.Fatalf("GetWebhook failed: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestWebhookOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetWebhook("non-existent-id")
+	_, err := storage.GetWebhook(context.Background(), "non-existent-id")
 	if err != ErrWebhookNotFound {
 		t.Errorf("expected ErrWebhookNotFound, got %v", err)
 	}
@@ -110,7 +110,7 @@ func TestWebhookOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetWebhook(webhook.ID)
+	retrieved, err := storage.GetWebhook(context.Background(), webhook.ID)
 	if err != nil {
 		t.Fatalf("GetWebhook failed: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestWebhookOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetWebhook(webhook.ID)
+	_, err := storage.GetWebhook(context.Background(), webhook.ID)
 	if err != ErrWebhookNotFound {
 		t.Errorf("expected ErrWebhookNotFound after deletion, got %v", err)
 	}
@@ -213,7 +213,7 @@ func TestWebhookOperations_ListAll(t *testing.T) {
 	}
 
 	// List all webhooks
-	result, err := storage.ListWebhooks(nil)
+	result, err := storage.ListWebhooks(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListWebhooks failed: %v", err)
 	}
@@ -242,7 +242,7 @@ func TestWebhookOperations_ListWithActiveFilter(t *testing.T) {
 	})
 
 	// Filter by active=true
-	result, err := storage.ListWebhooks(&model.WebhookFilter{Active: &active})
+	result, err := storage.ListWebhooks(context.Background(), &model.WebhookFilter{Active: &active})
 	if err != nil {
 		t.Fatalf("ListWebhooks failed: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestWebhookOperations_ListWithActiveFilter(t *testing.T) {
 	}
 
 	// Filter by active=false
-	result, err = storage.ListWebhooks(&model.WebhookFilter{Active: &inactive})
+	result, err = storage.ListWebhooks(context.Background(), &model.WebhookFilter{Active: &inactive})
 	if err != nil {
 		t.Fatalf("ListWebhooks failed: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestWebhookOperations_GetWebhooksForEvent(t *testing.T) {
 	})
 
 	// Get webhooks for device.created event
-	result, err := storage.GetWebhooksForEvent(model.EventTypeDeviceCreated)
+	result, err := storage.GetWebhooksForEvent(context.Background(), model.EventTypeDeviceCreated)
 	if err != nil {
 		t.Fatalf("GetWebhooksForEvent failed: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestWebhookOperations_GetWebhooksForEvent(t *testing.T) {
 	}
 
 	// Get webhooks for network.created event
-	result, err = storage.GetWebhooksForEvent(model.EventTypeNetworkCreated)
+	result, err = storage.GetWebhooksForEvent(context.Background(), model.EventTypeNetworkCreated)
 	if err != nil {
 		t.Fatalf("GetWebhooksForEvent failed: %v", err)
 	}
@@ -348,7 +348,7 @@ func TestDeliveryOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get delivery
-	retrieved, err := storage.GetDelivery(delivery.ID)
+	retrieved, err := storage.GetDelivery(context.Background(), delivery.ID)
 	if err != nil {
 		t.Fatalf("GetDelivery failed: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestDeliveryOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDelivery("non-existent-id")
+	_, err := storage.GetDelivery(context.Background(), "non-existent-id")
 	if err != ErrDeliveryNotFound {
 		t.Errorf("expected ErrDeliveryNotFound, got %v", err)
 	}
@@ -408,7 +408,7 @@ func TestDeliveryOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDelivery(delivery.ID)
+	retrieved, err := storage.GetDelivery(context.Background(), delivery.ID)
 	if err != nil {
 		t.Fatalf("GetDelivery failed: %v", err)
 	}
@@ -467,7 +467,7 @@ func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 	})
 
 	// Filter by webhook ID
-	result, err := storage.ListDeliveries(&model.DeliveryFilter{WebhookID: webhook.ID})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -476,7 +476,7 @@ func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 	}
 
 	// Filter by status
-	result, err = storage.ListDeliveries(&model.DeliveryFilter{Status: model.DeliveryStatusSuccess})
+	result, err = storage.ListDeliveries(context.Background(), &model.DeliveryFilter{Status: model.DeliveryStatusSuccess})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -485,7 +485,7 @@ func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 	}
 
 	// Filter by event type
-	result, err = storage.ListDeliveries(&model.DeliveryFilter{EventType: model.EventTypeNetworkCreated})
+	result, err = storage.ListDeliveries(context.Background(), &model.DeliveryFilter{EventType: model.EventTypeNetworkCreated})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -518,7 +518,7 @@ func TestDeliveryOperations_ListWithLimit(t *testing.T) {
 	}
 
 	// List with limit
-	result, err := storage.ListDeliveries(&model.DeliveryFilter{Limit: 5})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{Limit: 5})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -573,7 +573,7 @@ func TestDeliveryOperations_GetPendingDeliveries(t *testing.T) {
 	})
 
 	// Get pending deliveries
-	result, err := storage.GetPendingDeliveries(10)
+	result, err := storage.GetPendingDeliveries(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("GetPendingDeliveries failed: %v", err)
 	}
@@ -608,13 +608,13 @@ func TestDeliveryOperations_DeleteOldDeliveries(t *testing.T) {
 	}
 
 	// Delete deliveries older than 0 days (all)
-	err := storage.DeleteOldDeliveries(0)
+	err := storage.DeleteOldDeliveries(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("DeleteOldDeliveries failed: %v", err)
 	}
 
 	// Verify all deleted
-	result, err := storage.ListDeliveries(&model.DeliveryFilter{WebhookID: webhook.ID})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -650,7 +650,7 @@ func TestWebhookOperations_DeleteCascadesToDeliveries(t *testing.T) {
 	}
 
 	// Verify deliveries are also deleted
-	result, err := storage.ListDeliveries(&model.DeliveryFilter{WebhookID: webhook.ID})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -681,7 +681,7 @@ func TestDeliveryOperations_ListWithTimeFilter(t *testing.T) {
 	})
 
 	// Get the created delivery to know its timestamp
-	deliveries, _ := storage.ListDeliveries(&model.DeliveryFilter{WebhookID: webhook.ID})
+	deliveries, _ := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
 	if len(deliveries) == 0 {
 		t.Fatal("expected at least one delivery")
 	}
@@ -689,7 +689,7 @@ func TestDeliveryOperations_ListWithTimeFilter(t *testing.T) {
 
 	// Filter with After
 	after := createdTime.Add(-1 * time.Hour)
-	result, err := storage.ListDeliveries(&model.DeliveryFilter{After: &after})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{After: &after})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}
@@ -699,7 +699,7 @@ func TestDeliveryOperations_ListWithTimeFilter(t *testing.T) {
 
 	// Filter with Before (should exclude the delivery)
 	before := createdTime.Add(-1 * time.Hour)
-	result, err = storage.ListDeliveries(&model.DeliveryFilter{Before: &before})
+	result, err = storage.ListDeliveries(context.Background(), &model.DeliveryFilter{Before: &before})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}

@@ -40,11 +40,11 @@ func (s *SQLiteStorage) CreateCustomFieldDefinition(ctx context.Context, def *mo
 }
 
 // GetCustomFieldDefinition retrieves a custom field definition by ID
-func (s *SQLiteStorage) GetCustomFieldDefinition(id string) (*model.CustomFieldDefinition, error) {
+func (s *SQLiteStorage) GetCustomFieldDefinition(ctx context.Context, id string) (*model.CustomFieldDefinition, error) {
 	def := &model.CustomFieldDefinition{}
 	var optionsJSON string
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, key, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE id = ?
 	`, id).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
@@ -64,11 +64,11 @@ func (s *SQLiteStorage) GetCustomFieldDefinition(id string) (*model.CustomFieldD
 }
 
 // GetCustomFieldDefinitionByKey retrieves a custom field definition by its unique key
-func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(key string) (*model.CustomFieldDefinition, error) {
+func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(ctx context.Context, key string) (*model.CustomFieldDefinition, error) {
 	def := &model.CustomFieldDefinition{}
 	var optionsJSON string
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, key, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE key = ?
 	`, key).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
@@ -88,7 +88,7 @@ func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(key string) (*model.Custom
 }
 
 // ListCustomFieldDefinitions lists all custom field definitions
-func (s *SQLiteStorage) ListCustomFieldDefinitions(filter *model.CustomFieldDefinitionFilter) ([]model.CustomFieldDefinition, error) {
+func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *model.CustomFieldDefinitionFilter) ([]model.CustomFieldDefinition, error) {
 	query := `SELECT id, name, key, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE 1=1`
 	var args []any
@@ -100,7 +100,7 @@ func (s *SQLiteStorage) ListCustomFieldDefinitions(filter *model.CustomFieldDefi
 
 	query += " ORDER BY name ASC"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,8 +186,8 @@ func (s *SQLiteStorage) SetCustomFieldValue(ctx context.Context, value *model.Cu
 }
 
 // GetCustomFieldValues retrieves all custom field values for a device
-func (s *SQLiteStorage) GetCustomFieldValues(deviceID string) ([]model.CustomFieldValue, error) {
-	rows, err := s.db.Query(`
+func (s *SQLiteStorage) GetCustomFieldValues(ctx context.Context, deviceID string) ([]model.CustomFieldValue, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, device_id, field_id, string_value, number_value, bool_value
 		FROM custom_field_values WHERE device_id = ?
 	`, deviceID)
@@ -200,12 +200,12 @@ func (s *SQLiteStorage) GetCustomFieldValues(deviceID string) ([]model.CustomFie
 }
 
 // GetCustomFieldValue retrieves a specific custom field value for a device
-func (s *SQLiteStorage) GetCustomFieldValue(deviceID, fieldID string) (*model.CustomFieldValue, error) {
+func (s *SQLiteStorage) GetCustomFieldValue(ctx context.Context, deviceID, fieldID string) (*model.CustomFieldValue, error) {
 	value := &model.CustomFieldValue{}
 	var numberValue sql.NullInt64
 	var boolValue sql.NullBool
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, device_id, field_id, string_value, number_value, bool_value
 		FROM custom_field_values WHERE device_id = ? AND field_id = ?
 	`, deviceID, fieldID).Scan(&value.ID, &value.DeviceID, &value.FieldID, &value.StringValue, &numberValue, &boolValue)
@@ -348,7 +348,7 @@ func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, v
 }
 
 // GetCustomFieldValuesWithDefinitions retrieves all custom field values for a device with their definitions
-func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(deviceID string) ([]model.CustomFieldWithDefinition, error) {
+func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(ctx context.Context, deviceID string) ([]model.CustomFieldWithDefinition, error) {
 	query := `
 		SELECT
 			d.id, d.name, d.key, d.type, d.required, d.options, d.description, d.created_at, d.updated_at,
@@ -358,7 +358,7 @@ func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(deviceID string) ([]
 		ORDER BY d.name ASC
 	`
 
-	rows, err := s.db.Query(query, deviceID)
+	rows, err := s.db.QueryContext(ctx, query, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(deviceID string) ([]
 
 // ValidateCustomFieldValue validates a value against its field definition
 func (s *SQLiteStorage) ValidateCustomFieldValue(ctx context.Context, fieldID string, value interface{}) error {
-	def, err := s.GetCustomFieldDefinition(fieldID)
+	def, err := s.GetCustomFieldDefinition(ctx, fieldID)
 	if err != nil {
 		return err
 	}

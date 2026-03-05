@@ -20,7 +20,7 @@ func (s *PoolService) List(ctx context.Context, filter *model.NetworkPoolFilter)
 	if err := requirePermission(ctx, s.store, "pools", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListNetworkPools(filter)
+	return s.store.ListNetworkPools(ctx, filter)
 }
 
 // ListByNetwork lists pools for a network, returning ErrNotFound if the network doesn't exist.
@@ -30,14 +30,14 @@ func (s *PoolService) ListByNetwork(ctx context.Context, networkID string) ([]mo
 	}
 
 	// Verify network exists
-	if _, err := s.store.GetNetwork(networkID); err != nil {
+	if _, err := s.store.GetNetwork(ctx, networkID); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
 
-	return s.store.ListNetworkPools(&model.NetworkPoolFilter{NetworkID: networkID})
+	return s.store.ListNetworkPools(ctx, &model.NetworkPoolFilter{NetworkID: networkID})
 }
 
 func (s *PoolService) Create(ctx context.Context, pool *model.NetworkPool) error {
@@ -54,7 +54,7 @@ func (s *PoolService) Create(ctx context.Context, pool *model.NetworkPool) error
 	}
 
 	// Verify network exists
-	if _, err := s.store.GetNetwork(pool.NetworkID); err != nil {
+	if _, err := s.store.GetNetwork(ctx, pool.NetworkID); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return ErrNotFound
 		}
@@ -77,7 +77,7 @@ func (s *PoolService) Get(ctx context.Context, id string) (*model.NetworkPool, e
 		return nil, err
 	}
 
-	pool, err := s.store.GetNetworkPool(id)
+	pool, err := s.store.GetNetworkPool(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			return nil, ErrNotFound
@@ -122,7 +122,7 @@ func (s *PoolService) GetNextIP(ctx context.Context, poolID string) (string, err
 		return "", err
 	}
 
-	ip, err := s.store.GetNextAvailableIP(poolID)
+	ip, err := s.store.GetNextAvailableIP(ctx, poolID)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			return "", ErrNotFound
@@ -140,7 +140,7 @@ func (s *PoolService) ValidateIPInPool(ctx context.Context, poolID, ip string) (
 		return false, err
 	}
 
-	return s.store.ValidateIPInPool(poolID, ip)
+	return s.store.ValidateIPInPool(ctx, poolID, ip)
 }
 
 func (s *PoolService) GetHeatmap(ctx context.Context, poolID string) ([]storage.IPStatus, error) {
@@ -148,7 +148,7 @@ func (s *PoolService) GetHeatmap(ctx context.Context, poolID string) ([]storage.
 		return nil, err
 	}
 
-	heatmap, err := s.store.GetPoolHeatmap(poolID)
+	heatmap, err := s.store.GetPoolHeatmap(ctx, poolID)
 	if err != nil {
 		if errors.Is(err, storage.ErrPoolNotFound) {
 			return nil, ErrNotFound

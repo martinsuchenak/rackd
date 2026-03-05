@@ -22,7 +22,7 @@ func (s *CustomFieldService) ListDefinitions(ctx context.Context, filter *model.
 		return nil, err
 	}
 
-	return s.store.ListCustomFieldDefinitions(filter)
+	return s.store.ListCustomFieldDefinitions(ctx, filter)
 }
 
 // GetDefinition returns a single custom field definition by ID
@@ -31,7 +31,7 @@ func (s *CustomFieldService) GetDefinition(ctx context.Context, id string) (*mod
 		return nil, err
 	}
 
-	def, err := s.store.GetCustomFieldDefinition(id)
+	def, err := s.store.GetCustomFieldDefinition(ctx, id)
 	if err != nil {
 		if err == storage.ErrCustomFieldNotFound {
 			return nil, ErrNotFound
@@ -96,7 +96,7 @@ func (s *CustomFieldService) UpdateDefinition(ctx context.Context, id string, re
 		return nil, err
 	}
 
-	def, err := s.store.GetCustomFieldDefinition(id)
+	def, err := s.store.GetCustomFieldDefinition(ctx, id)
 	if err != nil {
 		if err == storage.ErrCustomFieldNotFound {
 			return nil, ErrNotFound
@@ -177,7 +177,7 @@ func (s *CustomFieldService) GetValues(ctx context.Context, deviceID string) ([]
 		return nil, err
 	}
 
-	return s.store.GetCustomFieldValues(deviceID)
+	return s.store.GetCustomFieldValues(ctx, deviceID)
 }
 
 // GetValuesWithDefinitions retrieves all custom field values for a device with their definitions
@@ -186,7 +186,7 @@ func (s *CustomFieldService) GetValuesWithDefinitions(ctx context.Context, devic
 		return nil, err
 	}
 
-	return s.store.GetCustomFieldValuesWithDefinitions(deviceID)
+	return s.store.GetCustomFieldValuesWithDefinitions(ctx, deviceID)
 }
 
 // SetValue sets a custom field value for a device
@@ -196,7 +196,7 @@ func (s *CustomFieldService) SetValue(ctx context.Context, deviceID string, inpu
 	}
 
 	// Get the definition to validate type
-	def, err := s.store.GetCustomFieldDefinition(input.FieldID)
+	def, err := s.store.GetCustomFieldDefinition(ctx, input.FieldID)
 	if err != nil {
 		if err == storage.ErrCustomFieldNotFound {
 			return ValidationErrors{{Field: "field_id", Message: "Invalid field ID"}}
@@ -226,7 +226,7 @@ func (s *CustomFieldService) SetValues(ctx context.Context, deviceID string, inp
 	}
 
 	// Get all definitions for validation
-	definitions, err := s.store.ListCustomFieldDefinitions(nil)
+	definitions, err := s.store.ListCustomFieldDefinitions(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (s *CustomFieldService) DeleteValue(ctx context.Context, deviceID, fieldID 
 // ValidateRequiredFields checks that all required custom fields have values
 func (s *CustomFieldService) ValidateRequiredFields(ctx context.Context, values []model.CustomFieldValueInput) error {
 	// Get all definitions
-	definitions, err := s.store.ListCustomFieldDefinitions(nil)
+	definitions, err := s.store.ListCustomFieldDefinitions(ctx, nil)
 	if err != nil {
 		return err
 	}

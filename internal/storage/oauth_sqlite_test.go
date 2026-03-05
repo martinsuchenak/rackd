@@ -31,7 +31,7 @@ func TestOAuthClientCRUD(t *testing.T) {
 	}
 
 	// Get
-	got, err := s.GetOAuthClient(client.ID)
+	got, err := s.GetOAuthClient(ctx, client.ID)
 	if err != nil {
 		t.Fatalf("GetOAuthClient failed: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestOAuthClientCRUD(t *testing.T) {
 	}
 
 	// List
-	clients, err := s.ListOAuthClients("")
+	clients, err := s.ListOAuthClients(ctx, "")
 	if err != nil {
 		t.Fatalf("ListOAuthClients failed: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestOAuthClientCRUD(t *testing.T) {
 	}
 
 	// Get not found
-	_, err = s.GetOAuthClient("nonexistent")
+	_, err = s.GetOAuthClient(ctx, "nonexistent")
 	if err != ErrOAuthClientNotFound {
 		t.Fatalf("expected ErrOAuthClientNotFound, got %v", err)
 	}
@@ -64,7 +64,7 @@ func TestOAuthClientCRUD(t *testing.T) {
 	if err := s.DeleteOAuthClient(ctx, client.ID); err != nil {
 		t.Fatalf("DeleteOAuthClient failed: %v", err)
 	}
-	_, err = s.GetOAuthClient(client.ID)
+	_, err = s.GetOAuthClient(ctx, client.ID)
 	if err != ErrOAuthClientNotFound {
 		t.Fatalf("expected ErrOAuthClientNotFound after delete, got %v", err)
 	}
@@ -107,7 +107,7 @@ func TestOAuthAuthorizationCode(t *testing.T) {
 	}
 
 	// Get
-	got, err := s.GetAuthorizationCode("test-code-hash")
+	got, err := s.GetAuthorizationCode(ctx, "test-code-hash")
 	if err != nil {
 		t.Fatalf("GetAuthorizationCode failed: %v", err)
 	}
@@ -116,18 +116,18 @@ func TestOAuthAuthorizationCode(t *testing.T) {
 	}
 
 	// Mark used
-	if err := s.MarkAuthorizationCodeUsed("test-code-hash"); err != nil {
+	if err := s.MarkAuthorizationCodeUsed(ctx, "test-code-hash"); err != nil {
 		t.Fatalf("MarkAuthorizationCodeUsed failed: %v", err)
 	}
 
 	// Get used code should fail
-	_, err = s.GetAuthorizationCode("test-code-hash")
+	_, err = s.GetAuthorizationCode(ctx, "test-code-hash")
 	if err != ErrOAuthCodeUsed {
 		t.Fatalf("expected ErrOAuthCodeUsed, got %v", err)
 	}
 
 	// Get not found
-	_, err = s.GetAuthorizationCode("nonexistent")
+	_, err = s.GetAuthorizationCode(ctx, "nonexistent")
 	if err != ErrOAuthCodeNotFound {
 		t.Fatalf("expected ErrOAuthCodeNotFound, got %v", err)
 	}
@@ -156,7 +156,7 @@ func TestOAuthToken(t *testing.T) {
 	}
 
 	// Get by hash
-	got, err := s.GetOAuthTokenByHash("test-token-hash")
+	got, err := s.GetOAuthTokenByHash(ctx, "test-token-hash")
 	if err != nil {
 		t.Fatalf("GetOAuthTokenByHash failed: %v", err)
 	}
@@ -168,18 +168,18 @@ func TestOAuthToken(t *testing.T) {
 	}
 
 	// Revoke
-	if err := s.RevokeOAuthToken(token.ID); err != nil {
+	if err := s.RevokeOAuthToken(ctx, token.ID); err != nil {
 		t.Fatalf("RevokeOAuthToken failed: %v", err)
 	}
 
 	// Get revoked token should fail
-	_, err = s.GetOAuthTokenByHash("test-token-hash")
+	_, err = s.GetOAuthTokenByHash(ctx, "test-token-hash")
 	if err != ErrOAuthTokenRevoked {
 		t.Fatalf("expected ErrOAuthTokenRevoked, got %v", err)
 	}
 
 	// Get not found
-	_, err = s.GetOAuthTokenByHash("nonexistent")
+	_, err = s.GetOAuthTokenByHash(ctx, "nonexistent")
 	if err != ErrOAuthTokenNotFound {
 		t.Fatalf("expected ErrOAuthTokenNotFound, got %v", err)
 	}
@@ -203,7 +203,7 @@ func TestOAuthTokenExpiry(t *testing.T) {
 		t.Fatalf("CreateOAuthToken failed: %v", err)
 	}
 
-	_, err := s.GetOAuthTokenByHash("expired-token-hash")
+	_, err := s.GetOAuthTokenByHash(ctx, "expired-token-hash")
 	if err != ErrOAuthTokenExpired {
 		t.Fatalf("expected ErrOAuthTokenExpired, got %v", err)
 	}
@@ -227,13 +227,13 @@ func TestRevokeOAuthTokensByClient(t *testing.T) {
 	}
 
 	// Revoke all by client
-	if err := s.RevokeOAuthTokensByClient("client1"); err != nil {
+	if err := s.RevokeOAuthTokensByClient(ctx, "client1"); err != nil {
 		t.Fatalf("RevokeOAuthTokensByClient failed: %v", err)
 	}
 
 	// Both should be revoked
 	for _, hash := range []string{"token-1", "token-2"} {
-		_, err := s.GetOAuthTokenByHash(hash)
+		_, err := s.GetOAuthTokenByHash(ctx, hash)
 		if err != ErrOAuthTokenRevoked {
 			t.Fatalf("expected ErrOAuthTokenRevoked for %s, got %v", hash, err)
 		}

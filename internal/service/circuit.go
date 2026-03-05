@@ -21,7 +21,7 @@ func (s *CircuitService) List(ctx context.Context, filter *model.CircuitFilter) 
 		return nil, err
 	}
 
-	return s.store.ListCircuits(filter)
+	return s.store.ListCircuits(ctx, filter)
 }
 
 // Get returns a single circuit by ID
@@ -30,7 +30,7 @@ func (s *CircuitService) Get(ctx context.Context, id string) (*model.Circuit, er
 		return nil, err
 	}
 
-	circuit, err := s.store.GetCircuit(id)
+	circuit, err := s.store.GetCircuit(ctx, id)
 	if err != nil {
 		if err == storage.ErrCircuitNotFound {
 			return nil, ErrNotFound
@@ -47,7 +47,7 @@ func (s *CircuitService) GetByCircuitID(ctx context.Context, circuitID string) (
 		return nil, err
 	}
 
-	circuit, err := s.store.GetCircuitByCircuitID(circuitID)
+	circuit, err := s.store.GetCircuitByCircuitID(ctx, circuitID)
 	if err != nil {
 		if err == storage.ErrCircuitNotFound {
 			return nil, ErrNotFound
@@ -124,7 +124,7 @@ func (s *CircuitService) Update(ctx context.Context, id string, req *model.Updat
 		return nil, err
 	}
 
-	circuit, err := s.store.GetCircuit(id)
+	circuit, err := s.store.GetCircuit(ctx, id)
 	if err != nil {
 		if err == storage.ErrCircuitNotFound {
 			return nil, ErrNotFound
@@ -244,7 +244,7 @@ func (s *CircuitService) GetByDatacenter(ctx context.Context, datacenterID strin
 		return nil, err
 	}
 
-	return s.store.GetCircuitsByDatacenter(datacenterID)
+	return s.store.GetCircuitsByDatacenter(ctx, datacenterID)
 }
 
 // GetByDevice returns all circuits linked to a device
@@ -253,5 +253,5 @@ func (s *CircuitService) GetByDevice(ctx context.Context, deviceID string) ([]mo
 		return nil, err
 	}
 
-	return s.store.GetCircuitsByDevice(deviceID)
+	return s.store.GetCircuitsByDevice(ctx, deviceID)
 }

@@ -28,7 +28,7 @@ func (s *DashboardService) GetStats(ctx context.Context, staleDays, recentLimit 
 		recentLimit = 10 // Default to 10 recent discoveries
 	}
 
-	return s.store.GetDashboardStats(staleDays, recentLimit)
+	return s.store.GetDashboardStats(ctx, staleDays, recentLimit)
 }
 
 // GetUtilizationTrend retrieves utilization trend data for charts
@@ -41,5 +41,5 @@ func (s *DashboardService) GetUtilizationTrend(ctx context.Context, resourceType
 		days = 30 // Default to 30 days
 	}
 
-	return s.store.GetUtilizationTrend(resourceType, resourceID, days)
+	return s.store.GetUtilizationTrend(ctx, resourceType, resourceID, days)
 }

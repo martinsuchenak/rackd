@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/martinsuchenak/rackd/internal/config"
@@ -8,7 +9,7 @@ import (
 )
 
 func BootstrapInitialAdmin(store ExtendedStorage, cfg *config.Config, sessionManager interface{}) error {
-	userCount, err := store.UserCount()
+	userCount, err := store.UserCount(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to check for existing users: %w", err)
 	}
@@ -36,6 +37,7 @@ func BootstrapInitialAdmin(store ExtendedStorage, cfg *config.Config, sessionMan
 	log.Info("Creating initial admin user", "username", cfg.InitialAdminUsername)
 
 	if err := store.CreateInitialAdmin(
+		context.Background(),
 		cfg.InitialAdminUsername,
 		cfg.InitialAdminEmail,
 		cfg.InitialAdminFullName,

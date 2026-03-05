@@ -248,7 +248,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		// Strategy 2: Fall back to API key authentication
 		if caller == nil {
 			hash := auth.HashToken(token)
-			key, err := s.store.GetAPIKeyByKey(hash)
+			key, err := s.store.GetAPIKeyByKey(r.Context(), hash)
 
 			if err != nil || subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) != 1 {
 				log.Debug("MCP auth failed: invalid token")
@@ -265,7 +265,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
 			// Update last used (async)
 			go func() {
-				s.store.UpdateAPIKeyLastUsed(key.ID, time.Now())
+				s.store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
 			}()
 
 			log.Trace("MCP auth successful (API key)", "key_name", key.Name)
@@ -273,7 +273,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			// Resolve API key owner: if the key has a UserID, use the owner's
 			// identity so RBAC is enforced using their roles.
 			if key.UserID != "" {
-				user, err := s.store.GetUser(key.UserID)
+				user, err := s.store.GetUser(r.Context(), key.UserID)
 				if err == nil && user.IsActive {
 					caller = &service.Caller{
 						Type:      service.CallerTypeUser,

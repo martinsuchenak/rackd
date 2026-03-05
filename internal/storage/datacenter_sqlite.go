@@ -35,8 +35,7 @@ func (s *SQLiteStorage) ensureDefaultDatacenter(ctx context.Context) error {
 }
 
 // ListDatacenters retrieves all datacenters matching the filter criteria
-func (s *SQLiteStorage) ListDatacenters(filter *model.DatacenterFilter) ([]model.Datacenter, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListDatacenters(ctx context.Context, filter *model.DatacenterFilter) ([]model.Datacenter, error) {
 
 	query := `SELECT id, name, location, description, created_at, updated_at FROM datacenters`
 	var args []any
@@ -75,12 +74,11 @@ func (s *SQLiteStorage) ListDatacenters(filter *model.DatacenterFilter) ([]model
 }
 
 // SearchDatacenters performs a full-text search across datacenter fields using FTS5
-func (s *SQLiteStorage) SearchDatacenters(query string) ([]model.Datacenter, error) {
+func (s *SQLiteStorage) SearchDatacenters(ctx context.Context, query string) ([]model.Datacenter, error) {
 	if query == "" {
-		return s.ListDatacenters(nil)
+		return s.ListDatacenters(ctx, nil)
 	}
 
-	ctx := context.Background()
 	ftsQuery := escapeFTSQuery(query)
 
 	rows, err := s.db.QueryContext(ctx, `
@@ -116,12 +114,10 @@ func (s *SQLiteStorage) SearchDatacenters(query string) ([]model.Datacenter, err
 }
 
 // GetDatacenter retrieves a datacenter by ID
-func (s *SQLiteStorage) GetDatacenter(id string) (*model.Datacenter, error) {
+func (s *SQLiteStorage) GetDatacenter(ctx context.Context, id string) (*model.Datacenter, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	dc := &model.Datacenter{}
 	err := s.db.QueryRowContext(ctx, `
@@ -243,13 +239,12 @@ func (s *SQLiteStorage) DeleteDatacenter(ctx context.Context, id string) error {
 }
 
 // GetDatacenterDevices retrieves all devices in a datacenter
-func (s *SQLiteStorage) GetDatacenterDevices(datacenterID string) ([]model.Device, error) {
+func (s *SQLiteStorage) GetDatacenterDevices(ctx context.Context, datacenterID string) ([]model.Device, error) {
 	if datacenterID == "" {
 		return nil, ErrInvalidID
 	}
 
 	// First check if the datacenter exists
-	ctx := context.Background()
 	var exists bool
 	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, datacenterID).Scan(&exists)
 	if err != nil {
@@ -260,5 +255,5 @@ func (s *SQLiteStorage) GetDatacenterDevices(datacenterID string) ([]model.Devic
 	}
 
 	// Use ListDevices with a filter
-	return s.ListDevices(&model.DeviceFilter{DatacenterID: datacenterID})
+	return s.ListDevices(ctx, &model.DeviceFilter{DatacenterID: datacenterID})
 }

@@ -20,7 +20,7 @@ func (s *RelationshipService) ListAll(ctx context.Context) ([]model.DeviceRelati
 	if err := requirePermission(ctx, s.store, "relationships", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListAllRelationships()
+	return s.store.ListAllRelationships(ctx)
 }
 
 func (s *RelationshipService) Add(ctx context.Context, parentID, childID, relationshipType, notes string) error {
@@ -58,7 +58,7 @@ func (s *RelationshipService) Get(ctx context.Context, deviceID string) ([]model
 		return nil, ValidationErrors{{Field: "device_id", Message: "Device ID is required"}}
 	}
 
-	return s.store.GetRelationships(deviceID)
+	return s.store.GetRelationships(ctx, deviceID)
 }
 
 func (s *RelationshipService) GetRelated(ctx context.Context, deviceID, relationshipType string) ([]model.Device, error) {
@@ -70,7 +70,7 @@ func (s *RelationshipService) GetRelated(ctx context.Context, deviceID, relation
 		return nil, ValidationErrors{{Field: "device_id", Message: "Device ID is required"}}
 	}
 
-	return s.store.GetRelatedDevices(deviceID, relationshipType)
+	return s.store.GetRelatedDevices(ctx, deviceID, relationshipType)
 }
 
 func (s *RelationshipService) UpdateNotes(ctx context.Context, parentID, childID, relationshipType, notes string) error {

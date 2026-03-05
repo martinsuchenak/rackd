@@ -111,12 +111,12 @@ func (w *ScheduledScanWorker) scheduleJob(scan *model.ScheduledScan) error {
 }
 
 func (w *ScheduledScanWorker) runScheduledScan(scan *model.ScheduledScan) {
-	network, err := w.discoveryService.GetNetwork(scan.NetworkID)
+	network, err := w.discoveryService.GetNetwork(w.ctx, scan.NetworkID)
 	if err != nil {
 		return
 	}
 
-	profile, err := w.profileStore.Get(scan.ProfileID)
+	profile, err := w.profileStore.Get(w.ctx, scan.ProfileID)
 	if err != nil {
 		return
 	}

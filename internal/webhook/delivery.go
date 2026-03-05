@@ -29,10 +29,10 @@ const (
 
 // DeliveryConfig holds configuration for webhook delivery
 type DeliveryConfig struct {
-	MaxRetries     int
-	RetryBackoff   time.Duration
-	HTTPTimeout    time.Duration
-	RetentionDays  int
+	MaxRetries    int
+	RetryBackoff  time.Duration
+	HTTPTimeout   time.Duration
+	RetentionDays int
 }
 
 // DefaultDeliveryConfig returns the default delivery configuration
@@ -157,7 +157,7 @@ func (s *DeliveryService) calculateBackoff(attempt int) time.Duration {
 
 // ProcessPendingRetries processes all pending webhook deliveries
 func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, error) {
-	deliveries, err := s.store.GetPendingDeliveries(100)
+	deliveries, err := s.store.GetPendingDeliveries(ctx, 100)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get pending deliveries: %w", err)
 	}
@@ -166,7 +166,7 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 
 	for _, delivery := range deliveries {
 		// Get the webhook
-		webhook, err := s.store.GetWebhook(delivery.WebhookID)
+		webhook, err := s.store.GetWebhook(ctx, delivery.WebhookID)
 		if err != nil {
 			// Webhook was deleted, abandon the delivery
 			delivery.Status = model.DeliveryStatusAbandoned
@@ -224,7 +224,7 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 
 // CleanupOldDeliveries removes old delivery records
 func (s *DeliveryService) CleanupOldDeliveries() error {
-	return s.store.DeleteOldDeliveries(s.config.RetentionDays)
+	return s.store.DeleteOldDeliveries(context.Background(), s.config.RetentionDays)
 }
 
 // ComputeHMAC computes an HMAC-SHA256 signature for the payload

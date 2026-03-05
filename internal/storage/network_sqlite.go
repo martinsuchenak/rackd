@@ -14,8 +14,7 @@ import (
 // Network operations
 
 // ListNetworks retrieves all networks matching the filter criteria
-func (s *SQLiteStorage) ListNetworks(filter *model.NetworkFilter) ([]model.Network, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListNetworks(ctx context.Context, filter *model.NetworkFilter) ([]model.Network, error) {
 
 	query := `SELECT id, name, subnet, vlan_id, datacenter_id, description, created_at, updated_at FROM networks`
 	var args []any
@@ -80,12 +79,11 @@ func (s *SQLiteStorage) ListNetworks(filter *model.NetworkFilter) ([]model.Netwo
 }
 
 // SearchNetworks performs a full-text search across network fields using FTS5
-func (s *SQLiteStorage) SearchNetworks(query string) ([]model.Network, error) {
+func (s *SQLiteStorage) SearchNetworks(ctx context.Context, query string) ([]model.Network, error) {
 	if query == "" {
-		return s.ListNetworks(nil)
+		return s.ListNetworks(ctx, nil)
 	}
 
-	ctx := context.Background()
 	ftsQuery := escapeFTSQuery(query)
 
 	rows, err := s.db.QueryContext(ctx, `
@@ -133,12 +131,10 @@ func (s *SQLiteStorage) SearchNetworks(query string) ([]model.Network, error) {
 }
 
 // GetNetwork retrieves a network by ID
-func (s *SQLiteStorage) GetNetwork(id string) (*model.Network, error) {
+func (s *SQLiteStorage) GetNetwork(ctx context.Context, id string) (*model.Network, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	network := &model.Network{}
 	var vlanID sql.NullInt64
@@ -311,12 +307,10 @@ func (s *SQLiteStorage) deleteNetworkInTx(ctx context.Context, tx *sql.Tx, id st
 }
 
 // GetNetworkDevices retrieves all devices that have addresses in a network
-func (s *SQLiteStorage) GetNetworkDevices(networkID string) ([]model.Device, error) {
+func (s *SQLiteStorage) GetNetworkDevices(ctx context.Context, networkID string) ([]model.Device, error) {
 	if networkID == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Check if network exists
 	var exists bool
@@ -329,19 +323,17 @@ func (s *SQLiteStorage) GetNetworkDevices(networkID string) ([]model.Device, err
 	}
 
 	// Use ListDevices with a filter
-	return s.ListDevices(&model.DeviceFilter{NetworkID: networkID})
+	return s.ListDevices(ctx, &model.DeviceFilter{NetworkID: networkID})
 }
 
 // GetNetworkUtilization calculates IP usage for a network based on its CIDR and assigned addresses
-func (s *SQLiteStorage) GetNetworkUtilization(networkID string) (*model.NetworkUtilization, error) {
+func (s *SQLiteStorage) GetNetworkUtilization(ctx context.Context, networkID string) (*model.NetworkUtilization, error) {
 	if networkID == "" {
 		return nil, ErrInvalidID
 	}
 
-	ctx := context.Background()
-
 	// Get the network to retrieve its subnet
-	network, err := s.GetNetwork(networkID)
+	network, err := s.GetNetwork(ctx, networkID)
 	if err != nil {
 		return nil, err
 	}

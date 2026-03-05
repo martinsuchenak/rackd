@@ -17,14 +17,14 @@ func TestNATMappingOperations_CreateAndGet(t *testing.T) {
 	defer storage.Close()
 
 	mapping := &model.NATMapping{
-		Name:          "Web Server NAT",
-		ExternalIP:    "203.0.113.10",
-		ExternalPort:  443,
-		InternalIP:    "192.168.1.10",
-		InternalPort:  443,
-		Protocol:      model.NATProtocolTCP,
-		Description:   "HTTPS to internal web server",
-		Enabled:        true,
+		Name:         "Web Server NAT",
+		ExternalIP:   "203.0.113.10",
+		ExternalPort: 443,
+		InternalIP:   "192.168.1.10",
+		InternalPort: 443,
+		Protocol:     model.NATProtocolTCP,
+		Description:  "HTTPS to internal web server",
+		Enabled:      true,
 	}
 
 	// Create mapping
@@ -44,7 +44,7 @@ func TestNATMappingOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get mapping
-	retrieved, err := storage.GetNATMapping(mapping.ID)
+	retrieved, err := storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != nil {
 		t.Fatalf("GetNATMapping failed: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestNATMappingOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetNATMapping(mapping.ID)
+	retrieved, err := storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != nil {
 		t.Fatalf("GetNATMapping failed: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestNATMappingOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = storage.GetNATMapping(mapping.ID)
+	_, err = storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != ErrNATNotFound {
 		t.Errorf("expected ErrNATNotFound, got %v", err)
 	}
@@ -199,7 +199,7 @@ func TestNATMappingOperations_List(t *testing.T) {
 	}
 
 	// List all
-	mappings, err := storage.ListNATMappings(nil)
+	mappings, err := storage.ListNATMappings(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListNATMappings failed: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestNATMappingOperations_List(t *testing.T) {
 
 	// Filter by enabled
 	enabled := true
-	enabledMappings, err := storage.ListNATMappings(&model.NATFilter{Enabled: &enabled})
+	enabledMappings, err := storage.ListNATMappings(context.Background(), &model.NATFilter{Enabled: &enabled})
 	if err != nil {
 		t.Fatalf("ListNATMappings with enabled filter failed: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestNATMappingOperations_List(t *testing.T) {
 	}
 
 	// Filter by protocol
-	tcpMappings, err := storage.ListNATMappings(&model.NATFilter{Protocol: model.NATProtocolTCP})
+	tcpMappings, err := storage.ListNATMappings(context.Background(), &model.NATFilter{Protocol: model.NATProtocolTCP})
 	if err != nil {
 		t.Fatalf("ListNATMappings with protocol filter failed: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestNATMappingOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetNATMapping("non-existent-id")
+	_, err := storage.GetNATMapping(context.Background(), "non-existent-id")
 	if err != ErrNATNotFound {
 		t.Errorf("expected ErrNATNotFound, got %v", err)
 	}
@@ -272,7 +272,7 @@ func TestNATMappingOperations_WithDevice(t *testing.T) {
 	}
 
 	// Verify device association
-	retrieved, err := storage.GetNATMapping(mapping.ID)
+	retrieved, err := storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != nil {
 		t.Fatalf("GetNATMapping failed: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestNATMappingOperations_WithDevice(t *testing.T) {
 	}
 
 	// Get mappings by device
-	deviceMappings, err := storage.GetNATMappingsByDevice(device.ID)
+	deviceMappings, err := storage.GetNATMappingsByDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetNATMappingsByDevice failed: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestNATMappingOperations_WithDatacenter(t *testing.T) {
 	}
 
 	// Get mappings by datacenter
-	dcMappings, err := storage.GetNATMappingsByDatacenter(dc.ID)
+	dcMappings, err := storage.GetNATMappingsByDatacenter(context.Background(), dc.ID)
 	if err != nil {
 		t.Fatalf("GetNATMappingsByDatacenter failed: %v", err)
 	}
@@ -345,7 +345,7 @@ func TestNATMappingOperations_Tags(t *testing.T) {
 	}
 
 	// Verify tags
-	retrieved, err := storage.GetNATMapping(mapping.ID)
+	retrieved, err := storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != nil {
 		t.Fatalf("GetNATMapping failed: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestNATMappingOperations_Tags(t *testing.T) {
 		t.Fatalf("UpdateNATMapping failed: %v", err)
 	}
 
-	retrieved, err = storage.GetNATMapping(mapping.ID)
+	retrieved, err = storage.GetNATMapping(context.Background(), mapping.ID)
 	if err != nil {
 		t.Fatalf("GetNATMapping failed: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestNATMappingOperations_AllProtocols(t *testing.T) {
 		}
 
 		// Verify
-		retrieved, err := storage.GetNATMapping(mapping.ID)
+		retrieved, err := storage.GetNATMapping(context.Background(), mapping.ID)
 		if err != nil {
 			t.Fatalf("GetNATMapping failed: %v", err)
 		}

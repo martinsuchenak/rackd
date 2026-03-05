@@ -70,12 +70,10 @@ func (s *SQLiteStorage) CreateConflict(ctx context.Context, conflict *model.Conf
 }
 
 // GetConflict retrieves a conflict by ID
-func (s *SQLiteStorage) GetConflict(id string) (*model.Conflict, error) {
+func (s *SQLiteStorage) GetConflict(ctx context.Context, id string) (*model.Conflict, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	var conflict model.Conflict
 	var ipAddress, resolvedBy, notes sql.NullString
@@ -134,8 +132,7 @@ func (s *SQLiteStorage) GetConflict(id string) (*model.Conflict, error) {
 }
 
 // ListConflicts retrieves conflicts matching filter criteria
-func (s *SQLiteStorage) ListConflicts(filter *model.ConflictFilter) ([]model.Conflict, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) ListConflicts(ctx context.Context, filter *model.ConflictFilter) ([]model.Conflict, error) {
 
 	query := `SELECT id, type, status, description, ip_address, device_ids, device_names,
 		          network_ids, network_names, subnets, detected_at, resolved_at, resolved_by, notes
@@ -294,7 +291,7 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 			ID:          newUUID(),
 			Type:        model.ConflictTypeDuplicateIP,
 			Status:      model.ConflictStatusActive,
-			Description:  fmt.Sprintf("IP address %s is assigned to %d devices", ip, count),
+			Description: fmt.Sprintf("IP address %s is assigned to %d devices", ip, count),
 			IPAddress:   ip,
 			DeviceIDs:   deviceIDs,
 			DeviceNames: deviceNames,
@@ -323,7 +320,7 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 	type networkInfo struct {
 		ID     string
 		Name   string
-		Subnet  string
+		Subnet string
 		IPNet  *net.IPNet
 	}
 
@@ -364,14 +361,14 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 			// Check for overlap
 			if networksOverlap(n1.IPNet, n2.IPNet) {
 				conflicts = append(conflicts, model.Conflict{
-					ID:          newUUID(),
-					Type:        model.ConflictTypeOverlappingSubnet,
-					Status:      model.ConflictStatusActive,
+					ID:           newUUID(),
+					Type:         model.ConflictTypeOverlappingSubnet,
+					Status:       model.ConflictStatusActive,
 					Description:  fmt.Sprintf("Subnets %s and %s overlap", n1.Subnet, n2.Subnet),
 					NetworkIDs:   []string{n1.ID, n2.ID},
 					NetworkNames: []string{n1.Name, n2.Name},
 					Subnets:      []string{n1.Subnet, n2.Subnet},
-					DetectedAt:  time.Now().UTC(),
+					DetectedAt:   time.Now().UTC(),
 				})
 			}
 		}
@@ -390,12 +387,10 @@ func networksOverlap(n1, n2 *net.IPNet) bool {
 }
 
 // GetConflictsByDeviceID returns all conflicts involving a specific device
-func (s *SQLiteStorage) GetConflictsByDeviceID(deviceID string) ([]model.Conflict, error) {
+func (s *SQLiteStorage) GetConflictsByDeviceID(ctx context.Context, deviceID string) ([]model.Conflict, error) {
 	if deviceID == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	// Use JSON extraction to find conflicts containing this device ID
 	rows, err := s.db.QueryContext(ctx, `
@@ -411,16 +406,14 @@ func (s *SQLiteStorage) GetConflictsByDeviceID(deviceID string) ([]model.Conflic
 	}
 	defer rows.Close()
 
-	return scanConflicts(rows)
+	return scanConflicts(ctx, rows)
 }
 
 // GetConflictsByIP returns all conflicts for a specific IP address
-func (s *SQLiteStorage) GetConflictsByIP(ip string) ([]model.Conflict, error) {
+func (s *SQLiteStorage) GetConflictsByIP(ctx context.Context, ip string) ([]model.Conflict, error) {
 	if ip == "" {
 		return nil, ErrInvalidID
 	}
-
-	ctx := context.Background()
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, type, status, description, ip_address, device_ids, device_names,
@@ -434,13 +427,13 @@ func (s *SQLiteStorage) GetConflictsByIP(ip string) ([]model.Conflict, error) {
 	}
 	defer rows.Close()
 
-	return scanConflicts(rows)
+	return scanConflicts(ctx, rows)
 }
 
 // MarkConflictsResolvedForDevice marks all active conflicts for a device as resolved
 func (s *SQLiteStorage) MarkConflictsResolvedForDevice(ctx context.Context, deviceID, resolvedBy string) error {
 	// Get conflicts involving this device
-	conflicts, err := s.GetConflictsByDeviceID(deviceID)
+	conflicts, err := s.GetConflictsByDeviceID(ctx, deviceID)
 	if err != nil {
 		return err
 	}
@@ -463,7 +456,7 @@ func (s *SQLiteStorage) MarkConflictsResolvedForDevice(ctx context.Context, devi
 }
 
 // scanConflicts is a helper to scan conflict rows
-func scanConflicts(rows *sql.Rows) ([]model.Conflict, error) {
+func scanConflicts(ctx context.Context, rows *sql.Rows) ([]model.Conflict, error) {
 	var conflicts []model.Conflict
 	for rows.Next() {
 		var conflict model.Conflict

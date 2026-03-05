@@ -35,11 +35,11 @@ func (m *mockScanner) Scan(ctx context.Context, network *model.Network, scanType
 	return scan, nil
 }
 
-func (m *mockScanner) GetScanStatus(scanID string) (*model.DiscoveryScan, error) {
-	return m.store.GetDiscoveryScan(scanID)
+func (m *mockScanner) GetScanStatus(ctx context.Context, scanID string) (*model.DiscoveryScan, error) {
+	return m.store.GetDiscoveryScan(ctx, scanID)
 }
 
-func (m *mockScanner) CancelScan(scanID string) error {
+func (m *mockScanner) CancelScan(ctx context.Context, scanID string) error {
 	return nil
 }
 
@@ -113,7 +113,7 @@ func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorag
 		Key:    auth.HashToken(testAPIKeyValue),
 		UserID: testUser.ID,
 	}
-	if err := store.CreateAPIKey(apiKey); err != nil {
+	if err := store.CreateAPIKey(context.Background(), apiKey); err != nil {
 		t.Fatalf("failed to create test API key: %v", err)
 	}
 

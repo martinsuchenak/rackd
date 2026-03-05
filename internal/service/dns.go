@@ -73,7 +73,7 @@ func (s *DNSService) CreateProvider(ctx context.Context, req *model.CreateDNSPro
 	}
 
 	// Check if provider with same name already exists
-	if _, err := s.store.GetDNSProviderByName(req.Name); err == nil {
+	if _, err := s.store.GetDNSProviderByName(ctx, req.Name); err == nil {
 		return nil, ErrAlreadyExists
 	}
 
@@ -106,7 +106,7 @@ func (s *DNSService) GetProvider(ctx context.Context, id string) (*model.DNSProv
 		return nil, err
 	}
 
-	provider, err := s.store.GetDNSProvider(id)
+	provider, err := s.store.GetDNSProvider(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSProviderNotFound {
 			return nil, ErrNotFound
@@ -125,7 +125,7 @@ func (s *DNSService) ListProviders(ctx context.Context, filter *model.DNSProvide
 		return nil, err
 	}
 
-	providers, err := s.store.ListDNSProviders(filter)
+	providers, err := s.store.ListDNSProviders(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 		return nil, err
 	}
 
-	provider, err := s.store.GetDNSProvider(id)
+	provider, err := s.store.GetDNSProvider(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSProviderNotFound {
 			return nil, ErrNotFound
@@ -158,7 +158,7 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 			return nil, ValidationErrors{{Field: "name", Message: "Name cannot be empty"}}
 		}
 		// Check if new name conflicts with existing provider
-		if existing, err := s.store.GetDNSProviderByName(*req.Name); err == nil && existing.ID != id {
+		if existing, err := s.store.GetDNSProviderByName(ctx, *req.Name); err == nil && existing.ID != id {
 			return nil, ErrAlreadyExists
 		}
 		provider.Name = *req.Name
@@ -213,7 +213,7 @@ func (s *DNSService) DeleteProvider(ctx context.Context, id string) error {
 	}
 
 	// Check if provider has any zones
-	zones, err := s.store.GetDNSZonesByProvider(id)
+	zones, err := s.store.GetDNSZonesByProvider(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func (s *DNSService) CreateZone(ctx context.Context, req *model.CreateDNSZoneReq
 	}
 
 	// Validate provider exists
-	if _, err := s.store.GetDNSProvider(req.ProviderID); err != nil {
+	if _, err := s.store.GetDNSProvider(ctx, req.ProviderID); err != nil {
 		if err == storage.ErrDNSProviderNotFound {
 			return nil, ValidationErrors{{Field: "provider_id", Message: "Provider not found"}}
 		}
@@ -275,13 +275,13 @@ func (s *DNSService) CreateZone(ctx context.Context, req *model.CreateDNSZoneReq
 	}
 
 	// Check if zone with same name already exists
-	if _, err := s.store.GetDNSZoneByName(req.Name); err == nil {
+	if _, err := s.store.GetDNSZoneByName(ctx, req.Name); err == nil {
 		return nil, ErrAlreadyExists
 	}
 
 	// Validate network if provided
 	if req.NetworkID != nil && *req.NetworkID != "" {
-		if _, err := s.store.GetNetwork(*req.NetworkID); err != nil {
+		if _, err := s.store.GetNetwork(ctx, *req.NetworkID); err != nil {
 			return nil, ValidationErrors{{Field: "network_id", Message: "Network not found"}}
 		}
 	}
@@ -316,7 +316,7 @@ func (s *DNSService) GetZone(ctx context.Context, id string) (*model.DNSZone, er
 		return nil, err
 	}
 
-	zone, err := s.store.GetDNSZone(id)
+	zone, err := s.store.GetDNSZone(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return nil, ErrNotFound
@@ -333,7 +333,7 @@ func (s *DNSService) ListZones(ctx context.Context, filter *model.DNSZoneFilter)
 		return nil, err
 	}
 
-	return s.store.ListDNSZones(filter)
+	return s.store.ListDNSZones(ctx, filter)
 }
 
 // UpdateZone updates an existing DNS zone
@@ -342,7 +342,7 @@ func (s *DNSService) UpdateZone(ctx context.Context, id string, req *model.Updat
 		return nil, err
 	}
 
-	zone, err := s.store.GetDNSZone(id)
+	zone, err := s.store.GetDNSZone(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return nil, ErrNotFound
@@ -356,14 +356,14 @@ func (s *DNSService) UpdateZone(ctx context.Context, id string, req *model.Updat
 			return nil, ValidationErrors{{Field: "name", Message: "Name cannot be empty"}}
 		}
 		// Check if new name conflicts with existing zone
-		if existing, err := s.store.GetDNSZoneByName(*req.Name); err == nil && existing.ID != id {
+		if existing, err := s.store.GetDNSZoneByName(ctx, *req.Name); err == nil && existing.ID != id {
 			return nil, ErrAlreadyExists
 		}
 		zone.Name = *req.Name
 	}
 	if req.NetworkID != nil {
 		if *req.NetworkID != "" {
-			if _, err := s.store.GetNetwork(*req.NetworkID); err != nil {
+			if _, err := s.store.GetNetwork(ctx, *req.NetworkID); err != nil {
 				return nil, ValidationErrors{{Field: "network_id", Message: "Network not found"}}
 			}
 		}
@@ -402,7 +402,7 @@ func (s *DNSService) DeleteZone(ctx context.Context, id string) error {
 	}
 
 	// Check if zone exists
-	zone, err := s.store.GetDNSZone(id)
+	zone, err := s.store.GetDNSZone(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return ErrNotFound
@@ -422,7 +422,7 @@ func (s *DNSService) DeleteZone(ctx context.Context, id string) error {
 
 	// If the zone is configured for PTR and has a PTR zone, delete it too
 	if zone.PTRZone != nil {
-		if ptrZone, err := s.store.GetDNSZoneByName(*zone.PTRZone); err == nil {
+		if ptrZone, err := s.store.GetDNSZoneByName(ctx, *zone.PTRZone); err == nil {
 			// Only delete if it's owned by the same provider
 			if ptrZone.ProviderID == zone.ProviderID {
 				s.store.DeleteDNSRecordsByZone(ctx, ptrZone.ID)
@@ -457,7 +457,7 @@ func (s *DNSService) CreateRecord(ctx context.Context, req *model.CreateDNSRecor
 	}
 
 	// Validate zone exists
-	zone, err := s.store.GetDNSZone(req.ZoneID)
+	zone, err := s.store.GetDNSZone(ctx, req.ZoneID)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return nil, ValidationErrors{{Field: "zone_id", Message: "Zone not found"}}
@@ -467,13 +467,13 @@ func (s *DNSService) CreateRecord(ctx context.Context, req *model.CreateDNSRecor
 
 	// Validate device if provided
 	if req.DeviceID != nil && *req.DeviceID != "" {
-		if _, err := s.store.GetDevice(*req.DeviceID); err != nil {
+		if _, err := s.store.GetDevice(ctx, *req.DeviceID); err != nil {
 			return nil, ValidationErrors{{Field: "device_id", Message: "Device not found"}}
 		}
 	}
 
 	// Check for duplicate record
-	if existing, err := s.store.GetDNSRecordByName(req.ZoneID, req.Name, req.Type); err == nil {
+	if existing, err := s.store.GetDNSRecordByName(ctx, req.ZoneID, req.Name, req.Type); err == nil {
 		// Record exists, update it instead
 		return s.UpdateRecord(ctx, existing.ID, &model.UpdateDNSRecordRequest{
 			DeviceID: req.DeviceID,
@@ -522,7 +522,7 @@ func (s *DNSService) GetRecord(ctx context.Context, id string) (*model.DNSRecord
 		return nil, err
 	}
 
-	record, err := s.store.GetDNSRecord(id)
+	record, err := s.store.GetDNSRecord(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSRecordNotFound {
 			return nil, ErrNotFound
@@ -539,7 +539,7 @@ func (s *DNSService) ListRecords(ctx context.Context, filter *model.DNSRecordFil
 		return nil, err
 	}
 
-	return s.store.ListDNSRecords(filter)
+	return s.store.ListDNSRecords(ctx, filter)
 }
 
 // UpdateRecord updates an existing DNS record
@@ -548,7 +548,7 @@ func (s *DNSService) UpdateRecord(ctx context.Context, id string, req *model.Upd
 		return nil, err
 	}
 
-	record, err := s.store.GetDNSRecord(id)
+	record, err := s.store.GetDNSRecord(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSRecordNotFound {
 			return nil, ErrNotFound
@@ -558,7 +558,7 @@ func (s *DNSService) UpdateRecord(ctx context.Context, id string, req *model.Upd
 
 	// Validate device if provided
 	if req.DeviceID != nil && *req.DeviceID != "" {
-		if _, err := s.store.GetDevice(*req.DeviceID); err != nil {
+		if _, err := s.store.GetDevice(ctx, *req.DeviceID); err != nil {
 			return nil, ValidationErrors{{Field: "device_id", Message: "Device not found"}}
 		}
 	}
@@ -608,7 +608,7 @@ func (s *DNSService) UpdateRecord(ctx context.Context, id string, req *model.Upd
 	}
 
 	// Auto-sync if zone is configured for it
-	if zone, err := s.store.GetDNSZone(record.ZoneID); err == nil && zone.AutoSync && updated {
+	if zone, err := s.store.GetDNSZone(ctx, record.ZoneID); err == nil && zone.AutoSync && updated {
 		if err := s.SyncRecord(ctx, record); err != nil {
 			// Update record with error
 			errMsg := err.Error()
@@ -627,7 +627,7 @@ func (s *DNSService) DeleteRecord(ctx context.Context, id string) error {
 		return err
 	}
 
-	record, err := s.store.GetDNSRecord(id)
+	record, err := s.store.GetDNSRecord(ctx, id)
 	if err != nil {
 		if err == storage.ErrDNSRecordNotFound {
 			return ErrNotFound
@@ -636,7 +636,7 @@ func (s *DNSService) DeleteRecord(ctx context.Context, id string) error {
 	}
 
 	// Get zone for provider info
-	zone, err := s.store.GetDNSZone(record.ZoneID)
+	zone, err := s.store.GetDNSZone(ctx, record.ZoneID)
 	if err != nil {
 		return err
 	}
@@ -665,7 +665,7 @@ func (s *DNSService) SyncZone(ctx context.Context, zoneID string) (*model.SyncRe
 		return nil, err
 	}
 
-	zone, err := s.store.GetDNSZone(zoneID)
+	zone, err := s.store.GetDNSZone(ctx, zoneID)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return nil, ErrNotFound
@@ -682,7 +682,7 @@ func (s *DNSService) SyncZone(ctx context.Context, zoneID string) (*model.SyncRe
 	}
 
 	// Get all records in the zone
-	records, err := s.store.ListDNSRecords(&model.DNSRecordFilter{ZoneID: zoneID})
+	records, err := s.store.ListDNSRecords(ctx, &model.DNSRecordFilter{ZoneID: zoneID})
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +733,7 @@ func (s *DNSService) SyncDevice(ctx context.Context, deviceID string) (*model.Sy
 	}
 
 	// Get all records for this device
-	records, err := s.store.GetDNSRecordsByDevice(deviceID)
+	records, err := s.store.GetDNSRecordsByDevice(ctx, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -763,7 +763,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 		return nil, err
 	}
 
-	zone, err := s.store.GetDNSZone(zoneID)
+	zone, err := s.store.GetDNSZone(ctx, zoneID)
 	if err != nil {
 		if err == storage.ErrDNSZoneNotFound {
 			return nil, ErrNotFound
@@ -790,7 +790,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 
 	// Load devices once for auto-matching; if it fails, continue without matching
 	var devices []model.Device
-	if devs, err := s.store.ListDevices(&model.DeviceFilter{}); err == nil {
+	if devs, err := s.store.ListDevices(ctx, &model.DeviceFilter{}); err == nil {
 		devices = devs
 	}
 
@@ -802,7 +802,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 
 	for _, dnsRecord := range dnsRecords {
 		// Check if record already exists
-		existing, err := s.store.GetDNSRecordByName(zoneID, dnsRecord.Name, dnsRecord.Type)
+		existing, err := s.store.GetDNSRecordByName(ctx, zoneID, dnsRecord.Name, dnsRecord.Type)
 		if err == nil {
 			// Record exists, update value if different
 			if existing.Value != dnsRecord.Value {
@@ -890,7 +890,7 @@ func (s *DNSService) getProvider(ctx context.Context, providerID string) (dns.Pr
 	s.mu.Unlock()
 
 	// Get provider config from storage
-	config, err := s.store.GetDNSProvider(providerID)
+	config, err := s.store.GetDNSProvider(ctx, providerID)
 	if err != nil {
 		return nil, ErrDNSProviderNotFound
 	}
@@ -924,7 +924,7 @@ func (s *DNSService) getProvider(ctx context.Context, providerID string) (dns.Pr
 
 // SyncRecord syncs a single record to the DNS provider
 func (s *DNSService) SyncRecord(ctx context.Context, record *model.DNSRecord) error {
-	zone, err := s.store.GetDNSZone(record.ZoneID)
+	zone, err := s.store.GetDNSZone(ctx, record.ZoneID)
 	if err != nil {
 		return err
 	}
@@ -1204,7 +1204,7 @@ func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model
 	}
 
 	// 1. Get record, validate it's unlinked
-	record, err := s.store.GetDNSRecord(recordID)
+	record, err := s.store.GetDNSRecord(ctx, recordID)
 	if err != nil {
 		if err == storage.ErrDNSRecordNotFound {
 			return nil, ErrNotFound
@@ -1217,7 +1217,7 @@ func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model
 	}
 
 	// 2. Validate device exists
-	device, err := s.store.GetDevice(req.DeviceID)
+	device, err := s.store.GetDevice(ctx, req.DeviceID)
 	if err != nil {
 		if err == storage.ErrDeviceNotFound {
 			return nil, ValidationErrors{{Field: "device_id", Message: "Device not found"}}
@@ -1245,7 +1245,7 @@ func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model
 
 	// 5. If CNAME and AddToDomains, add FQDN to device.Domains
 	if record.Type == "CNAME" && req.AddToDomains {
-		zone, err := s.store.GetDNSZone(record.ZoneID)
+		zone, err := s.store.GetDNSZone(ctx, record.ZoneID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get zone: %w", err)
 		}
@@ -1284,7 +1284,7 @@ func (s *DNSService) PromoteRecord(ctx context.Context, recordID string, req *mo
 	}
 
 	// 1. Get record, validate it's unlinked
-	record, err := s.store.GetDNSRecord(recordID)
+	record, err := s.store.GetDNSRecord(ctx, recordID)
 	if err != nil {
 		if err == storage.ErrDNSRecordNotFound {
 			return nil, ErrNotFound
@@ -1297,7 +1297,7 @@ func (s *DNSService) PromoteRecord(ctx context.Context, recordID string, req *mo
 	}
 
 	// 2. Get zone for NetworkID
-	zone, err := s.store.GetDNSZone(record.ZoneID)
+	zone, err := s.store.GetDNSZone(ctx, record.ZoneID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get zone: %w", err)
 	}

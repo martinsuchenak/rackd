@@ -98,14 +98,14 @@ func (w *SnapshotWorker) takeSnapshots() error {
 	now := time.Now().UTC()
 
 	// Snapshot all networks
-	networks, err := w.storage.ListNetworks(nil)
+	networks, err := w.storage.ListNetworks(w.ctx, nil)
 	if err != nil {
 		log.Error("Failed to list networks for snapshot", "error", err)
 		return err
 	}
 
 	for _, network := range networks {
-		util, err := w.storage.GetNetworkUtilization(network.ID)
+		util, err := w.storage.GetNetworkUtilization(w.ctx, network.ID)
 		if err != nil {
 			log.Error("Failed to get network utilization", "network_id", network.ID, "error", err)
 			continue
@@ -127,14 +127,14 @@ func (w *SnapshotWorker) takeSnapshots() error {
 	}
 
 	// Snapshot all pools
-	pools, err := w.storage.ListNetworkPools(nil)
+	pools, err := w.storage.ListNetworkPools(w.ctx, nil)
 	if err != nil {
 		log.Error("Failed to list pools for snapshot", "error", err)
 		return err
 	}
 
 	for _, pool := range pools {
-		heatmap, err := w.storage.GetPoolHeatmap(pool.ID)
+		heatmap, err := w.storage.GetPoolHeatmap(w.ctx, pool.ID)
 		if err != nil {
 			log.Error("Failed to get pool heatmap", "pool_id", pool.ID, "error", err)
 			continue
@@ -174,7 +174,7 @@ func (w *SnapshotWorker) takeSnapshots() error {
 
 func (w *SnapshotWorker) cleanupOldSnapshots() {
 	if w.config.SnapshotRetentionDays > 0 {
-		if err := w.storage.DeleteOldSnapshots(w.config.SnapshotRetentionDays); err != nil {
+		if err := w.storage.DeleteOldSnapshots(w.ctx, w.config.SnapshotRetentionDays); err != nil {
 			log.Error("Failed to cleanup old snapshots", "error", err)
 		}
 	}

@@ -40,12 +40,12 @@ func (s *SQLiteStorage) CreateOAuthClient(ctx context.Context, client *model.OAu
 	return err
 }
 
-func (s *SQLiteStorage) GetOAuthClient(clientID string) (*model.OAuthClient, error) {
+func (s *SQLiteStorage) GetOAuthClient(ctx context.Context, clientID string) (*model.OAuthClient, error) {
 	var client model.OAuthClient
 	var redirectURIs, grantTypes, responseTypes string
 	var createdByUserID sql.NullString
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 			token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 			created_by_user_id, created_at, updated_at
@@ -70,19 +70,19 @@ func (s *SQLiteStorage) GetOAuthClient(clientID string) (*model.OAuthClient, err
 	return &client, nil
 }
 
-func (s *SQLiteStorage) ListOAuthClients(createdByUserID string) ([]model.OAuthClient, error) {
+func (s *SQLiteStorage) ListOAuthClients(ctx context.Context, createdByUserID string) ([]model.OAuthClient, error) {
 	var rows *sql.Rows
 	var err error
 
 	if createdByUserID == "" {
-		rows, err = s.db.Query(`
+		rows, err = s.db.QueryContext(ctx, `
 			SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 				token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 				created_by_user_id, created_at, updated_at
 			FROM oauth_clients ORDER BY created_at DESC
 		`)
 	} else {
-		rows, err = s.db.Query(`
+		rows, err = s.db.QueryContext(ctx, `
 			SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 				token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 				created_by_user_id, created_at, updated_at
@@ -139,9 +139,9 @@ func (s *SQLiteStorage) CreateAuthorizationCode(ctx context.Context, code *model
 	return err
 }
 
-func (s *SQLiteStorage) GetAuthorizationCode(codeHash string) (*model.OAuthAuthorizationCode, error) {
+func (s *SQLiteStorage) GetAuthorizationCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) {
 	var code model.OAuthAuthorizationCode
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT code_hash, client_id, user_id, redirect_uri, scope,
 			code_challenge, code_challenge_method, expires_at, created_at, used
 		FROM oauth_authorization_codes WHERE code_hash = ?
@@ -164,8 +164,8 @@ func (s *SQLiteStorage) GetAuthorizationCode(codeHash string) (*model.OAuthAutho
 	return &code, nil
 }
 
-func (s *SQLiteStorage) MarkAuthorizationCodeUsed(codeHash string) error {
-	result, err := s.db.Exec(`UPDATE oauth_authorization_codes SET used = 1 WHERE code_hash = ? AND used = 0`, codeHash)
+func (s *SQLiteStorage) MarkAuthorizationCodeUsed(ctx context.Context, codeHash string) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE oauth_authorization_codes SET used = 1 WHERE code_hash = ? AND used = 0`, codeHash)
 	if err != nil {
 		return err
 	}
@@ -182,8 +182,8 @@ func (s *SQLiteStorage) MarkAuthorizationCodeUsed(codeHash string) error {
 	return nil
 }
 
-func (s *SQLiteStorage) CleanupExpiredCodes() error {
-	_, err := s.db.Exec(`DELETE FROM oauth_authorization_codes WHERE expires_at < ? OR used = 1`, time.Now().UTC())
+func (s *SQLiteStorage) CleanupExpiredCodes(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_authorization_codes WHERE expires_at < ? OR used = 1`, time.Now().UTC())
 	return err
 }
 
@@ -204,9 +204,9 @@ func (s *SQLiteStorage) CreateOAuthToken(ctx context.Context, token *model.OAuth
 	return err
 }
 
-func (s *SQLiteStorage) GetOAuthTokenByHash(tokenHash string) (*model.OAuthToken, error) {
+func (s *SQLiteStorage) GetOAuthTokenByHash(ctx context.Context, tokenHash string) (*model.OAuthToken, error) {
 	var token model.OAuthToken
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, token_type, token_hash, client_id, user_id, scope,
 			expires_at, created_at, revoked_at, parent_token_id
 		FROM oauth_tokens WHERE token_hash = ?
@@ -229,25 +229,25 @@ func (s *SQLiteStorage) GetOAuthTokenByHash(tokenHash string) (*model.OAuthToken
 	return &token, nil
 }
 
-func (s *SQLiteStorage) RevokeOAuthToken(tokenID string) error {
+func (s *SQLiteStorage) RevokeOAuthToken(ctx context.Context, tokenID string) error {
 	now := time.Now().UTC()
-	_, err := s.db.Exec(`UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, tokenID)
+	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, tokenID)
 	return err
 }
 
-func (s *SQLiteStorage) RevokeOAuthTokensByClient(clientID string) error {
+func (s *SQLiteStorage) RevokeOAuthTokensByClient(ctx context.Context, clientID string) error {
 	now := time.Now().UTC()
-	_, err := s.db.Exec(`UPDATE oauth_tokens SET revoked_at = ? WHERE client_id = ? AND revoked_at IS NULL`, now, clientID)
+	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE client_id = ? AND revoked_at IS NULL`, now, clientID)
 	return err
 }
 
-func (s *SQLiteStorage) RevokeOAuthTokensByUser(userID string) error {
+func (s *SQLiteStorage) RevokeOAuthTokensByUser(ctx context.Context, userID string) error {
 	now := time.Now().UTC()
-	_, err := s.db.Exec(`UPDATE oauth_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, now, userID)
+	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, now, userID)
 	return err
 }
 
-func (s *SQLiteStorage) CleanupExpiredTokens() error {
-	_, err := s.db.Exec(`DELETE FROM oauth_tokens WHERE expires_at < ? AND revoked_at IS NOT NULL`, time.Now().UTC())
+func (s *SQLiteStorage) CleanupExpiredTokens(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ? AND revoked_at IS NOT NULL`, time.Now().UTC())
 	return err
 }

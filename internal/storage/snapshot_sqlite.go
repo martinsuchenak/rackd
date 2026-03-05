@@ -26,7 +26,7 @@ func (s *SQLiteStorage) CreateSnapshot(ctx context.Context, snapshot *model.Util
 }
 
 // ListSnapshots retrieves snapshots matching filter criteria
-func (s *SQLiteStorage) ListSnapshots(filter *model.SnapshotFilter) ([]model.UtilizationSnapshot, error) {
+func (s *SQLiteStorage) ListSnapshots(ctx context.Context, filter *model.SnapshotFilter) ([]model.UtilizationSnapshot, error) {
 	query := `SELECT id, type, resource_id, resource_name, total_ips, used_ips, utilization, timestamp, created_at
 		FROM utilization_snapshots WHERE 1=1`
 	var args []any
@@ -61,7 +61,7 @@ func (s *SQLiteStorage) ListSnapshots(filter *model.SnapshotFilter) ([]model.Uti
 		query += fmt.Sprintf(" LIMIT %d", filter.Limit)
 	}
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s *SQLiteStorage) ListSnapshots(filter *model.SnapshotFilter) ([]model.Uti
 }
 
 // GetLatestSnapshots retrieves the most recent snapshot for each resource of a type
-func (s *SQLiteStorage) GetLatestSnapshots(snapshotType model.SnapshotType) ([]model.UtilizationSnapshot, error) {
+func (s *SQLiteStorage) GetLatestSnapshots(ctx context.Context, snapshotType model.SnapshotType) ([]model.UtilizationSnapshot, error) {
 	query := `
 		SELECT id, type, resource_id, resource_name, total_ips, used_ips, utilization, timestamp, created_at
 		FROM utilization_snapshots s1
@@ -81,7 +81,7 @@ func (s *SQLiteStorage) GetLatestSnapshots(snapshotType model.SnapshotType) ([]m
 		)
 	`
 
-	rows, err := s.db.Query(query, snapshotType)
+	rows, err := s.db.QueryContext(ctx, query, snapshotType)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +91,14 @@ func (s *SQLiteStorage) GetLatestSnapshots(snapshotType model.SnapshotType) ([]m
 }
 
 // DeleteOldSnapshots removes snapshots older than specified days
-func (s *SQLiteStorage) DeleteOldSnapshots(olderThanDays int) error {
+func (s *SQLiteStorage) DeleteOldSnapshots(ctx context.Context, olderThanDays int) error {
 	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.Exec(`DELETE FROM utilization_snapshots WHERE timestamp < ?`, cutoff)
+	_, err := s.db.ExecContext(ctx, `DELETE FROM utilization_snapshots WHERE timestamp < ?`, cutoff)
 	return err
 }
 
 // GetUtilizationTrend retrieves utilization points for a specific resource over time
-func (s *SQLiteStorage) GetUtilizationTrend(resourceType model.SnapshotType, resourceID string, days int) ([]model.UtilizationTrendPoint, error) {
+func (s *SQLiteStorage) GetUtilizationTrend(ctx context.Context, resourceType model.SnapshotType, resourceID string, days int) ([]model.UtilizationTrendPoint, error) {
 	cutoff := time.Now().AddDate(0, 0, -days)
 	query := `
 		SELECT timestamp, utilization, used_ips
@@ -107,7 +107,7 @@ func (s *SQLiteStorage) GetUtilizationTrend(resourceType model.SnapshotType, res
 		ORDER BY timestamp ASC
 	`
 
-	rows, err := s.db.Query(query, resourceType, resourceID, cutoff)
+	rows, err := s.db.QueryContext(ctx, query, resourceType, resourceID, cutoff)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +126,12 @@ func (s *SQLiteStorage) GetUtilizationTrend(resourceType model.SnapshotType, res
 }
 
 // GetDashboardStats retrieves all dashboard statistics
-func (s *SQLiteStorage) GetDashboardStats(staleDays int, recentLimit int) (*model.DashboardStats, error) {
-	ctx := context.Background()
+func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, recentLimit int) (*model.DashboardStats, error) {
 	stats := &model.DashboardStats{
-		StaleThresholdDays:  staleDays,
-		RecentDiscoveries:   []model.RecentDiscovery{},          // Initialize as empty slice, not nil
-		NetworkUtilization:  []model.NetworkUtilizationSummary{}, // Initialize as empty slice
-		StaleDeviceList:     []model.StaleDevice{},              // Initialize as empty slice
+		StaleThresholdDays: staleDays,
+		RecentDiscoveries:  []model.RecentDiscovery{},           // Initialize as empty slice, not nil
+		NetworkUtilization: []model.NetworkUtilizationSummary{}, // Initialize as empty slice
+		StaleDeviceList:    []model.StaleDevice{},               // Initialize as empty slice
 	}
 
 	// Total devices
@@ -226,10 +225,10 @@ func (s *SQLiteStorage) GetDashboardStats(staleDays int, recentLimit int) (*mode
 	}
 
 	// Network utilization summary
-	networks, _ := s.ListNetworks(nil)
+	networks, _ := s.ListNetworks(ctx, nil)
 	var totalIPs, usedIPs int
 	for _, net := range networks {
-		util, err := s.GetNetworkUtilization(net.ID)
+		util, err := s.GetNetworkUtilization(ctx, net.ID)
 		if err == nil && util != nil {
 			stats.NetworkUtilization = append(stats.NetworkUtilization, model.NetworkUtilizationSummary{
 				NetworkID:   net.ID,

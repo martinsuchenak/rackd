@@ -35,7 +35,7 @@ func TestDatacenterOperations_CreateAndGet(t *testing.T) {
 	}
 
 	// Get datacenter
-	retrieved, err := storage.GetDatacenter(dc.ID)
+	retrieved, err := storage.GetDatacenter(context.Background(), dc.ID)
 	if err != nil {
 		t.Fatalf("GetDatacenter failed: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestDatacenterOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDatacenter("non-existent-id")
+	_, err := storage.GetDatacenter(context.Background(), "non-existent-id")
 	if err != ErrDatacenterNotFound {
 		t.Errorf("expected ErrDatacenterNotFound, got %v", err)
 	}
@@ -65,7 +65,7 @@ func TestDatacenterOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDatacenter("")
+	_, err := storage.GetDatacenter(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -96,7 +96,7 @@ func TestDatacenterOperations_Update(t *testing.T) {
 	}
 
 	// Verify update
-	retrieved, err := storage.GetDatacenter(dc.ID)
+	retrieved, err := storage.GetDatacenter(context.Background(), dc.ID)
 	if err != nil {
 		t.Fatalf("GetDatacenter failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestDatacenterOperations_Delete(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err := storage.GetDatacenter(dc.ID)
+	_, err := storage.GetDatacenter(context.Background(), dc.ID)
 	if err != ErrDatacenterNotFound {
 		t.Errorf("expected ErrDatacenterNotFound after deletion, got %v", err)
 	}
@@ -171,7 +171,7 @@ func TestDatacenterOperations_DeleteWithDevices(t *testing.T) {
 	}
 
 	// Verify device still exists but with no datacenter
-	retrieved, err := storage.GetDevice(device.ID)
+	retrieved, err := storage.GetDevice(context.Background(), device.ID)
 	if err != nil {
 		t.Fatalf("GetDevice failed: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 	defer storage.Close()
 
 	// Remove default datacenter to start clean
-	defaultDCs, _ := storage.ListDatacenters(&model.DatacenterFilter{Name: "Default"})
+	defaultDCs, _ := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "Default"})
 	for _, dc := range defaultDCs {
 		storage.DeleteDatacenter(context.Background(), dc.ID)
 	}
@@ -220,7 +220,7 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 	}
 
 	// List all datacenters
-	result, err := storage.ListDatacenters(nil)
+	result, err := storage.ListDatacenters(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDatacenters failed: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestDatacenterOperations_ListWithFilter(t *testing.T) {
 	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1"})
 
 	// Filter by name
-	result, err := storage.ListDatacenters(&model.DatacenterFilter{Name: "NYC"})
+	result, err := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "NYC"})
 	if err != nil {
 		t.Fatalf("ListDatacenters failed: %v", err)
 	}
@@ -255,12 +255,12 @@ func TestDatacenterOperations_ListEmpty(t *testing.T) {
 	defer storage.Close()
 
 	// Remove default datacenter to start clean
-	defaultDCs, _ := storage.ListDatacenters(&model.DatacenterFilter{Name: "Default"})
+	defaultDCs, _ := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "Default"})
 	for _, dc := range defaultDCs {
 		storage.DeleteDatacenter(context.Background(), dc.ID)
 	}
 
-	result, err := storage.ListDatacenters(nil)
+	result, err := storage.ListDatacenters(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("ListDatacenters failed: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestDatacenterOperations_GetDatacenterDevices(t *testing.T) {
 	storage.CreateDevice(context.Background(), device3)
 
 	// Get devices in datacenter
-	devices, err := storage.GetDatacenterDevices(dc.ID)
+	devices, err := storage.GetDatacenterDevices(context.Background(), dc.ID)
 	if err != nil {
 		t.Fatalf("GetDatacenterDevices failed: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestDatacenterOperations_GetDatacenterDevicesNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDatacenterDevices("non-existent-id")
+	_, err := storage.GetDatacenterDevices(context.Background(), "non-existent-id")
 	if err != ErrDatacenterNotFound {
 		t.Errorf("expected ErrDatacenterNotFound, got %v", err)
 	}
@@ -323,7 +323,7 @@ func TestDatacenterOperations_GetDatacenterDevicesEmpty(t *testing.T) {
 		t.Fatalf("CreateDatacenter failed: %v", err)
 	}
 
-	devices, err := storage.GetDatacenterDevices(dc.ID)
+	devices, err := storage.GetDatacenterDevices(context.Background(), dc.ID)
 	if err != nil {
 		t.Fatalf("GetDatacenterDevices failed: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestDatacenterOperations_GetDatacenterDevicesInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()
 
-	_, err := storage.GetDatacenterDevices("")
+	_, err := storage.GetDatacenterDevices(context.Background(), "")
 	if err != ErrInvalidID {
 		t.Errorf("expected ErrInvalidID, got %v", err)
 	}
@@ -387,7 +387,7 @@ func TestListDatacentersWithNameFilter(t *testing.T) {
 	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1", Location: "Los Angeles"})
 
 	// Filter by name prefix
-	result, err := storage.ListDatacenters(&model.DatacenterFilter{Name: "NYC"})
+	result, err := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "NYC"})
 	if err != nil {
 		t.Fatalf("ListDatacenters failed: %v", err)
 	}

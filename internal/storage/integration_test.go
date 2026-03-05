@@ -54,7 +54,7 @@ func TestDeviceLifecycle(t *testing.T) {
 	deviceID := device.ID
 
 	// 2. READ
-	retrieved, err := store.GetDevice(deviceID)
+	retrieved, err := store.GetDevice(ctx, deviceID)
 	if err != nil {
 		t.Fatalf("READ failed: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestDeviceLifecycle(t *testing.T) {
 	}
 
 	// Verify update
-	updated, err := store.GetDevice(deviceID)
+	updated, err := store.GetDevice(ctx, deviceID)
 	if err != nil {
 		t.Fatalf("READ after UPDATE failed: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestDeviceLifecycle(t *testing.T) {
 	}
 
 	// Verify deletion
-	_, err = store.GetDevice(deviceID)
+	_, err = store.GetDevice(ctx, deviceID)
 	if err != ErrDeviceNotFound {
 		t.Errorf("expected ErrDeviceNotFound after delete, got: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 	poolID := pool.ID
 
 	// 2. READ pool
-	retrieved, err := store.GetNetworkPool(poolID)
+	retrieved, err := store.GetNetworkPool(ctx, poolID)
 	if err != nil {
 		t.Fatalf("READ pool failed: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 	}
 
 	// 3. Get next available IP
-	ip, err := store.GetNextAvailableIP(poolID)
+	ip, err := store.GetNextAvailableIP(ctx, poolID)
 	if err != nil {
 		t.Fatalf("GetNextAvailableIP failed: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 	}
 
 	// 4. Validate IP in pool
-	valid, err := store.ValidateIPInPool(poolID, "192.168.1.105")
+	valid, err := store.ValidateIPInPool(ctx, poolID, "192.168.1.105")
 	if err != nil {
 		t.Fatalf("ValidateIPInPool failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 		t.Error("192.168.1.105 should be valid in pool")
 	}
 
-	valid, err = store.ValidateIPInPool(poolID, "192.168.1.200")
+	valid, err = store.ValidateIPInPool(ctx, poolID, "192.168.1.200")
 	if err != nil {
 		t.Fatalf("ValidateIPInPool failed: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestNetworkPoolLifecycle(t *testing.T) {
 		t.Fatalf("DELETE pool failed: %v", err)
 	}
 
-	_, err = store.GetNetworkPool(poolID)
+	_, err = store.GetNetworkPool(ctx, poolID)
 	if err != ErrPoolNotFound {
 		t.Errorf("expected ErrPoolNotFound after delete, got: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 	}
 
 	// 4. Get by IP
-	byIP, err := store.GetDiscoveredDeviceByIP(network.ID, "10.10.0.50")
+	byIP, err := store.GetDiscoveredDeviceByIP(ctx, network.ID, "10.10.0.50")
 	if err != nil {
 		t.Fatalf("GetDiscoveredDeviceByIP failed: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestDiscoveryLifecycle(t *testing.T) {
 	}
 
 	// Verify promotion
-	promoted, err := store.GetDiscoveredDevice(discovered.ID)
+	promoted, err := store.GetDiscoveredDevice(ctx, discovered.ID)
 	if err != nil {
 		t.Fatalf("GET after promotion failed: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	// 2. Get relationships
-	rels, err := store.GetRelationships(parent.ID)
+	rels, err := store.GetRelationships(ctx, parent.ID)
 	if err != nil {
 		t.Fatalf("GetRelationships failed: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	// 3. Get related devices
-	related, err := store.GetRelatedDevices(parent.ID, model.RelationshipContains)
+	related, err := store.GetRelatedDevices(ctx, parent.ID, model.RelationshipContains)
 	if err != nil {
 		t.Fatalf("GetRelatedDevices failed: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestRelationshipLifecycle(t *testing.T) {
 	}
 
 	// Verify removal
-	rels, err = store.GetRelationships(parent.ID)
+	rels, err = store.GetRelationships(ctx, parent.ID)
 	if err != nil {
 		t.Fatalf("GetRelationships after removal failed: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestConcurrentDeviceAccess(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := store.GetDevice(device.ID)
+			_, err := store.GetDevice(ctx, device.ID)
 			if err != nil {
 				errors <- err
 			}
@@ -393,7 +393,7 @@ func TestConcurrentDeviceAccess(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := store.ListDevices(nil)
+			_, err := store.ListDevices(ctx, nil)
 			if err != nil {
 				errors <- err
 			}
@@ -443,7 +443,7 @@ func TestConcurrentWrites(t *testing.T) {
 	}
 
 	// Verify all devices created
-	devices, err := store.ListDevices(nil)
+	devices, err := store.ListDevices(ctx, nil)
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -486,7 +486,7 @@ func TestConcurrentPoolOperations(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			ip, err := store.GetNextAvailableIP(pool.ID)
+			ip, err := store.GetNextAvailableIP(ctx, pool.ID)
 			if err != nil {
 				errors <- err
 				return

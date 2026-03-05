@@ -43,7 +43,7 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 	}
 
 	// Find zones for this device's networks with auto_sync enabled
-	zones, err := s.store.ListDNSZones(&model.DNSZoneFilter{
+	zones, err := s.store.ListDNSZones(ctx, &model.DNSZoneFilter{
 		AutoSync: boolPtr(true),
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 		}
 
 		// Look for existing devices with this IP
-		conflicts, err := s.store.GetConflictsByIP(addr.IP)
+		conflicts, err := s.store.GetConflictsByIP(ctx, addr.IP)
 		if err != nil {
 			continue
 		}
@@ -163,7 +163,7 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 		// If no active conflict exists and we found multiple devices with this IP, create one
 		if !hasConflict && len(conflicts) == 0 {
 			// Find all devices with this IP (including the current one)
-			allDevices, err := s.store.ListDevices(&model.DeviceFilter{})
+			allDevices, err := s.store.ListDevices(ctx, &model.DeviceFilter{})
 			if err != nil {
 				continue
 			}
@@ -216,7 +216,7 @@ func (s *DeviceService) List(ctx context.Context, filter *model.DeviceFilter) ([
 	if err := requirePermission(ctx, s.store, "devices", "list"); err != nil {
 		return nil, err
 	}
-	return s.store.ListDevices(filter)
+	return s.store.ListDevices(ctx, filter)
 }
 
 func (s *DeviceService) Create(ctx context.Context, device *model.Device) error {
@@ -257,7 +257,7 @@ func (s *DeviceService) Get(ctx context.Context, id string) (*model.Device, erro
 		return nil, err
 	}
 
-	device, err := s.store.GetDevice(id)
+	device, err := s.store.GetDevice(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			return nil, ErrNotFound
@@ -323,7 +323,7 @@ func (s *DeviceService) Search(ctx context.Context, query string) ([]model.Devic
 		return nil, err
 	}
 
-	return s.store.SearchDevices(query)
+	return s.store.SearchDevices(ctx, query)
 }
 
 // GetStatusCounts returns the count of devices by status
@@ -332,5 +332,5 @@ func (s *DeviceService) GetStatusCounts(ctx context.Context) (map[model.DeviceSt
 		return nil, err
 	}
 
-	return s.store.GetDeviceStatusCounts()
+	return s.store.GetDeviceStatusCounts(ctx)
 }

@@ -100,7 +100,7 @@ func TestBulkAddTags(t *testing.T) {
 	}
 
 	// Verify tags were added
-	d1, _ := store.GetDevice(devices[0].ID)
+	d1, _ := store.GetDevice(context.Background(), devices[0].ID)
 	if len(d1.Tags) != 3 { // existing + prod + web
 		t.Errorf("expected 3 tags, got %d", len(d1.Tags))
 	}
@@ -137,7 +137,7 @@ func TestBulkRemoveTags(t *testing.T) {
 	}
 
 	// Verify tag was removed
-	d1, _ := store.GetDevice(devices[0].ID)
+	d1, _ := store.GetDevice(context.Background(), devices[0].ID)
 	if len(d1.Tags) != 2 { // web + keep
 		t.Errorf("expected 2 tags, got %d", len(d1.Tags))
 	}

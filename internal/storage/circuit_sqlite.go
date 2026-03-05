@@ -43,7 +43,7 @@ func (s *SQLiteStorage) CreateCircuit(ctx context.Context, circuit *model.Circui
 }
 
 // GetCircuit retrieves a circuit by ID
-func (s *SQLiteStorage) GetCircuit(id string) (*model.Circuit, error) {
+func (s *SQLiteStorage) GetCircuit(ctx context.Context, id string) (*model.Circuit, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
@@ -53,7 +53,7 @@ func (s *SQLiteStorage) GetCircuit(id string) (*model.Circuit, error) {
 	var datacenterAID, datacenterBID, deviceAID, deviceBID sql.NullString
 	var installDate, terminateDate sql.NullTime
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 			datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 			port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -104,7 +104,7 @@ func (s *SQLiteStorage) GetCircuit(id string) (*model.Circuit, error) {
 }
 
 // GetCircuitByCircuitID retrieves a circuit by provider's circuit ID
-func (s *SQLiteStorage) GetCircuitByCircuitID(circuitID string) (*model.Circuit, error) {
+func (s *SQLiteStorage) GetCircuitByCircuitID(ctx context.Context, circuitID string) (*model.Circuit, error) {
 	if circuitID == "" {
 		return nil, ErrInvalidID
 	}
@@ -114,7 +114,7 @@ func (s *SQLiteStorage) GetCircuitByCircuitID(circuitID string) (*model.Circuit,
 	var datacenterAID, datacenterBID, deviceAID, deviceBID sql.NullString
 	var installDate, terminateDate sql.NullTime
 
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 			datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 			port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -165,7 +165,7 @@ func (s *SQLiteStorage) GetCircuitByCircuitID(circuitID string) (*model.Circuit,
 }
 
 // ListCircuits lists circuits with optional filtering
-func (s *SQLiteStorage) ListCircuits(filter *model.CircuitFilter) ([]model.Circuit, error) {
+func (s *SQLiteStorage) ListCircuits(ctx context.Context, filter *model.CircuitFilter) ([]model.Circuit, error) {
 	query := `SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 		datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 		port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -208,7 +208,7 @@ func (s *SQLiteStorage) ListCircuits(filter *model.CircuitFilter) ([]model.Circu
 
 	query += " ORDER BY name"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list circuits: %w", err)
 	}
@@ -325,12 +325,12 @@ func (s *SQLiteStorage) DeleteCircuit(ctx context.Context, id string) error {
 }
 
 // GetCircuitsByDatacenter retrieves all circuits for a datacenter
-func (s *SQLiteStorage) GetCircuitsByDatacenter(datacenterID string) ([]model.Circuit, error) {
-	return s.ListCircuits(&model.CircuitFilter{DatacenterID: datacenterID})
+func (s *SQLiteStorage) GetCircuitsByDatacenter(ctx context.Context, datacenterID string) ([]model.Circuit, error) {
+	return s.ListCircuits(ctx, &model.CircuitFilter{DatacenterID: datacenterID})
 }
 
 // GetCircuitsByDevice retrieves all circuits linked to a device
-func (s *SQLiteStorage) GetCircuitsByDevice(deviceID string) ([]model.Circuit, error) {
+func (s *SQLiteStorage) GetCircuitsByDevice(ctx context.Context, deviceID string) ([]model.Circuit, error) {
 	query := `SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 		datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 		port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -339,7 +339,7 @@ func (s *SQLiteStorage) GetCircuitsByDevice(deviceID string) ([]model.Circuit, e
 		tags, created_at, updated_at
 		FROM circuits WHERE device_a_id = ? OR device_b_id = ?`
 
-	rows, err := s.db.Query(query, deviceID, deviceID)
+	rows, err := s.db.QueryContext(ctx, query, deviceID, deviceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get circuits by device: %w", err)
 	}

@@ -22,7 +22,7 @@ func (s *ReservationService) List(ctx context.Context, filter *model.Reservation
 		return nil, err
 	}
 
-	reservations, err := s.store.ListReservations(filter)
+	reservations, err := s.store.ListReservations(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (s *ReservationService) Get(ctx context.Context, id string) (*model.Reserva
 		return nil, err
 	}
 
-	reservation, err := s.store.GetReservation(id)
+	reservation, err := s.store.GetReservation(ctx, id)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return nil, ErrNotFound
@@ -53,7 +53,7 @@ func (s *ReservationService) GetByIP(ctx context.Context, poolID, ip string) (*m
 		return nil, err
 	}
 
-	reservation, err := s.store.GetReservationByIP(poolID, ip)
+	reservation, err := s.store.GetReservationByIP(ctx, poolID, ip)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return nil, ErrNotFound
@@ -92,7 +92,7 @@ func (s *ReservationService) Create(ctx context.Context, req *model.CreateReserv
 		ipAddress = req.IPAddress
 		if autoAssign {
 			var err error
-			ipAddress, err = s.store.GetNextAvailableIP(req.PoolID)
+			ipAddress, err = s.store.GetNextAvailableIP(ctx, req.PoolID)
 			if err != nil {
 				if err == storage.ErrIPNotAvailable {
 					return nil, ValidationErrors{{Field: "ip_address", Message: "No IP addresses available in pool"}}
@@ -150,7 +150,7 @@ func (s *ReservationService) Update(ctx context.Context, id string, req *model.U
 	}
 
 	// Get existing reservation
-	reservation, err := s.store.GetReservation(id)
+	reservation, err := s.store.GetReservation(ctx, id)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return nil, ErrNotFound
@@ -195,7 +195,7 @@ func (s *ReservationService) Delete(ctx context.Context, id string) error {
 	}
 
 	// Check if reservation exists
-	_, err := s.store.GetReservation(id)
+	_, err := s.store.GetReservation(ctx, id)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return ErrNotFound
@@ -217,7 +217,7 @@ func (s *ReservationService) Release(ctx context.Context, id string) error {
 	}
 
 	// Get existing reservation
-	reservation, err := s.store.GetReservation(id)
+	reservation, err := s.store.GetReservation(ctx, id)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return ErrNotFound
@@ -236,7 +236,7 @@ func (s *ReservationService) Claim(ctx context.Context, poolID, ip string) error
 	// This is called internally when a device is assigned a reserved IP
 	// No permission check needed as it's an internal operation
 
-	reservation, err := s.store.GetReservationByIP(poolID, ip)
+	reservation, err := s.store.GetReservationByIP(ctx, poolID, ip)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return nil // No reservation for this IP, that's fine
@@ -256,7 +256,7 @@ func (s *ReservationService) GetByPool(ctx context.Context, poolID string) ([]mo
 		return nil, err
 	}
 
-	return s.store.GetReservationsByPool(poolID)
+	return s.store.GetReservationsByPool(ctx, poolID)
 }
 
 // GetByUser returns all reservations made by a user
@@ -265,7 +265,7 @@ func (s *ReservationService) GetByUser(ctx context.Context, userID string) ([]mo
 		return nil, err
 	}
 
-	return s.store.GetReservationsByUser(userID)
+	return s.store.GetReservationsByUser(ctx, userID)
 }
 
 // ExpireExpired marks all expired reservations as expired
@@ -276,7 +276,7 @@ func (s *ReservationService) ExpireExpired(ctx context.Context) (int64, error) {
 
 // IsIPReserved checks if an IP is reserved in a pool
 func (s *ReservationService) IsIPReserved(poolID, ip string) (bool, error) {
-	return s.store.IsIPReserved(poolID, ip)
+	return s.store.IsIPReserved(context.Background(), poolID, ip)
 }
 
 // GetNextAvailableIP gets the next available IP that is not used or reserved
@@ -286,13 +286,13 @@ func (s *ReservationService) GetNextAvailableIP(ctx context.Context, poolID stri
 	}
 
 	// Verify pool exists
-	_, err := s.store.GetNetworkPool(poolID)
+	_, err := s.store.GetNetworkPool(ctx, poolID)
 	if err != nil {
 		return "", err
 	}
 
 	// Get pool heatmap which already handles used and reserved IPs
-	heatmap, err := s.store.GetPoolHeatmap(poolID)
+	heatmap, err := s.store.GetPoolHeatmap(ctx, poolID)
 	if err != nil {
 		return "", err
 	}

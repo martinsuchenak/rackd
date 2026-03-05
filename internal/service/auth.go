@@ -29,7 +29,7 @@ func NewAuthService(store storage.ExtendedStorage, sessionManager *auth.SessionM
 }
 
 func (s *AuthService) Login(ctx context.Context, username, password string) (*LoginResult, error) {
-	user, err := s.store.GetUserByUsername(username)
+	user, err := s.store.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrUnauthenticated
@@ -54,7 +54,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	}
 
 	now := time.Now()
-	if err := s.store.UpdateUserLastLogin(user.ID, now); err != nil {
+	if err := s.store.UpdateUserLastLogin(ctx, user.ID, now); err != nil {
 		log.Warn("Failed to update last login", "error", err, "user_id", user.ID)
 	}
 
@@ -79,7 +79,7 @@ func (s *AuthService) GetCurrentUser(ctx context.Context) (*model.UserResponse, 
 		return nil, ErrUnauthenticated
 	}
 
-	user, err := s.store.GetUser(caller.UserID)
+	user, err := s.store.GetUser(ctx, caller.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrNotFound
@@ -105,7 +105,7 @@ func (s *AuthService) GetCurrentUserWithPermissions(ctx context.Context) (*model
 }
 
 func (s *AuthService) GetCurrentUserWithPermissionsByID(ctx context.Context, userID string) (*model.CurrentUserResponse, error) {
-	user, err := s.store.GetUser(userID)
+	user, err := s.store.GetUser(ctx, userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, ErrNotFound

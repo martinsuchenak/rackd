@@ -32,7 +32,7 @@ func (s *WebhookService) List(ctx context.Context, filter *model.WebhookFilter) 
 		return nil, err
 	}
 
-	webhooks, err := s.store.ListWebhooks(filter)
+	webhooks, err := s.store.ListWebhooks(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (s *WebhookService) Get(ctx context.Context, id string) (*model.Webhook, er
 		return nil, err
 	}
 
-	webhook, err := s.store.GetWebhook(id)
+	webhook, err := s.store.GetWebhook(ctx, id)
 	if err != nil {
 		if err == storage.ErrWebhookNotFound {
 			return nil, ErrNotFound
@@ -114,7 +114,7 @@ func (s *WebhookService) Update(ctx context.Context, id string, req *model.Updat
 		return nil, err
 	}
 
-	webhook, err := s.store.GetWebhook(id)
+	webhook, err := s.store.GetWebhook(ctx, id)
 	if err != nil {
 		if err == storage.ErrWebhookNotFound {
 			return nil, ErrNotFound
@@ -188,7 +188,7 @@ func (s *WebhookService) ListDeliveries(ctx context.Context, filter *model.Deliv
 		return nil, err
 	}
 
-	deliveries, err := s.store.ListDeliveries(filter)
+	deliveries, err := s.store.ListDeliveries(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s *WebhookService) GetDelivery(ctx context.Context, id string) (*model.Web
 		return nil, err
 	}
 
-	delivery, err := s.store.GetDelivery(id)
+	delivery, err := s.store.GetDelivery(ctx, id)
 	if err != nil {
 		if err == storage.ErrDeliveryNotFound {
 			return nil, ErrNotFound
@@ -219,7 +219,7 @@ func (s *WebhookService) Ping(ctx context.Context, id string) (*model.WebhookDel
 		return nil, err
 	}
 
-	webhook, err := s.store.GetWebhook(id)
+	webhook, err := s.store.GetWebhook(ctx, id)
 	if err != nil {
 		if err == storage.ErrWebhookNotFound {
 			return nil, ErrNotFound

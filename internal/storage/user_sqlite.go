@@ -12,16 +12,16 @@ import (
 
 type UserStorage interface {
 	CreateUser(ctx context.Context, user *model.User) error
-	GetUser(id string) (*model.User, error)
-	GetUserByUsername(username string) (*model.User, error)
-	GetUserByEmail(email string) (*model.User, error)
-	ListUsers(filter *model.UserFilter) ([]model.User, error)
+	GetUser(ctx context.Context, id string) (*model.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+	ListUsers(ctx context.Context, filter *model.UserFilter) ([]model.User, error)
 	UpdateUser(ctx context.Context, user *model.User) error
 	DeleteUser(ctx context.Context, id string) error
-	UpdateUserLastLogin(id string, lastLogin time.Time) error
-	UpdateUserPassword(id, passwordHash string) error
-	UserCount() (int, error)
-	CreateInitialAdmin(username, email, fullName, password string) error
+	UpdateUserLastLogin(ctx context.Context, id string, lastLogin time.Time) error
+	UpdateUserPassword(ctx context.Context, id, passwordHash string) error
+	UserCount(ctx context.Context) (int, error)
+	CreateInitialAdmin(ctx context.Context, username, email, fullName, password string) error
 }
 
 func (s *SQLiteStorage) CreateUser(ctx context.Context, user *model.User) error {
@@ -50,7 +50,7 @@ func (s *SQLiteStorage) CreateUser(ctx context.Context, user *model.User) error 
 	return nil
 }
 
-func (s *SQLiteStorage) GetUser(id string) (*model.User, error) {
+func (s *SQLiteStorage) GetUser(ctx context.Context, id string) (*model.User, error) {
 	if id == "" {
 		return nil, ErrInvalidID
 	}
@@ -61,7 +61,7 @@ func (s *SQLiteStorage) GetUser(id string) (*model.User, error) {
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -80,7 +80,7 @@ func (s *SQLiteStorage) GetUser(id string) (*model.User, error) {
 	return &user, nil
 }
 
-func (s *SQLiteStorage) GetUserByUsername(username string) (*model.User, error) {
+func (s *SQLiteStorage) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
 	if username == "" {
 		return nil, fmt.Errorf("username cannot be empty")
 	}
@@ -91,7 +91,7 @@ func (s *SQLiteStorage) GetUserByUsername(username string) (*model.User, error) 
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRow(query, username).Scan(
+	err := s.db.QueryRowContext(ctx, query, username).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -110,7 +110,7 @@ func (s *SQLiteStorage) GetUserByUsername(username string) (*model.User, error) 
 	return &user, nil
 }
 
-func (s *SQLiteStorage) GetUserByEmail(email string) (*model.User, error) {
+func (s *SQLiteStorage) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	if email == "" {
 		return nil, fmt.Errorf("email cannot be empty")
 	}
@@ -121,7 +121,7 @@ func (s *SQLiteStorage) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRow(query, email).Scan(
+	err := s.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -140,7 +140,7 @@ func (s *SQLiteStorage) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-func (s *SQLiteStorage) ListUsers(filter *model.UserFilter) ([]model.User, error) {
+func (s *SQLiteStorage) ListUsers(ctx context.Context, filter *model.UserFilter) ([]model.User, error) {
 	query := `SELECT id, username, email, full_name, password_hash, is_active, is_admin, created_at, updated_at, last_login_at 
 	          FROM users WHERE 1=1`
 	var args []interface{}
@@ -167,7 +167,7 @@ func (s *SQLiteStorage) ListUsers(filter *model.UserFilter) ([]model.User, error
 
 	query += " ORDER BY created_at DESC"
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -252,14 +252,14 @@ func (s *SQLiteStorage) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *SQLiteStorage) UpdateUserLastLogin(id string, lastLogin time.Time) error {
+func (s *SQLiteStorage) UpdateUserLastLogin(ctx context.Context, id string, lastLogin time.Time) error {
 	if id == "" {
 		return ErrInvalidID
 	}
 
 	query := `UPDATE users SET last_login_at = ? WHERE id = ?`
 
-	_, err := s.db.Exec(query, lastLogin, id)
+	_, err := s.db.ExecContext(ctx, query, lastLogin, id)
 	if err != nil {
 		return fmt.Errorf("failed to update user last login: %w", err)
 	}
@@ -267,14 +267,14 @@ func (s *SQLiteStorage) UpdateUserLastLogin(id string, lastLogin time.Time) erro
 	return nil
 }
 
-func (s *SQLiteStorage) UpdateUserPassword(id, passwordHash string) error {
+func (s *SQLiteStorage) UpdateUserPassword(ctx context.Context, id, passwordHash string) error {
 	if id == "" {
 		return ErrInvalidID
 	}
 
 	query := `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`
 
-	_, err := s.db.Exec(query, passwordHash, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, passwordHash, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update user password: %w", err)
 	}
@@ -282,16 +282,16 @@ func (s *SQLiteStorage) UpdateUserPassword(id, passwordHash string) error {
 	return nil
 }
 
-func (s *SQLiteStorage) UserCount() (int, error) {
+func (s *SQLiteStorage) UserCount(ctx context.Context) (int, error) {
 	var count int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count users: %w", err)
 	}
 	return count, nil
 }
 
-func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password string) error {
+func (s *SQLiteStorage) CreateInitialAdmin(ctx context.Context, username, email, fullName, password string) error {
 	if username == "" || password == "" {
 		return fmt.Errorf("username and password are required for initial admin")
 	}
@@ -300,7 +300,7 @@ func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password s
 		return fmt.Errorf("initial admin password must be at least 8 characters")
 	}
 
-	existingUser, err := s.GetUserByUsername(username)
+	existingUser, err := s.GetUserByUsername(ctx, username)
 	if err == nil && existingUser != nil {
 		return fmt.Errorf("user '%s' already exists", username)
 	}
@@ -319,7 +319,6 @@ func (s *SQLiteStorage) CreateInitialAdmin(username, email, fullName, password s
 		IsAdmin:      true,
 	}
 
-	ctx := context.Background()
 	if err := s.CreateUser(ctx, user); err != nil {
 		return err
 	}
