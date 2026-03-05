@@ -229,9 +229,54 @@ func (s *SQLiteStorage) GetOAuthTokenByHash(ctx context.Context, tokenHash strin
 	return &token, nil
 }
 
+// GetOAuthTokenByHashIncludingRevoked gets a token by hash even if it's revoked.
+// This is used for refresh token replay detection.
+func (s *SQLiteStorage) GetOAuthTokenByHashIncludingRevoked(ctx context.Context, tokenHash string) (*model.OAuthToken, error) {
+	var token model.OAuthToken
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, token_type, token_hash, client_id, user_id, scope,
+			expires_at, created_at, revoked_at, parent_token_id
+		FROM oauth_tokens WHERE token_hash = ?
+	`, tokenHash).Scan(
+		&token.ID, &token.TokenType, &token.TokenHash, &token.ClientID, &token.UserID,
+		&token.Scope, &token.ExpiresAt, &token.CreatedAt, &token.RevokedAt, &token.ParentTokenID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, ErrOAuthTokenNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
 func (s *SQLiteStorage) RevokeOAuthToken(ctx context.Context, tokenID string) error {
 	now := time.Now().UTC()
 	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, tokenID)
+	return err
+}
+
+// RevokeOAuthTokenChain revokes all tokens in a refresh token chain.
+// This is called when refresh token replay is detected to prevent further abuse.
+// It revokes all access tokens that were issued using the compromised refresh token,
+// as well as any descendant refresh tokens.
+func (s *SQLiteStorage) RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error {
+	now := time.Now().UTC()
+
+	// First revoke all access tokens that have this refresh token as parent
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE oauth_tokens SET revoked_at = ?
+		WHERE parent_token_id = ? AND revoked_at IS NULL
+	`, now, refreshTokenID)
+	if err != nil {
+		return err
+	}
+
+	// Then revoke the refresh token itself
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE oauth_tokens SET revoked_at = ?
+		WHERE id = ? AND revoked_at IS NULL
+	`, now, refreshTokenID)
 	return err
 }
 

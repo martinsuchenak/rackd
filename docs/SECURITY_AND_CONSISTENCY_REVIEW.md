@@ -132,6 +132,12 @@
 34. **CSP Hardening & Script Injection Prevention (M-7)**
    - **Module:** API Handlers / Web UI
    - **Fix Applied:** Hardened CSP policy in `internal/api/middleware.go` by removing `'unsafe-eval'` and `'unsafe-inline'` for scripts. Switched to Alpine.js CSP-friendly build and refactored multiple UI components (`users`, `nat`, `conflicts`) to use safe helper methods instead of complex inline expressions that require `eval`.
+35. **Rate Limiting on OAuth Token Endpoint (M-1)**
+   - **Module:** API Handlers / OAuth
+   - **Fix Applied:** OAuth token endpoint (`POST /mcp-oauth/token`) is wrapped with `wrapSensitiveNoAuth` which applies the login rate limiter. Rate limiting is enforced via `LoginRateLimitMiddleware` in `internal/api/handlers.go`.
+36. **Refresh Token Rotation (M-4)**
+   - **Module:** Service Layer / OAuth
+   - **Fix Applied:** Implemented refresh token rotation in `internal/service/oauth.go`. Each use of a refresh token now generates a new refresh token and revokes the old one. Added replay attack detection: if a revoked refresh token is reused, all tokens in the chain are revoked. Added new storage methods `GetOAuthTokenByHashIncludingRevoked` and `RevokeOAuthTokenChain` for replay detection and mitigation.
 
 ---
 
@@ -149,10 +155,9 @@
 ## 🟡 Open Medium Issues
 
 ### Authentication Module
-| # | Issue | Location |
-|---|-------|----------|
-| M-1 | No rate limiting on OAuth token endpoint | `/internal/api/oauth_handlers.go:170` |
-| M-4 | No refresh token rotation | `/internal/service/oauth.go:265` |
+| #  | Issue                                   | Location |
+|----|-----------------------------------------|----------|
+| *(All authentication medium issues resolved)* | | |
 
 ### API Handlers Module
 | # | Issue | Location |

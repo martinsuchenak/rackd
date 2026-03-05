@@ -260,19 +260,36 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 }
 
 // RefreshAccessToken exchanges a refresh token for a new access token.
+// Implements refresh token rotation (M-4): each refresh token use generates a new refresh token
+// and revokes the old one. If a revoked refresh token is reused, it indicates a replay attack
+// and all tokens in the chain are revoked.
 func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
 	if req.RefreshToken == "" {
 		return nil, errors.New("refresh_token is required")
 	}
 
 	refreshHash := auth.HashToken(req.RefreshToken)
-	refreshToken, err := s.store.GetOAuthTokenByHash(ctx, refreshHash)
+
+	// Check if token exists even if revoked (for replay detection)
+	refreshToken, err := s.store.GetOAuthTokenByHashIncludingRevoked(ctx, refreshHash)
 	if err != nil {
 		return nil, err
 	}
 
 	if refreshToken.TokenType != "refresh" {
 		return nil, storage.ErrOAuthTokenNotFound
+	}
+
+	// Detect replay attack: if the refresh token was already revoked, someone else used it
+	// Revoke all tokens in the chain to prevent further abuse
+	if refreshToken.RevokedAt != nil {
+		log.Warn("OAuth refresh token replay detected - revoking token chain",
+			"token_id", refreshToken.ID,
+			"client_id", refreshToken.ClientID,
+			"user_id", refreshToken.UserID,
+		)
+		s.store.RevokeOAuthTokenChain(ctx, refreshToken.ID)
+		return nil, storage.ErrOAuthTokenRevoked
 	}
 
 	// Verify client
@@ -309,11 +326,37 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 		return nil, err
 	}
 
+	// Refresh token rotation: create new refresh token and revoke the old one
+	newRefreshPlain, newRefreshHash, err := auth.GenerateOAuthToken()
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken := &model.OAuthToken{
+		TokenType:     "refresh",
+		TokenHash:     newRefreshHash,
+		ClientID:      refreshToken.ClientID,
+		UserID:        refreshToken.UserID,
+		Scope:         scope,
+		ExpiresAt:     time.Now().Add(s.refreshTokenTTL),
+		ParentTokenID: accessToken.ID,
+	}
+	if err := s.store.CreateOAuthToken(ctx, newRefreshToken); err != nil {
+		return nil, err
+	}
+
+	// Revoke the old refresh token
+	if err := s.store.RevokeOAuthToken(ctx, refreshToken.ID); err != nil {
+		log.Error("Failed to revoke old refresh token during rotation", "error", err)
+		// Continue anyway - the new token is already created
+	}
+
 	return &model.OAuthTokenResponse{
-		AccessToken: accessPlain,
-		TokenType:   "Bearer",
-		ExpiresIn:   int(s.accessTokenTTL.Seconds()),
-		Scope:       scope,
+		AccessToken:  accessPlain,
+		TokenType:    "Bearer",
+		ExpiresIn:    int(s.accessTokenTTL.Seconds()),
+		RefreshToken: newRefreshPlain,
+		Scope:        scope,
 	}, nil
 }
 

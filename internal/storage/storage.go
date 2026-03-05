@@ -172,7 +172,9 @@ type OAuthStorage interface {
 	// Tokens
 	CreateOAuthToken(ctx context.Context, token *model.OAuthToken) error
 	GetOAuthTokenByHash(ctx context.Context, tokenHash string) (*model.OAuthToken, error)
+	GetOAuthTokenByHashIncludingRevoked(ctx context.Context, tokenHash string) (*model.OAuthToken, error)
 	RevokeOAuthToken(ctx context.Context, tokenID string) error
+	RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error
 	RevokeOAuthTokensByClient(ctx context.Context, clientID string) error
 	RevokeOAuthTokensByUser(ctx context.Context, userID string) error
 	CleanupExpiredTokens(ctx context.Context) error

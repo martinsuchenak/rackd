@@ -239,3 +239,128 @@ func TestRevokeOAuthTokensByClient(t *testing.T) {
 		}
 	}
 }
+
+func TestGetOAuthTokenByHashIncludingRevoked(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+	createTestUserAndClient(t, s)
+
+	token := &model.OAuthToken{
+		TokenType: "refresh",
+		TokenHash: "revoked-token-hash",
+		ClientID:  "client1",
+		UserID:    "user1",
+		Scope:     "devices:read",
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}
+
+	// Create token
+	if err := s.CreateOAuthToken(ctx, token); err != nil {
+		t.Fatalf("CreateOAuthToken failed: %v", err)
+	}
+
+	// Get including revoked should work for non-revoked token
+	got, err := s.GetOAuthTokenByHashIncludingRevoked(ctx, "revoked-token-hash")
+	if err != nil {
+		t.Fatalf("GetOAuthTokenByHashIncludingRevoked failed for non-revoked: %v", err)
+	}
+	if got.RevokedAt != nil {
+		t.Fatal("expected RevokedAt to be nil for non-revoked token")
+	}
+
+	// Revoke the token
+	if err := s.RevokeOAuthToken(ctx, token.ID); err != nil {
+		t.Fatalf("RevokeOAuthToken failed: %v", err)
+	}
+
+	// Regular GetOAuthTokenByHash should fail with ErrOAuthTokenRevoked
+	_, err = s.GetOAuthTokenByHash(ctx, "revoked-token-hash")
+	if err != ErrOAuthTokenRevoked {
+		t.Fatalf("expected ErrOAuthTokenRevoked from GetOAuthTokenByHash, got %v", err)
+	}
+
+	// GetOAuthTokenByHashIncludingRevoked should still return the token
+	got, err = s.GetOAuthTokenByHashIncludingRevoked(ctx, "revoked-token-hash")
+	if err != nil {
+		t.Fatalf("GetOAuthTokenByHashIncludingRevoked failed for revoked: %v", err)
+	}
+	if got.RevokedAt == nil {
+		t.Fatal("expected RevokedAt to be set for revoked token")
+	}
+
+	// Not found
+	_, err = s.GetOAuthTokenByHashIncludingRevoked(ctx, "nonexistent")
+	if err != ErrOAuthTokenNotFound {
+		t.Fatalf("expected ErrOAuthTokenNotFound, got %v", err)
+	}
+}
+
+func TestRevokeOAuthTokenChain(t *testing.T) {
+	s := newTestStorage(t)
+	ctx := context.Background()
+	createTestUserAndClient(t, s)
+
+	// Create a refresh token
+	refreshToken := &model.OAuthToken{
+		TokenType: "refresh",
+		TokenHash: "refresh-hash",
+		ClientID:  "client1",
+		UserID:    "user1",
+		Scope:     "devices:read",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	if err := s.CreateOAuthToken(ctx, refreshToken); err != nil {
+		t.Fatalf("CreateOAuthToken (refresh) failed: %v", err)
+	}
+
+	// Create access tokens that have the refresh token as parent
+	accessToken1 := &model.OAuthToken{
+		TokenType:     "access",
+		TokenHash:     "access-hash-1",
+		ClientID:      "client1",
+		UserID:        "user1",
+		Scope:         "devices:read",
+		ExpiresAt:     time.Now().Add(1 * time.Hour),
+		ParentTokenID: refreshToken.ID,
+	}
+	if err := s.CreateOAuthToken(ctx, accessToken1); err != nil {
+		t.Fatalf("CreateOAuthToken (access1) failed: %v", err)
+	}
+
+	accessToken2 := &model.OAuthToken{
+		TokenType:     "access",
+		TokenHash:     "access-hash-2",
+		ClientID:      "client1",
+		UserID:        "user1",
+		Scope:         "devices:read",
+		ExpiresAt:     time.Now().Add(1 * time.Hour),
+		ParentTokenID: refreshToken.ID,
+	}
+	if err := s.CreateOAuthToken(ctx, accessToken2); err != nil {
+		t.Fatalf("CreateOAuthToken (access2) failed: %v", err)
+	}
+
+	// Verify all tokens are not revoked
+	for _, hash := range []string{"refresh-hash", "access-hash-1", "access-hash-2"} {
+		got, err := s.GetOAuthTokenByHash(ctx, hash)
+		if err != nil {
+			t.Fatalf("token %s should be valid before chain revocation: %v", hash, err)
+		}
+		if got.RevokedAt != nil {
+			t.Fatalf("token %s should not be revoked before chain revocation", hash)
+		}
+	}
+
+	// Revoke the token chain
+	if err := s.RevokeOAuthTokenChain(ctx, refreshToken.ID); err != nil {
+		t.Fatalf("RevokeOAuthTokenChain failed: %v", err)
+	}
+
+	// Verify all tokens are now revoked
+	for _, hash := range []string{"refresh-hash", "access-hash-1", "access-hash-2"} {
+		_, err := s.GetOAuthTokenByHash(ctx, hash)
+		if err != ErrOAuthTokenRevoked {
+			t.Fatalf("expected ErrOAuthTokenRevoked for %s after chain revocation, got %v", hash, err)
+		}
+	}
+}
