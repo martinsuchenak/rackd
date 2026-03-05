@@ -59,11 +59,11 @@ func TestValidatePKCE(t *testing.T) {
 	challenge := base64.RawURLEncoding.EncodeToString(h[:])
 
 	tests := []struct {
-		name     string
-		verifier string
+		name      string
+		verifier  string
 		challenge string
-		method   string
-		want     bool
+		method    string
+		want      bool
 	}{
 		{"valid S256", verifier, challenge, "S256", true},
 		{"wrong verifier", "wrong-verifier", challenge, "S256", false},
@@ -142,7 +142,7 @@ func TestIntersectScopes(t *testing.T) {
 		wantLen   int
 	}{
 		{"empty requested returns all", nil, 3},
-		{"wildcard returns all", []string{"*"}, 3},
+		{"wildcard returns nothing", []string{"*"}, 0},
 		{"subset", []string{"devices:read"}, 1},
 		{"intersection", []string{"devices:read", "unknown:scope"}, 1},
 		{"no overlap", []string{"unknown:scope"}, 0},

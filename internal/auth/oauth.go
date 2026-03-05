@@ -71,10 +71,6 @@ func IntersectScopes(requested, allowed []string) []string {
 		return allowed
 	}
 
-	if slices.Contains(requested, "*") {
-		return allowed
-	}
-
 	var result []string
 	for _, s := range requested {
 		if slices.Contains(allowed, s) {

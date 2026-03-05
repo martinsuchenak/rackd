@@ -147,7 +147,7 @@ func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, 
 
 	requestedScopes := auth.ParseScopes(scope)
 	if len(requestedScopes) == 0 {
-		requestedScopes = []string{"*"}
+		requestedScopes = auth.ParseScopes(client.Scope)
 	}
 
 	return client, requestedScopes, nil
@@ -201,18 +201,16 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 		return nil, ErrOAuthInvalidRedirectURI
 	}
 
+	// Mark code as used immediately to prevent any concurrent replay attempts
+	if err := s.store.MarkAuthorizationCodeUsed(ctx, codeHash); err != nil {
+		return nil, err
+	}
+
 	// Verify PKCE
 	if code.CodeChallenge != "" {
 		if !auth.ValidatePKCE(req.CodeVerifier, code.CodeChallenge, code.CodeChallengeMethod) {
-			// Mark code as used to prevent replay
-			s.store.MarkAuthorizationCodeUsed(ctx, codeHash)
 			return nil, ErrOAuthInvalidCodeVerifier
 		}
-	}
-
-	// Mark code as used
-	if err := s.store.MarkAuthorizationCodeUsed(ctx, codeHash); err != nil {
-		return nil, err
 	}
 
 	// Create access token

@@ -114,6 +114,15 @@
 29. **OAuth Redirect URI Trust Issue**
     - **Module:** Web UI & API
     - **Fix Applied:** Repaired `oauthAuthorizeSubmit` where an unvalidated JSON-supplied `redirect_uri` could be utilized in error redirection, bypassing URI strict matching. Enforced `ValidateAuthRequest` *before* handling user denial/approval, and shifted redirect handling to be JSON-aware for SPA. Hardcoded mock API keys in test fixtures were also modernized.
+30. **Authentication Weaknesses (M-2, M-3)**
+    - **Module:** Authentication
+    - **Fix Applied:** Increased minimum password length from 8 to 12 characters (`user.go`). Hardened `bcrypt` cost factor from 12 to 14 (`password.go`).
+31. **Wildcard Scope Privilege Escalation (M-5)**
+    - **Module:** Authentication
+    - **Fix Applied:** Removed wildcard (`*`) scope bypass in `IntersectScopes`. Clients are no longer granted full access simply by requesting `*`; they must explicitly request allowed scopes. 
+32. **OAuth Authorization Code Replay Window (M-25)**
+    - **Module:** Service Layer
+    - **Fix Applied:** Repositioned `MarkAuthorizationCodeUsed` earlier in the `ExchangeCode` flow so that the code is instantly burned before executing PKCE or client verification. This ensures that any concurrent or invalid exchange completely burns the code without race conditions.
 
 ---
 
@@ -134,10 +143,7 @@
 | # | Issue | Location |
 |---|-------|----------|
 | M-1 | No rate limiting on OAuth token endpoint | `/internal/api/oauth_handlers.go:170` |
-| M-2 | Weak password length (8 chars minimum) | `/internal/service/user.go:58-59` |
-| M-3 | bcrypt cost factor could be higher | `/internal/auth/password.go:10` |
 | M-4 | No refresh token rotation | `/internal/service/oauth.go:265` |
-| M-5 | Wildcard scope (*) grants full access | `/internal/auth/oauth.go:74-75` |
 
 ### API Handlers Module
 | # | Issue | Location |
@@ -177,7 +183,6 @@
 |---|-------|----------|
 | M-23 | No rate limiting for authentication attempts | `/internal/service/auth.go:31-69` |
 | M-24 | Webhook SSRF protection incomplete | `/internal/service/webhook.go:304-337` |
-| M-25 | OAuth authorization code replay window | `/internal/service/oauth.go:205-216` |
 | M-26 | Missing input validation for IP addresses | `/internal/service/device.go:222-253` |
 
 ### CLI Commands Module

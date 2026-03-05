@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	bcryptCost = 12
+	bcryptCost = 14
 )
 
 func HashPassword(password string) (string, error) {
