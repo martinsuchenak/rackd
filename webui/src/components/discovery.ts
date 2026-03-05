@@ -22,9 +22,33 @@ interface DiscoveryListData {
   startPolling(): void;
   stopPolling(): void;
   destroy(): void;
-  deviceFilter: string;
-  filteredDevices: DiscoveredDevice[];
   formatDate(date: string): string;
+  getPromoteVendor(): string;
+  getPromoteIP(): string;
+  getPromoteMAC(): string;
+  getPromoteHostname(): string;
+  getPromoteOS(): string;
+  hasMAC(): boolean;
+  hasHostname(): boolean;
+  hasOS(): boolean;
+  hasVendor(): boolean;
+  getOpenPorts(): number[];
+  getServices(): any[];
+  getConfidenceValue(): number;
+  hasScans(): boolean;
+  hasDiscoveredDevices(): boolean;
+  hasScanProgress(scan: any): boolean;
+  hasScanHosts(scan: any): boolean;
+  hasFoundHosts(scan: any): boolean;
+  hasPortCount(device: any, min: number): boolean;
+  getPortRemainingCount(device: any, limit: number): number;
+  hasServiceCount(device: any, min: number): boolean;
+  getServiceRemainingCount(device: any, limit: number): number;
+  getConfidenceBadgeClass(confidence: number): any;
+  getScanStatusClass(status: string): any;
+  getDiscoveredDevicesCountLabel(): string;
+  hasOldScans(): boolean;
+  getPromoteVendorPlaceholder(): string;
 }
 
 export function discoveryList() {
@@ -292,6 +316,135 @@ export function discoveryList() {
       } finally {
         this.cancellingScans.delete(scanId);
       }
+    },
+
+    hasOpenPorts(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.open_ports && this.promoteDevice.open_ports.length > 0);
+    },
+    hasServices(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.services && this.promoteDevice.services.length > 0);
+    },
+    hasPromoted(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.promoted_to_device_id);
+    },
+    getConfidenceStyle(): string {
+      const conf = this.promoteDevice?.confidence || 0;
+      return `width: ${conf * 10}%`;
+    },
+    getConfidenceClass(): string {
+      const conf = this.promoteDevice?.confidence || 0;
+      if (conf >= 8) return 'bg-green-500';
+      if (conf >= 5) return 'bg-yellow-500';
+      return 'bg-gray-500';
+    },
+    getPromoteVendorPlaceholder(): string {
+      return (this.promoteDevice && this.promoteDevice.vendor) || 'e.g., Dell PowerEdge R640';
+    },
+
+    getPromoteVendor(): string {
+      return (this.promoteDevice && this.promoteDevice.vendor) || '-';
+    },
+
+    getPromoteIP(): string {
+      return this.promoteDevice?.ip || '-';
+    },
+
+    getPromoteMAC(): string {
+      return this.promoteDevice?.mac_address || '-';
+    },
+
+    getPromoteHostname(): string {
+      return this.promoteDevice?.hostname || '-';
+    },
+
+    getPromoteOS(): string {
+      return this.promoteDevice?.os_guess || '-';
+    },
+
+    getPromoteFirstSeen(): string | undefined {
+      return this.promoteDevice?.first_seen;
+    },
+
+    getPromoteLastSeen(): string | undefined {
+      return this.promoteDevice?.last_seen;
+    },
+
+    hasMAC(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.mac_address);
+    },
+
+    hasHostname(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.hostname);
+    },
+
+    hasOS(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.os_guess);
+    },
+
+    hasVendor(): boolean {
+      return !!(this.promoteDevice && this.promoteDevice.vendor);
+    },
+
+    getOpenPorts(): number[] {
+      return this.promoteDevice?.open_ports || [];
+    },
+
+    getServices(): any[] {
+      return this.promoteDevice?.services || [];
+    },
+
+    getConfidenceValue(): number {
+      return this.promoteDevice?.confidence || 0;
+    },
+    hasScans(): boolean {
+      return this.scans.length > 0;
+    },
+    hasDiscoveredDevices(): boolean {
+      return this.discoveredDevices.length > 0;
+    },
+    hasScanProgress(scan: any): boolean {
+      return !!(scan && scan.progress_percent > 0);
+    },
+    hasScanHosts(scan: any): boolean {
+      return !!(scan && scan.scanned_hosts > 0);
+    },
+    hasFoundHosts(scan: any): boolean {
+      return !!(scan && scan.found_hosts > 0);
+    },
+    hasPortCount(device: any, min: number): boolean {
+      return !!(device && device.open_ports && device.open_ports.length > min);
+    },
+    getPortRemainingCount(device: any, limit: number): number {
+      if (!device || !device.open_ports) return 0;
+      return device.open_ports.length - limit;
+    },
+    hasServiceCount(device: any, min: number): boolean {
+      return !!(device && device.services && device.services.length > min);
+    },
+    getServiceRemainingCount(device: any, limit: number): number {
+      if (!device || !device.services) return 0;
+      return device.services.length - limit;
+    },
+    getConfidenceBadgeClass(conf: number): any {
+      return {
+        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': conf >= 8,
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': conf >= 5 && conf < 8,
+        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': conf < 5
+      };
+    },
+    getScanStatusClass(status: string): any {
+      return {
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': status === 'pending',
+        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': status === 'running',
+        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': status === 'completed',
+        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': status === 'failed'
+      };
+    },
+    getDiscoveredDevicesCountLabel(): string {
+      return this.discoveredDevices.length + ' devices found';
+    },
+    hasOldScans(): boolean {
+      return this.scans.some((s) => s.status === 'completed' || s.status === 'failed');
     },
   };
 }

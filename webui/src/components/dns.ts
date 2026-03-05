@@ -74,6 +74,12 @@ interface DNSProvidersData {
   // Utilities
   formatDate(dateStr: string): string;
   formatType(type: DNSProviderType): string;
+  hasProviders(): boolean;
+  getProviderAriaLabel(providerName: string, action: string): string;
+  getEditInputId(id: string, prefix: string): string;
+  getSelectedProviderName(): string;
+  getTestResultMessage(): string;
+  isTestResultSuccess(): boolean;
 }
 
 export function dnsProvidersComponent(): DNSProvidersData {
@@ -186,6 +192,14 @@ export function dnsProvidersComponent(): DNSProvidersData {
       this.selectedProvider = null;
     },
 
+    getProviderAriaLabel(providerName: string, action: string): string {
+      return action + ' ' + providerName;
+    },
+
+    getEditInputId(id: string, prefix: string): string {
+      return prefix + '-' + id;
+    },
+
     validateForm(): boolean {
       this.validationErrors = {};
 
@@ -296,6 +310,22 @@ export function dnsProvidersComponent(): DNSProvidersData {
         'bind': 'BIND'
       };
       return typeMap[type] || type;
+    },
+
+    hasProviders(): boolean {
+      return this.providers.length > 0;
+    },
+
+    getSelectedProviderName(): string {
+      return this.selectedProvider ? this.selectedProvider.name : '';
+    },
+
+    getTestResultMessage(): string {
+      return this.testResult ? this.testResult.message : '';
+    },
+
+    isTestResultSuccess(): boolean {
+      return this.testResult ? this.testResult.success : false;
     }
   };
 }
@@ -382,6 +412,16 @@ interface DNSZonesData {
   getProviderName(id: string): string;
   getNetworkName(id: string): string;
   formatSyncStatus(status?: SyncStatus): string;
+  hasZones(): boolean;
+  getAutoSyncClass(autoSync: boolean): string;
+  getSyncStatusClass(status?: SyncStatus): string;
+  getRecordsUrl(zoneId: string): string;
+  getZoneAriaLabel(zoneName: string, action: string): string;
+  getEditInputId(id: string, prefix: string): string;
+  getSelectedZoneName(): string;
+  getSyncResultMessage(): string;
+  getSyncResultDetails(): string;
+  isSyncResultSuccess(): boolean;
 }
 
 export function dnsZonesComponent(): DNSZonesData {
@@ -710,6 +750,54 @@ export function dnsZonesComponent(): DNSZonesData {
         'partial': 'Partial'
       };
       return statusMap[status] || status;
+    },
+
+    hasZones(): boolean {
+      return this.zones.length > 0;
+    },
+
+    getAutoSyncClass(autoSync: boolean): string {
+      return autoSync
+        ? 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200'
+        : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200';
+    },
+
+    getSyncStatusClass(status?: SyncStatus): string {
+      if (!status) return 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200';
+      const classes: Record<SyncStatus, string> = {
+        'success': 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200',
+        'failed': 'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200',
+        'partial': 'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200'
+      };
+      return classes[status] || 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200';
+    },
+
+    getRecordsUrl(zoneId: string): string {
+      return '/dns/records/' + zoneId;
+    },
+
+    getZoneAriaLabel(zoneName: string, action: string): string {
+      return action + ' ' + zoneName;
+    },
+
+    getEditInputId(id: string, prefix: string): string {
+      return prefix + '-' + id;
+    },
+
+    getSelectedZoneName(): string {
+      return this.selectedZone ? this.selectedZone.name : '';
+    },
+
+    getSyncResultMessage(): string {
+      return this.syncResult ? this.syncResult.message : '';
+    },
+
+    getSyncResultDetails(): string {
+      return this.syncResult?.details || '';
+    },
+
+    isSyncResultSuccess(): boolean {
+      return this.syncResult ? this.syncResult.success : false;
     }
   };
 }
@@ -814,6 +902,15 @@ interface DNSRecordsData {
   formatSyncStatus(status: RecordSyncStatus): string;
   getDeviceName(deviceId: string): string;
   getAddressValue(deviceId: string, addressId: string): string;
+  hasRecords(): boolean;
+  getSyncStatusClass(status: RecordSyncStatus): string;
+  getDeviceUrl(deviceId: string): string;
+  getRecordAriaLabel(recordName: string, action: string): string;
+  getEditInputId(id: string, prefix: string): string;
+  getZoneName(): string;
+  getAddressValueSafe(deviceId: string, addressId: string): string;
+  getSelectedRecordName(): string;
+  getSelectedRecordType(): string;
 }
 
 export function dnsRecordsComponent(): DNSRecordsData {
@@ -998,6 +1095,31 @@ export function dnsRecordsComponent(): DNSRecordsData {
       this.promoteTags = '';
     },
 
+    hasRecords(): boolean {
+      return this.records.length > 0;
+    },
+
+    getSyncStatusClass(status: RecordSyncStatus): string {
+      const classes: Record<RecordSyncStatus, string> = {
+        'synced': 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200',
+        'pending': 'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200',
+        'failed': 'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200'
+      };
+      return classes[status] || 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200';
+    },
+
+    getDeviceUrl(deviceId: string): string {
+      return '/devices/detail?id=' + deviceId;
+    },
+
+    getRecordAriaLabel(recordName: string, action: string): string {
+      return action + ' record ' + recordName;
+    },
+
+    getEditInputId(id: string, prefix: string): string {
+      return prefix + '-' + id;
+    },
+
     get filteredDevices(): Device[] {
       if (!this.linkDeviceSearch.trim()) return this.devices;
       const search = this.linkDeviceSearch.toLowerCase();
@@ -1165,9 +1287,25 @@ export function dnsRecordsComponent(): DNSRecordsData {
     getAddressValue(deviceId: string, addressId: string): string {
       if (!deviceId || !addressId) return '';
       const device = this.devices.find(d => d.id === deviceId);
-      if (!device) return '';
-      const address = device.addresses?.find(a => a.id === addressId);
+      if (!device || !device.addresses) return '';
+      const address = device.addresses.find(a => a.id === addressId);
       return address ? address.ip : '';
+    },
+
+    getZoneName(): string {
+      return this.zone ? (this.zone as DNSZone).name : '';
+    },
+
+    getAddressValueSafe(deviceId: string, addressId: string): string {
+      return this.getAddressValue(deviceId, addressId) || '';
+    },
+
+    getSelectedRecordName(): string {
+      return this.selectedRecord ? this.selectedRecord.name : '';
+    },
+
+    getSelectedRecordType(): string {
+      return this.selectedRecord ? this.selectedRecord.type : '';
     }
   };
 }

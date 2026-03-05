@@ -24,6 +24,10 @@ interface ConflictListData {
   formatDate(dateString: string): string;
   get filteredConflicts(): Conflict[];
   get activeConflictCount(): number;
+  getDeviceName(conflict: Conflict, index: number): string;
+  getNetworkName(conflict: Conflict, index: number): string;
+  getSubnet(conflict: Conflict, index: number): string;
+  getDeviceIdCount(conflict: Conflict): number;
 }
 
 export function conflictList(): ConflictListData {
@@ -116,5 +120,21 @@ export function conflictList(): ConflictListData {
     get activeConflictCount(): number {
       return (this.summary.duplicate_ips || 0) + (this.summary.overlapping_subnets || 0);
     },
+
+    getDeviceName(conflict: Conflict, index: number): string {
+      return conflict.device_names && conflict.device_names[index] || 'Unknown Device';
+    },
+
+    getNetworkName(conflict: Conflict, index: number): string {
+      return conflict.network_names && conflict.network_names[index] || 'Unknown Network';
+    },
+
+    getSubnet(conflict: Conflict, index: number): string {
+      return conflict.subnets && conflict.subnets[index] || '';
+    },
+
+    getDeviceIdCount(conflict: Conflict): number {
+      return conflict.device_ids?.length || 0;
+    }
   };
 }

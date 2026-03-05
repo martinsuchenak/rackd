@@ -95,7 +95,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	}
 }
 
-func TestRateLimitMiddlewareLocalhostBypass(t *testing.T) {
+func TestRateLimitMiddlewareNoLocalhostBypass(t *testing.T) {
 	limiter := NewRateLimiter(1, 1*time.Second)
 	middleware := RateLimitMiddleware(limiter, false)
 
@@ -105,16 +105,22 @@ func TestRateLimitMiddlewareLocalhostBypass(t *testing.T) {
 
 	wrappedHandler := middleware(handler)
 
-	// Localhost should bypass rate limiting
-	for i := 0; i < 5; i++ {
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.RemoteAddr = "127.0.0.1:1234"
-		w := httptest.NewRecorder()
-		wrappedHandler.ServeHTTP(w, req)
+	// First request from localhost should succeed
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	w := httptest.NewRecorder()
+	wrappedHandler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("First localhost request should succeed, got %d", w.Code)
+	}
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Localhost request %d should not be rate limited, got %d", i+1, w.Code)
-		}
+	// Second request from localhost should be rate limited
+	req = httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	w = httptest.NewRecorder()
+	wrappedHandler.ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("Second localhost request should be rate limited, got %d", w.Code)
 	}
 }
 
@@ -207,27 +213,5 @@ func TestGetClientIP_NoTrustProxy(t *testing.T) {
 	ip := getClientIP(req, false)
 	if ip != "192.168.1.1" {
 		t.Errorf("Expected 192.168.1.1 (RemoteAddr), got %s (proxy headers should be ignored)", ip)
-	}
-}
-
-func TestIsLocalhost(t *testing.T) {
-	tests := []struct {
-		addr     string
-		expected bool
-	}{
-		{"127.0.0.1:1234", true},
-		{"[::1]:1234", true},
-		{"localhost:1234", true},
-		{"192.168.1.1:1234", false},
-		{"10.0.0.1:1234", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.addr, func(t *testing.T) {
-			result := isLocalhost(tt.addr)
-			if result != tt.expected {
-				t.Errorf("isLocalhost(%s) = %v, expected %v", tt.addr, result, tt.expected)
-			}
-		})
 	}
 }

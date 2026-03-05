@@ -20,6 +20,13 @@ interface SearchData {
   onKeyDown(e: KeyboardEvent): void;
   selectResult(result: SearchResult): void;
   clear(): void;
+  getResultUrl(result: SearchResult): string;
+  getResultTitle(result: SearchResult): string;
+  getResultSubtitle(result: SearchResult): string;
+  getResultKey(result: SearchResult): string;
+  shouldShowResults(): boolean;
+  getActiveDescendant(): string | undefined;
+  hasResults(): boolean;
 }
 
 export function globalSearch(): SearchData {
@@ -30,7 +37,7 @@ export function globalSearch(): SearchData {
     error: '',
     showResults: false,
     selectedIndex: -1,
-    debouncedSearch: () => {},
+    debouncedSearch: () => { },
 
     init(): void {
       this.debouncedSearch = debounce(() => this.search(), 300);
@@ -101,13 +108,13 @@ export function globalSearch(): SearchData {
     },
 
     selectResult(result: SearchResult): void {
-      const path = result.type === 'device' 
+      const path = result.type === 'device'
         ? `/devices/detail?id=${result.device?.id}`
         : result.type === 'network'
-        ? `/networks/detail?id=${result.network?.id}`
-        : `/datacenters/detail?id=${result.datacenter?.id}`;
-      
-      this.$dispatch('nav', path);
+          ? `/networks/detail?id=${result.network?.id}`
+          : `/datacenters/detail?id=${result.datacenter?.id}`;
+
+      (this as any).$dispatch('nav', path);
       this.clear();
     },
 
@@ -116,6 +123,41 @@ export function globalSearch(): SearchData {
       this.results = [];
       this.showResults = false;
       this.selectedIndex = -1;
+    },
+
+    getResultUrl(result: SearchResult): string {
+      if (result.type === 'device') return `/devices/detail?id=${result.device?.id || ''}`;
+      if (result.type === 'network') return `/networks/detail?id=${result.network?.id || ''}`;
+      if (result.type === 'datacenter') return `/datacenters/detail?id=${result.datacenter?.id || ''}`;
+      return '#';
+    },
+
+    getResultTitle(result: SearchResult): string {
+      if (result.type === 'device') return result.device?.name || '';
+      if (result.type === 'network') return result.network?.name || '';
+      if (result.type === 'datacenter') return result.datacenter?.name || '';
+      return '';
+    },
+
+    getResultSubtitle(result: SearchResult): string {
+      if (result.type === 'device') return result.device?.make_model || result.device?.hostname || '';
+      if (result.type === 'network') return result.network?.subnet || '';
+      if (result.type === 'datacenter') return result.datacenter?.location || '';
+      return '';
+    },
+
+    getResultKey(result: SearchResult): string {
+      const id = result.device?.id || result.network?.id || result.datacenter?.id || '';
+      return `${result.type}-${id}`;
+    },
+    shouldShowResults(): boolean {
+      return this.showResults && (this.results.length > 0 || this.loading);
+    },
+    getActiveDescendant(): string | undefined {
+      return this.selectedIndex >= 0 ? `search-result-${this.selectedIndex}` : undefined;
+    },
+    hasResults(): boolean {
+      return this.results.length > 0;
     },
   };
 }

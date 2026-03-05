@@ -1,31 +1,56 @@
-<div x-show="showDeviceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="device-modal-title" @keydown.escape.window="closeModal()">
+<div x-show="showDeviceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+  aria-modal="true" aria-labelledby="device-modal-title" @keydown.escape.window="closeModal()">
   <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col" style="max-height: 85vh;" x-trap.inert.noscroll="showDeviceModal">
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col"
+    style="max-height: 85vh;" x-trap.inert.noscroll="showDeviceModal">
     <!-- Close button -->
-    <button @click="closeModal()" class="absolute top-4 right-4 z-10 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <button @click="closeModal()"
+      class="absolute top-4 right-4 z-10 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+      aria-label="Close dialog">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
     </button>
     <!-- Modal Header -->
     <div class="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-      <h2 id="device-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50" x-text="isEditMode ? 'Edit Device' : 'Add Device'"></h2>
+      <h2 id="device-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50"
+        x-text="isEditMode ? 'Edit Device' : 'Add Device'"></h2>
       <!-- Status announcements for screen readers -->
       <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         <span x-show="saving">Saving device, please wait</span>
       </div>
       <!-- Tabs -->
       <div class="flex gap-1 mt-4 -mb-4" role="tablist" aria-label="Device form sections">
-        <button type="button" @click="modalTab = 'general'" role="tab" :aria-selected="modalTab === 'general'" :tabindex="modalTab === 'general' ? 0 : -1" id="tab-general" aria-controls="panel-general" :class="modalTab === 'general' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">General</button>
-        <button type="button" @click="modalTab = 'addresses'" role="tab" :aria-selected="modalTab === 'addresses'" :tabindex="modalTab === 'addresses' ? 0 : -1" id="tab-addresses" aria-controls="panel-addresses" :class="modalTab === 'addresses' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
+        <button type="button" @click="modalTab = 'general'" role="tab" :aria-selected="modalTab === 'general'"
+          :tabindex="modalTab === 'general' ? 0 : -1" id="tab-general" aria-controls="panel-general"
+          :class="modalTab === 'general' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">General</button>
+        <button type="button" @click="modalTab = 'addresses'" role="tab" :aria-selected="modalTab === 'addresses'"
+          :tabindex="modalTab === 'addresses' ? 0 : -1" id="tab-addresses" aria-controls="panel-addresses"
+          :class="modalTab === 'addresses' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
           Addresses
-          <span x-show="editDevice.addresses?.length" class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full" x-text="editDevice.addresses?.length" aria-label="address count"></span>
+          <span x-show="hasEditDeviceAddresses()"
+            class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full"
+            x-text="getEditDeviceAddressesCount()" aria-label="address count"></span>
         </button>
-        <button type="button" @click="modalTab = 'tags'" role="tab" :aria-selected="modalTab === 'tags'" :tabindex="modalTab === 'tags' ? 0 : -1" id="tab-tags" aria-controls="panel-tags" :class="modalTab === 'tags' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
+        <button type="button" @click="modalTab = 'tags'" role="tab" :aria-selected="modalTab === 'tags'"
+          :tabindex="modalTab === 'tags' ? 0 : -1" id="tab-tags" aria-controls="panel-tags"
+          :class="modalTab === 'tags' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
           Tags & Domains
-          <span x-show="(editDevice.tags?.length || 0) + (editDevice.domains?.length || 0)" class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full" x-text="(editDevice.tags?.length || 0) + (editDevice.domains?.length || 0)" aria-label="tags and domains count"></span>
+          <span x-show="hasEditDeviceTagsOrDomains()"
+            class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full"
+            x-text="getEditDeviceTagsAndDomainsCount()" aria-label="tags and domains count"></span>
         </button>
-        <button type="button" @click="modalTab = 'customfields'" role="tab" :aria-selected="modalTab === 'customfields'" :tabindex="modalTab === 'customfields' ? 0 : -1" id="tab-customfields" aria-controls="panel-customfields" :class="modalTab === 'customfields' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
+        <button type="button" @click="modalTab = 'customfields'" role="tab" :aria-selected="modalTab === 'customfields'"
+          :tabindex="modalTab === 'customfields' ? 0 : -1" id="tab-customfields" aria-controls="panel-customfields"
+          :class="modalTab === 'customfields' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] cursor-pointer">
           Custom Fields
-          <span x-show="customFieldDefinitions?.length" class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full" x-text="customFieldDefinitions?.length" aria-label="custom fields count"></span>
+          <span x-show="hasCustomFieldDefinitions()"
+            class="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-full"
+            x-text="customFieldDefinitions.length" aria-label="custom fields count"></span>
         </button>
       </div>
     </div>
@@ -33,45 +58,33 @@
     <form @submit.prevent="saveDevice()" class="flex flex-col flex-1 min-h-0">
       <div class="flex-1 overflow-y-auto px-6 py-4">
         <!-- General Tab -->
-        <div x-show="modalTab === 'general'" id="panel-general" role="tabpanel" aria-labelledby="tab-general" class="space-y-4">
+        <div x-show="modalTab === 'general'" id="panel-general" role="tabpanel" aria-labelledby="tab-general"
+          class="space-y-4">
           <fieldset class="border-0 p-0 m-0">
             <legend class="sr-only">Basic device information</legend>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label for="device-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input id="device-name" 
-                       type="text" 
-                       x-model="editDevice.name" 
-                       required 
-                       aria-required="true"
-                       :aria-invalid="!!validationErrors.name"
-                       :aria-describedby="validationErrors.name ? 'device-name-error' : undefined"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" 
-                   id="device-name-error" 
-                   class="mt-1 text-sm text-red-700 dark:text-red-300" 
-                   role="alert"
-                   x-text="validationErrors.name"></p>
+                <label for="device-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name
+                  <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <input id="device-name" type="text" x-model="editDevice.name" required aria-required="true"
+                  :aria-invalid="!!validationErrors.name"
+                  :aria-describedby="validationErrors.name ? 'device-name-error' : undefined"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.name" id="device-name-error"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
               </div>
               <div>
                 <label for="device-hostname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
                   Hostname
-                  <button type="button" 
-                          @click="showHostnameHelp = !showHostnameHelp"
-                          class="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs text-gray-600 dark:text-gray-400 border border-gray-400 dark:border-gray-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500"
-                          :aria-expanded="showHostnameHelp"
-                          aria-label="Help for hostname field">?</button>
+                  <button type="button" @click="showHostnameHelp = !showHostnameHelp"
+                    class="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs text-gray-600 dark:text-gray-400 border border-gray-400 dark:border-gray-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500"
+                    :aria-expanded="showHostnameHelp" aria-label="Help for hostname field">?</button>
                 </label>
-                <input id="device-hostname" 
-                       type="text" 
-                       x-model="editDevice.hostname" 
-                       placeholder="e.g., server01.example.com"
-                       aria-describedby="hostname-help"
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-                <p x-show="showHostnameHelp" 
-                   id="hostname-help" 
-                   class="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                <input id="device-hostname" type="text" x-model="editDevice.hostname"
+                  placeholder="e.g., server01.example.com" aria-describedby="hostname-help"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <p x-show="showHostnameHelp" id="hostname-help" class="mt-1 text-xs text-gray-700 dark:text-gray-300">
                   Fully qualified domain name (FQDN) for this device. Example: server01.datacenter.example.com
                 </p>
               </div>
@@ -79,23 +92,30 @@
           </fieldset>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label for="device-make-model" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Make/Model</label>
-              <input id="device-make-model" type="text" x-model="editDevice.make_model" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <label for="device-make-model"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Make/Model</label>
+              <input id="device-make-model" type="text" x-model="editDevice.make_model"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
             <div>
               <label for="device-os" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">OS</label>
-              <input id="device-os" type="text" x-model="editDevice.os" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <input id="device-os" type="text" x-model="editDevice.os"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
           </div>
           <div>
-            <label for="device-description" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
-            <textarea id="device-description" x-model="editDevice.description" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
+            <label for="device-description"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
+            <textarea id="device-description" x-model="editDevice.description" rows="2"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <template x-if="hasMultipleDatacenters">
               <div>
-                <label for="device-datacenter" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter</label>
-                <select id="device-datacenter" x-model="editDevice.datacenter_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <label for="device-datacenter"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter</label>
+                <select id="device-datacenter" x-model="editDevice.datacenter_id"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option value="">None</option>
                   <template x-for="dc in datacenters" :key="dc.id">
                     <option :value="dc.id" x-text="dc.name"></option>
@@ -104,18 +124,24 @@
               </div>
             </template>
             <div :class="!hasMultipleDatacenters ? 'md:col-span-2' : ''">
-              <label for="device-location" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Location</label>
-              <input id="device-location" type="text" x-model="editDevice.location" placeholder="e.g., Rack 5, Unit 12" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <label for="device-location"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Location</label>
+              <input id="device-location" type="text" x-model="editDevice.location" placeholder="e.g., Rack 5, Unit 12"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
           </div>
           <div>
-            <label for="device-username" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Username</label>
-            <input id="device-username" type="text" x-model="editDevice.username" placeholder="e.g., admin, root" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <label for="device-username"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Username</label>
+            <input id="device-username" type="text" x-model="editDevice.username" placeholder="e.g., admin, root"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label for="device-status" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
-              <select id="device-status" x-model="editDevice.status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <label for="device-status"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
+              <select id="device-status" x-model="editDevice.status"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 <option value="planned">Planned</option>
                 <option value="active">Active</option>
                 <option value="maintenance">Maintenance</option>
@@ -128,16 +154,23 @@
         <div x-show="modalTab === 'addresses'" id="panel-addresses" role="tabpanel" aria-labelledby="tab-addresses">
           <div class="space-y-3">
             <template x-for="(addr, index) in editDevice.addresses || []" :key="index">
-              <fieldset class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-md border border-gray-200 dark:border-gray-600">
+              <fieldset
+                class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-md border border-gray-200 dark:border-gray-600">
                 <legend class="sr-only">Address <span x-text="index + 1"></span></legend>
                 <div class="flex items-center justify-between mb-3">
-                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Address #<span x-text="index + 1"></span></span>
-                  <button type="button" @click="removeAddress(index)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 focus:outline-none focus:ring-[3px] focus:ring-red-500 rounded min-h-[44px]" :aria-label="'Remove address ' + (index + 1)">&times; Remove</button>
+                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Address #<span
+                      x-text="index + 1"></span></span>
+                  <button type="button" @click="removeAddress(index)"
+                    class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 focus:outline-none focus:ring-[3px] focus:ring-red-500 rounded min-h-[44px]"
+                    :aria-label="'Remove address ' + (index + 1)">&times; Remove</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label :for="'addr-network-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
-                    <select :id="'addr-network-' + index" x-model="addr.network_id" @change="addr.pool_id = ''; loadPoolsForNetwork(addr.network_id)" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'addr-network-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
+                    <select :id="'addr-network-' + index" x-model="addr.network_id"
+                      @change="addr.pool_id = ''; loadPoolsForNetwork(addr.network_id)"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       <option value="">No Network</option>
                       <template x-for="net in networks" :key="net.id">
                         <option :value="net.id" :selected="net.id === addr.network_id" x-text="net.name"></option>
@@ -145,42 +178,48 @@
                     </select>
                   </div>
                   <div>
-                    <label :for="'addr-pool-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Pool</label>
+                    <label :for="'addr-pool-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Pool</label>
                     <div class="flex gap-2">
-                      <select :id="'addr-pool-' + index" x-model="addr.pool_id" @focus="loadPoolsForNetwork(addr.network_id)" class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                      <select :id="'addr-pool-' + index" x-model="addr.pool_id"
+                        @focus="loadPoolsForNetwork(addr.network_id)"
+                        class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                         <option value="">No Pool</option>
                         <template x-for="pool in getPoolsForNetwork(addr.network_id)" :key="pool.id">
                           <option :value="pool.id" :selected="pool.id === addr.pool_id" x-text="pool.name"></option>
                         </template>
                       </select>
-                      <button type="button" @click="fetchNextIPForAddress(index)" x-show="addr.pool_id" class="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-[3px] focus:ring-green-500 whitespace-nowrap min-h-[44px]">Next IP</button>
+                      <button type="button" @click="fetchNextIPForAddress(index)" x-show="addr.pool_id"
+                        class="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-[3px] focus:ring-green-500 whitespace-nowrap min-h-[44px]">Next
+                        IP</button>
                     </div>
                   </div>
                 </div>
                 <div class="grid grid-cols-3 gap-3 mb-3">
                   <div>
-                    <label :for="'addr-ip-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                    <input :id="'addr-ip-' + index" 
-                           type="text" 
-                           x-model="addr.ip" 
-                           placeholder="192.168.1.100"
-                           :aria-invalid="!!validationErrors['addr_' + index + '_ip']"
-                           :aria-describedby="validationErrors['addr_' + index + '_ip'] ? 'addr-ip-error-' + index : undefined"
-                           class="w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                           :class="validationErrors['addr_' + index + '_ip'] ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                    <p x-show="validationErrors['addr_' + index + '_ip']" 
-                       :id="'addr-ip-error-' + index" 
-                       class="mt-1 text-xs text-red-700 dark:text-red-300" 
-                       role="alert"
-                       x-text="validationErrors['addr_' + index + '_ip']"></p>
+                    <label :for="'addr-ip-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address <span
+                        aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                    <input :id="'addr-ip-' + index" type="text" x-model="addr.ip" placeholder="192.168.1.100"
+                      :aria-invalid="!!validationErrors['addr_' + index + '_ip']"
+                      :aria-describedby="validationErrors['addr_' + index + '_ip'] ? 'addr-ip-error-' + index : undefined"
+                      class="w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                      :class="validationErrors['addr_' + index + '_ip'] ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                    <p x-show="validationErrors['addr_' + index + '_ip']" :id="'addr-ip-error-' + index"
+                      class="mt-1 text-xs text-red-700 dark:text-red-300" role="alert"
+                      x-text="validationErrors['addr_' + index + '_ip']"></p>
                   </div>
                   <div>
-                    <label :for="'addr-port-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Port</label>
-                    <input :id="'addr-port-' + index" type="number" x-model.number="addr.port" placeholder="22" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'addr-port-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Port</label>
+                    <input :id="'addr-port-' + index" type="number" x-model.number="addr.port" placeholder="22"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                   <div>
-                    <label :for="'addr-type-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
-                    <select :id="'addr-type-' + index" x-model="addr.type" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'addr-type-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
+                    <select :id="'addr-type-' + index" x-model="addr.type"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       <option value="ipv4">IPv4</option>
                       <option value="ipv6">IPv6</option>
                     </select>
@@ -188,66 +227,97 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label :for="'addr-label-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Label</label>
-                    <input :id="'addr-label-' + index" type="text" x-model="addr.label" placeholder="Management, WAN" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'addr-label-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Label</label>
+                    <input :id="'addr-label-' + index" type="text" x-model="addr.label" placeholder="Management, WAN"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                   <div>
-                    <label :for="'addr-switch-' + index" class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Switch Port</label>
-                    <input :id="'addr-switch-' + index" type="text" x-model="addr.switch_port" placeholder="Gi0/1, Eth1/24" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'addr-switch-' + index"
+                      class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Switch Port</label>
+                    <input :id="'addr-switch-' + index" type="text" x-model="addr.switch_port"
+                      placeholder="Gi0/1, Eth1/24"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                 </div>
               </fieldset>
             </template>
           </div>
-          <button type="button" @click="addAddress()" class="mt-3 w-full px-4 py-2 text-sm border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <button type="button" @click="addAddress()"
+            class="mt-3 w-full px-4 py-2 text-sm border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             + Add Address
           </button>
-          <p x-show="!editDevice.addresses?.length" class="mt-4 text-center text-sm text-gray-800 dark:text-gray-200">No addresses added yet. Click the button above to add one.</p>
+          <p x-show="!hasEditDeviceAddresses()" class="mt-4 text-center text-sm text-gray-800 dark:text-gray-200">No
+            addresses added yet. Click the button
+            above to add one.</p>
         </div>
         <!-- Tags & Domains Tab -->
         <div x-show="modalTab === 'tags'" id="panel-tags" role="tabpanel" aria-labelledby="tab-tags" class="space-y-6">
           <div>
-            <label for="device-tag-input" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Tags</label>
+            <label for="device-tag-input"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Tags</label>
             <div class="flex gap-2 mb-2">
-              <input id="device-tag-input" type="text" x-model="tagInput" @keydown.enter.prevent="addTag()" placeholder="Add tag..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-              <button type="button" @click="addTag()" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">Add</button>
+              <input id="device-tag-input" type="text" x-model="tagInput" @keydown.enter.prevent="addTag()"
+                placeholder="Add tag..."
+                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <button type="button" @click="addTag()"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">Add</button>
             </div>
-            <div class="flex flex-wrap gap-2" x-show="editDevice.tags?.length > 0" role="list" aria-label="Added tags">
-              <template x-for="tag in editDevice.tags || []" :key="tag">
-                <span class="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 rounded" role="listitem">
+            <div class="flex flex-wrap gap-2" x-show="hasEditDeviceTags()" role="list" aria-label="Added tags">
+              <template x-for="tag in (editDevice.tags || [])" :key="tag">
+                <span
+                  class="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 rounded"
+                  role="listitem">
                   <span x-text="tag"></span>
-                  <button type="button" @click="removeTag(tag)" class="p-1 text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center" :aria-label="'Remove tag ' + tag">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  <button type="button" @click="removeTag(tag)"
+                    class="p-1 text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+                    :aria-label="'Remove tag ' + tag">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </span>
               </template>
             </div>
-            <p x-show="!editDevice.tags?.length" class="text-sm text-gray-800 dark:text-gray-200">No tags added yet.</p>
+            <p x-show="!hasEditDeviceTags()" class="text-sm text-gray-800 dark:text-gray-200">No tags added yet.</p>
           </div>
           <div>
-            <label for="device-domain-input" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Domains</label>
+            <label for="device-domain-input"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Domains</label>
             <div class="flex gap-2 mb-2">
-              <input id="device-domain-input" type="text" x-model="domainInput" @keydown.enter.prevent="addDomain()" placeholder="Add domain..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-              <button type="button" @click="addDomain()" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">Add</button>
+              <input id="device-domain-input" type="text" x-model="domainInput" @keydown.enter.prevent="addDomain()"
+                placeholder="Add domain..."
+                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <button type="button" @click="addDomain()"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">Add</button>
             </div>
-            <div class="flex flex-wrap gap-2" x-show="editDevice.domains?.length > 0" role="list" aria-label="Added domains">
-              <template x-for="domain in editDevice.domains || []" :key="domain">
-                <span class="inline-flex items-center gap-1 px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100 rounded" role="listitem">
+            <div class="flex flex-wrap gap-2" x-show="hasEditDeviceDomains()" role="list" aria-label="Added domains">
+              <template x-for="domain in (editDevice.domains || [])" :key="domain">
+                <span
+                  class="inline-flex items-center gap-1 px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100 rounded"
+                  role="listitem">
                   <span x-text="domain"></span>
-                  <button type="button" @click="removeDomain(domain)" class="p-1 text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 focus:outline-none focus:ring-[3px] focus:ring-purple-500 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center" :aria-label="'Remove domain ' + domain">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  <button type="button" @click="removeDomain(domain)"
+                    class="p-1 text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 focus:outline-none focus:ring-[3px] focus:ring-purple-500 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+                    :aria-label="'Remove domain ' + domain">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </span>
               </template>
             </div>
-            <p x-show="!editDevice.domains?.length" class="text-sm text-gray-800 dark:text-gray-200">No domains added yet.</p>
+            <p x-show="!hasEditDeviceDomains()" class="text-sm text-gray-800 dark:text-gray-200">No domains added yet.
+            </p>
           </div>
         </div>
         <!-- Custom Fields Tab -->
-        <div x-show="modalTab === 'customfields'" id="panel-customfields" role="tabpanel" aria-labelledby="tab-customfields" class="space-y-4">
-          <div x-show="!customFieldDefinitions || customFieldDefinitions.length === 0" class="text-center py-8">
+        <div x-show="modalTab === 'customfields'" id="panel-customfields" role="tabpanel"
+          aria-labelledby="tab-customfields" class="space-y-4">
+          <div x-show="!hasCustomFieldDefinitions()" class="text-center py-8">
             <p class="text-sm text-gray-600 dark:text-gray-400">No custom fields defined.</p>
-            <a href="/custom-fields" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Manage custom fields</a>
+            <a href="/custom-fields" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Manage custom
+              fields</a>
           </div>
           <template x-for="fieldDef in customFieldDefinitions || []" :key="fieldDef.id">
             <div class="space-y-1">
@@ -256,50 +326,46 @@
                 <span x-show="fieldDef.required" class="text-red-500">*</span>
               </label>
               <!-- Text type -->
-              <input x-show="fieldDef.type === 'text'"
-                     :id="'cf-' + fieldDef.key"
-                     type="text"
-                     :value="getCustomFieldValue(fieldDef.id)"
-                     @input="setCustomFieldValue(fieldDef.id, $event.target.value)"
-                     :placeholder="fieldDef.description"
-                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <input x-show="fieldDef.type === 'text'" :id="'cf-' + fieldDef.key" type="text"
+                :value="getCustomFieldValue(fieldDef.id)" @input="setCustomFieldValue(fieldDef.id, $event.target.value)"
+                :placeholder="fieldDef.description"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               <!-- Number type -->
-              <input x-show="fieldDef.type === 'number'"
-                     :id="'cf-' + fieldDef.key"
-                     type="number"
-                     :value="getCustomFieldValue(fieldDef.id)"
-                     @input="setCustomFieldValue(fieldDef.id, $event.target.value ? Number($event.target.value) : null)"
-                     :placeholder="fieldDef.description"
-                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <input x-show="fieldDef.type === 'number'" :id="'cf-' + fieldDef.key" type="number"
+                :value="getCustomFieldValue(fieldDef.id)"
+                @input="setCustomFieldValue(fieldDef.id, $event.target.value ? Number($event.target.value) : null)"
+                :placeholder="fieldDef.description"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               <!-- Boolean type -->
               <div x-show="fieldDef.type === 'boolean'" class="flex items-center">
-                <input :id="'cf-' + fieldDef.key"
-                       type="checkbox"
-                       :checked="getCustomFieldValue(fieldDef.id) === true"
-                       @change="setCustomFieldValue(fieldDef.id, $event.target.checked)"
-                       class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300" x-text="fieldDef.description || 'Yes'"></span>
+                <input :id="'cf-' + fieldDef.key" type="checkbox" :checked="getCustomFieldValue(fieldDef.id) === true"
+                  @change="setCustomFieldValue(fieldDef.id, $event.target.checked)"
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300"
+                  x-text="fieldDef.description || 'Yes'"></span>
               </div>
               <!-- Select type -->
-              <select x-show="fieldDef.type === 'select'"
-                      :id="'cf-' + fieldDef.key"
-                      :value="getCustomFieldValue(fieldDef.id) || ''"
-                      @change="setCustomFieldValue(fieldDef.id, $event.target.value || null)"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <select x-show="fieldDef.type === 'select'" :id="'cf-' + fieldDef.key"
+                :value="getCustomFieldValue(fieldDef.id) || ''"
+                @change="setCustomFieldValue(fieldDef.id, $event.target.value || null)"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 <option value="">-- Select --</option>
                 <template x-for="opt in fieldDef.options || []" :key="opt">
                   <option :value="opt" x-text="opt"></option>
                 </template>
               </select>
-              <p x-show="fieldDef.description && fieldDef.type !== 'boolean'" class="text-xs text-gray-500 dark:text-gray-400" x-text="fieldDef.description"></p>
+              <p x-show="fieldDef.description && fieldDef.type !== 'boolean'"
+                class="text-xs text-gray-500 dark:text-gray-400" x-text="fieldDef.description"></p>
             </div>
           </template>
         </div>
       </div>
       <!-- Modal Footer -->
       <div class="flex-shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-        <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-        <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+        <button type="button" @click="closeModal()"
+          class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+        <button type="submit" :disabled="saving"
+          class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
           <span x-show="!saving" x-text="isEditMode ? 'Save Changes' : 'Create Device'"></span>
           <span x-show="saving" x-text="isEditMode ? 'Saving...' : 'Creating...'"></span>
         </button>

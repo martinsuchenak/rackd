@@ -12,6 +12,7 @@ import (
 type Config struct {
 	DataDir                 string
 	ListenAddr              string
+	RequestTimeout          time.Duration
 	LogFormat               string
 	LogLevel                string
 	DiscoveryInterval       time.Duration
@@ -59,6 +60,7 @@ func Load() *Config {
 	cfg = Config{
 		DataDir:                 getEnv("DATA_DIR", "./data"),
 		ListenAddr:              getEnv("LISTEN_ADDR", ":8080"),
+		RequestTimeout:          getDurationEnv("REQUEST_TIMEOUT", 30*time.Second),
 		LogFormat:               getEnv("LOG_FORMAT", "text"),
 		LogLevel:                getEnv("LOG_LEVEL", "info"),
 		DiscoveryInterval:       getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),

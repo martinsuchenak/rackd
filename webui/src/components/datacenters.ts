@@ -191,6 +191,10 @@ interface DatacenterDetailData {
   init(): Promise<void>;
   loadDatacenter(): Promise<void>;
   loadDevices(): Promise<void>;
+  hasDevices(): boolean;
+  hasMoreDevices(): boolean;
+  getMoreDevicesCount(): number;
+  getDeviceIP(device: Device): string;
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
@@ -254,6 +258,13 @@ export function datacenterDetail(): DatacenterDetailData {
       }
     },
 
+    getDeviceIP(device: Device): string {
+      if (device.addresses && device.addresses.length > 0) {
+        return device.addresses[0].ip;
+      }
+      return '-';
+    },
+
     confirmDelete(): void {
       this.showDeleteModal = true;
       setTimeout(() => {
@@ -313,6 +324,18 @@ export function datacenterDetail(): DatacenterDetailData {
       } finally {
         this.saving = false;
       }
+    },
+
+    hasDevices(): boolean {
+      return this.devices.length > 0;
+    },
+
+    hasMoreDevices(): boolean {
+      return this.devices.length > 10;
+    },
+
+    getMoreDevicesCount(): number {
+      return this.devices.length - 10;
     },
   };
 }

@@ -1,5 +1,5 @@
 <!-- Login Page -->
-  <div x-data="login()" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative" x-init="await init()">
+  <div x-data="login()" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative" x-init="init()">
     <!-- Theme toggle -->
     <div x-data="themeToggle" class="absolute top-4 right-4">
       <button @click="setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')"

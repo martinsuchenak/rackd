@@ -1,6 +1,6 @@
 // Rackd Web UI - Main Application Entry Point
 
-import Alpine from 'alpinejs';
+import Alpine from '@alpinejs/csp';
 import focus from '@alpinejs/focus';
 import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
@@ -147,7 +147,10 @@ function router() {
             perm.resource === req.resource && perm.action === req.action
           )
         );
-      });
+      }).map((item: any) => ({
+        ...item,
+        badgeValue: typeof item.badge === 'function' ? item.badge() : (item.badge || 0)
+      }));
     },
 
 
@@ -174,6 +177,10 @@ function router() {
         updatePageTitle(path);
         this.sidebarOpen = false;
       }
+    },
+
+    hasBadge(item: any): boolean {
+      return item.badgeValue > 0;
     },
 
     async updateConflictCount() {

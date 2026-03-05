@@ -123,6 +123,12 @@
 32. **OAuth Authorization Code Replay Window (M-25)**
     - **Module:** Service Layer
     - **Fix Applied:** Repositioned `MarkAuthorizationCodeUsed` earlier in the `ExchangeCode` flow so that the code is instantly burned before executing PKCE or client verification. This ensures that any concurrent or invalid exchange completely burns the code without race conditions.
+33. **Privilege Escalation in User and Role Management**
+    - **Module:** Service Layer
+    - **Fix Applied:** Implemented strict admin checks in `UserService` and `RoleService`. Non-admin users can no longer create admins, update other admins, delete admins, reset admin passwords, or assign/revoke the 'admin' or system roles. This prevents lateral movement and privilege escalation by users with limited management permissions.
+34. **Localhost Bypass in Rate Limiting (M-11)**
+    - **Module:** API Handlers / Rate Limiting
+    - **Fix Applied:** Removed the special-case bypass for requests originating from localhost (127.0.0.1, ::1). All clients are now subject to the same rate limiting rules, preventing local attackers from bypassing security controls on sensitive endpoints.
 
 ---
 

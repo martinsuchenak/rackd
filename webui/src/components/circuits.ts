@@ -79,10 +79,17 @@ interface CircuitData {
   validateForm(): boolean;
   getDatacenterName(id: string): string;
 
+  getSelectedCircuitName(): string;
+  getSelectedCircuitId(): string;
+
   // Utilities
   formatDate(dateStr: string): string;
   formatStatus(status: string): string;
   formatType(circuitType: string): string;
+
+  // Helpers for CSP compliance
+  getProviders(): string[];
+  hasCircuits(): boolean;
 }
 
 export function circuitComponent(): CircuitData {
@@ -382,6 +389,24 @@ export function circuitComponent(): CircuitData {
         'dark_fiber': 'Dark Fiber'
       };
       return typeMap[circuitType] || circuitType;
+    },
+
+    getProviders(): string[] {
+      if (!this.circuits) return [];
+      const providers = this.circuits.map(c => c.provider).filter(p => !!p);
+      return Array.from(new Set(providers));
+    },
+
+    hasCircuits(): boolean {
+      return !!(this.circuits && this.circuits.length > 0);
+    },
+
+    getSelectedCircuitName(): string {
+      return this.selectedCircuit ? this.selectedCircuit.name : '';
+    },
+
+    getSelectedCircuitId(): string {
+      return this.selectedCircuit ? this.selectedCircuit.id : '';
     }
   };
 }

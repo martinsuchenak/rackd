@@ -37,12 +37,18 @@ interface RolesListData {
   closeEditModal(): void;
   openDeleteModal(role: Role): void;
   closeDeleteModal(): void;
+  openViewModal(role: Role): void;
+  closeViewModal(): void;
   openPermissionsModal(role: Role): void;
   closePermissionsModal(): void;
   doCreateRole(): Promise<void>;
   doUpdateRole(): Promise<void>;
   doDeleteRole(): Promise<void>;
   togglePermission(permissionId: string): void;
+  getSelectedRoleName(): string;
+  getSelectedRoleDescription(): string;
+  getSelectedRolePermissionsCount(): number;
+  hasSelectedRoleDescription(): boolean;
 }
 
 export function rolesList() {
@@ -329,5 +335,21 @@ export function rolesList() {
         this.deleting = false;
       }
     },
+
+    getSelectedRoleName(): string {
+      return this.selectedRole ? this.selectedRole.name : '';
+    },
+
+    getSelectedRoleDescription(): string {
+      return this.selectedRole?.description || '';
+    },
+
+    getSelectedRolePermissionsCount(): number {
+      return this.selectedRole?.permissions ? this.selectedRole.permissions.length : 0;
+    },
+
+    hasSelectedRoleDescription(): boolean {
+      return !!this.selectedRole?.description;
+    }
   };
 }

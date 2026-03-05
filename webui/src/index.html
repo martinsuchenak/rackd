@@ -7,19 +7,8 @@
   <title>Rackd - IPAM &amp; Device Inventory</title>
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/output.css">
-  <style>
-    [x-cloak] {
-      display: none !important;
-    }
-  </style>
-  <script>
-    // Apply stored theme immediately to prevent flash of wrong theme
-    (function () {
-      var theme = localStorage.getItem('theme') || 'system';
-      var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (isDark) document.documentElement.classList.add('dark');
-    })();
-  </script>
+
+  <script src="/theme.js"></script>
 </head>
 
 <body class="min-h-screen">
@@ -81,9 +70,9 @@
                 :class="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
                 :aria-current="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'page' : null">
                 <span x-text="item.label"></span>
-                <span x-show="item.badge && item.badge() > 0"
+                <span x-show="hasBadge(item)"
                   class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
-                  x-text="item.badge ? item.badge() : 0"></span>
+                  x-text="item.badgeValue"></span>
               </a>
             </template>
           </nav>
@@ -112,23 +101,20 @@
               <input id="global-search" type="search" x-model="query" @input="onInput()" @keydown="onKeyDown($event)"
                 @focus="onFocus()" @blur="onBlur()" placeholder="Search devices, networks, datacenters..."
                 role="combobox" aria-autocomplete="list" aria-describedby="search-instructions"
-                aria-controls="search-results"
-                :aria-activedescendant="selectedIndex >= 0 ? 'search-result-' + selectedIndex : undefined"
+                aria-controls="search-results" :aria-activedescendant="getActiveDescendant()"
                 :aria-expanded="showResults && (results.length > 0 || loading)"
                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-[var(--input-background)] text-gray-900 dark:text-gray-50 placeholder:text-gray-600 dark:placeholder:text-gray-400 focus:outline-none focus:ring-[3px] focus:ring-[var(--ring)] min-h-[44px]">
               <span id="search-instructions" class="sr-only">Type to search. Use arrow keys to navigate results, Enter
                 to select, Escape to close.</span>
-              <div x-show="showResults && (results.length > 0 || loading)" x-cloak id="search-results"
+              <div x-show="shouldShowResults()" x-cloak id="search-results"
                 class="absolute left-0 right-0 mt-2 bg-[var(--card)] rounded-md shadow-lg border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
                 role="listbox" aria-label="Search results">
                 <div x-show="loading" class="p-3 text-sm text-gray-800 dark:text-gray-200" role="status"
                   aria-live="polite">Searching...</div>
-                <template x-for="(result, index) in results"
-                  :key="result.type + '-' + (result.device?.id || result.network?.id || result.datacenter?.id)">
-                  <a :id="'search-result-' + index"
-                    :href="result.type === 'device' ? '/devices/detail?id=' + result.device?.id : result.type === 'network' ? '/networks/detail?id=' + result.network?.id : '/datacenters/detail?id=' + result.datacenter?.id"
-                    @click.prevent="selectResult(result)" @mouseenter="selectedIndex = index"
-                    class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-inset focus:ring-blue-500 min-h-[44px]"
+                <template x-for="(result, index) in results" :key="getResultKey(result)">
+                  <a :id="'search-result-' + index" :href="getResultUrl(result)" @click.prevent="selectResult(result)"
+                    @mouseenter="selectedIndex = index"
+                    class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                     :class="{ 'bg-[var(--muted)]': index === selectedIndex }" role="option"
                     :aria-selected="index === selectedIndex">
                     <div class="flex items-center gap-2">
@@ -138,11 +124,9 @@
                         class="px-1.5 py-0.5 text-xs bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100 rounded font-medium">Network</span>
                       <span x-show="result.type === 'datacenter'"
                         class="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100 rounded font-medium">Datacenter</span>
-                      <span class="font-medium"
-                        x-text="result.device?.name || result.network?.name || result.datacenter?.name"></span>
+                      <span class="font-medium" x-text="getResultTitle(result)"></span>
                     </div>
-                    <div class="text-xs text-gray-800 dark:text-gray-200 ml-14"
-                      x-text="result.device?.make_model || result.device?.hostname || result.network?.subnet || result.datacenter?.location || ''">
+                    <div class="text-xs text-gray-800 dark:text-gray-200 ml-14" x-text="getResultSubtitle(result)">
                     </div>
                   </a>
                 </template>

@@ -1,16 +1,20 @@
 <div x-data="poolDetail()">
   <div x-show="loading" class="text-gray-500">Loading...</div>
-  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md" x-text="error"></div>
+  <div x-show="error" class="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md"
+    x-text="error"></div>
   <div x-show="!loading && pool">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center">
-        <button @click="$dispatch('nav', network ? '/networks/detail?id=' + network.id : '/networks')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
+        <button @click="$dispatch('nav', network ? '/networks/detail?id=' + network.id : '/networks')"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="pool?.name"></h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400" x-show="network">Network: <span x-text="network?.name"></span></p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="pool && pool.name"></h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400" x-show="network">Network: <span
+              x-text="network && network.name"></span></p>
         </div>
       </div>
-      <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+      <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()"
+        class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -18,34 +22,49 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pool Details</h2>
         <dl class="grid grid-cols-2 gap-4">
-          <div><dt class="text-sm text-gray-500 dark:text-gray-400">Start IP</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.start_ip"></dd></div>
-          <div><dt class="text-sm text-gray-500 dark:text-gray-400">End IP</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.end_ip"></dd></div>
-          <div><dt class="text-sm text-gray-500 dark:text-gray-400">Gateway</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.gateway || '-'"></dd></div>
-          <div><dt class="text-sm text-gray-500 dark:text-gray-400">DNS Servers</dt><dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.dns_servers || '-'"></dd></div>
+          <div>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">Start IP</dt>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.start_ip"></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">End IP</dt>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.end_ip"></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">Gateway</dt>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.gateway || '-'"></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">DNS Servers</dt>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.dns_servers || '-'"></dd>
+          </div>
         </dl>
-        <div x-show="pool?.tags?.length" class="mt-4">
+        <div x-show="hasTags()" class="mt-4">
           <dt class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</dt>
           <div class="flex flex-wrap gap-2">
-            <template x-for="tag in (pool?.tags || [])" :key="tag">
-              <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded" x-text="tag"></span>
+            <template x-for="tag in (pool.tags || [])" :key="tag">
+              <span class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded"
+                x-text="tag"></span>
             </template>
           </div>
         </div>
-        <div x-show="pool?.description" class="mt-4">
+        <div x-show="pool && pool.description" class="mt-4">
           <dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt>
-          <dd class="font-medium text-gray-900 dark:text-white" x-text="pool?.description"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.description"></dd>
         </div>
 
         <!-- Next IP & Reserve -->
         <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-700">
           <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">IP Management</h3>
           <div class="flex items-center gap-3 flex-wrap">
-            <button @click="fetchNextIP()" :disabled="fetchingNextIP" class="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50">
+            <button @click="fetchNextIP()" :disabled="fetchingNextIP"
+              class="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50">
               <span x-show="!fetchingNextIP">Get Next IP</span>
               <span x-show="fetchingNextIP">Fetching...</span>
             </button>
             <span x-show="nextIP" class="font-mono text-lg text-gray-900 dark:text-white" x-text="nextIP"></span>
-            <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+            <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()"
+              class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
               + Reserve IP
             </button>
           </div>
@@ -56,17 +75,27 @@
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">IP Usage Heatmap</h2>
         <div class="mb-4 flex items-center gap-4 text-sm">
-          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-green-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Available</span></div>
-          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-red-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Used</span></div>
-          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-yellow-500 rounded"></span><span class="text-gray-600 dark:text-gray-400">Reserved</span></div>
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-green-500 rounded"></span><span
+              class="text-gray-600 dark:text-gray-400">Available</span></div>
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-red-500 rounded"></span><span
+              class="text-gray-600 dark:text-gray-400">Used</span></div>
+          <div class="flex items-center gap-1"><span class="w-4 h-4 bg-yellow-500 rounded"></span><span
+              class="text-gray-600 dark:text-gray-400">Reserved</span></div>
         </div>
-        <div x-show="heatmap.length === 0" class="text-gray-500 dark:text-gray-400 text-center py-8">No IP data available</div>
-        <div x-show="heatmap.length > 0" class="grid grid-cols-16 gap-1">
+        <div x-show="heatmap.length === 0" class="text-gray-500 dark:text-gray-400 text-center py-8">No IP data
+          available</div>
+        <div x-show="hasHeatmap()" class="grid grid-cols-16 gap-1">
           <template x-for="ip in heatmap" :key="ip.ip">
-            <div @click="ip.status === 'available' ? openReserveModal(ip.ip) : (ip.device_id ? $dispatch('nav', '/devices/detail?id=' + ip.device_id) : null)" :class="[getStatusColor(ip.status), (ip.device_id || ip.status === 'available') ? 'cursor-pointer hover:opacity-80' : '']" class="w-4 h-4 rounded" :title="ip.ip + ' - ' + ip.status + (ip.status === 'available' ? ' (click to reserve)' : '') + (ip.device_id ? ' (click to view device)' : '')"></div>
+            <div
+              @click="ip.status === 'available' ? openReserveModal(ip.ip) : (ip.device_id ? $dispatch('nav', '/devices/detail?id=' + ip.device_id) : null)"
+              :class="[getStatusColor(ip.status), (ip.device_id || ip.status === 'available') ? 'cursor-pointer hover:opacity-80' : '']"
+              class="w-4 h-4 rounded"
+              :title="ip.ip + ' - ' + ip.status + (ip.status === 'available' ? ' (click to reserve)' : '') + (ip.device_id ? ' (click to view device)' : '')">
+            </div>
           </template>
         </div>
-        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Click on an available IP to reserve it, or on a used IP to view the device.</p>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Click on an available IP to reserve it, or on a used IP
+          to view the device.</p>
       </div>
     </div>
 
@@ -74,20 +103,37 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Reservations</h2>
-        <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">+ New Reservation</button>
+        <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()"
+          class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">+ New Reservation</button>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
-        <div x-show="loadingReservations" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading reservations...</div>
-        <div x-show="!loadingReservations && reservations.length === 0" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No active reservations</div>
-        <table x-show="!loadingReservations && reservations.length > 0" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <div x-show="loadingReservations" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading
+          reservations...</div>
+        <div x-show="!loadingReservations && reservations.length === 0"
+          class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No active reservations</div>
+        <table x-show="!loadingReservations && hasReservations()"
+          class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Hostname</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Purpose</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Reserved By</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Expires</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                IP Address</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Hostname</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Purpose</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Reserved By</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Expires</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -97,9 +143,13 @@
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.hostname || '-'"></td>
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.purpose || '-'"></td>
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.reserved_by"></td>
-                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="reservation.expires_at ? new Date(reservation.expires_at).toLocaleDateString() : 'Never'"></td>
+                <td class="px-6 py-4 text-gray-600 dark:text-gray-400"
+                  x-text="formatReservationExpires(reservation.expires_at)">
+                </td>
                 <td class="px-6 py-4">
-                  <button x-show="$store.permissions.canDelete('reservation')" @click="confirmDeleteReservation(reservation)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 rounded transition-colors">Delete</button>
+                  <button x-show="$store.permissions.canDelete('reservation')"
+                    @click="confirmDeleteReservation(reservation)"
+                    class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 rounded transition-colors">Delete</button>
                 </td>
               </tr>
             </template>
@@ -112,32 +162,47 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Devices</h2>
-        <button @click="$dispatch('nav', '/devices?pool=' + pool.id)" class="px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors">View All →</button>
+        <button @click="$dispatch('nav', '/devices?pool=' + pool.id)"
+          class="px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors">View
+          All →</button>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
-        <div x-show="loadingDevices" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading devices...</div>
-        <div x-show="!loadingDevices && poolDevices.length === 0" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No devices in this pool</div>
-        <table x-show="!loadingDevices && poolDevices.length > 0" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <div x-show="loadingDevices" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading devices...
+        </div>
+        <div x-show="!loadingDevices && poolDevices.length === 0"
+          class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No devices in this pool</div>
+        <table x-show="!loadingDevices && hasPoolDevices()"
+          class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Name</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Model</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Name</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                IP Address</th>
+              <th scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Model</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <template x-for="device in poolDevices.slice(0, 5)" :key="device.id">
+            <template x-for="device in firstPoolDevices()" :key="device.id">
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-6 py-4">
-                  <a :href="'/devices/detail?id=' + device.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)" class="text-blue-700 dark:text-blue-300 hover:underline cursor-pointer" x-text="device.name"></a>
+                  <a :href="'/devices/detail?id=' + device.id"
+                    @click.prevent="$dispatch('nav', '/devices/detail?id=' + device.id)"
+                    class="text-blue-700 dark:text-blue-300 hover:underline cursor-pointer" x-text="device.name"></a>
                 </td>
-                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="device.addresses?.[0]?.ip || '-'"></td>
+                <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="getDeviceIP(device)"></td>
                 <td class="px-6 py-4 text-gray-600 dark:text-gray-400" x-text="device.make_model || '-'"></td>
               </tr>
             </template>
           </tbody>
         </table>
-        <div x-show="!loadingDevices && poolDevices.length > 5" class="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-400 text-center">
+        <div x-show="!loadingDevices && hasMorePoolDevices()"
+          class="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-400 text-center">
           Showing 5 of <span x-text="poolDevices.length"></span> devices
         </div>
       </div>
@@ -148,41 +213,65 @@
   <include src="partials/modals/delete-confirm.html"></include>
 
   <!-- Reservation Modal -->
-  <div x-show="showReserveModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reservation-modal-title" @keydown.escape.window="closeReserveModal()">
+  <div x-show="showReserveModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+    aria-modal="true" aria-labelledby="reservation-modal-title" @keydown.escape.window="closeReserveModal()">
     <div class="fixed inset-0 bg-black/50" @click="closeReserveModal()" aria-hidden="true"></div>
-    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6" x-trap.inert.noscroll="showReserveModal">
-      <button @click="closeReserveModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+      x-trap.inert.noscroll="showReserveModal">
+      <button @click="closeReserveModal()"
+        class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Close dialog">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
-      <h2 id="reservation-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Reserve IP Address</h2>
+      <h2 id="reservation-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Reserve IP
+        Address</h2>
       <form @submit.prevent="createReservation()">
         <div class="space-y-4">
           <div>
-            <label for="reservation-ip" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address</label>
-            <input id="reservation-ip" type="text" x-model="reservationForm.ip_address" placeholder="Auto-assign if empty" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty to auto-assign the next available IP</p>
+            <label for="reservation-ip" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP
+              Address</label>
+            <input id="reservation-ip" type="text" x-model="reservationForm.ip_address"
+              placeholder="Auto-assign if empty"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty to auto-assign the next available IP
+            </p>
           </div>
           <div>
-            <label for="reservation-hostname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Hostname</label>
-            <input id="reservation-hostname" type="text" x-model="reservationForm.hostname" placeholder="server.example.com" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <label for="reservation-hostname"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Hostname</label>
+            <input id="reservation-hostname" type="text" x-model="reservationForm.hostname"
+              placeholder="server.example.com"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           </div>
           <div>
-            <label for="reservation-purpose" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Purpose</label>
-            <input id="reservation-purpose" type="text" x-model="reservationForm.purpose" placeholder="Web server, Database, etc." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <label for="reservation-purpose"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Purpose</label>
+            <input id="reservation-purpose" type="text" x-model="reservationForm.purpose"
+              placeholder="Web server, Database, etc."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           </div>
           <div>
-            <label for="reservation-expires" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Expires in (days)</label>
-            <input id="reservation-expires" type="number" x-model.number="reservationForm.expires_in_days" min="0" placeholder="0 = never expires" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            <label for="reservation-expires"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Expires in (days)</label>
+            <input id="reservation-expires" type="number" x-model.number="reservationForm.expires_in_days" min="0"
+              placeholder="0 = never expires"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Set to 0 or leave empty for no expiration</p>
           </div>
           <div>
-            <label for="reservation-notes" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Notes</label>
-            <textarea id="reservation-notes" x-model="reservationForm.notes" rows="2" placeholder="Additional notes..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
+            <label for="reservation-notes"
+              class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Notes</label>
+            <textarea id="reservation-notes" x-model="reservationForm.notes" rows="2" placeholder="Additional notes..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-6">
-          <button type="button" @click="closeReserveModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-          <button type="submit" :disabled="savingReservation" class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+          <button type="button" @click="closeReserveModal()"
+            class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+          <button type="submit" :disabled="savingReservation"
+            class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
             <span x-show="!savingReservation">Reserve</span>
             <span x-show="savingReservation">Reserving...</span>
           </button>
@@ -192,19 +281,31 @@
   </div>
 
   <!-- Delete Reservation Modal -->
-  <div x-show="showDeleteReservationModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-reservation-title" aria-describedby="delete-reservation-desc" @keydown.escape.window="cancelDeleteReservation()">
+  <div x-show="showDeleteReservationModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="alertdialog" aria-modal="true" aria-labelledby="delete-reservation-title"
+    aria-describedby="delete-reservation-desc" @keydown.escape.window="cancelDeleteReservation()">
     <div class="fixed inset-0 bg-black/50" @click="cancelDeleteReservation()" aria-hidden="true"></div>
-    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="showDeleteReservationModal">
-      <button @click="cancelDeleteReservation()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+      x-trap.inert.noscroll="showDeleteReservationModal">
+      <button @click="cancelDeleteReservation()"
+        class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Close dialog">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
-      <h2 id="delete-reservation-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete Reservation</h2>
+      <h2 id="delete-reservation-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete
+        Reservation</h2>
       <p id="delete-reservation-desc" class="text-gray-800 dark:text-gray-200 mb-6">
-        Are you sure you want to delete the reservation for <strong x-text="deleteReservationItem?.ip_address || ''"></strong>? This action cannot be undone.
+        Are you sure you want to delete the reservation for <strong
+          x-text="deleteReservationItem && deleteReservationItem.ip_address || ''"></strong>? This action cannot be
+        undone.
       </p>
       <div class="flex justify-end gap-3">
-        <button @click="cancelDeleteReservation()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-        <button @click="doDeleteReservation()" :disabled="deletingReservation" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+        <button @click="cancelDeleteReservation()"
+          class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+        <button @click="doDeleteReservation()" :disabled="deletingReservation"
+          class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
           <span x-show="!deletingReservation">Delete</span>
           <span x-show="deletingReservation">Deleting...</span>
         </button>

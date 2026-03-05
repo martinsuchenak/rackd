@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -147,12 +148,32 @@ func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) e
 		return err
 	}
 
+	role, err := s.store.GetRole(ctx, roleID)
+	if err != nil {
+		return err
+	}
+
+	// Only admins can assign admin or system roles
+	if (role.Name == "admin" || role.IsSystem) && !s.isAdmin(ctx) {
+		return ErrForbidden
+	}
+
 	return s.store.AssignRoleToUser(ctx, userID, roleID)
 }
 
 func (s *RoleService) RevokeFromUser(ctx context.Context, userID, roleID string) error {
 	if err := requirePermission(ctx, s.store, "roles", "update"); err != nil {
 		return err
+	}
+
+	role, err := s.store.GetRole(ctx, roleID)
+	if err != nil {
+		return err
+	}
+
+	// Only admins can revoke admin or system roles
+	if (role.Name == "admin" || role.IsSystem) && !s.isAdmin(ctx) {
+		return ErrForbidden
 	}
 
 	return s.store.RemoveRoleFromUser(ctx, userID, roleID)
@@ -164,4 +185,16 @@ func (s *RoleService) ListPermissions(ctx context.Context, filter *model.Permiss
 	}
 
 	return s.store.ListPermissions(ctx, filter)
+}
+
+func (s *RoleService) isAdmin(ctx context.Context) bool {
+	caller := CallerFrom(ctx)
+	if caller == nil {
+		return false
+	}
+	if caller.IsSystem() {
+		return true
+	}
+	isAdmin, _ := auth.IsAdmin(ctx, s.store, caller.UserID)
+	return isAdmin
 }

@@ -179,6 +179,10 @@ export function scheduledScansList() {
       if (!dateStr) return '-';
       return new Date(dateStr).toLocaleString();
     },
+
+    getDeleteTargetName(): string {
+      return this.deleteTarget ? this.deleteTarget.name : '';
+    },
   };
 }
 

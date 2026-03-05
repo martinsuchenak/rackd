@@ -158,6 +158,21 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 				session, err := sessionManager.GetSession(cookie.Value)
 				if err == nil {
 					sessionManager.RefreshSession(cookie.Value)
+
+					// CSRF Protection for state-changing requests when using sessions (M-6)
+					switch r.Method {
+					case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+						// Safe methods don't require CSRF checks
+					default:
+						// Ensure it's a legitimate API request from the SPA
+						if r.Header.Get("X-Requested-With") != "XMLHttpRequest" {
+							log.Warn("CSRF blocked: Missing X-Requested-With header", "path", r.URL.Path, "username", session.Username)
+							w.Header().Set("Content-Type", "application/json")
+							http.Error(w, `{"error":"CSRF validation failed: missing custom header","code":"CSRF_FAILED"}`, http.StatusForbidden)
+							return
+						}
+					}
+
 					log.Trace("Auth successful (session cookie)", "path", r.URL.Path, "username", session.Username)
 					r = r.WithContext(context.WithValue(r.Context(), SessionContextKey, session))
 					caller := &service.Caller{
@@ -229,11 +244,10 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-		// CSP: 'unsafe-eval' required for Alpine.js x-data expressions.
-		// 'unsafe-inline' for scripts is required for Alpine.js inline event handlers (@click, etc.).
-		// Consider using Alpine.js CSP build (@alpinejs/csp) to remove these requirements.
-		// 'unsafe-inline' for styles is required for Tailwind's dynamic classes.
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+		// CSP: Removed 'unsafe-eval' and 'unsafe-inline' for scripts (M-7)
+		// Now using @alpinejs/csp ensuring compliance
+		// 'unsafe-inline' for styles remains due to occasional dynamic styles from JS that fail without it
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 
 		// HSTS only for TLS connections
 		if r.TLS != nil {
@@ -270,6 +284,13 @@ func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.H
 			http.Error(w, `{"error":"Too many login attempts. Please try again later.","code":"LOGIN_RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
 			return
 		}
+
+		// Add rate limit headers
+		remaining := limiter.GetRemaining(clientID)
+		resetTime := limiter.GetResetTime(clientID)
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", limiter.requests))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+		w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC3339))
 
 		next(w, r)
 	}

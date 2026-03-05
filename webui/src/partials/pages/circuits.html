@@ -1,29 +1,36 @@
 <!-- Circuits Management Page -->
 <template x-if="route === '/circuits'">
-  <div x-data="circuitComponent()" x-init="await init()">
+  <div x-data="circuitComponent()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Circuits</h1>
-      <button x-show="$store.permissions.canCreate('circuits')" @click="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+      <button x-show="$store.permissions.canCreate('circuits')" @click="openCreateModal()"
+        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
         Add Circuit
       </button>
     </div>
 
-    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+    <div x-show="error"
+      class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800"
+      role="alert" x-text="error"></div>
 
     <!-- Filters -->
     <div class="mb-4 flex flex-wrap gap-4">
       <div>
-        <label for="filter-provider" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider</label>
-        <select id="filter-provider" x-model="filterProvider" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <label for="filter-provider"
+          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider</label>
+        <select id="filter-provider" x-model="filterProvider" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Providers</option>
-          <template x-for="provider in [...new Set(circuits.map(c => c.provider))]" :key="provider">
+          <template x-for="provider in getProviders()" :key="provider">
             <option :value="provider" x-text="provider"></option>
           </template>
         </select>
       </div>
       <div>
-        <label for="filter-status" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
-        <select id="filter-status" x-model="filterStatus" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <label for="filter-status"
+          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
+        <select id="filter-status" x-model="filterStatus" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -33,7 +40,8 @@
       </div>
       <div>
         <label for="filter-type" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
-        <select id="filter-type" x-model="filterType" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <select id="filter-type" x-model="filterType" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Types</option>
           <option value="fiber">Fiber</option>
           <option value="copper">Copper</option>
@@ -43,37 +51,65 @@
       </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <caption class="sr-only">List of circuits with name, provider, type, status, and endpoints</caption>
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Circuit ID</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Provider</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Type</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Capacity</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Endpoints</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Name</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Circuit ID</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Provider</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Type</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Capacity</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Status</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Endpoints</th>
             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr x-show="loading"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading circuits...</span></td></tr>
-          <tr x-show="!loading && (!circuits || circuits.length === 0)"><td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No circuits configured. <button x-show="$store.permissions.canCreate('circuits')" @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first circuit</button></td></tr>
+          <tr x-show="loading">
+            <td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status"
+                aria-live="polite">Loading circuits...</span></td>
+          </tr>
+          <tr x-show="!loading && !hasCircuits()">
+            <td colspan="8" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No circuits configured.
+              <button x-show="$store.permissions.canCreate('circuits')" @click="openCreateModal()"
+                class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first
+                circuit</button>
+            </td>
+          </tr>
           <template x-for="circuit in circuits" :key="circuit.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
                 <template x-if="$store.permissions.canUpdate('circuits')">
-                  <button @click="openEditModal(circuit)" class="text-left cursor-pointer focus:outline-none focus:underline">
-                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" x-text="circuit.name"></div>
-                    <div x-show="circuit.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="circuit.description"></div>
+                  <button @click="openEditModal(circuit)"
+                    class="text-left cursor-pointer focus:outline-none focus:underline">
+                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      x-text="circuit.name"></div>
+                    <div x-show="circuit.description" class="text-xs text-gray-500 dark:text-gray-400"
+                      x-text="circuit.description"></div>
                   </button>
                 </template>
                 <template x-if="!$store.permissions.canUpdate('circuits')">
                   <div>
                     <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="circuit.name"></div>
-                    <div x-show="circuit.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="circuit.description"></div>
+                    <div x-show="circuit.description" class="text-xs text-gray-500 dark:text-gray-400"
+                      x-text="circuit.description"></div>
                   </div>
                 </template>
               </td>
@@ -84,36 +120,41 @@
                 <div class="text-sm text-gray-900 dark:text-gray-100" x-text="circuit.provider"></div>
               </td>
               <td class="px-6 py-4">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-200" x-text="formatType(circuit.type)"></span>
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-200"
+                  x-text="formatType(circuit.type)"></span>
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-show="circuit.capacity_mbps" x-text="circuit.capacity_mbps + ' Mbps'"></div>
+                <div class="text-sm text-gray-600 dark:text-gray-400" x-show="circuit.capacity_mbps"
+                  x-text="circuit.capacity_mbps + ' Mbps'"></div>
                 <div class="text-sm text-gray-400 dark:text-gray-500" x-show="!circuit.capacity_mbps">-</div>
               </td>
               <td class="px-6 py-4">
-                <span class="px-2 py-1 text-xs font-medium rounded-full"
-                      :class="{
+                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="{
                         'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200': circuit.status === 'active',
                         'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200': circuit.status === 'inactive',
                         'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200': circuit.status === 'planned',
                         'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200': circuit.status === 'decommissioned'
-                      }"
-                      x-text="formatStatus(circuit.status)"></span>
+                      }" x-text="formatStatus(circuit.status)"></span>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400">
-                  <div x-show="circuit.datacenter_a_id || circuit.datacenter_b_id">
+                  <div x-show="circuit && (circuit.datacenter_a_id || circuit.datacenter_b_id)">
                     <span x-text="getDatacenterName(circuit.datacenter_a_id)"></span>
-                    <span x-show="circuit.datacenter_a_id && circuit.datacenter_b_id"> ↔ </span>
+                    <span x-show="circuit && circuit.datacenter_a_id && circuit.datacenter_b_id"> ↔ </span>
                     <span x-text="getDatacenterName(circuit.datacenter_b_id)"></span>
                   </div>
-                  <div x-show="!circuit.datacenter_a_id && !circuit.datacenter_b_id">-</div>
+                  <div x-show="circuit && !circuit.datacenter_a_id && !circuit.datacenter_b_id">-</div>
                 </div>
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button x-show="$store.permissions.canUpdate('circuits')" @click="openEditModal(circuit)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + circuit.name">Edit</button>
-                  <button x-show="$store.permissions.canDelete('circuits')" @click="openDeleteModal(circuit)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + circuit.name">Delete</button>
+                  <button x-show="$store.permissions.canUpdate('circuits')" @click="openEditModal(circuit)"
+                    class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="'Edit ' + circuit.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('circuits')" @click="openDeleteModal(circuit)"
+                    class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="'Delete ' + circuit.name">Delete</button>
                 </div>
               </td>
             </tr>
@@ -123,47 +164,65 @@
     </div>
 
     <!-- Create Circuit Modal -->
-    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeModal()">
+    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+      aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeModal()">
       <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="showCreateModal">
-        <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <div
+        class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+        x-trap.inert.noscroll="showCreateModal">
+        <button @click="closeModal()"
+          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
-        <h2 id="create-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create Circuit</h2>
+        <h2 id="create-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create Circuit
+        </h2>
         <form @submit.prevent="saveCircuit()">
           <div class="space-y-4">
             <!-- Basic Info -->
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="create-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <label for="create-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name
+                  <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input id="create-name" type="text" x-model="formData.name" required aria-required="true"
-                       :aria-invalid="!!validationErrors.name"
-                       :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" id="create-name-error" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
+                  :aria-invalid="!!validationErrors.name"
+                  :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.name" id="create-name-error"
+                  class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
               </div>
               <div>
-                <label for="create-circuit-id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Circuit ID <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <label for="create-circuit-id"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Circuit ID <span
+                    aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input id="create-circuit-id" type="text" x-model="formData.circuit_id" required aria-required="true"
-                       :aria-invalid="!!validationErrors.circuit_id"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.circuit_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.circuit_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.circuit_id"></p>
+                  :aria-invalid="!!validationErrors.circuit_id"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.circuit_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.circuit_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                  x-text="validationErrors.circuit_id"></p>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="create-provider" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <label for="create-provider"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span
+                    aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input id="create-provider" type="text" x-model="formData.provider" required aria-required="true"
-                       :aria-invalid="!!validationErrors.provider"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.provider ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.provider" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.provider"></p>
+                  :aria-invalid="!!validationErrors.provider"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.provider ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.provider" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                  x-text="validationErrors.provider"></p>
               </div>
               <div>
-                <label for="create-type" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
-                <select id="create-type" x-model="formData.type" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <label for="create-type"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
+                <select id="create-type" x-model="formData.type"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option value="fiber">Fiber</option>
                   <option value="copper">Copper</option>
                   <option value="microwave">Microwave</option>
@@ -173,8 +232,10 @@
             </div>
             <div class="grid grid-cols-3 gap-4">
               <div>
-                <label for="create-status" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
-                <select id="create-status" x-model="formData.status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <label for="create-status"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
+                <select id="create-status" x-model="formData.status"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="planned">Planned</option>
@@ -182,14 +243,16 @@
                 </select>
               </div>
               <div>
-                <label for="create-capacity" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Capacity (Mbps)</label>
+                <label for="create-capacity"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Capacity (Mbps)</label>
                 <input id="create-capacity" type="number" x-model.number="formData.capacity_mbps" min="0"
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               </div>
               <div>
-                <label for="create-vlan" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">VLAN ID</label>
+                <label for="create-vlan" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">VLAN
+                  ID</label>
                 <input id="create-vlan" type="number" x-model.number="formData.vlan_id" min="0"
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               </div>
             </div>
 
@@ -198,8 +261,10 @@
               <h3 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">Endpoints</h3>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="create-dc-a" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter A</label>
-                  <select id="create-dc-a" x-model="formData.datacenter_a_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label for="create-dc-a"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter A</label>
+                  <select id="create-dc-a" x-model="formData.datacenter_a_id"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                     <option value="">Select Datacenter</option>
                     <template x-for="dc in datacenters" :key="dc.id">
                       <option :value="dc.id" x-text="dc.name"></option>
@@ -207,8 +272,10 @@
                   </select>
                 </div>
                 <div>
-                  <label for="create-dc-b" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter B</label>
-                  <select id="create-dc-b" x-model="formData.datacenter_b_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label for="create-dc-b"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter B</label>
+                  <select id="create-dc-b" x-model="formData.datacenter_b_id"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                     <option value="">Select Datacenter</option>
                     <template x-for="dc in datacenters" :key="dc.id">
                       <option :value="dc.id" x-text="dc.name"></option>
@@ -218,40 +285,47 @@
               </div>
               <div class="grid grid-cols-2 gap-4 mt-3">
                 <div>
-                  <label for="create-port-a" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port A</label>
+                  <label for="create-port-a"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port A</label>
                   <input id="create-port-a" type="text" x-model="formData.port_a"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
                 <div>
-                  <label for="create-port-b" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port B</label>
+                  <label for="create-port-b"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port B</label>
                   <input id="create-port-b" type="text" x-model="formData.port_b"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4 mt-3">
                 <div>
-                  <label for="create-ip-a" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address A</label>
+                  <label for="create-ip-a" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP
+                    Address A</label>
                   <input id="create-ip-a" type="text" x-model="formData.ip_address_a" placeholder="e.g., 192.168.1.1/30"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
                 <div>
-                  <label for="create-ip-b" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address B</label>
+                  <label for="create-ip-b" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP
+                    Address B</label>
                   <input id="create-ip-b" type="text" x-model="formData.ip_address_b" placeholder="e.g., 192.168.1.2/30"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
               </div>
             </div>
 
             <!-- Description -->
             <div>
-              <label for="create-description" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
+              <label for="create-description"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
               <input id="create-description" type="text" x-model="formData.description"
-                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button type="button" @click="closeModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving"
+              class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!saving">Create Circuit</span>
               <span x-show="saving">Creating...</span>
             </button>
@@ -262,11 +336,18 @@
 
     <!-- Edit Circuit Modal -->
     <template x-if="showEditModal && selectedCircuit">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true"
+        aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="true">
-          <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div
+          class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+          x-trap.inert.noscroll="true">
+          <button @click="closeModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
           <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit Circuit</h2>
           <form @submit.prevent="saveCircuit()">
@@ -274,34 +355,45 @@
               <!-- Basic Info -->
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label :for="'edit-name-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                  <input :id="'edit-name-' + selectedCircuit.id" type="text" x-model="formData.name" required aria-required="true"
-                         :aria-invalid="!!validationErrors.name"
-                         class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                         :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
+                  <label :for="'edit-name-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span
+                      aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                  <input :id="'edit-name-' + getSelectedCircuitId()" type="text" x-model="formData.name" required
+                    aria-required="true" :aria-invalid="!!validationErrors.name"
+                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                    :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                  <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                    x-text="validationErrors.name"></p>
                 </div>
                 <div>
-                  <label :for="'edit-circuit-id-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Circuit ID <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                  <input :id="'edit-circuit-id-' + selectedCircuit.id" type="text" x-model="formData.circuit_id" required aria-required="true"
-                         :aria-invalid="!!validationErrors.circuit_id"
-                         class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                         :class="validationErrors.circuit_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.circuit_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.circuit_id"></p>
+                  <label :for="'edit-circuit-id-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Circuit ID <span
+                      aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                  <input :id="'edit-circuit-id-' + getSelectedCircuitId()" type="text" x-model="formData.circuit_id"
+                    required aria-required="true" :aria-invalid="!!validationErrors.circuit_id"
+                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                    :class="validationErrors.circuit_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                  <p x-show="validationErrors.circuit_id" class="mt-1 text-sm text-red-700 dark:text-red-300"
+                    role="alert" x-text="validationErrors.circuit_id"></p>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label :for="'edit-provider-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                  <input :id="'edit-provider-' + selectedCircuit.id" type="text" x-model="formData.provider" required aria-required="true"
-                         :aria-invalid="!!validationErrors.provider"
-                         class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                         :class="validationErrors.provider ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.provider" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.provider"></p>
+                  <label :for="'edit-provider-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span
+                      aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                  <input :id="'edit-provider-' + getSelectedCircuitId()" type="text" x-model="formData.provider"
+                    required aria-required="true" :aria-invalid="!!validationErrors.provider"
+                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                    :class="validationErrors.provider ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                  <p x-show="validationErrors.provider" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                    x-text="validationErrors.provider"></p>
                 </div>
                 <div>
-                  <label :for="'edit-type-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
-                  <select :id="'edit-type-' + selectedCircuit.id" x-model="formData.type" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label :for="'edit-type-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
+                  <select :id="'edit-type-' + getSelectedCircuitId()" x-model="formData.type"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                     <option value="fiber">Fiber</option>
                     <option value="copper">Copper</option>
                     <option value="microwave">Microwave</option>
@@ -311,8 +403,10 @@
               </div>
               <div class="grid grid-cols-3 gap-4">
                 <div>
-                  <label :for="'edit-status-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
-                  <select :id="'edit-status-' + selectedCircuit.id" x-model="formData.status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label :for="'edit-status-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Status</label>
+                  <select :id="'edit-status-' + getSelectedCircuitId()" x-model="formData.status"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="planned">Planned</option>
@@ -320,14 +414,18 @@
                   </select>
                 </div>
                 <div>
-                  <label :for="'edit-capacity-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Capacity (Mbps)</label>
-                  <input :id="'edit-capacity-' + selectedCircuit.id" type="number" x-model.number="formData.capacity_mbps" min="0"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label :for="'edit-capacity-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Capacity (Mbps)</label>
+                  <input :id="'edit-capacity-' + getSelectedCircuitId()" type="number"
+                    x-model.number="formData.capacity_mbps" min="0"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
                 <div>
-                  <label :for="'edit-vlan-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">VLAN ID</label>
-                  <input :id="'edit-vlan-' + selectedCircuit.id" type="number" x-model.number="formData.vlan_id" min="0"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label :for="'edit-vlan-' + getSelectedCircuitId()"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">VLAN ID</label>
+                  <input :id="'edit-vlan-' + getSelectedCircuitId()" type="number" x-model.number="formData.vlan_id"
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
               </div>
 
@@ -336,8 +434,10 @@
                 <h3 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">Endpoints</h3>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <label :for="'edit-dc-a-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter A</label>
-                    <select :id="'edit-dc-a-' + selectedCircuit.id" x-model="formData.datacenter_a_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-dc-a-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter A</label>
+                    <select :id="'edit-dc-a-' + getSelectedCircuitId()" x-model="formData.datacenter_a_id"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       <option value="">Select Datacenter</option>
                       <template x-for="dc in datacenters" :key="dc.id">
                         <option :value="dc.id" x-text="dc.name"></option>
@@ -345,8 +445,10 @@
                     </select>
                   </div>
                   <div>
-                    <label :for="'edit-dc-b-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter B</label>
-                    <select :id="'edit-dc-b-' + selectedCircuit.id" x-model="formData.datacenter_b_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-dc-b-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Datacenter B</label>
+                    <select :id="'edit-dc-b-' + getSelectedCircuitId()" x-model="formData.datacenter_b_id"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       <option value="">Select Datacenter</option>
                       <template x-for="dc in datacenters" :key="dc.id">
                         <option :value="dc.id" x-text="dc.name"></option>
@@ -356,40 +458,47 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4 mt-3">
                   <div>
-                    <label :for="'edit-port-a-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port A</label>
-                    <input :id="'edit-port-a-' + selectedCircuit.id" type="text" x-model="formData.port_a"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-port-a-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port A</label>
+                    <input :id="'edit-port-a-' + getSelectedCircuitId()" type="text" x-model="formData.port_a"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                   <div>
-                    <label :for="'edit-port-b-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port B</label>
-                    <input :id="'edit-port-b-' + selectedCircuit.id" type="text" x-model="formData.port_b"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-port-b-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Port B</label>
+                    <input :id="'edit-port-b-' + getSelectedCircuitId()" type="text" x-model="formData.port_b"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mt-3">
                   <div>
-                    <label :for="'edit-ip-a-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address A</label>
-                    <input :id="'edit-ip-a-' + selectedCircuit.id" type="text" x-model="formData.ip_address_a"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-ip-a-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address A</label>
+                    <input :id="'edit-ip-a-' + getSelectedCircuitId()" type="text" x-model="formData.ip_address_a"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                   <div>
-                    <label :for="'edit-ip-b-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address B</label>
-                    <input :id="'edit-ip-b-' + selectedCircuit.id" type="text" x-model="formData.ip_address_b"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="'edit-ip-b-' + getSelectedCircuitId()"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">IP Address B</label>
+                    <input :id="'edit-ip-b-' + getSelectedCircuitId()" type="text" x-model="formData.ip_address_b"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                 </div>
               </div>
 
               <!-- Description -->
               <div>
-                <label :for="'edit-description-' + selectedCircuit.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
-                <input :id="'edit-description-' + selectedCircuit.id" type="text" x-model="formData.description"
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <label :for="'edit-description-' + getSelectedCircuitId()"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
+                <input :id="'edit-description-' + getSelectedCircuitId()" type="text" x-model="formData.description"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               </div>
             </div>
             <div class="flex justify-end gap-3 mt-6">
-              <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-              <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <button type="button" @click="closeModal()"
+                class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+              <button type="submit" :disabled="saving"
+                class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
                 <span x-show="!saving">Save Changes</span>
                 <span x-show="saving">Saving...</span>
               </button>
@@ -401,19 +510,30 @@
 
     <!-- Delete Confirmation Modal -->
     <template x-if="showDeleteModal && selectedCircuit">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc" @keydown.escape.window="closeDeleteModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true"
+        aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc"
+        @keydown.escape.window="closeDeleteModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeDeleteModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
-          <button @click="closeDeleteModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+          x-trap.inert.noscroll="true">
+          <button @click="closeDeleteModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete Circuit</h2>
+          <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete
+            Circuit</h2>
           <p id="delete-confirm-desc" class="text-gray-800 dark:text-gray-200 mb-6">
-            Are you sure you want to delete <strong x-text="selectedCircuit?.name"></strong>? This action cannot be undone.
+            Are you sure you want to delete <strong x-text="getSelectedCircuitName()"></strong>? This
+            action cannot be undone.
           </p>
           <div class="flex justify-end gap-3">
-            <button @click="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-            <button @click="doDeleteCircuit()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button @click="closeDeleteModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button @click="doDeleteCircuit()" :disabled="deleting"
+              class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!deleting">Delete</span>
               <span x-show="deleting">Deleting...</span>
             </button>

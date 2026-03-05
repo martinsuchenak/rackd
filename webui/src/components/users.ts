@@ -58,6 +58,11 @@ interface UsersListData {
   grantRole(role: Role): Promise<void>;
   revokeRole(role: Role): Promise<void>;
   logout(): void;
+  getSelectedUsername(): string;
+  canResetPassword(user: User): boolean;
+  canDeleteUser(user: User): boolean;
+  hasUserRoles(user: User): boolean;
+  getUserRoles(user: User): Role[];
 }
 
 export function usersList() {
@@ -571,15 +576,39 @@ export function usersList() {
     async logout(): Promise<void> {
       try {
         await api.logout();
-       } catch {
-         // Continue with redirect even if server call fails
-       }
-       window.location.href = '/login';
-     },
+      } catch {
+        // Continue with redirect even if server call fails
+      }
+      window.location.href = '/login';
+    },
 
     formatDate: (dateString: string) => {
       return formatDate(dateString);
     },
+
+    getUserInitial(username: string): string {
+      return username ? username.charAt(0).toUpperCase() : '';
+    },
+
+    getSelectedUsername(): string {
+      return this.selectedUser?.username || '';
+    },
+
+    canResetPassword(user: User): boolean {
+      return !!(this.currentUser && this.currentUser.id !== user.id);
+    },
+
+    canDeleteUser(user: User): boolean {
+      return !!(this.currentUser && this.currentUser.id !== user.id);
+    },
+
+    hasUserRoles(user: User | null): boolean {
+      return !!(user && user.roles && user.roles.length > 0);
+    },
+
+    getUserRoles(user: User | null): Role[] {
+      return user?.roles || [];
+    }
   };
 }
 

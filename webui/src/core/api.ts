@@ -131,7 +131,10 @@ export class RackdAPI {
       return this.inFlightRequests.get(cacheKey) as Promise<T>;
     }
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    };
 
     const requestPromise = (async () => {
       const response = await fetch(`${this.baseURL}${path}`, {

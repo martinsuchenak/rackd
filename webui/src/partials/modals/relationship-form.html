@@ -1,14 +1,20 @@
-<div x-show="showRelationshipModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="relationship-modal-title" @keydown.escape.window="closeRelationshipModal()">
+<div x-show="showRelationshipModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  role="dialog" aria-modal="true" aria-labelledby="relationship-modal-title"
+  @keydown.escape.window="closeRelationshipModal()">
   <div class="fixed inset-0 bg-black/50" @click="closeRelationshipModal()" aria-hidden="true"></div>
-  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full" x-trap.inert.noscroll="showRelationshipModal">
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full"
+    x-trap.inert.noscroll="showRelationshipModal">
     <div class="px-6 py-5">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" id="relationship-modal-title">Add Relationship</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" id="relationship-modal-title">Add
+        Relationship</h3>
       <form @submit.prevent="saveRelationship()">
         <div class="space-y-4">
           <!-- Relationship Type -->
           <div>
-            <label for="rel-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type <span class="text-red-500">*</span></label>
-            <select id="rel-type" x-model="newRelationship.type" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="rel-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type <span
+                class="text-red-500">*</span></label>
+            <select id="rel-type" x-model="newRelationship.type" required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select type...</option>
               <option value="contains">Contains</option>
               <option value="connected_to">Connected To</option>
@@ -17,37 +23,51 @@
           </div>
           <!-- Device Selection -->
           <div>
-            <label for="rel-device" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device <span class="text-red-500">*</span></label>
+            <label for="rel-device" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Device <span
+                class="text-red-500">*</span></label>
             <div class="relative">
-              <input type="text" id="rel-device" x-model="relationshipSearch" @input="searchDevicesForRelationship()" @focus="showRelationshipDropdown = true" placeholder="Search devices..." autocomplete="off" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <div x-show="showRelationshipDropdown && relationshipSearchResults.length > 0" @click.away="showRelationshipDropdown = false" class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+              <input type="text" id="rel-device" x-model="relationshipSearch" @input="searchDevicesForRelationship()"
+                @focus="showRelationshipDropdown = true" placeholder="Search devices..." autocomplete="off"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div x-show="showRelationshipDropdown && hasRelationshipSearchResults()"
+                @click.away="showRelationshipDropdown = false"
+                class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
                 <template x-for="dev in relationshipSearchResults" :key="dev.id">
-                  <div @click="selectRelationshipDevice(dev)" class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm">
+                  <div @click="selectRelationshipDevice(dev)"
+                    class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm">
                     <div class="font-medium text-gray-900 dark:text-white" x-text="dev.name"></div>
                     <div class="text-xs text-gray-600 dark:text-gray-400" x-text="dev.hostname || dev.id"></div>
                   </div>
                 </template>
               </div>
             </div>
-            <div x-show="newRelationship.device" class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+            <div x-show="newRelationship.device"
+              class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
               <div class="flex items-center justify-between">
                 <div>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="newRelationship.device?.name"></div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400" x-text="newRelationship.device?.hostname || newRelationship.device?.id"></div>
+                  <div class="text-sm font-medium text-gray-900 dark:text-white"
+                    x-text="getNewRelationshipDeviceName()"></div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400" x-text="getNewRelationshipDeviceIdentifier()">
+                  </div>
                 </div>
-                <button type="button" @click="newRelationship.device = null; relationshipSearch = ''" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm">Remove</button>
+                <button type="button" @click="newRelationship.device = null; relationshipSearch = ''"
+                  class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm">Remove</button>
               </div>
             </div>
           </div>
           <!-- Notes -->
           <div>
             <label for="rel-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
-            <textarea id="rel-notes" x-model="newRelationship.notes" rows="2" placeholder="Optional notes about this relationship..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            <textarea id="rel-notes" x-model="newRelationship.notes" rows="2"
+              placeholder="Optional notes about this relationship..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
           </div>
         </div>
         <div class="mt-6 flex gap-2 justify-end">
-          <button type="button" @click="closeRelationshipModal()" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
-          <button type="submit" :disabled="saving || !newRelationship.type || !newRelationship.device" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button type="button" @click="closeRelationshipModal()"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
+          <button type="submit" :disabled="saving || !newRelationship.type || !newRelationship.device"
+            class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500">
             <span x-show="!saving">Add</span>
             <span x-show="saving">Adding...</span>
           </button>

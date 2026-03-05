@@ -129,12 +129,6 @@ func (rl *RateLimiter) cleanupLoop() {
 func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Bypass for localhost
-			if isLocalhost(r.RemoteAddr) {
-				next.ServeHTTP(w, r)
-				return
-			}
-
 			// Use API key as client ID if present, otherwise use IP
 			clientID := getClientIP(r, trustProxy)
 			if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
@@ -147,7 +141,7 @@ func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handle
 				w.Header().Set("X-RateLimit-Remaining", "0")
 				w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC3339))
 				w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
-				
+
 				log.Debug("Rate limit exceeded", "client", clientID, "path", r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				http.Error(w, `{"error":"Rate limit exceeded","code":"RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
@@ -186,13 +180,4 @@ func getClientIP(r *http.Request, trustProxy bool) string {
 		return r.RemoteAddr
 	}
 	return host
-}
-
-func isLocalhost(addr string) bool {
-	ip := addr
-	if idx := strings.LastIndex(ip, ":"); idx != -1 {
-		ip = ip[:idx]
-	}
-	ip = strings.Trim(ip, "[]")
-	return ip == "127.0.0.1" || ip == "::1" || ip == "localhost"
 }

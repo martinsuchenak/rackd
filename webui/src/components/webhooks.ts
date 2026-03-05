@@ -68,6 +68,9 @@ interface WebhookData {
 
   // Utilities
   formatDate(dateStr: string): string;
+  getEventLabel(event: string): string;
+  getSelectedWebhookName(): string;
+  hasWebhooks(): boolean;
 }
 
 export function webhookComponent(): WebhookData {
@@ -322,6 +325,20 @@ export function webhookComponent(): WebhookData {
       if (!dateStr) return '';
       const date = new Date(dateStr);
       return date.toLocaleString();
+    },
+
+    getEventLabel(event: string): string {
+      if (!event) return '';
+      const parts = event.split('.');
+      return parts.length > 1 ? parts[1] : event;
+    },
+
+    getSelectedWebhookName(): string {
+      return this.selectedWebhook?.name || '';
+    },
+
+    hasWebhooks(): boolean {
+      return this.webhooks.length > 0;
     }
   };
 }

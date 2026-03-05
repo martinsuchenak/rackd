@@ -1,20 +1,25 @@
 <!-- DNS Zones Management Page -->
 <template x-if="route === '/dns/zones'">
-  <div x-data="dnsZonesComponent()" x-init="await init()">
+  <div x-data="dnsZonesComponent()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">DNS Zones</h1>
-      <button x-show="$store.permissions.canCreate('dns-zone')" @click="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+      <button x-show="$store.permissions.canCreate('dns-zone')" @click="openCreateModal()"
+        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
         Add Zone
       </button>
     </div>
 
-    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
+    <div x-show="error"
+      class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800"
+      role="alert" x-text="error"></div>
 
     <!-- Filters -->
     <div class="mb-4 flex flex-wrap gap-4">
       <div>
-        <label for="filter-provider" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider</label>
-        <select id="filter-provider" x-model="filterProvider" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <label for="filter-provider"
+          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider</label>
+        <select id="filter-provider" x-model="filterProvider" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Providers</option>
           <template x-for="provider in providers" :key="provider.id">
             <option :value="provider.id" x-text="provider.name"></option>
@@ -22,8 +27,10 @@
         </select>
       </div>
       <div>
-        <label for="filter-network" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
-        <select id="filter-network" x-model="filterNetwork" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <label for="filter-network"
+          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
+        <select id="filter-network" x-model="filterNetwork" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Networks</option>
           <template x-for="network in networks" :key="network.id">
             <option :value="network.id" x-text="network.name"></option>
@@ -31,8 +38,10 @@
         </select>
       </div>
       <div>
-        <label for="filter-autosync" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Auto-Sync</label>
-        <select id="filter-autosync" x-model="filterAutoSync" @change="applyFilters()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <label for="filter-autosync"
+          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Auto-Sync</label>
+        <select id="filter-autosync" x-model="filterAutoSync" @change="applyFilters()"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All</option>
           <option value="true">Enabled</option>
           <option value="false">Disabled</option>
@@ -40,36 +49,62 @@
       </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <caption class="sr-only">List of DNS zones with name, provider, network, auto-sync status, and sync status</caption>
+        <caption class="sr-only">List of DNS zones with name, provider, network, auto-sync status, and sync status
+        </caption>
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Provider</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Network</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Auto-Sync</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Sync Status</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Last Sync</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Name</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Provider</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Network</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Auto-Sync</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Sync Status</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Last Sync</th>
             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading DNS zones...</span></td></tr>
-          <tr x-show="!loading && (!zones || zones.length === 0)"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No DNS zones configured. <button x-show="$store.permissions.canCreate('dns-zone')" @click="openCreateModal()" class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first zone</button></td></tr>
+          <tr x-show="loading">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status"
+                aria-live="polite">Loading DNS zones...</span></td>
+          </tr>
+          <tr x-show="!loading && !hasZones()">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No DNS zones configured.
+              <button x-show="$store.permissions.canCreate('dns-zone')" @click="openCreateModal()"
+                class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first zone</button>
+            </td>
+          </tr>
           <template x-for="zone in zones" :key="zone.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
                 <template x-if="$store.permissions.canUpdate('dns-zone')">
-                  <button @click="openEditModal(zone)" class="text-left cursor-pointer focus:outline-none focus:underline">
-                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" x-text="zone.name"></div>
-                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="zone.description"></div>
+                  <button @click="openEditModal(zone)"
+                    class="text-left cursor-pointer focus:outline-none focus:underline">
+                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      x-text="zone.name"></div>
+                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400"
+                      x-text="zone.description"></div>
                   </button>
                 </template>
                 <template x-if="!$store.permissions.canUpdate('dns-zone')">
                   <div>
                     <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="zone.name"></div>
-                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400" x-text="zone.description"></div>
+                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400"
+                      x-text="zone.description"></div>
                   </div>
                 </template>
               </td>
@@ -77,33 +112,38 @@
                 <div class="text-sm text-gray-900 dark:text-gray-100" x-text="getProviderName(zone.provider_id)"></div>
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="zone.network_id ? getNetworkName(zone.network_id) : '-'"></div>
+                <div class="text-sm text-gray-600 dark:text-gray-400"
+                  x-text="zone.network_id ? getNetworkName(zone.network_id) : '-'"></div>
               </td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                      :class="zone.auto_sync ? 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200'"
-                      x-text="zone.auto_sync ? 'Enabled' : 'Disabled'"></span>
+                  :class="getAutoSyncClass(zone.auto_sync)" x-text="zone.auto_sync ? 'Enabled' : 'Disabled'"></span>
               </td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                      :class="{
-                        'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200': zone.last_sync_status === 'success',
-                        'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200': zone.last_sync_status === 'failed',
-                        'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200': zone.last_sync_status === 'partial',
-                        'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200': !zone.last_sync_status
-                      }"
-                      x-text="formatSyncStatus(zone.last_sync_status)"></span>
+                  :class="getSyncStatusClass(zone.last_sync_status)"
+                  x-text="formatSyncStatus(zone.last_sync_status)"></span>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(zone.last_sync_at)"></div>
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button @click="window.location.href = '/dns/records/' + zone.id" class="px-3 py-2 text-sm text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'View records for ' + zone.name">Records</button>
-                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openSyncModal(zone)" class="px-3 py-2 text-sm text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Sync ' + zone.name">Sync</button>
-                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openImportModal(zone)" class="px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200 hover:text-indigo-900 dark:hover:text-indigo-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Import records for ' + zone.name">Import</button>
-                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openEditModal(zone)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + zone.name">Edit</button>
-                  <button x-show="$store.permissions.canDelete('dns-zone')" @click="openDeleteModal(zone)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + zone.name">Delete</button>
+                  <button @click="window.location.href = getRecordsUrl(zone.id)"
+                    class="px-3 py-2 text-sm text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="getZoneAriaLabel(zone.name, 'View records for')">Records</button>
+                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openSyncModal(zone)"
+                    class="px-3 py-2 text-sm text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="getZoneAriaLabel(zone.name, 'Sync')">Sync</button>
+                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openImportModal(zone)"
+                    class="px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200 hover:text-indigo-900 dark:hover:text-indigo-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="getZoneAriaLabel(zone.name, 'Import records for')">Import</button>
+                  <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openEditModal(zone)"
+                    class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="getZoneAriaLabel(zone.name, 'Edit')">Edit</button>
+                  <button x-show="$store.permissions.canDelete('dns-zone')" @click="openDeleteModal(zone)"
+                    class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="getZoneAriaLabel(zone.name, 'Delete')">Delete</button>
                 </div>
               </td>
             </tr>
@@ -113,40 +153,55 @@
     </div>
 
     <!-- Create Zone Modal -->
-    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeModal()">
+    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+      aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeModal()">
       <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="showCreateModal">
-        <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <div
+        class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+        x-trap.inert.noscroll="showCreateModal">
+        <button @click="closeModal()"
+          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
-        <h2 id="create-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create DNS Zone</h2>
+        <h2 id="create-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create DNS Zone
+        </h2>
         <form @submit.prevent="saveZone()">
           <div class="space-y-4">
             <div>
-              <label for="create-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zone Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-name" type="text" x-model="formData.name" placeholder="example.com" required aria-required="true"
-                     :aria-invalid="!!validationErrors.name"
-                     :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
-                     class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                     :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-              <p x-show="validationErrors.name" id="create-name-error" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
+              <label for="create-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zone Name
+                <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <input id="create-name" type="text" x-model="formData.name" placeholder="example.com" required
+                aria-required="true" :aria-invalid="!!validationErrors.name"
+                :aria-describedby="validationErrors.name ? 'create-name-error' : undefined"
+                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+              <p x-show="validationErrors.name" id="create-name-error"
+                class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
             </div>
             <div>
-              <label for="create-provider" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+              <label for="create-provider"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Provider <span
+                  aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
               <select id="create-provider" x-model="formData.provider_id" required aria-required="true"
-                      :aria-invalid="!!validationErrors.provider_id"
-                      class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                      :class="validationErrors.provider_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                :aria-invalid="!!validationErrors.provider_id"
+                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                :class="validationErrors.provider_id ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
                 <option value="">Select Provider</option>
                 <template x-for="provider in providers" :key="provider.id">
                   <option :value="provider.id" x-text="provider.name"></option>
                 </template>
               </select>
-              <p x-show="validationErrors.provider_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.provider_id"></p>
+              <p x-show="validationErrors.provider_id" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                x-text="validationErrors.provider_id"></p>
             </div>
             <div>
-              <label for="create-network" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
-              <select id="create-network" x-model="formData.network_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              <label for="create-network"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
+              <select id="create-network" x-model="formData.network_id"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 <option value="">No Network</option>
                 <template x-for="network in networks" :key="network.id">
                   <option :value="network.id" x-text="network.name"></option>
@@ -155,16 +210,19 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="create-ttl" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Default TTL</label>
+                <label for="create-ttl" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Default
+                  TTL</label>
                 <input id="create-ttl" type="number" x-model.number="formData.ttl" min="0"
-                       :aria-invalid="!!validationErrors.ttl"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
+                  :aria-invalid="!!validationErrors.ttl"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                  x-text="validationErrors.ttl"></p>
               </div>
               <div class="flex items-end">
                 <label class="flex items-center gap-2 p-2 cursor-pointer">
-                  <input type="checkbox" x-model="formData.auto_sync" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <input type="checkbox" x-model="formData.auto_sync"
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                   <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-Sync</span>
                 </label>
               </div>
@@ -174,26 +232,32 @@
               <div class="space-y-3">
                 <div>
                   <label class="flex items-center gap-2 p-2 cursor-pointer">
-                    <input type="checkbox" x-model="formData.create_ptr" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <input type="checkbox" x-model="formData.create_ptr"
+                      class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                     <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Create PTR records</span>
                   </label>
                 </div>
                 <div x-show="formData.create_ptr">
-                  <label for="create-ptr-zone" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">PTR Zone</label>
-                  <input id="create-ptr-zone" type="text" x-model="formData.ptr_zone" placeholder="e.g., 10.in-addr.arpa"
-                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                  <label for="create-ptr-zone"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">PTR Zone</label>
+                  <input id="create-ptr-zone" type="text" x-model="formData.ptr_zone"
+                    placeholder="e.g., 10.in-addr.arpa"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 </div>
               </div>
             </div>
             <div>
-              <label for="create-description" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
+              <label for="create-description"
+                class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
               <textarea id="create-description" x-model="formData.description" rows="2"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
             </div>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-            <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button type="button" @click="closeModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button type="submit" :disabled="saving"
+              class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!saving">Create Zone</span>
               <span x-show="saving">Creating...</span>
             </button>
@@ -204,26 +268,39 @@
 
     <!-- Edit Zone Modal -->
     <template x-if="showEditModal && selectedZone">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true"
+        aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" x-trap.inert.noscroll="true">
-          <button @click="closeModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div
+          class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+          x-trap.inert.noscroll="true">
+          <button @click="closeModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit DNS Zone</h2>
+          <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Edit DNS Zone
+          </h2>
           <form @submit.prevent="saveZone()">
             <div class="space-y-4">
               <div>
-                <label :for="'edit-name-' + selectedZone.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zone Name <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="'edit-name-' + selectedZone.id" type="text" x-model="formData.name" required aria-required="true"
-                       :aria-invalid="!!validationErrors.name"
-                       class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                       :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.name"></p>
+                <label :for="getEditInputId(selectedZone.id, 'edit-name')"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zone Name <span
+                    aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                <input :id="getEditInputId(selectedZone.id, 'edit-name')" type="text" x-model="formData.name" required
+                  aria-required="true" :aria-invalid="!!validationErrors.name"
+                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                  :class="validationErrors.name ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.name" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                  x-text="validationErrors.name"></p>
               </div>
               <div>
-                <label :for="'edit-network-' + selectedZone.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
-                <select :id="'edit-network-' + selectedZone.id" x-model="formData.network_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                <label :for="getEditInputId(selectedZone.id, 'edit-network')"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
+                <select :id="getEditInputId(selectedZone.id, 'edit-network')" x-model="formData.network_id"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option value="">No Network</option>
                   <template x-for="network in networks" :key="network.id">
                     <option :value="network.id" x-text="network.name"></option>
@@ -232,16 +309,19 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label :for="'edit-ttl-' + selectedZone.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Default TTL</label>
-                  <input :id="'edit-ttl-' + selectedZone.id" type="number" x-model.number="formData.ttl" min="0"
-                         :aria-invalid="!!validationErrors.ttl"
-                         class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                         :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                  <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.ttl"></p>
+                  <label :for="getEditInputId(selectedZone.id, 'edit-ttl')"
+                    class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Default TTL</label>
+                  <input :id="getEditInputId(selectedZone.id, 'edit-ttl')" type="number" x-model.number="formData.ttl"
+                    min="0" :aria-invalid="!!validationErrors.ttl"
+                    class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                    :class="validationErrors.ttl ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                  <p x-show="validationErrors.ttl" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                    x-text="validationErrors.ttl"></p>
                 </div>
                 <div class="flex items-end">
                   <label class="flex items-center gap-2 p-2 cursor-pointer">
-                    <input type="checkbox" x-model="formData.auto_sync" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <input type="checkbox" x-model="formData.auto_sync"
+                      class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                     <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-Sync</span>
                   </label>
                 </div>
@@ -251,26 +331,33 @@
                 <div class="space-y-3">
                   <div>
                     <label class="flex items-center gap-2 p-2 cursor-pointer">
-                      <input type="checkbox" x-model="formData.create_ptr" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                      <input type="checkbox" x-model="formData.create_ptr"
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                       <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Create PTR records</span>
                     </label>
                   </div>
                   <div x-show="formData.create_ptr">
-                    <label :for="'edit-ptr-zone-' + selectedZone.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">PTR Zone</label>
-                    <input :id="'edit-ptr-zone-' + selectedZone.id" type="text" x-model="formData.ptr_zone"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+                    <label :for="getEditInputId(selectedZone.id, 'edit-ptr-zone')"
+                      class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">PTR Zone</label>
+                    <input :id="getEditInputId(selectedZone.id, 'edit-ptr-zone')" type="text"
+                      x-model="formData.ptr_zone"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   </div>
                 </div>
               </div>
               <div>
-                <label :for="'edit-description-' + selectedZone.id" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
-                <textarea :id="'edit-description-' + selectedZone.id" x-model="formData.description" rows="2"
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
+                <label :for="getEditInputId(selectedZone.id, 'edit-description')"
+                  class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
+                <textarea :id="getEditInputId(selectedZone.id, 'edit-description')" x-model="formData.description"
+                  rows="2"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
               </div>
             </div>
             <div class="flex justify-end gap-3 mt-6">
-              <button type="button" @click="closeModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-              <button type="submit" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+              <button type="button" @click="closeModal()"
+                class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+              <button type="submit" :disabled="saving"
+                class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
                 <span x-show="!saving">Save Changes</span>
                 <span x-show="saving">Saving...</span>
               </button>
@@ -282,21 +369,33 @@
 
     <!-- Sync Zone Modal -->
     <template x-if="showSyncModal && selectedZone">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title" @keydown.escape.window="closeSyncModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true"
+        aria-labelledby="sync-modal-title" @keydown.escape.window="closeSyncModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeSyncModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
-          <button @click="closeSyncModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+          x-trap.inert.noscroll="true">
+          <button @click="closeSyncModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
           <h2 id="sync-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Sync Zone</h2>
-          <p class="text-gray-800 dark:text-gray-200 mb-4">Sync all records for <strong x-text="selectedZone?.name"></strong> to the DNS provider?</p>
-          <div x-show="syncResult" class="mb-4 p-3 rounded-md" :class="syncResult?.success ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'" role="alert">
-            <p x-text="syncResult?.message"></p>
-            <p x-show="syncResult?.details" class="mt-1 text-sm" x-text="syncResult?.details"></p>
+          <p class="text-gray-800 dark:text-gray-200 mb-4">Sync all records for <strong
+              x-text="getSelectedZoneName()"></strong> to the DNS provider?</p>
+          <div x-show="syncResult" class="mb-4 p-3 rounded-md"
+            :class="isSyncResultSuccess() ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'"
+            role="alert">
+            <p x-text="getSyncResultMessage()"></p>
+            <p x-show="getSyncResultDetails()" class="mt-1 text-sm" x-text="getSyncResultDetails()">
+            </p>
           </div>
           <div class="flex justify-end gap-3">
-            <button @click="closeSyncModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
-            <button @click="doSyncZone()" :disabled="syncing" class="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button @click="closeSyncModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
+            <button @click="doSyncZone()" :disabled="syncing"
+              class="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!syncing">Sync Zone</span>
               <span x-show="syncing">Syncing...</span>
             </button>
@@ -307,21 +406,34 @@
 
     <!-- Import Zone Modal -->
     <template x-if="showImportModal && selectedZone">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="import-modal-title" @keydown.escape.window="closeImportModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true"
+        aria-labelledby="import-modal-title" @keydown.escape.window="closeImportModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeImportModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
-          <button @click="closeImportModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+          x-trap.inert.noscroll="true">
+          <button @click="closeImportModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 id="import-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Import Zone Records</h2>
-          <p class="text-gray-800 dark:text-gray-200 mb-4">Import existing DNS records from <strong x-text="selectedZone?.name"></strong> into rackd?</p>
-          <div x-show="syncResult" class="mb-4 p-3 rounded-md" :class="syncResult?.success ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'" role="alert">
-            <p x-text="syncResult?.message"></p>
-            <p x-show="syncResult?.details" class="mt-1 text-sm" x-text="syncResult?.details"></p>
+          <h2 id="import-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Import Zone
+            Records</h2>
+          <p class="text-gray-800 dark:text-gray-200 mb-4">Import existing DNS records from <strong
+              x-text="getSelectedZoneName()"></strong> into rackd?</p>
+          <div x-show="syncResult" class="mb-4 p-3 rounded-md"
+            :class="syncResult && syncResult.success ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'"
+            role="alert">
+            <p x-text="syncResult && syncResult.message"></p>
+            <p x-show="syncResult && syncResult.details" class="mt-1 text-sm" x-text="syncResult && syncResult.details">
+            </p>
           </div>
           <div class="flex justify-end gap-3">
-            <button @click="closeImportModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
-            <button @click="doImportZone()" :disabled="importing" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button @click="closeImportModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Close</button>
+            <button @click="doImportZone()" :disabled="importing"
+              class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!importing">Import Records</span>
               <span x-show="importing">Importing...</span>
             </button>
@@ -332,19 +444,30 @@
 
     <!-- Delete Confirmation Modal -->
     <template x-if="showDeleteModal && selectedZone">
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc" @keydown.escape.window="closeDeleteModal()">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true"
+        aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-desc"
+        @keydown.escape.window="closeDeleteModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeDeleteModal()" aria-hidden="true"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" x-trap.inert.noscroll="true">
-          <button @click="closeDeleteModal()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+          x-trap.inert.noscroll="true">
+          <button @click="closeDeleteModal()"
+            class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close dialog">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete DNS Zone</h2>
+          <h2 id="delete-confirm-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Delete DNS
+            Zone</h2>
           <p id="delete-confirm-desc" class="text-gray-800 dark:text-gray-200 mb-6">
-            Are you sure you want to delete <strong x-text="selectedZone?.name"></strong>? This action cannot be undone.
+            Are you sure you want to delete <strong x-text="getSelectedZoneName()"></strong>? This action
+            cannot be undone.
           </p>
           <div class="flex justify-end gap-3">
-            <button @click="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
-            <button @click="doDeleteZone()" :disabled="deleting" class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
+            <button @click="closeDeleteModal()"
+              class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-[3px] focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">Cancel</button>
+            <button @click="doDeleteZone()" :disabled="deleting"
+              class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer transition-colors min-h-[44px]">
               <span x-show="!deleting">Delete</span>
               <span x-show="deleting">Deleting...</span>
             </button>

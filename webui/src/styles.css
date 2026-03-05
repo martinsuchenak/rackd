@@ -3,6 +3,8 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant light (&:is(.light *));
 
+[x-cloak] { display: none !important; }
+
 :root {
   /* Rackd Color Palette */
   --deep-slate: #0F172A;

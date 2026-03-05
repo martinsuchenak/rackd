@@ -28,6 +28,14 @@ interface DeviceListData {
   confirmDelete(device: Device): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
+  hasDevices(): boolean;
+  hasEditDeviceAddresses(): boolean;
+  getEditDeviceAddressesCount(): number;
+  hasEditDeviceTagsOrDomains(): boolean;
+  getEditDeviceTagsAndDomainsCount(): number;
+  hasCustomFieldDefinitions(): boolean;
+  hasEditDeviceTags(): boolean;
+  hasEditDeviceDomains(): boolean;
 }
 
 export function deviceList() {
@@ -123,9 +131,9 @@ export function deviceList() {
 
       await Promise.all([this.loadDevices(), this.loadDatacenters(), this.loadNetworks(), this.loadCustomFieldDefinitions()]);
       await this.loadAllPools();
-      
+
       // Watch for modal open/close to manage focus trap
-      this.$watch('showDeviceModal', (show: boolean) => {
+      (this as any).$watch('showDeviceModal', (show: boolean) => {
         if (show) {
           setTimeout(() => {
             const modal = document.querySelector('[role="dialog"]') as HTMLElement;
@@ -252,12 +260,12 @@ export function deviceList() {
     setFilter(key: keyof DeviceFilter, value: string): void {
       if (value) {
         if (key === 'tags') {
-          this.filter.tags = value.split(',');
+          (this.filter as any).tags = value.split(',');
         } else {
-          this.filter[key] = value;
+          (this.filter as any)[key] = value;
         }
       } else {
-        delete this.filter[key];
+        delete (this.filter as any)[key];
       }
       this.loadDevices();
     },
@@ -486,11 +494,11 @@ export function deviceList() {
 
     validateDevice(): boolean {
       this.validationErrors = {};
-      
+
       if (!this.editDevice.name?.trim()) {
         this.validationErrors.name = 'Device name is required';
       }
-      
+
       this.editDevice.addresses?.forEach((addr, i) => {
         if (!addr.ip?.trim()) {
           this.validationErrors[`addr_${i}_ip`] = 'IP address is required';
@@ -498,13 +506,13 @@ export function deviceList() {
           this.validationErrors[`addr_${i}_ip`] = 'Invalid IP address format';
         }
       });
-      
+
       return Object.keys(this.validationErrors).length === 0;
     },
 
     async saveDevice(): Promise<void> {
       if (!this.validateDevice()) return;
-      
+
       this.saving = true;
       this.error = '';
       try {
@@ -525,6 +533,65 @@ export function deviceList() {
         this.saving = false;
       }
     },
+
+    getStatusBadgeClass(status: string | undefined): string {
+      const s = status || 'unknown';
+      switch (s) {
+        case 'planned': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        case 'maintenance': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+        case 'decommissioned': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+        default: return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+      }
+    },
+
+    getDeviceIP(device: Device): string {
+      return device.addresses?.[0]?.ip || '-';
+    },
+
+    getDeviceNetworkId(device: Device): string {
+      return device.addresses?.[0]?.network_id || '';
+    },
+
+    getDevicePoolId(device: Device): string {
+      return device.addresses?.[0]?.pool_id || '';
+    },
+
+    hasDevices(): boolean {
+      return this.pagedDevices.length > 0;
+    },
+
+    hasEditDeviceAddresses(): boolean {
+      return !!(this.editDevice.addresses && this.editDevice.addresses.length > 0);
+    },
+
+    getEditDeviceAddressesCount(): number {
+      return this.editDevice.addresses?.length || 0;
+    },
+
+    hasEditDeviceTagsOrDomains(): boolean {
+      const tagCount = this.editDevice.tags?.length || 0;
+      const domainCount = this.editDevice.domains?.length || 0;
+      return (tagCount + domainCount) > 0;
+    },
+
+    getEditDeviceTagsAndDomainsCount(): number {
+      const tagCount = this.editDevice.tags?.length || 0;
+      const domainCount = this.editDevice.domains?.length || 0;
+      return tagCount + domainCount;
+    },
+
+    hasCustomFieldDefinitions(): boolean {
+      return this.customFieldDefinitions.length > 0;
+    },
+
+    hasEditDeviceTags(): boolean {
+      return !!(this.editDevice.tags && this.editDevice.tags.length > 0);
+    },
+
+    hasEditDeviceDomains(): boolean {
+      return !!(this.editDevice.domains && this.editDevice.domains.length > 0);
+    }
   };
 }
 
@@ -541,9 +608,23 @@ interface DeviceDetailData {
   init(): Promise<void>;
   loadDevice(): Promise<void>;
   loadDatacenters(): Promise<void>;
-  loadRelationships(): Promise<void>;
+  loadCustomFieldDefinitions(): Promise<void>;
+  getCustomFieldDisplayValue(fieldDef: any): any;
+  getDatacenterName(id: string | undefined): string;
+  getNetworkName(id: string | undefined): string;
+  hasTags(): boolean;
+  hasDomains(): boolean;
+  hasCustomFields(): boolean;
+  hasAddresses(): boolean;
+  hasRelationships(): boolean;
+  hasFilteredRelationships(): boolean;
+  hasRelationshipSearchResults(): boolean;
+  getNewRelationshipDeviceName(): string;
+  getNewRelationshipDeviceIdentifier(): string;
+  getRelationshipCount(): number;
+  getAddressesCount(): number;
+  formatRelationshipType(type: string): string;
   setTab(tab: 'details' | 'addresses' | 'relationships'): void;
-  getDatacenterName(id?: string): string;
   confirmDelete(): void;
   cancelDelete(): void;
   doDelete(): Promise<void>;
@@ -599,7 +680,7 @@ export function deviceDetail() {
         return;
       }
       await Promise.all([this.loadDevice(), this.loadDatacenters(), this.loadNetworks(), this.loadCustomFieldDefinitions()]);
-      
+
       // Watch for URL changes
       const checkURL = () => {
         const newId = new URLSearchParams(window.location.search).get('id');
@@ -609,7 +690,7 @@ export function deviceDetail() {
         }
       };
       window.addEventListener('popstate', checkURL);
-      
+
       // Also check periodically for pushState changes
       const interval = setInterval(() => {
         if (window.location.pathname !== '/devices/detail') {
@@ -680,7 +761,7 @@ export function deviceDetail() {
 
     async loadCustomFieldDefinitions(): Promise<void> {
       try {
-        this.customFieldDefinitions = await api.listCustomFieldDefinitions() || [];
+        this.customFieldDefinitions = await api.listCustomFieldDefinitions();
       } catch {
         this.customFieldDefinitions = [];
       }
@@ -885,7 +966,7 @@ export function deviceDetail() {
       if (this.relationshipFilter !== 'all') {
         filtered = filtered.filter(r => r.type === this.relationshipFilter);
       }
-      
+
       // Sort
       const sorted = [...filtered];
       if (this.relationshipSort === 'type') {
@@ -982,6 +1063,89 @@ export function deviceDetail() {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to remove relationship';
       }
     },
+
+    isEditingRelationship(rel: DeviceRelationship): boolean {
+      return this.editingRelationship?.parent_id === rel.parent_id &&
+        this.editingRelationship?.child_id === rel.child_id &&
+        this.editingRelationship?.type === rel.type;
+    },
+
+    getRelatedDeviceName(rel: DeviceRelationship): string {
+      const targetId = rel.parent_id === this.device?.id ? rel.child_id : rel.parent_id;
+      const relatedDevice = this.relatedDevices.get(targetId);
+      return relatedDevice ? relatedDevice.name : 'Unknown';
+    },
+
+    getRelationshipTargetId(rel: DeviceRelationship): string {
+      return rel.parent_id === this.device?.id ? rel.child_id : rel.parent_id;
+    },
+
+    getRelationshipTypeClass(type: string): string {
+      switch (type) {
+        case 'contains': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+        case 'connected_to': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
+        case 'depends_on': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
+        default: return '';
+      }
+    },
+
+    getRelationshipDirection(rel: DeviceRelationship): string {
+      return rel.parent_id === this.device?.id ? 'to' : 'from';
+    },
+
+    getNetworkName(id: string | undefined): string {
+      if (!id) return '-';
+      return this.networks.find((n) => n.id === id)?.name || id;
+    },
+
+    hasTags(): boolean {
+      return !!(this.device && this.device.tags && this.device.tags.length > 0);
+    },
+
+    hasDomains(): boolean {
+      return !!(this.device && this.device.domains && this.device.domains.length > 0);
+    },
+
+    hasCustomFields(): boolean {
+      return !!(this.customFieldDefinitions && this.customFieldDefinitions.length > 0);
+    },
+
+    hasAddresses(): boolean {
+      return !!(this.device && this.device.addresses && this.device.addresses.length > 0);
+    },
+
+    hasRelationships(): boolean {
+      return this.relationships.length > 0;
+    },
+
+    hasFilteredRelationships(): boolean {
+      return this.filteredRelationships.length > 0;
+    },
+
+    hasRelationshipSearchResults(): boolean {
+      return this.relationshipSearchResults.length > 0;
+    },
+
+    getNewRelationshipDeviceName(): string {
+      return this.newRelationship.device?.name || '';
+    },
+
+    getNewRelationshipDeviceIdentifier(): string {
+      if (!this.newRelationship.device) return '';
+      return this.newRelationship.device.hostname || this.newRelationship.device.id;
+    },
+
+    getRelationshipCount(): number {
+      return this.relationships.length;
+    },
+
+    getAddressesCount(): number {
+      return this.device?.addresses?.length || 0;
+    },
+
+    formatRelationshipType(type: string): string {
+      return type.replace(/_/g, ' ');
+    }
   };
 }
 

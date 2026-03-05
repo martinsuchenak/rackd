@@ -4,27 +4,32 @@
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Devices</h1>
       <div class="flex gap-2">
-        <button @click="$dispatch('nav', '/devices/graph')" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+        <button @click="$dispatch('nav', '/devices/graph')"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
           View Graph
         </button>
-        <button x-show="$store.permissions.canCreate('devices')" @click="openAddModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
+        <button x-show="$store.permissions.canCreate('devices')" @click="openAddModal()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
           Add Device
         </button>
       </div>
     </div>
-    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800" role="alert" x-text="error"></div>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+    <div x-show="error"
+      class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800"
+      role="alert" x-text="error"></div>
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
         <div>
           <label for="device-search" class="sr-only">Search devices</label>
           <input id="device-search" type="text" x-model="search" @input="applySearch()" placeholder="Search..."
-                 class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
         </div>
         <template x-if="hasMultipleDatacenters">
           <div>
             <label for="device-datacenter-filter" class="sr-only">Filter by datacenter</label>
             <select id="device-datacenter-filter" @change="setFilter('datacenter_id', $event.target.value)"
-                    class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+              class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               <option value="">All Datacenters</option>
               <template x-for="dc in datacenters" :key="dc.id">
                 <option :value="dc.id" x-text="dc.name"></option>
@@ -35,7 +40,7 @@
         <div>
           <label for="device-network-filter" class="sr-only">Filter by network</label>
           <select id="device-network-filter" x-model="networkFilter" @change="applyFilters()"
-                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <option value="">All Networks</option>
             <template x-for="net in networks" :key="net.id">
               <option :value="net.id" :selected="net.id === networkFilter" x-text="net.name"></option>
@@ -45,7 +50,7 @@
         <div>
           <label for="device-pool-filter" class="sr-only">Filter by pool</label>
           <select id="device-pool-filter" x-model="poolFilter" @change="applyFilters()"
-                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <option value="">All Pools</option>
             <template x-for="pool in allPools" :key="pool.id">
               <option :value="pool.id" :selected="pool.id === poolFilter" x-text="pool.name"></option>
@@ -55,7 +60,7 @@
         <div>
           <label for="device-status-filter" class="sr-only">Filter by status</label>
           <select id="device-status-filter" x-model="statusFilter" @change="applyFilters()"
-                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             <option value="">All Statuses</option>
             <option value="planned">Planned</option>
             <option value="active">Active</option>
@@ -63,7 +68,8 @@
             <option value="decommissioned">Decommissioned</option>
           </select>
         </div>
-        <button @click="clearFilters()" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">
+        <button @click="clearFilters()"
+          class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">
           Clear filters
         </button>
       </div>
@@ -71,63 +77,92 @@
         <caption class="sr-only">List of devices with name, IP address, model, and status</caption>
         <thead class="bg-gray-50 dark:bg-gray-700">
           <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Name</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">IP Address</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Network</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Pool</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Model</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">Status</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Name</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              IP Address</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Network</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Pool</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Model</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Status</th>
             <th scope="col" class="px-6 py-3"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr x-show="loading"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status" aria-live="polite">Loading devices...</span></td></tr>
-          <tr x-show="!loading && pagedDevices.length === 0"><td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No devices found</td></tr>
+          <tr x-show="loading">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"><span role="status"
+                aria-live="polite">Loading devices...</span></td>
+          </tr>
+          <tr x-show="!loading && !hasDevices()">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No devices found</td>
+          </tr>
           <template x-for="d in pagedDevices" :key="d.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <a :href="'/devices/detail?id=' + d.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + d.id)" class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors" x-text="d.name"></a>
+                <a :href="'/devices/detail?id=' + d.id" @click.prevent="$dispatch('nav', '/devices/detail?id=' + d.id)"
+                  class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline font-medium cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="d.name"></a>
               </td>
-              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="d.addresses?.[0]?.ip || '-'"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getDeviceIP(d)"></td>
               <td class="px-6 py-4">
-                <template x-if="d.addresses?.[0]?.network_id">
-                  <a :href="'/networks/detail?id=' + d.addresses[0].network_id" @click.prevent="$dispatch('nav', '/networks/detail?id=' + d.addresses[0].network_id)" class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-text="getNetworkName(d.addresses[0].network_id)"></a>
+                <template x-if="getDeviceNetworkId(d)">
+                  <a :href="'/networks/detail?id=' + getDeviceNetworkId(d)"
+                    @click.prevent="$dispatch('nav', '/networks/detail?id=' + getDeviceNetworkId(d))"
+                    class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer"
+                    x-text="getNetworkName(getDeviceNetworkId(d))"></a>
                 </template>
-                <span x-show="!d.addresses?.[0]?.network_id" class="text-gray-500 dark:text-gray-400">-</span>
+                <span x-show="!getDeviceNetworkId(d)" class="text-gray-500 dark:text-gray-400">-</span>
               </td>
               <td class="px-6 py-4">
-                <template x-if="d.addresses?.[0]?.pool_id">
-                  <a :href="'/pools/detail?id=' + d.addresses[0].pool_id" @click.prevent="$dispatch('nav', '/pools/detail?id=' + d.addresses[0].pool_id)" class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer" x-text="getPoolName(d.addresses[0].pool_id)"></a>
+                <template x-if="getDevicePoolId(d)">
+                  <a :href="'/pools/detail?id=' + getDevicePoolId(d)"
+                    @click.prevent="$dispatch('nav', '/pools/detail?id=' + getDevicePoolId(d))"
+                    class="text-blue-800 dark:text-blue-200 hover:underline cursor-pointer"
+                    x-text="getPoolName(getDevicePoolId(d))"></a>
                 </template>
-                <span x-show="!d.addresses?.[0]?.pool_id" class="text-gray-500 dark:text-gray-400">-</span>
+                <span x-show="!getDevicePoolId(d)" class="text-gray-500 dark:text-gray-400">-</span>
               </td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="d.make_model || '-'"></td>
               <td class="px-6 py-4">
-                <span class="px-2 py-1 text-xs font-medium rounded-full"
-                      :class="{
-                        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': d.status === 'planned',
-                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': d.status === 'active',
-                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': d.status === 'maintenance',
-                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': d.status === 'decommissioned',
-                        'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400': !d.status || (d.status !== 'planned' && d.status !== 'active' && d.status !== 'maintenance' && d.status !== 'decommissioned')
-                      }"
-                      x-text="d.status || 'unknown'"></span>
+                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusBadgeClass(d.status)"
+                  x-text="d.status || 'unknown'"></span>
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button x-show="$store.permissions.canUpdate('devices')" @click="openEditModal(d)" class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Edit ' + d.name">Edit</button>
-                  <button x-show="$store.permissions.canDelete('devices')" @click="confirmDelete(d)" class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]" :aria-label="'Delete ' + d.name">Delete</button>
+                  <button x-show="$store.permissions.canUpdate('devices')" @click="openEditModal(d)"
+                    class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="'Edit ' + d.name">Edit</button>
+                  <button x-show="$store.permissions.canDelete('devices')" @click="confirmDelete(d)"
+                    class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
+                    :aria-label="'Delete ' + d.name">Delete</button>
                 </div>
               </td>
             </tr>
           </template>
         </tbody>
       </table>
-      <nav x-show="totalPages > 1" class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between" aria-label="Pagination">
-        <span class="text-sm text-gray-800 dark:text-gray-200">Page <span x-text="page"></span> of <span x-text="totalPages"></span></span>
+      <nav x-show="totalPages > 1"
+        class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between"
+        aria-label="Pagination">
+        <span class="text-sm text-gray-800 dark:text-gray-200">Page <span x-text="page"></span> of <span
+            x-text="totalPages"></span></span>
         <div class="flex gap-2">
-          <button @click="goToPage(page - 1)" :disabled="page === 1" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]" aria-label="Go to previous page">Previous</button>
-          <button @click="goToPage(page + 1)" :disabled="page === totalPages" class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]" aria-label="Go to next page">Next</button>
+          <button @click="goToPage(page - 1)" :disabled="page === 1"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]"
+            aria-label="Go to previous page">Previous</button>
+          <button @click="goToPage(page + 1)" :disabled="page === totalPages"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]"
+            aria-label="Go to next page">Next</button>
         </div>
       </nav>
     </div>

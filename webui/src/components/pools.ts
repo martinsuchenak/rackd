@@ -42,6 +42,14 @@ interface PoolDetailData {
   confirmDeleteReservation(reservation: Reservation): void;
   cancelDeleteReservation(): void;
   doDeleteReservation(): Promise<void>;
+  getDeviceIP(device: Device): string;
+  formatReservationExpires(expiresAt: string | undefined): string;
+  firstPoolDevices(): Device[];
+  hasMorePoolDevices(): boolean;
+  hasTags(): boolean;
+  hasHeatmap(): boolean;
+  hasReservations(): boolean;
+  hasPoolDevices(): boolean;
 }
 
 export function poolDetail(): PoolDetailData {
@@ -264,33 +272,70 @@ export function poolDetail(): PoolDetailData {
         this.deletingReservation = false;
       }
     },
+
+    getDeviceIP(device: Device): string {
+      return (device.addresses && device.addresses[0]) ? device.addresses[0].ip : '-';
+    },
+
+    formatReservationExpires(expiresAt: string | undefined): string {
+      if (!expiresAt) return 'Never';
+      try {
+        return new Date(expiresAt).toLocaleDateString();
+      } catch {
+        return expiresAt;
+      }
+    },
+
+    firstPoolDevices(): Device[] {
+      return this.poolDevices.slice(0, 5);
+    },
+
+    hasMorePoolDevices(): boolean {
+      return this.poolDevices.length > 5;
+    },
+
+    hasTags(): boolean {
+      return !!(this.pool && this.pool.tags && this.pool.tags.length > 0);
+    },
+
+    hasHeatmap(): boolean {
+      return this.heatmap.length > 0;
+    },
+
+    hasReservations(): boolean {
+      return this.reservations.length > 0;
+    },
+
+    hasPoolDevices(): boolean {
+      return this.poolDevices.length > 0;
+    }
   };
 }
 
 interface PoolFormData {
-  pool: Partial<NetworkPool>;
+  editPool: Partial<NetworkPool>;
   networkId: string;
   isEdit: boolean;
   loading: boolean;
   saving: boolean;
   error: string;
-  tagInput: string;
+  poolTagInput: string;
   init(): Promise<void>;
   addTag(): void;
-  removeTag(tag: string): void;
+  removeTag(idx: number): void;
   save(): Promise<void>;
   cancel(): void;
 }
 
 export function poolForm(): PoolFormData {
   return {
-    pool: { tags: [] },
+    editPool: { tags: [] },
     networkId: '',
     isEdit: false,
     loading: true,
     saving: false,
     error: '',
-    tagInput: '',
+    poolTagInput: '',
 
     async init(): Promise<void> {
       const params = new URLSearchParams(window.location.search);
@@ -299,8 +344,8 @@ export function poolForm(): PoolFormData {
       this.isEdit = !!id;
       try {
         if (id) {
-          this.pool = await api.getNetworkPool(id);
-          this.networkId = this.pool.network_id || this.networkId;
+          this.editPool = await api.getNetworkPool(id);
+          this.networkId = this.editPool.network_id || this.networkId;
         }
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to load pool';
@@ -310,25 +355,25 @@ export function poolForm(): PoolFormData {
     },
 
     addTag(): void {
-      const tag = this.tagInput.trim();
-      if (tag && !this.pool.tags?.includes(tag)) {
-        this.pool.tags = [...(this.pool.tags ?? []), tag];
+      const tag = this.poolTagInput.trim();
+      if (tag && !this.editPool.tags?.includes(tag)) {
+        this.editPool.tags = [...(this.editPool.tags ?? []), tag];
       }
-      this.tagInput = '';
+      this.poolTagInput = '';
     },
 
-    removeTag(tag: string): void {
-      this.pool.tags = this.pool.tags?.filter((t) => t !== tag) ?? [];
+    removeTag(idx: number): void {
+      this.editPool.tags = this.editPool.tags?.filter((_, i) => i !== idx) ?? [];
     },
 
     async save(): Promise<void> {
       this.saving = true;
       this.error = '';
       try {
-        if (this.isEdit && this.pool.id) {
-          await api.updateNetworkPool(this.pool.id, this.pool);
+        if (this.isEdit && this.editPool.id) {
+          await api.updateNetworkPool(this.editPool.id, this.editPool);
         } else {
-          await api.createNetworkPool(this.networkId, this.pool);
+          await api.createNetworkPool(this.networkId, this.editPool);
         }
         window.location.href = `/networks/detail?id=${this.networkId}`;
       } catch (e) {

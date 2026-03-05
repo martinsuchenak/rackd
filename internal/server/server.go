@@ -159,9 +159,13 @@ func RunWithAdvancedFeatures(
 		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
-	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)
 	if cfg.AuditEnabled {
 		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
+	}
+
+	// Enforce request timeout (M-10)
+	if cfg.RequestTimeout > 0 {
+		httpHandler = http.TimeoutHandler(httpHandler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
 	}
 
 	server := &http.Server{
@@ -291,9 +295,13 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
-	// Storage-level audit logging is always active for all entry points (API, MCP, CLI, scheduler)
 	if cfg.AuditEnabled {
 		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
+	}
+
+	// Enforce request timeout (M-10)
+	if cfg.RequestTimeout > 0 {
+		httpHandler = http.TimeoutHandler(httpHandler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
 	}
 
 	server := &http.Server{

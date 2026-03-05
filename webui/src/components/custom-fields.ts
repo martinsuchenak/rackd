@@ -62,6 +62,12 @@ interface CustomFieldData {
   // Utilities
   formatDate(dateStr: string): string;
   getTypeLabel(type: CustomFieldType): string;
+  hasDefinitions(): boolean;
+  hasOptions(field: CustomFieldDefinition): boolean;
+  firstOptions(field: CustomFieldDefinition): string;
+  hasMoreOptions(field: CustomFieldDefinition): boolean;
+  getMoreOptionsCount(field: CustomFieldDefinition): number;
+  getSelectedFieldName(): string;
 }
 
 export function customFieldComponent(): CustomFieldData {
@@ -281,6 +287,32 @@ export function customFieldComponent(): CustomFieldData {
         'select': 'Select'
       };
       return labels[type] || type;
+    },
+
+    hasDefinitions(): boolean {
+      return this.definitions.length > 0;
+    },
+
+    hasOptions(field: CustomFieldDefinition): boolean {
+      return !!(field && field.options && field.options.length > 0);
+    },
+
+    firstOptions(field: CustomFieldDefinition): string {
+      if (!field || !field.options) return '';
+      return field.options.slice(0, 3).join(', ');
+    },
+
+    hasMoreOptions(field: CustomFieldDefinition): boolean {
+      return !!(field && field.options && field.options.length > 3);
+    },
+
+    getMoreOptionsCount(field: CustomFieldDefinition): number {
+      if (!field || !field.options) return 0;
+      return field.options.length - 3;
+    },
+
+    getSelectedFieldName(): string {
+      return this.selectedField?.name || '';
     }
   };
 }

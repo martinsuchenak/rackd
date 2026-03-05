@@ -10,6 +10,12 @@ export function natComponent() {
     showDeleteConfirm: false,
     editingId: null as string | null,
     deleteId: null as string | null,
+    // Filter variables for x-model
+    search: '',
+    filterExternalIP: '',
+    filterInternalIP: '',
+    filterProtocol: '',
+    filterEnabled: '',
     form: {
       name: '',
       external_ip: '',
@@ -45,8 +51,28 @@ export function natComponent() {
     async loadMappings() {
       this.loading = true;
       this.error = '';
+
+      const filters: NATFilter = {};
+      if (this.filterExternalIP) filters.external_ip = this.filterExternalIP;
+      if (this.filterInternalIP) filters.internal_ip = this.filterInternalIP;
+      if (this.filterProtocol) filters.protocol = this.filterProtocol as any;
+      if (this.filterEnabled !== '') filters.enabled = this.filterEnabled === 'true';
+
       try {
-        this.mappings = await api.listNATMappings(this.filters);
+        let results = await api.listNATMappings(filters);
+
+        // Client-side search filtering since API does not support 'q' for NAT mappings
+        if (this.search) {
+          const q = this.search.toLowerCase();
+          results = results.filter(m =>
+            m.name.toLowerCase().includes(q) ||
+            m.external_ip.toLowerCase().includes(q) ||
+            m.internal_ip.toLowerCase().includes(q) ||
+            (m.description && m.description.toLowerCase().includes(q))
+          );
+        }
+
+        this.mappings = results;
       } catch (e: any) {
         this.error = e.message || 'Failed to load NAT mappings';
       } finally {
@@ -211,9 +237,10 @@ export function natComponent() {
       this.deleteId = null;
     },
 
-    async deleteMapping() {
+    async doDelete() {
       if (!this.deleteId) return;
 
+      this.saving = true;
       try {
         await api.deleteNATMapping(this.deleteId);
         this.showDeleteConfirm = false;
@@ -221,6 +248,8 @@ export function natComponent() {
         await this.loadMappings();
       } catch (e: any) {
         this.error = e.message || 'Failed to delete NAT mapping';
+      } finally {
+        this.saving = false;
       }
     },
 
@@ -229,10 +258,33 @@ export function natComponent() {
       this.showFilters = false;
     },
 
+    async applySearch() {
+      await this.loadMappings();
+    },
+
     clearFilters() {
-      this.filters = {};
+      this.search = '';
+      this.filterExternalIP = '';
+      this.filterInternalIP = '';
+      this.filterProtocol = '';
+      this.filterEnabled = '';
       this.loadMappings();
       this.showFilters = false;
+    },
+
+    getTypeLabel(type: string): string {
+      const labels: Record<string, string> = {
+        'dnat': 'DNAT (Port Forward)',
+        'snat': 'SNAT (Source NAT)',
+        '1to1': '1:1 NAT'
+      };
+      return labels[type] || type;
+    },
+
+    getDeleteTargetName(): string {
+      if (!this.deleteId) return '';
+      const mapping = this.mappings.find(m => m.id === this.deleteId);
+      return mapping?.name || '';
     },
 
     getDeviceName(deviceId: string): string {

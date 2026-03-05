@@ -51,6 +51,11 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 		return nil, err
 	}
 
+	// Only admins can create admin users
+	if req.IsAdmin && !s.isAdmin(ctx) {
+		return nil, ErrForbidden
+	}
+
 	var errs ValidationErrors
 	if req.Username == "" {
 		errs = append(errs, ValidationError{Field: "username", Message: "Username is required"})
@@ -84,6 +89,14 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 		IsAdmin:      req.IsAdmin,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
+	}
+
+	// If RoleID is provided, verify it's not assigning admin role to a non-admin creator
+	if req.RoleID != "" && !s.isAdmin(ctx) {
+		role, _ := s.store.GetRole(ctx, req.RoleID)
+		if role != nil && role.Name == "admin" {
+			return nil, ErrForbidden
+		}
 	}
 
 	if err := s.store.CreateUser(enrichAuditCtx(ctx), user); err != nil {
@@ -141,6 +154,11 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 		return nil, err
 	}
 
+	// Only admins can update other admins
+	if user.IsAdmin && !isSelf && !s.isAdmin(ctx) {
+		return nil, ErrForbidden
+	}
+
 	if req.Email != "" {
 		user.Email = req.Email
 	}
@@ -151,7 +169,11 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 	if req.IsActive != nil && !isSelf {
 		user.IsActive = *req.IsActive
 	}
+	// Only admins can elevate others to admin or remove admin status
 	if req.IsAdmin != nil && !isSelf {
+		if !s.isAdmin(ctx) {
+			return nil, ErrForbidden
+		}
 		user.IsAdmin = *req.IsAdmin
 	}
 	user.UpdatedAt = time.Now()
@@ -173,15 +195,25 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	user, err := s.store.GetUser(ctx, id)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil // Already deleted
+		}
+		return err
+	}
+
+	// Only admins can delete other admins
+	if user.IsAdmin && !s.isAdmin(ctx) {
+		return ErrForbidden
+	}
+
 	caller := CallerFrom(ctx)
 	if caller != nil && caller.UserID == id {
 		return ErrSelfDelete
 	}
 
 	if err := s.store.DeleteUser(enrichAuditCtx(ctx), id); err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
-			return ErrNotFound
-		}
 		return err
 	}
 
@@ -255,6 +287,11 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 			return ErrNotFound
 		}
 		return err
+	}
+
+	// Only admins can reset passwords for other admins
+	if user.IsAdmin && !s.isAdmin(ctx) {
+		return ErrForbidden
 	}
 
 	passwordHash, err := auth.HashPassword(req.NewPassword)
@@ -331,4 +368,16 @@ func (s *UserService) GetCurrentUserWithPermissions(ctx context.Context) (*model
 		Roles:       roles,
 		Permissions: permissions,
 	}, nil
+}
+
+func (s *UserService) isAdmin(ctx context.Context) bool {
+	caller := CallerFrom(ctx)
+	if caller == nil {
+		return false
+	}
+	if caller.IsSystem() {
+		return true
+	}
+	isAdmin, _ := auth.IsAdmin(ctx, s.store, caller.UserID)
+	return isAdmin
 }

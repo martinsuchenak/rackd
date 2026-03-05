@@ -1,6 +1,6 @@
 // Network Components for Rackd Web UI
 
-import type { Datacenter, Network, NetworkPool, NetworkUtilization } from '../core/types';
+import type { Datacenter, Network, NetworkPool, NetworkUtilization, Device } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { debounce, isValidCIDR, createFocusTrap } from '../core/utils';
 
@@ -74,15 +74,15 @@ export function networkList() {
 
     async init(): Promise<void> {
       await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
-      this.$watch('showModal', (show: boolean) => {
+      (this as any).$watch('showModal', (show: boolean) => {
         if (show) {
           setTimeout(() => {
             const modal = document.querySelector('[role="dialog"]') as HTMLElement;
-            if (modal) this.focusTrapCleanup = createFocusTrap(modal);
+            if (modal) (this as any).focusTrapCleanup = createFocusTrap(modal);
           }, 50);
         } else {
-          this.focusTrapCleanup?.();
-          this.focusTrapCleanup = null;
+          (this as any).focusTrapCleanup?.();
+          (this as any).focusTrapCleanup = null;
         }
       });
     },
@@ -212,23 +212,23 @@ export function networkList() {
 
     validateNetwork(): boolean {
       this.validationErrors = {};
-      
+
       if (!this.editNetwork.name?.trim()) {
         this.validationErrors.name = 'Network name is required';
       }
-      
+
       if (!this.editNetwork.subnet?.trim()) {
         this.validationErrors.subnet = 'Subnet is required';
       } else if (!isValidCIDR(this.editNetwork.subnet)) {
         this.validationErrors.subnet = 'Invalid CIDR format (e.g., 192.168.1.0/24)';
       }
-      
+
       return Object.keys(this.validationErrors).length === 0;
     },
 
     async saveNetwork(): Promise<void> {
       if (!this.validateNetwork()) return;
-      
+
       this.saving = true;
       this.error = '';
       try {
@@ -272,6 +272,13 @@ interface NetworkDetailData {
   showDeletePoolModal: boolean;
   deletePoolTarget: NetworkPool | null;
   deletingPool: boolean;
+  poolTagInput: string;
+  addTag(): void;
+  removeTag(idx: number): void;
+  networkDevices: Device[];
+  loadingDevices: boolean;
+  loadNetworkDevices(): Promise<void>;
+  getDeviceIP(device: Device): string;
   init(): Promise<void>;
   loadNetwork(): Promise<void>;
   loadDatacenters(): Promise<void>;
@@ -294,6 +301,12 @@ interface NetworkDetailData {
   confirmDeletePool(pool: NetworkPool): void;
   cancelDeletePool(): void;
   doDeletePool(): Promise<void>;
+  hasPools(): boolean;
+  hasNetworkDevices(): boolean;
+  hasMoreNetworkDevices(): boolean;
+  getMoreNetworkDevicesCount(): number;
+  firstDevices(): Device[];
+  hasEditPoolTags(): boolean;
 }
 
 export function networkDetail(): NetworkDetailData {
@@ -320,6 +333,7 @@ export function networkDetail(): NetworkDetailData {
     showDeletePoolModal: false,
     deletePoolTarget: null as NetworkPool | null,
     deletingPool: false,
+    poolTagInput: '',
 
     get hasMultipleDatacenters(): boolean {
       return this.datacenters.length > 1;
@@ -394,7 +408,7 @@ export function networkDetail(): NetworkDetailData {
       try {
         this.utilization = await api.getNetworkUtilization(this.network.id);
       } catch {
-        // Non-critical
+        this.utilization = null;
       }
     },
 
@@ -405,6 +419,32 @@ export function networkDetail(): NetworkDetailData {
     utilizationPercent(): string {
       if (!this.utilization) return '0';
       return this.utilization.utilization.toFixed(1);
+    },
+
+    hasPools(): boolean {
+      return this.pools.length > 0;
+    },
+
+    hasNetworkDevices(): boolean {
+      return this.networkDevices.length > 0;
+    },
+
+    hasMoreNetworkDevices(): boolean {
+      return this.networkDevices.length > 5;
+    },
+
+    getMoreNetworkDevicesCount(): number {
+      return this.networkDevices.length;
+    },
+
+    firstDevices(): Device[] {
+      return this.networkDevices.slice(0, 5);
+    },
+    getDeviceIP(device: Device): string {
+      if (device.addresses && device.addresses.length > 0) {
+        return device.addresses[0].ip;
+      }
+      return '-';
     },
 
     confirmDelete(): void {
@@ -533,6 +573,22 @@ export function networkDetail(): NetworkDetailData {
         this.deletingPool = false;
       }
     },
+
+    addTag(): void {
+      const tag = this.poolTagInput.trim();
+      if (tag && !this.editPool.tags?.includes(tag)) {
+        this.editPool.tags = [...(this.editPool.tags ?? []), tag];
+      }
+      this.poolTagInput = '';
+    },
+
+    removeTag(idx: number): void {
+      this.editPool.tags = this.editPool.tags?.filter((_, i) => i !== idx) ?? [];
+    },
+
+    hasEditPoolTags(): boolean {
+      return !!(this.editPool && this.editPool.tags && this.editPool.tags.length > 0);
+    }
   };
 }
 
