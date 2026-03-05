@@ -9,6 +9,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/audit"
 	"github.com/martinsuchenak/rackd/cmd/circuit"
 	cmdconflict "github.com/martinsuchenak/rackd/cmd/conflict"
+	"github.com/martinsuchenak/rackd/cmd/credential"
 	"github.com/martinsuchenak/rackd/cmd/customfield"
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
@@ -43,6 +44,7 @@ func main() {
 			datacenter.Command(),
 			discovery.Command(),
 			cmdconflict.Command(),
+			credential.Command(),
 			circuit.Command(),
 			nat.Command(),
 			reservation.Command(),

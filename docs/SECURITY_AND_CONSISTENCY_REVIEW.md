@@ -99,6 +99,9 @@
 23. **Silent Decryption Failures in Database Reads**
     - **Module:** Credentials
     - **Fix Applied:** Modified `scanCredential` and `scanCredentialRows` in `internal/credentials/storage.go` to explicitly check for the error returned by `s.encryptor.Decrypt()`. Failed decryptions now properly return an error (propagated with context like `"decrypt snmp_community: %w"`) instead of silently ignoring it and swallowing the data.
+24. **Missing Key Rotation Implementation**
+    - **Module:** Credentials
+    - **Fix Applied:** Implemented a new `rackd credentials rotate-key` CLI command. It accepts the database directory and the new encryption key, reads all credentials decrypting them with the existing `ENCRYPTION_KEY`, re-encrypts them using the new key, and updates the database records in place.
 
 ---
 
@@ -108,13 +111,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-### H-10: Missing Key Rotation Implementation
-**Module:** Credentials
-**Category:** Key Management
-**Location:** Architecture / CLI logic
-**Issue:** No mechanism to rotate encryption keys.
-**Remediation:** Implement key rotation.
-
 ### H-12: Additional High Issues from Extended Review
 - **Discovery:** Missing input validation for IP addresses in ARP scanner. Trust-On-First-Use (TOFU) issue for SSH host keys.
 - **Service Layer / API:** Self-privilege escalation via user update. OAuth client credentials scope validation missing.
