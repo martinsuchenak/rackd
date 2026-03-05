@@ -114,6 +114,16 @@ Failed deliveries are retried with exponential backoff:
 - Maximum retry count configurable per webhook
 - After max retries, delivery is marked as failed
 
+### Security & SSRF Protection
+
+Rackd implements robust protection against Server-Side Request Forgery (SSRF) and DNS rebinding attacks to ensure the webhook system cannot be exploited to access restricted internal endpoints:
+- **Loopback Blocking**: Connections to `127.0.0.0/8` and `::1` are blocked
+- **Unspecified Blocking**: Connections to `0.0.0.0` and `::` are blocked 
+- **Cloud Metadata Blocking**: Connections to the standard `169.254.x.x` link-local range used by AWS/GCP metadata services are blocked
+- **DNS Rebinding Prevention**: Hostnames are resolved first, and Rackd connects strictly to the pre-verified IP address
+
+Note: Standard private intranet subnets (e.g. `10.x.x.x`, `192.168.x.x`) are **permitted** to allow legitimate communication with other internal services on your network.
+
 ## API Endpoints
 
 ### List Webhooks

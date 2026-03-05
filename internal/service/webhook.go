@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	wh "github.com/martinsuchenak/rackd/internal/webhook"
 )
 
 type WebhookService struct {
@@ -253,7 +254,7 @@ func (s *WebhookService) pingWebhook(ctx context.Context, webhook *model.Webhook
 		return nil, fmt.Errorf("failed to serialize event: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := wh.NewSecureHTTPClient(30 * time.Second)
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

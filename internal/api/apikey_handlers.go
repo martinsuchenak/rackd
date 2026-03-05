@@ -39,20 +39,32 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := h.svc.APIKeys.Create(r.Context(), &model.APIKey{
+	newKey := &model.APIKey{
 		Name:        req.Name,
 		Description: req.Description,
 		ExpiresAt:   req.ExpiresAt,
-	})
+	}
+
+	plaintextKey, err := h.svc.APIKeys.Create(r.Context(), newKey)
 
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
 
-	log.Info("API key created", "name", req.Name, "id", key)
+	log.Info("API key created", "name", req.Name, "id", newKey.ID)
 
-	h.writeJSON(w, http.StatusCreated, key)
+	response := newKey.ToResponse()
+	// Expose the raw plaintext key in the response only on creation
+	responseKey := struct {
+		model.APIKeyResponse
+		Key string `json:"key"`
+	}{
+		APIKeyResponse: response,
+		Key:            plaintextKey,
+	}
+
+	h.writeJSON(w, http.StatusCreated, responseKey)
 }
 
 func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {

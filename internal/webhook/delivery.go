@@ -55,10 +55,8 @@ type DeliveryService struct {
 // NewDeliveryService creates a new delivery service
 func NewDeliveryService(store storage.WebhookStorage, config DeliveryConfig) *DeliveryService {
 	return &DeliveryService{
-		store: store,
-		client: &http.Client{
-			Timeout: config.HTTPTimeout,
-		},
+		store:  store,
+		client: NewSecureHTTPClient(config.HTTPTimeout),
 		config: config,
 	}
 }
