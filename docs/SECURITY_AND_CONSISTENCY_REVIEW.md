@@ -93,6 +93,9 @@
 21. **Goroutine Leak in Audit Logging**
     - **Module:** Storage Layer
     - **Fix Applied:** Modified `SQLiteStorage` to use an `auditChan` channel and an `auditWorker` background goroutine to serve as a buffered log queue (size 1000). Audit logs are now sent to this channel rather than spawning an unbounded new goroutine for every log entry.
+22. **LIKE Query Pattern in Webhook Event Matching**
+    - **Module:** Storage Layer
+    - **Fix Applied:** Replaced the `LIKE` mapping pattern with `EXISTS (SELECT 1 FROM json_each(events) WHERE value = ?)` using SQLite's native JSON query functions. This guarantees exact event type matching rather than substring matches and entirely eliminates the need for manual filtering in Go memory.
 
 ---
 
@@ -102,13 +105,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-### H-9: LIKE Query Pattern in Webhook Event Matching
-**Module:** Storage Layer
-**Category:** Query Efficiency
-**Location:** `/internal/storage/webhook_sqlite.go:141-146`
-**Issue:** LIKE with wildcards matches unintended events (`device` matches `device_created`, etc.).
-**Remediation:** Use JSON query functions or normalized table structure.
-
 ### H-10: Silent Decryption Failures in Database Reads
 **Module:** Credentials
 **Category:** Error Handling

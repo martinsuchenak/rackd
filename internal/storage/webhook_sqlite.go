@@ -139,11 +139,11 @@ func (s *SQLiteStorage) DeleteWebhook(ctx context.Context, id string) error {
 
 // GetWebhooksForEvent retrieves all active webhooks subscribed to a specific event
 func (s *SQLiteStorage) GetWebhooksForEvent(ctx context.Context, eventType model.EventType) ([]model.Webhook, error) {
-	// Use LIKE to find webhooks that include this event type in their JSON array
+	// Use JSON functions to ensure exact matches within the events array
 	query := `SELECT id, name, url, secret, events, active, description, created_at, updated_at, created_by
-		FROM webhooks WHERE active = 1 AND events LIKE ?`
+		FROM webhooks WHERE active = 1 AND EXISTS (SELECT 1 FROM json_each(events) WHERE value = ?)`
 
-	rows, err := s.db.QueryContext(ctx, query, "%"+string(eventType)+"%")
+	rows, err := s.db.QueryContext(ctx, query, string(eventType))
 	if err != nil {
 		return nil, err
 	}
@@ -154,18 +154,7 @@ func (s *SQLiteStorage) GetWebhooksForEvent(ctx context.Context, eventType model
 		return nil, err
 	}
 
-	// Filter to ensure exact match (not just substring)
-	var filtered []model.Webhook
-	for _, w := range webhooks {
-		for _, e := range w.Events {
-			if e == eventType {
-				filtered = append(filtered, w)
-				break
-			}
-		}
-	}
-
-	return filtered, nil
+	return webhooks, nil
 }
 
 // CreateDelivery stores a new webhook delivery attempt
