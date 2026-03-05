@@ -193,11 +193,33 @@ func (s *SQLiteStorage) scanCredential(row *sql.Row) (*model.Credential, error) 
 	if err != nil {
 		return nil, err
 	}
-	cred.SNMPCommunity, _ = s.encryptor.Decrypt(community.String)
-	cred.SNMPV3User, _ = s.encryptor.Decrypt(v3user.String)
-	cred.SNMPV3Auth, _ = s.encryptor.Decrypt(v3auth.String)
-	cred.SNMPV3Priv, _ = s.encryptor.Decrypt(v3priv.String)
-	cred.SSHKeyID, _ = s.encryptor.Decrypt(sshKey.String)
+	var decErr error
+	if community.String != "" {
+		if cred.SNMPCommunity, decErr = s.encryptor.Decrypt(community.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_community: %w", decErr)
+		}
+	}
+	if v3user.String != "" {
+		if cred.SNMPV3User, decErr = s.encryptor.Decrypt(v3user.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_user: %w", decErr)
+		}
+	}
+	if v3auth.String != "" {
+		if cred.SNMPV3Auth, decErr = s.encryptor.Decrypt(v3auth.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_auth: %w", decErr)
+		}
+	}
+	if v3priv.String != "" {
+		if cred.SNMPV3Priv, decErr = s.encryptor.Decrypt(v3priv.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_priv: %w", decErr)
+		}
+	}
+	if sshKey.String != "" {
+		if cred.SSHKeyID, decErr = s.encryptor.Decrypt(sshKey.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt ssh_key_id: %w", decErr)
+		}
+	}
+
 	cred.DatacenterID = datacenterID.String
 	cred.Description = description.String
 	return &cred, nil
@@ -211,11 +233,33 @@ func (s *SQLiteStorage) scanCredentialRows(rows *sql.Rows) (*model.Credential, e
 	if err != nil {
 		return nil, err
 	}
-	cred.SNMPCommunity, _ = s.encryptor.Decrypt(community.String)
-	cred.SNMPV3User, _ = s.encryptor.Decrypt(v3user.String)
-	cred.SNMPV3Auth, _ = s.encryptor.Decrypt(v3auth.String)
-	cred.SNMPV3Priv, _ = s.encryptor.Decrypt(v3priv.String)
-	cred.SSHKeyID, _ = s.encryptor.Decrypt(sshKey.String)
+	var decErr error
+	if community.String != "" {
+		if cred.SNMPCommunity, decErr = s.encryptor.Decrypt(community.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_community: %w", decErr)
+		}
+	}
+	if v3user.String != "" {
+		if cred.SNMPV3User, decErr = s.encryptor.Decrypt(v3user.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_user: %w", decErr)
+		}
+	}
+	if v3auth.String != "" {
+		if cred.SNMPV3Auth, decErr = s.encryptor.Decrypt(v3auth.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_auth: %w", decErr)
+		}
+	}
+	if v3priv.String != "" {
+		if cred.SNMPV3Priv, decErr = s.encryptor.Decrypt(v3priv.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt snmp_v3_priv: %w", decErr)
+		}
+	}
+	if sshKey.String != "" {
+		if cred.SSHKeyID, decErr = s.encryptor.Decrypt(sshKey.String); decErr != nil {
+			return nil, fmt.Errorf("decrypt ssh_key_id: %w", decErr)
+		}
+	}
+
 	cred.DatacenterID = datacenterID.String
 	cred.Description = description.String
 	return &cred, nil

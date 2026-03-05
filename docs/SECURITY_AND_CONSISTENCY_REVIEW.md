@@ -96,6 +96,9 @@
 22. **LIKE Query Pattern in Webhook Event Matching**
     - **Module:** Storage Layer
     - **Fix Applied:** Replaced the `LIKE` mapping pattern with `EXISTS (SELECT 1 FROM json_each(events) WHERE value = ?)` using SQLite's native JSON query functions. This guarantees exact event type matching rather than substring matches and entirely eliminates the need for manual filtering in Go memory.
+23. **Silent Decryption Failures in Database Reads**
+    - **Module:** Credentials
+    - **Fix Applied:** Modified `scanCredential` and `scanCredentialRows` in `internal/credentials/storage.go` to explicitly check for the error returned by `s.encryptor.Decrypt()`. Failed decryptions now properly return an error (propagated with context like `"decrypt snmp_community: %w"`) instead of silently ignoring it and swallowing the data.
 
 ---
 
@@ -105,14 +108,7 @@
 ---
 
 ## 3. 🟠 Open High Issues
-### H-10: Silent Decryption Failures in Database Reads
-**Module:** Credentials
-**Category:** Error Handling
-**Location:** `/internal/credentials/storage.go:196-200,214-218`
-**Issue:** Decryption errors silently ignored. Corrupted/tampered data goes undetected.
-**Remediation:** Return decryption errors to caller.
-
-### H-11: Missing Key Rotation Implementation
+### H-10: Missing Key Rotation Implementation
 **Module:** Credentials
 **Category:** Key Management
 **Location:** Architecture / CLI logic
