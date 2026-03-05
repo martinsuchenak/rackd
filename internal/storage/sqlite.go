@@ -18,7 +18,8 @@ import (
 
 // SQLiteStorage implements ExtendedStorage using SQLite
 type SQLiteStorage struct {
-	db *sql.DB
+	db        *sql.DB
+	auditChan chan *model.AuditLog
 }
 
 // NewSQLiteStorage creates a new SQLite storage instance
@@ -52,7 +53,13 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	s := &SQLiteStorage{db: db}
+	s := &SQLiteStorage{
+		db:        db,
+		auditChan: make(chan *model.AuditLog, 1000),
+	}
+
+	// Start audit log worker
+	go s.auditWorker()
 
 	// Run migrations
 	ctx := context.Background()
@@ -94,7 +101,13 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	s := &SQLiteStorage{db: db}
+	s := &SQLiteStorage{
+		db:        db,
+		auditChan: make(chan *model.AuditLog, 1000),
+	}
+
+	// Start audit log worker
+	go s.auditWorker()
 
 	// Run migrations
 	ctx := context.Background()
@@ -156,41 +169,56 @@ func nullIntPtr(i *int) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(*i), Valid: true}
 }
 
-// auditLog creates an audit log entry asynchronously
+// auditWorker processes audit logs from the queue
+func (s *SQLiteStorage) auditWorker() {
+	for logEntry := range s.auditChan {
+		if err := s.CreateAuditLog(context.Background(), logEntry); err != nil {
+			log.Error("Failed to create audit log", "error", err)
+		}
+	}
+}
+
+// auditLog creates an audit log entry asynchronously using a worker pool
 func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resourceID string, changes any) {
 	auditCtx, ok := audit.FromContext(ctx)
 	if !ok {
 		return
 	}
 
-	go func() {
-		var changesStr string
-		if changes != nil {
-			if str, ok := changes.(string); ok {
-				changesStr = str
-			} else {
-				changesBytes, err := json.Marshal(changes)
-				if err == nil {
-					changesStr = string(changesBytes)
-				}
+	var changesStr string
+	if changes != nil {
+		if str, ok := changes.(string); ok {
+			changesStr = str
+		} else {
+			changesBytes, err := json.Marshal(changes)
+			if err == nil {
+				changesStr = string(changesBytes)
 			}
 		}
+	}
 
-		auditLog := &model.AuditLog{
-			Timestamp:  time.Now(),
-			Action:     action,
-			Resource:   resource,
-			ResourceID: resourceID,
-			UserID:     auditCtx.UserID,
-			Username:   auditCtx.Username,
-			IPAddress:  auditCtx.IPAddress,
-			Changes:    changesStr,
-			Source:     auditCtx.Source,
-			Status:     "success",
-		}
+	entry := &model.AuditLog{
+		Timestamp:  time.Now(),
+		Action:     action,
+		Resource:   resource,
+		ResourceID: resourceID,
+		UserID:     auditCtx.UserID,
+		Username:   auditCtx.Username,
+		IPAddress:  auditCtx.IPAddress,
+		Changes:    changesStr,
+		Source:     auditCtx.Source,
+		Status:     "success",
+	}
 
-		if err := s.CreateAuditLog(context.Background(), auditLog); err != nil {
-			log.Error("Failed to create audit log", "error", err)
-		}
-	}()
+	if s.auditChan == nil {
+		// Fallback for tests
+		_ = s.CreateAuditLog(context.Background(), entry)
+		return
+	}
+
+	select {
+	case s.auditChan <- entry:
+	default:
+		log.Error("Audit log channel full, dropping log entry", "action", action)
+	}
 }

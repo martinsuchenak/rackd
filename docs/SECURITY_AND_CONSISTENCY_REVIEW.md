@@ -90,6 +90,9 @@
 20. **Missing Context Propagation in Storage**
     - **Module:** Storage Layer
     - **Fix Applied:** Updated storage, service, API, and discovery interfaces to accept `context.Context` as the first parameter. Propagated the context down through all layers, rectifying missing contexts leading to potential goroutine leaks or blocking operations. Fixed test suite to use correct context parameters.
+21. **Goroutine Leak in Audit Logging**
+    - **Module:** Storage Layer
+    - **Fix Applied:** Modified `SQLiteStorage` to use an `auditChan` channel and an `auditWorker` background goroutine to serve as a buffered log queue (size 1000). Audit logs are now sent to this channel rather than spawning an unbounded new goroutine for every log entry.
 
 ---
 
@@ -99,13 +102,6 @@
 ---
 
 ## 3. 🟠 Open High Issues
-### H-8: Goroutine Leak in Audit Logging
-**Module:** Storage Layer
-**Category:** Resource Management
-**Location:** `/internal/storage/sqlite.go:166-196`
-**Issue:** Audit logging spawns goroutines without limit. Fire-and-forget pattern silently ignores failures.
-**Remediation:** Use buffered channel with fixed worker pool.
-
 ### H-9: LIKE Query Pattern in Webhook Event Matching
 **Module:** Storage Layer
 **Category:** Query Efficiency
