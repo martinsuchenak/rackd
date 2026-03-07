@@ -59,6 +59,7 @@ function updatePageTitle(route: string) {
     '/dns/records': 'DNS Records',
     '/users': 'User Management',
     '/roles': 'Role Management',
+    '/oauth-clients': 'OAuth Clients',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -132,6 +133,7 @@ function router() {
         { label: 'DNS Zones', path: '/dns/zones', order: 58, required_permissions: [{ resource: 'dns', action: 'list' }] },
         { label: 'Users', path: '/users', order: 90, required_permissions: [{ resource: 'users', action: 'list' }] },
         { label: 'Roles', path: '/roles', order: 91, required_permissions: [{ resource: 'roles', action: 'list' }] },
+        { label: 'OAuth Clients', path: '/oauth-clients', order: 93, required_permissions: [{ resource: 'users', action: 'list' }] },
       ];
       const dynamic = (window.rackdConfig?.nav_items ?? []).filter(
         (item: any) => !base.some((b) => (b.path === item.path || (b.path === '/' && item.path === '')) || b.label === item.label)

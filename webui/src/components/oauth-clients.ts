@@ -27,7 +27,15 @@ export function oauthClients() {
       try {
         const response = await fetch('/api/oauth/clients', {
           credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
         });
+        // If OAuth isn't configured, the route doesn't exist and the SPA
+        // catch-all returns index.html with 200 + text/html content-type.
+        const ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          this.clients = [];
+          return;
+        }
         if (!response.ok) throw new Error('Failed to load clients');
         this.clients = await response.json() || [];
       } catch (e: any) {
@@ -53,6 +61,7 @@ export function oauthClients() {
         const response = await fetch(`/api/oauth/clients/${this.deleteTarget.client_id}`, {
           method: 'DELETE',
           credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
         });
         if (!response.ok) throw new Error('Failed to delete client');
         this.showDeleteModal = false;
