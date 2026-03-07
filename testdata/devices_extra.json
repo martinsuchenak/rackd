@@ -1,0 +1,189 @@
+[
+  {
+    "id": "us-mon-01",
+    "name": "us-mon-01",
+    "hostname": "us-mon-01.example.com",
+    "description": "US East monitoring server (Prometheus + Grafana)",
+    "make_model": "Dell PowerEdge R440",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack D1",
+    "username": "admin",
+    "status": "active",
+    "tags": ["monitoring", "prometheus", "grafana", "production", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.200.20",
+        "type": "primary",
+        "network_id": "net-us-mgmt"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "us-jump-01",
+    "name": "us-jump-01",
+    "hostname": "us-jump-01.example.com",
+    "description": "US East SSH jump / bastion host",
+    "make_model": "Dell PowerEdge R340",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack D2",
+    "username": "admin",
+    "status": "active",
+    "tags": ["bastion", "jump-host", "security", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.200.30",
+        "type": "primary",
+        "network_id": "net-us-mgmt"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "us-storage-01",
+    "name": "us-storage-01",
+    "hostname": "us-storage-01.example.com",
+    "description": "US East NFS/iSCSI storage server",
+    "make_model": "Dell PowerVault ME5024",
+    "os": "PowerVault OS 2.0",
+    "location": "Rack C4",
+    "username": "admin",
+    "status": "active",
+    "tags": ["storage", "nfs", "iscsi", "production", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.4.20",
+        "type": "primary",
+        "network_id": "net-us-prod"
+      },
+      {
+        "ip": "10.10.4.21",
+        "type": "secondary",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "us-old-server-01",
+    "name": "us-old-server-01",
+    "hostname": "us-old-server-01.example.com",
+    "description": "Legacy application server - scheduled for decommission",
+    "make_model": "HP ProLiant DL380 G7",
+    "os": "CentOS 7.9",
+    "location": "Rack E1",
+    "username": "admin",
+    "status": "decommissioned",
+    "tags": ["legacy", "decommissioned", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.5.10",
+        "type": "primary",
+        "network_id": "net-us-prod"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "us-new-server-01",
+    "name": "us-new-server-01",
+    "hostname": "us-new-server-01.example.com",
+    "description": "New application server - being provisioned",
+    "make_model": "Dell PowerEdge R750",
+    "os": "Ubuntu 24.04 LTS",
+    "location": "Rack B5",
+    "username": "admin",
+    "status": "planned",
+    "tags": ["app", "nodejs", "planned", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.2.20",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-app"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "us-maint-server-01",
+    "name": "us-maint-server-01",
+    "hostname": "us-maint-server-01.example.com",
+    "description": "Web server undergoing OS upgrade",
+    "make_model": "Dell PowerEdge R640",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack B6",
+    "username": "admin",
+    "status": "maintenance",
+    "tags": ["web", "nginx", "maintenance", "us-east"],
+    "addresses": [
+      {
+        "ip": "10.10.1.20",
+        "type": "primary",
+        "network_id": "net-us-prod",
+        "pool_id": "pool-us-web"
+      }
+    ],
+    "datacenter_id": "dc-us-east-1"
+  },
+  {
+    "id": "eu-db-02",
+    "name": "eu-db-02",
+    "hostname": "eu-db-02.example.com",
+    "description": "EU West database replica",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C2",
+    "username": "dbadmin",
+    "status": "active",
+    "tags": ["database", "postgresql", "production", "eu-west", "replica"],
+    "addresses": [
+      {
+        "ip": "10.20.3.11",
+        "type": "primary",
+        "network_id": "net-eu-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1"
+  },
+  {
+    "id": "eu-cache-01",
+    "name": "eu-cache-01",
+    "hostname": "eu-cache-01.example.com",
+    "description": "EU West Redis cache",
+    "make_model": "Dell PowerEdge R440",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C3",
+    "username": "admin",
+    "status": "active",
+    "tags": ["cache", "redis", "production", "eu-west"],
+    "addresses": [
+      {
+        "ip": "10.20.4.10",
+        "type": "primary",
+        "network_id": "net-eu-prod"
+      }
+    ],
+    "datacenter_id": "dc-eu-west-1"
+  },
+  {
+    "id": "apac-db-02",
+    "name": "apac-db-02",
+    "hostname": "apac-db-02.example.com",
+    "description": "APAC Singapore database replica",
+    "make_model": "Dell PowerEdge R940",
+    "os": "Ubuntu 22.04 LTS",
+    "location": "Rack C2",
+    "username": "dbadmin",
+    "status": "active",
+    "tags": ["database", "postgresql", "production", "apac", "replica"],
+    "addresses": [
+      {
+        "ip": "10.30.3.11",
+        "type": "primary",
+        "network_id": "net-apac-prod"
+      }
+    ],
+    "datacenter_id": "dc-apac-sg-1"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "pool_id": "pool-us-web",
+    "ip_address": "10.10.1.50",
+    "hostname": "us-web-03.example.com",
+    "purpose": "Planned web server expansion",
+    "notes": "Reserved for Q2 capacity expansion - web tier"
+  },
+  {
+    "pool_id": "pool-us-web",
+    "ip_address": "10.10.1.51",
+    "hostname": "us-web-04.example.com",
+    "purpose": "Planned web server expansion",
+    "notes": "Reserved for Q2 capacity expansion - web tier"
+  },
+  {
+    "pool_id": "pool-us-app",
+    "ip_address": "10.10.2.50",
+    "hostname": "us-app-03.example.com",
+    "purpose": "Staging application server",
+    "notes": "Reserved for staging environment deployment"
+  },
+  {
+    "pool_id": "pool-us-db",
+    "ip_address": "10.10.3.50",
+    "hostname": "us-db-03.example.com",
+    "purpose": "Database read replica",
+    "notes": "Reserved for additional read replica - analytics workloads"
+  },
+  {
+    "pool_id": "pool-eu-web",
+    "ip_address": "10.20.1.50",
+    "hostname": "eu-web-03.example.com",
+    "purpose": "EU web server expansion",
+    "notes": "Reserved for GDPR compliance - EU data residency"
+  },
+  {
+    "pool_id": "pool-eu-app",
+    "ip_address": "10.20.2.50",
+    "hostname": "eu-app-02.example.com",
+    "purpose": "EU application server expansion",
+    "notes": "Reserved for EU West capacity increase"
+  },
+  {
+    "pool_id": "pool-apac-web",
+    "ip_address": "10.30.1.50",
+    "hostname": "apac-web-02.example.com",
+    "purpose": "APAC web server expansion",
+    "notes": "Reserved for APAC growth - Singapore region"
+  },
+  {
+    "pool_id": "pool-us-web",
+    "ip_address": "10.10.1.100",
+    "hostname": "us-canary-01.example.com",
+    "purpose": "Canary deployment target",
+    "notes": "Reserved for canary/blue-green deployment testing"
+  }
+]

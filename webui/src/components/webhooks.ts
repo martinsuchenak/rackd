@@ -301,7 +301,7 @@ export function webhookComponent(): WebhookData {
       this.selectedWebhook = webhook;
       this.modalType = 'deliveries';
       try {
-        this.deliveries = await api.getWebhookDeliveries(webhook.id);
+        this.deliveries = (await api.getWebhookDeliveries(webhook.id)) || [];
       } catch (e) {
         console.error('Failed to load deliveries:', e);
         this.deliveries = [];

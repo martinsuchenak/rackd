@@ -622,6 +622,11 @@ export function deviceList() {
     getDeleteAriaLabel(d: Device): string {
       return `Delete ${d.name}`;
     },
+
+    onAddressNetworkChange(addr: Address, networkId: string): void {
+      addr.pool_id = '';
+      this.loadPoolsForNetwork(networkId);
+    },
   };
 }
 
@@ -1043,6 +1048,11 @@ export function deviceDetail() {
       this.showRelationshipModal = false;
     },
 
+    clearRelationshipDevice(): void {
+      this.newRelationship.device = null;
+      this.relationshipSearch = '';
+    },
+
     async searchDevicesForRelationship(): Promise<void> {
       const query = this.relationshipSearch.trim();
       if (!query || query.length < 2) {
@@ -1256,6 +1266,11 @@ export function deviceDetail() {
     getRelationshipTargetLink(rel: DeviceRelationship): string {
       const targetId = rel.parent_id === this.device?.id ? rel.child_id : rel.parent_id;
       return `/devices/detail?id=${targetId}`;
+    },
+
+    onAddressNetworkChange(addr: Address, networkId: string): void {
+      addr.pool_id = '';
+      this.loadPoolsForNetwork(networkId);
     },
   };
 }

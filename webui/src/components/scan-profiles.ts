@@ -159,6 +159,11 @@ export function scanProfilesList() {
       }
     },
 
+    closeEditModal(): void {
+      this.showEditModal = false;
+      this.editingProfile = null;
+    },
+
     async deleteProfile(id: string): Promise<void> {
       if (!confirm('Delete this scan profile?')) return;
       this.error = '';

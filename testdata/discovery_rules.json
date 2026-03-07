@@ -1,0 +1,51 @@
+[
+  {
+    "network_id": "net-us-prod",
+    "enabled": true,
+    "scan_type": "quick",
+    "interval_hours": 24,
+    "exclude_ips": "10.10.0.1,10.10.0.2"
+  },
+  {
+    "network_id": "net-us-dmz",
+    "enabled": true,
+    "scan_type": "full",
+    "interval_hours": 12,
+    "exclude_ips": ""
+  },
+  {
+    "network_id": "net-us-mgmt",
+    "enabled": true,
+    "scan_type": "quick",
+    "interval_hours": 48,
+    "exclude_ips": ""
+  },
+  {
+    "network_id": "net-eu-prod",
+    "enabled": true,
+    "scan_type": "quick",
+    "interval_hours": 24,
+    "exclude_ips": "10.20.0.1"
+  },
+  {
+    "network_id": "net-eu-dmz",
+    "enabled": true,
+    "scan_type": "full",
+    "interval_hours": 12,
+    "exclude_ips": ""
+  },
+  {
+    "network_id": "net-apac-prod",
+    "enabled": true,
+    "scan_type": "quick",
+    "interval_hours": 24,
+    "exclude_ips": "10.30.0.1"
+  },
+  {
+    "network_id": "net-apac-dmz",
+    "enabled": false,
+    "scan_type": "full",
+    "interval_hours": 24,
+    "exclude_ips": ""
+  }
+]

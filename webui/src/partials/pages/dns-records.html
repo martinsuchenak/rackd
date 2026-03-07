@@ -104,7 +104,7 @@
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
                 <button @click="openEditModal(record)"
-                  class="text-sm font-mono text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded"
+                  class="font-mono text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                   x-text="record.name"></button>
               </td>
               <td class="px-6 py-4">
@@ -112,35 +112,29 @@
                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-200"
                   x-text="record.type"></span>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-xs" x-text="record.value"
-                  :title="record.value"></div>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono truncate max-w-xs" x-text="record.value" :title="record.value">
                 <p x-show="record.error_message" class="text-xs text-red-600 dark:text-red-400 mt-1"
                   x-text="record.error_message"></p>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="record.ttl + 's'"></div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="record.ttl + 's'"></td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                   :class="getSyncStatusClass(record.sync_status)" x-text="formatSyncStatus(record.sync_status)"></span>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(record.last_sync_at)"></div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(record.last_sync_at)"></td>
               <td class="px-6 py-4">
                 <template x-if="record.device_id">
                   <div>
                     <a :href="getDeviceUrl(record.device_id)"
                       @click.prevent="$dispatch('nav', getDeviceUrl(record.device_id))"
-                      class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded"
+                      class="text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                       x-text="getDeviceName(record.device_id)"></a>
                     <p x-show="record.address_id" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
                       x-text="getAddressValueSafe(record.device_id, record.address_id)"></p>
                   </div>
                 </template>
                 <template x-if="!record.device_id">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Unlinked</span>
+                  <span class="text-gray-500 dark:text-gray-400">Unlinked</span>
                 </template>
               </td>
               <td class="px-6 py-4 text-right">

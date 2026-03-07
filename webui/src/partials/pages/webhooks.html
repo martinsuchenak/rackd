@@ -49,27 +49,15 @@
           <template x-for="webhook in webhooks" :key="webhook.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <template x-if="$store.permissions.canUpdate('webhook')">
-                  <button @click="openEditModal(webhook)"
-                    class="text-left cursor-pointer focus:outline-none focus:underline">
-                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      x-text="webhook.name"></div>
-                    <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400"
-                      x-text="webhook.description"></div>
-                  </button>
-                </template>
-                <template x-if="!$store.permissions.canUpdate('webhook')">
-                  <div>
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="webhook.name"></div>
-                    <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400"
-                      x-text="webhook.description"></div>
-                  </div>
-                </template>
+                <button x-show="$store.permissions.canUpdate('webhook')" @click="openEditModal(webhook)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="webhook.name"></button>
+                <span x-show="!$store.permissions.canUpdate('webhook')"
+                  class="font-medium text-gray-900 dark:text-gray-100" x-text="webhook.name"></span>
+                <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400"
+                  x-text="webhook.description"></div>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-xs" x-text="webhook.url">
-                </div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono truncate max-w-xs" x-text="webhook.url"></td>
               <td class="px-6 py-4">
                 <div class="flex flex-wrap gap-1">
                   <template x-for="event in webhook.events.slice(0, 3)" :key="event">
@@ -344,11 +332,11 @@
             Delivery History: <span x-text="getSelectedWebhookName()"></span>
           </h2>
 
-          <div x-show="deliveries.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
+          <div x-show="!deliveries || deliveries.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
             No delivery history yet. Test the webhook to create a delivery record.
           </div>
 
-          <div x-show="deliveries.length > 0" class="overflow-x-auto">
+          <div x-show="deliveries && deliveries.length > 0" class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-700">
                 <tr>

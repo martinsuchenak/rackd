@@ -32,8 +32,12 @@
           <template x-for="p in profiles" :key="p.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <div class="font-medium text-gray-900 dark:text-gray-50" x-text="p.name"></div>
-                <div x-show="p.description" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5" x-text="p.description"></div>
+                <button x-show="$store.permissions.canUpdate('scan-profiles')" @click="openEditModal(p)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="p.name"></button>
+                <span x-show="!$store.permissions.canUpdate('scan-profiles')"
+                  class="font-medium text-gray-900 dark:text-gray-50" x-text="p.name"></span>
+                <div x-show="p.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5" x-text="p.description"></div>
               </td>
               <td class="px-6 py-4">
                 <span class="px-2 py-1 text-xs font-medium rounded-full"
@@ -202,7 +206,7 @@
             </div>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="showEditModal = false; editingProfile = null" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+            <button type="button" @click="closeEditModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
             <button type="submit" :disabled="loading" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
               <span x-show="!loading">Update Profile</span>
               <span x-show="loading">Updating...</span>

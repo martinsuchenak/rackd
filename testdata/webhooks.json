@@ -1,0 +1,82 @@
+[
+  {
+    "id": "wh-slack-alerts",
+    "name": "Slack Alerts",
+    "url": "https://hooks.slack.example.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+    "events": [
+      "device.created",
+      "device.deleted",
+      "conflict.detected",
+      "pool.utilization_high"
+    ],
+    "active": true,
+    "description": "Send critical alerts to #infra-alerts Slack channel"
+  },
+  {
+    "id": "wh-pagerduty",
+    "name": "PagerDuty Incidents",
+    "url": "https://events.pagerduty.example.com/v2/enqueue",
+    "events": [
+      "conflict.detected",
+      "pool.utilization_high",
+      "discovery.completed"
+    ],
+    "active": true,
+    "description": "Create PagerDuty incidents for critical infrastructure events"
+  },
+  {
+    "id": "wh-cmdb-sync",
+    "name": "CMDB Sync",
+    "url": "https://cmdb.internal.example.com/api/rackd/webhook",
+    "events": [
+      "device.created",
+      "device.updated",
+      "device.deleted",
+      "network.created",
+      "network.updated",
+      "network.deleted"
+    ],
+    "active": true,
+    "description": "Sync device and network changes to the CMDB system"
+  },
+  {
+    "id": "wh-audit-siem",
+    "name": "SIEM Audit Feed",
+    "url": "https://siem.internal.example.com/api/events",
+    "events": [
+      "device.created",
+      "device.updated",
+      "device.deleted",
+      "device.promoted",
+      "network.created",
+      "network.updated",
+      "network.deleted",
+      "conflict.detected",
+      "conflict.resolved"
+    ],
+    "active": true,
+    "description": "Forward all change events to SIEM for security audit trail"
+  },
+  {
+    "id": "wh-discovery-notify",
+    "name": "Discovery Notifications",
+    "url": "https://notify.internal.example.com/api/discovery",
+    "events": [
+      "discovery.started",
+      "discovery.completed",
+      "discovery.device_found"
+    ],
+    "active": false,
+    "description": "Notify team when discovery scans run (disabled - too noisy)"
+  },
+  {
+    "id": "wh-capacity-alerts",
+    "name": "Capacity Planning Alerts",
+    "url": "https://capacity.internal.example.com/api/alerts",
+    "events": [
+      "pool.utilization_high"
+    ],
+    "active": true,
+    "description": "Alert capacity planning team when IP pools exceed 80% utilization"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "cf-environment",
+    "name": "Environment",
+    "key": "environment",
+    "type": "select",
+    "required": true,
+    "options": ["production", "staging", "development", "dr"],
+    "description": "Deployment environment for this device"
+  },
+  {
+    "id": "cf-cost-center",
+    "name": "Cost Center",
+    "key": "cost_center",
+    "type": "text",
+    "required": false,
+    "options": [],
+    "description": "Finance cost center code for billing allocation"
+  },
+  {
+    "id": "cf-owner",
+    "name": "Owner",
+    "key": "owner",
+    "type": "text",
+    "required": false,
+    "options": [],
+    "description": "Team or individual responsible for this device"
+  },
+  {
+    "id": "cf-warranty-expiry",
+    "name": "Warranty Expiry",
+    "key": "warranty_expiry",
+    "type": "text",
+    "required": false,
+    "options": [],
+    "description": "Hardware warranty expiration date (YYYY-MM-DD)"
+  },
+  {
+    "id": "cf-rack-unit",
+    "name": "Rack Unit",
+    "key": "rack_unit",
+    "type": "number",
+    "required": false,
+    "options": [],
+    "description": "Rack unit position (U) in the rack"
+  },
+  {
+    "id": "cf-monitoring",
+    "name": "Monitoring Enabled",
+    "key": "monitoring_enabled",
+    "type": "boolean",
+    "required": false,
+    "options": [],
+    "description": "Whether this device is enrolled in monitoring"
+  },
+  {
+    "id": "cf-backup-policy",
+    "name": "Backup Policy",
+    "key": "backup_policy",
+    "type": "select",
+    "required": false,
+    "options": ["daily", "weekly", "monthly", "none"],
+    "description": "Backup schedule policy for this device"
+  },
+  {
+    "id": "cf-criticality",
+    "name": "Criticality",
+    "key": "criticality",
+    "type": "select",
+    "required": false,
+    "options": ["critical", "high", "medium", "low"],
+    "description": "Business criticality level of this device"
+  }
+]

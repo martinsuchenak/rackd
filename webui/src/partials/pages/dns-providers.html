@@ -66,33 +66,20 @@
           <template x-for="provider in providers" :key="provider.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <template x-if="$store.permissions.canUpdate('dns-provider')">
-                  <button @click="openEditModal(provider)"
-                    class="text-left cursor-pointer focus:outline-none focus:underline">
-                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      x-text="provider.name"></div>
-                  </button>
-                </template>
-                <template x-if="!$store.permissions.canUpdate('dns-provider')">
-                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="provider.name"></div>
-                </template>
+                <button x-show="$store.permissions.canUpdate('dns-provider')" @click="openEditModal(provider)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="provider.name"></button>
+                <span x-show="!$store.permissions.canUpdate('dns-provider')"
+                  class="font-medium text-gray-900 dark:text-gray-100" x-text="provider.name"></span>
               </td>
               <td class="px-6 py-4">
                 <span
                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-200"
                   x-text="formatType(provider.type)"></span>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-xs"
-                  x-text="provider.endpoint"></div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs"
-                  x-text="getProviderDescription(provider)"></div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(provider.created_at)"></div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono truncate max-w-xs" x-text="provider.endpoint"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 truncate max-w-xs" x-text="getProviderDescription(provider)"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(provider.created_at)"></td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
                   <button x-show="$store.permissions.canUpdate('dns-provider')" @click="openTestModal(provider)"

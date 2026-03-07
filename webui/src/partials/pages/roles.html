@@ -58,30 +58,24 @@
           <template x-for="role in pagedRoles" :key="role.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <template x-if="role.is_system">
-                  <button @click="openViewModal(role)"
-                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded"
-                    x-text="role.name" :aria-label="'View ' + role.name"></button>
-                </template>
-                <template x-if="!role.is_system">
-                  <button @click="openEditModal(role)"
-                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded"
-                    x-text="role.name" :aria-label="'Edit ' + role.name"></button>
-                </template>
+                <button x-show="role.is_system" @click="openViewModal(role)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="role.name" :aria-label="'View ' + role.name"></button>
+                <button x-show="!role.is_system" @click="openEditModal(role)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="role.name" :aria-label="'Edit ' + role.name"></button>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200" x-text="role.description || '-'"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="role.description || '-'"></td>
               <td class="px-6 py-4 text-center">
                 <span x-show="role.is_system"
                   class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200">Yes</span>
                 <span x-show="!role.is_system"
                   class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200">No</span>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                  <span x-text="role.permissions ? role.permissions.length : 0"></span> permissions
-                </div>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200">
+                <span x-text="role.permissions ? role.permissions.length : 0"></span> permissions
               </td>
-              <td class="px-6 py-4 text-sm text-gray-800 dark:text-gray-200" x-text="formatDate(role.created_at)"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(role.created_at)"></td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
                   <button @click="openEditModal(role)" x-show="!role.is_system && $store.permissions.canUpdate('roles')"

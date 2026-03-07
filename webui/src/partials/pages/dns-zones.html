@@ -91,30 +91,17 @@
           <template x-for="zone in zones" :key="zone.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <template x-if="$store.permissions.canUpdate('dns-zone')">
-                  <button @click="openEditModal(zone)"
-                    class="text-left cursor-pointer focus:outline-none focus:underline">
-                    <div class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      x-text="zone.name"></div>
-                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400"
-                      x-text="zone.description"></div>
-                  </button>
-                </template>
-                <template x-if="!$store.permissions.canUpdate('dns-zone')">
-                  <div>
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="zone.name"></div>
-                    <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400"
-                      x-text="zone.description"></div>
-                  </div>
-                </template>
+                <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openEditModal(zone)"
+                  class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                  x-text="zone.name"></button>
+                <span x-show="!$store.permissions.canUpdate('dns-zone')"
+                  class="font-medium text-gray-900 dark:text-gray-100" x-text="zone.name"></span>
+                <div x-show="zone.description" class="text-xs text-gray-500 dark:text-gray-400"
+                  x-text="zone.description"></div>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 dark:text-gray-100" x-text="getProviderName(zone.provider_id)"></div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400"
-                  x-text="zone.network_id ? getNetworkName(zone.network_id) : '-'"></div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getProviderName(zone.provider_id)"></td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200"
+                x-text="zone.network_id ? getNetworkName(zone.network_id) : '-'"></td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                   :class="getAutoSyncClass(zone.auto_sync)" x-text="getAutoSyncLabel(zone.auto_sync)"></span>
@@ -124,9 +111,7 @@
                   :class="getSyncStatusClass(zone.last_sync_status)"
                   x-text="formatSyncStatus(zone.last_sync_status)"></span>
               </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(zone.last_sync_at)"></div>
-              </td>
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(zone.last_sync_at)"></td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
                   <button @click="window.location.href = getRecordsUrl(zone.id)"

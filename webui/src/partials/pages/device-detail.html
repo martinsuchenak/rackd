@@ -55,7 +55,7 @@
       <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-700">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tags</h3>
         <div class="flex flex-wrap gap-2" x-show="hasTags()">
-          <template x-for="tag in device.tags" :key="tag">
+          <template x-for="tag in (device && device.tags || [])" :key="tag">
             <span
               class="px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800"
               x-text="tag"></span>
@@ -68,7 +68,7 @@
       <div class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-700">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Domains</h3>
         <div class="flex flex-wrap gap-2" x-show="hasDomains()">
-          <template x-for="domain in device.domains" :key="domain">
+          <template x-for="domain in (device && device.domains || [])" :key="domain">
             <span
               class="px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded border border-purple-200 dark:border-purple-800"
               x-text="domain"></span>

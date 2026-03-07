@@ -169,7 +169,7 @@
                     <label :for="'addr-network-' + index"
                       class="block text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Network</label>
                     <select :id="'addr-network-' + index" x-model="addr.network_id"
-                      @change="addr.pool_id = ''; loadPoolsForNetwork(addr.network_id)"
+                      @change="onAddressNetworkChange(addr, addr.network_id)"
                       class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       <option value="">No Network</option>
                       <template x-for="net in networks" :key="net.id">

@@ -1,0 +1,42 @@
+[
+  {
+    "network_id": "net-us-prod",
+    "profile_id": "profile-standard",
+    "name": "US Prod Nightly Scan",
+    "cron_expression": "0 2 * * *",
+    "enabled": true,
+    "description": "Nightly standard scan of US East production network at 2 AM"
+  },
+  {
+    "network_id": "net-us-dmz",
+    "profile_id": "profile-deep",
+    "name": "US DMZ Weekly Deep Scan",
+    "cron_expression": "0 3 * * 0",
+    "enabled": true,
+    "description": "Weekly deep security scan of US East DMZ on Sundays at 3 AM"
+  },
+  {
+    "network_id": "net-eu-prod",
+    "profile_id": "profile-standard",
+    "name": "EU Prod Nightly Scan",
+    "cron_expression": "0 2 * * *",
+    "enabled": true,
+    "description": "Nightly standard scan of EU West production network at 2 AM local time"
+  },
+  {
+    "network_id": "net-apac-prod",
+    "profile_id": "profile-quick",
+    "name": "APAC Prod Hourly Ping",
+    "cron_expression": "0 * * * *",
+    "enabled": true,
+    "description": "Hourly ping sweep of APAC production network for availability monitoring"
+  },
+  {
+    "network_id": "net-us-mgmt",
+    "profile_id": "profile-network-devices",
+    "name": "US Mgmt Network Device Scan",
+    "cron_expression": "0 4 * * 1",
+    "enabled": true,
+    "description": "Weekly scan of management network devices on Mondays at 4 AM"
+  }
+]

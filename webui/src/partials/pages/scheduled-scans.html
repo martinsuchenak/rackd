@@ -54,18 +54,18 @@
                             <td class="px-6 py-4">
                                 <button x-show="$store.permissions.canUpdate('scheduled_scans')"
                                     @click="openEditModal(scan)"
-                                    class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left"
+                                    class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors text-left"
                                     x-text="scan.name" :aria-label="'Edit schedule: ' + scan.name"></button>
                                 <span x-show="!$store.permissions.canUpdate('scheduled_scans')"
-                                    class="font-medium text-gray-900 dark:text-white" x-text="scan.name"></span>
-                                <div class="text-sm text-gray-600 dark:text-gray-400" x-text="scan.description || ''">
+                                    class="font-medium text-gray-900 dark:text-gray-50" x-text="scan.name"></span>
+                                <div class="text-xs text-gray-500 dark:text-gray-400" x-text="scan.description || ''">
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300"
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200"
                                 x-text="getNetworkName(scan.network_id)"></td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300"
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200"
                                 x-text="getProfileName(scan.profile_id)"></td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 font-mono"
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono"
                                 x-text="scan.cron_expression"></td>
                             <td class="px-6 py-4">
                                 <button x-show="$store.permissions.canUpdate('scheduled_scans')"
@@ -81,16 +81,16 @@
                                     :class="scan.enabled ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'"
                                     x-text="scan.enabled ? 'Enabled' : 'Disabled'"></span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300"
+                            <td class="px-6 py-4 text-gray-800 dark:text-gray-200"
                                 x-text="formatDate(scan.next_run_at)"></td>
                             <td class="px-6 py-4 text-right space-x-3">
                                 <button x-show="$store.permissions.canUpdate('scheduled_scans')"
                                     @click="openEditModal(scan)"
-                                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors"
+                                    class="px-3 py-1 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors"
                                     :aria-label="'Edit ' + scan.name">Edit</button>
                                 <button x-show="$store.permissions.canDelete('scheduled_scans')"
                                     @click="confirmDelete(scan)"
-                                    class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors"
+                                    class="px-3 py-1 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors"
                                     :aria-label="'Delete ' + scan.name">Delete</button>
                             </td>
                         </tr>
