@@ -50,9 +50,9 @@ The existing `SECURITY_AND_CONSISTENCY_REVIEW.md` documents 36 critical/high iss
 
 **No CORS configuration (M-9):** The API sets no CORS headers. While this defaults to same-origin (safe), it means legitimate cross-origin integrations won't work, and there's no explicit deny for preflight requests on API routes (only MCP handles OPTIONS).
 
-**Rate limiting disabled by default:** `RATE_LIMIT_ENABLED` defaults to `false`. Login rate limiting is always on, but general API rate limiting requires explicit opt-in. The docs should make this clearer for production deployments.
+**Rate limiting enabled by default (FIXED).** `RATE_LIMIT_ENABLED` now defaults to `true` (100 requests/minute). Local dev environments can set `RATE_LIMIT_ENABLED=false` to disable.
 
-**Cookie `Secure` flag defaults to false:** `COOKIE_SECURE` defaults to `false`, meaning session cookies will be sent over HTTP. Production deployments behind TLS need to explicitly set this.
+**Cookie `Secure` flag enabled by default (FIXED).** `COOKIE_SECURE` now defaults to `true`, so session cookies are only sent over HTTPS. Local dev without TLS can set `COOKIE_SECURE=false`.
 
 **Discovery subnet size unbounded up to /16:** A /16 scan covers 65,534 hosts. No upper bound is enforced, which could cause resource exhaustion.
 
@@ -243,7 +243,7 @@ Tests exist for:
 ### Immediate (security)
 1. ~~**MCP legacy API key handling inconsistent with REST API** — FIXED. Extracted shared `api.AuthenticateAPIKey()` used by both REST middleware and MCP server. Legacy keys rejected at auth boundary. All MCP tools verified to use service layer with RBAC.~~
 2. ~~**Implement CSRF protection for session-authenticated requests.** Session cookies are sent automatically by browsers. Without CSRF tokens, any cross-origin form POST to `/api/*` will succeed for logged-in users. (Note: `AuthMiddlewareWithSessions` now checks for `X-Requested-With: XMLHttpRequest` header on state-changing requests, which provides partial mitigation — but this should be documented and the UI must send the header consistently.)~~ **FIXED.** Server enforces `X-Requested-With: XMLHttpRequest` on state-changing requests. All UI fetch calls now send this header consistently.
-3. **Document that `COOKIE_SECURE=true` and `RATE_LIMIT_ENABLED=true` are required for production.**
+3. ~~**Document that `COOKIE_SECURE=true` and `RATE_LIMIT_ENABLED=true` are required for production.**~~ **FIXED.** Both now default to `true`. Dev environments opt out explicitly.
 
 ### Short-term (consistency)
 4. Standardize API error codes through `handleServiceError` exclusively

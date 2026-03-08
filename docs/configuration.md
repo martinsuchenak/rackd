@@ -17,15 +17,17 @@ Rackd can be configured through environment variables. All configuration options
 |----------|---------|-------------|
 | `API_AUTH_TOKEN` | _(empty)_ | Bearer token for API authentication. If empty, API is unauthenticated |
 | `MCP_AUTH_TOKEN` | _(empty)_ | Bearer token for MCP server authentication. If empty, MCP is unauthenticated |
+| `COOKIE_SECURE` | `true` | Send session cookies only over HTTPS. Set to `false` for local dev without TLS |
 | `SESSION_TTL` | `24h` | Duration for which a user session is valid |
 | `SESSION_STORE_TYPE` | `sqlite` | The backend storage for sessions (`sqlite`, `valkey`, `redis`) |
 | `VALKEY_URL` | `redis://localhost:6379/0` | The URL for Valkey/Redis if `SESSION_STORE_TYPE` is `valkey` or `redis` |
+| `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` and `X-Real-IP` headers from reverse proxies |
 
 ### Rate Limiting Options
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RATE_LIMIT_ENABLED` | `false` | Enable API rate limiting |
+| `RATE_LIMIT_ENABLED` | `true` | Enable API rate limiting. Set to `false` to disable for local dev |
 | `RATE_LIMIT_REQUESTS` | `100` | Maximum requests per window |
 | `RATE_LIMIT_WINDOW` | `1m` | Time window for rate limiting (Go duration format) |
 
@@ -63,18 +65,16 @@ See [Audit Trail](audit.md) for detailed documentation.
 ### Basic Setup
 
 ```bash
-# Minimal configuration for development
-export DATA_DIR="./data"
-export LISTEN_ADDR=":8080"
-export LOG_LEVEL="debug"
-
-./rackd server
+# Local development — --dev-mode disables cookie secure + rate limiting
+# and allows running without ENCRYPTION_KEY
+./rackd server --dev-mode --log-level debug
 ```
 
 ### Production Setup
 
 ```bash
-# Production configuration with authentication, rate limiting, and audit logging
+# Production configuration with authentication and audit logging
+# COOKIE_SECURE and RATE_LIMIT_ENABLED are already true by default
 export DATA_DIR="/var/lib/rackd"
 export LISTEN_ADDR=":8080"
 export API_AUTH_TOKEN="your-secure-api-token"
@@ -83,7 +83,6 @@ export LOG_FORMAT="json"
 export LOG_LEVEL="info"
 export DISCOVERY_INTERVAL="12h"
 export DISCOVERY_MAX_CONCURRENT="20"
-export RATE_LIMIT_ENABLED="true"
 export RATE_LIMIT_REQUESTS="100"
 export RATE_LIMIT_WINDOW="1m"
 export AUDIT_ENABLED="true"

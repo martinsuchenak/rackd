@@ -25,7 +25,7 @@ func Command() *cli.Command {
 			&cli.StringFlag{Name: "log-level", Usage: "Log level (trace/debug/info/warn/error)", DefaultValue: "info"},
 			&cli.StringFlag{Name: "log-format", Usage: "Log format (text/json)", DefaultValue: "text"},
 			&cli.StringFlag{Name: "discovery-interval", Usage: "Discovery scan interval", DefaultValue: "24h"},
-			&cli.BoolFlag{Name: "dev-mode", Usage: "Development mode (allows missing ENCRYPTION_KEY)"},
+			&cli.BoolFlag{Name: "dev-mode", Usage: "Development mode (relaxes security: no TLS cookies, no rate limiting, allows missing ENCRYPTION_KEY)"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := config.Load()
@@ -44,19 +44,27 @@ func Command() *cli.Command {
 				cfg.LogFormat = v
 			}
 
+			// Dev mode: relax security defaults for local development
+			devMode := cmd.GetBool("dev-mode")
+			if devMode {
+				cfg.CookieSecure = false
+				cfg.RateLimitEnabled = false
+				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)
+				log.Warn("Development mode enabled: cookie secure=false, rate limiting disabled")
+			}
+
 			if err := cfg.Validate(); err != nil {
 				return err
 			}
 
-			log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)
+			if !devMode {
+				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)
+			}
 
 			store, err := storage.NewExtendedStorage(cfg.DataDir)
 			if err != nil {
 				return err
 			}
-
-			// Get encryption key for credentials (optional in dev-mode)
-			devMode := cmd.GetBool("dev-mode")
 			encryptionKey, hasKey := getEncryptionKey(devMode)
 
 			// If no encryption key, run basic server without advanced features
