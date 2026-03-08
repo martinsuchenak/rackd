@@ -15,6 +15,8 @@ func (s *Server) registerReservationTools() {
 			mcp.String("pool_id", "Filter by pool"),
 			mcp.String("status", "Filter by status (active, expired, claimed, released)"),
 			mcp.String("ip_address", "Filter by IP address"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("reservation", "ip", "pool", "allocate", "assign"),
 		s.handleReservationList,
 	)
@@ -65,16 +67,18 @@ func (s *Server) registerReservationTools() {
 }
 
 func (s *Server) handleReservationList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	pg := mcpPagination(req)
 	filter := &model.ReservationFilter{
-		PoolID:    req.StringOr("pool_id", ""),
-		Status:    model.ReservationStatus(req.StringOr("status", "")),
-		IPAddress: req.StringOr("ip_address", ""),
+		Pagination: pg,
+		PoolID:     req.StringOr("pool_id", ""),
+		Status:     model.ReservationStatus(req.StringOr("status", "")),
+		IPAddress:  req.StringOr("ip_address", ""),
 	}
 	reservations, err := s.svc.Reservations.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(reservations), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(reservations, len(reservations), pg)), nil
 }
 
 func (s *Server) handleReservationGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

@@ -30,11 +30,11 @@ type UtilizationSnapshot struct {
 
 // SnapshotFilter for querying snapshots
 type SnapshotFilter struct {
+	Pagination
 	Type       SnapshotType
 	ResourceID string
 	After      *time.Time
 	Before     *time.Time
-	Limit      int
 }
 
 // DeviceStatusCounts for dashboard device status breakdown

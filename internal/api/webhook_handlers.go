@@ -59,7 +59,7 @@ func (h *Handler) getWebhook(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createWebhook(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateWebhookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *Handler) updateWebhook(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateWebhookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

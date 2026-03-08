@@ -49,7 +49,7 @@ func (h *Handler) getRole(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	var req model.UpdateRoleRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -162,7 +162,7 @@ func (h *Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) grantRoleToUser(w http.ResponseWriter, r *http.Request) {
 	var req model.GrantRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *Handler) grantRoleToUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) revokeRoleFromUser(w http.ResponseWriter, r *http.Request) {
 	var req model.RevokeRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *Handler) getUserRoles(w http.ResponseWriter, r *http.Request) {
 
 	requestedUserID := r.PathValue("id")
 	if requestedUserID == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "User ID is required")
+		h.badRequest(w, "User ID is required")
 		return
 	}
 
@@ -226,7 +226,7 @@ func (h *Handler) getUserPermissions(w http.ResponseWriter, r *http.Request) {
 
 	requestedUserID := r.PathValue("id")
 	if requestedUserID == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "User ID is required")
+		h.badRequest(w, "User ID is required")
 		return
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -433,3 +434,24 @@ func parseIntParam(r *http.Request, name string, defaultValue int) int {
 	}
 	return result
 }
+
+// parsePagination reads limit/offset from query params and clamps to safe bounds.
+func parsePagination(r *http.Request) model.Pagination {
+	p := model.Pagination{
+		Limit:  parseIntParam(r, "limit", model.DefaultPageSize),
+		Offset: parseIntParam(r, "offset", 0),
+	}
+	p.Clamp()
+	return p
+}
+
+// badRequest writes a standardized 400 error. Use for all request validation failures.
+func (h *Handler) badRequest(w http.ResponseWriter, message string) {
+	h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", message)
+}
+
+// invalidJSON writes a standardized 400 error for JSON decode failures.
+func (h *Handler) invalidJSON(w http.ResponseWriter) {
+	h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+}
+

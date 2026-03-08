@@ -20,7 +20,7 @@ func (h *Handler) listScheduledScans(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createScheduledScan(w http.ResponseWriter, r *http.Request) {
 	var scan model.ScheduledScan
 	if err := json.NewDecoder(r.Body).Decode(&scan); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	if err := h.svc.ScheduledScans.Create(r.Context(), &scan); err != nil {
@@ -44,7 +44,7 @@ func (h *Handler) updateScheduledScan(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var scan model.ScheduledScan
 	if err := json.NewDecoder(r.Body).Decode(&scan); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	if err := h.svc.ScheduledScans.Update(r.Context(), id, &scan); err != nil {

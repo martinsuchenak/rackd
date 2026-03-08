@@ -48,7 +48,7 @@ func (h *Handler) getReservation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createReservation(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *Handler) updateReservation(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -135,7 +135,7 @@ type createReservationRequestWithDefaults struct {
 func (h *Handler) createReservationWithDefaults(w http.ResponseWriter, r *http.Request) {
 	var req createReservationRequestWithDefaults
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *Handler) createReservationWithDefaults(w http.ResponseWriter, r *http.R
 	var expiresAt *time.Time
 	if req.ExpiresInDays > 0 {
 		if req.ExpiresInDays > 365 {
-			h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "expires_in_days cannot exceed 365")
+			h.badRequest(w, "expires_in_days cannot exceed 365")
 			return
 		}
 		exp := time.Now().UTC().AddDate(0, 0, req.ExpiresInDays)

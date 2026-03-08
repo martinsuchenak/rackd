@@ -11,7 +11,10 @@ import (
 func (s *Server) registerNetworkTools() {
 	// Native tools
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("datacenter_list", "List all datacenters"),
+		mcp.NewTool("datacenter_list", "List all datacenters",
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
+		),
 		s.handleDatacenterList,
 	)
 
@@ -25,6 +28,8 @@ func (s *Server) registerNetworkTools() {
 	s.mcpServer.RegisterTool(
 		mcp.NewTool("network_list", "List all networks",
 			mcp.String("datacenter_id", "Filter by datacenter"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		),
 		s.handleNetworkList,
 	)
@@ -91,11 +96,13 @@ func (s *Server) registerNetworkTools() {
 // Datacenter handlers
 
 func (s *Server) handleDatacenterList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
-	dcs, err := s.svc.Datacenters.List(ctx, nil)
+	pg := mcpPagination(req)
+	filter := &model.DatacenterFilter{Pagination: pg}
+	dcs, err := s.svc.Datacenters.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(dcs), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(dcs, len(dcs), pg)), nil
 }
 
 func (s *Server) handleDatacenterGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
@@ -141,14 +148,16 @@ func (s *Server) handleDatacenterDelete(ctx context.Context, req *mcp.ToolReques
 // Network handlers
 
 func (s *Server) handleNetworkList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	pg := mcpPagination(req)
 	filter := &model.NetworkFilter{
+		Pagination:   pg,
 		DatacenterID: req.StringOr("datacenter_id", ""),
 	}
 	networks, err := s.svc.Networks.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(networks), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(networks, len(networks), pg)), nil
 }
 
 func (s *Server) handleNetworkGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

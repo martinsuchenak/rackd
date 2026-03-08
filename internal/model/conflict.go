@@ -45,6 +45,7 @@ type Conflict struct {
 
 // ConflictFilter defines filter criteria for listing conflicts
 type ConflictFilter struct {
+	Pagination
 	Type   ConflictType
 	Status ConflictStatus
 }

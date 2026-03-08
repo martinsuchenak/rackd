@@ -16,6 +16,7 @@ type User struct {
 }
 
 type UserFilter struct {
+	Pagination
 	Username string
 	Email    string
 	IsActive *bool

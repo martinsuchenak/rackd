@@ -188,7 +188,7 @@ func TestSnapshotOperations_ListWithLimit(t *testing.T) {
 	}
 
 	// List with limit
-	filtered, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{ResourceID: network.ID, Limit: 5})
+	filtered, err := storage.ListSnapshots(context.Background(), &model.SnapshotFilter{Pagination: model.Pagination{Limit: 5}, ResourceID: network.ID})
 	if err != nil {
 		t.Fatalf("ListSnapshots failed: %v", err)
 	}

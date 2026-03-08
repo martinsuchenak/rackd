@@ -26,15 +26,15 @@ func (h *Handler) addRelationship(w http.ResponseWriter, r *http.Request) {
 	parentID := r.PathValue("id")
 	var req addRelationshipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		h.invalidJSON(w)
 		return
 	}
 	if req.ChildID == "" || req.Type == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_FIELD", "child_id and type are required")
+		h.badRequest(w, "child_id and type are required")
 		return
 	}
 	if !isValidRelationshipType(req.Type) {
-		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be contains, connected_to, or depends_on")
+		h.badRequest(w, "type must be contains, connected_to, or depends_on")
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *Handler) updateRelationshipNotes(w http.ResponseWriter, r *http.Request
 
 	var req updateRelationshipNotesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		h.invalidJSON(w)
 		return
 	}
 

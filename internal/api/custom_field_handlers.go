@@ -60,7 +60,7 @@ func (h *Handler) getCustomFieldDefinition(w http.ResponseWriter, r *http.Reques
 func (h *Handler) createCustomFieldDefinition(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateCustomFieldDefinitionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *Handler) updateCustomFieldDefinition(w http.ResponseWriter, r *http.Req
 
 	var req model.UpdateCustomFieldDefinitionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

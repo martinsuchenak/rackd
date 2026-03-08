@@ -15,6 +15,8 @@ func (s *Server) registerCircuitTools() {
 			mcp.String("status", "Filter by status (active, maintenance, down, decommissioned)"),
 			mcp.String("datacenter_id", "Filter by datacenter"),
 			mcp.String("type", "Filter by circuit type"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("circuit", "wan", "link", "fiber", "provider", "isp", "cross-connect"),
 		s.handleCircuitList,
 	)
@@ -64,7 +66,9 @@ func (s *Server) registerCircuitTools() {
 }
 
 func (s *Server) handleCircuitList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	pg := mcpPagination(req)
 	filter := &model.CircuitFilter{
+		Pagination:   pg,
 		Provider:     req.StringOr("provider", ""),
 		Status:       model.CircuitStatus(req.StringOr("status", "")),
 		DatacenterID: req.StringOr("datacenter_id", ""),
@@ -74,7 +78,7 @@ func (s *Server) handleCircuitList(ctx context.Context, req *mcp.ToolRequest) (*
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(circuits), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(circuits, len(circuits), pg)), nil
 }
 
 func (s *Server) handleCircuitGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

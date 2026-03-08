@@ -518,7 +518,7 @@ func TestDeliveryOperations_ListWithLimit(t *testing.T) {
 	}
 
 	// List with limit
-	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{Limit: 5})
+	result, err := storage.ListDeliveries(context.Background(), &model.DeliveryFilter{Pagination: model.Pagination{Limit: 5}})
 	if err != nil {
 		t.Fatalf("ListDeliveries failed: %v", err)
 	}

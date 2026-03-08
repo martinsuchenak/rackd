@@ -11,6 +11,8 @@ import (
 func (s *Server) registerWebhookTools() {
 	s.mcpServer.RegisterTool(
 		mcp.NewTool("webhook_list", "List webhooks",
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("webhook", "notification", "event", "callback", "http"),
 		s.handleWebhookList,
 	)
@@ -51,11 +53,12 @@ func (s *Server) registerWebhookTools() {
 }
 
 func (s *Server) handleWebhookList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
-	webhooks, err := s.svc.Webhooks.List(ctx, &model.WebhookFilter{})
+	pg := mcpPagination(req)
+	webhooks, err := s.svc.Webhooks.List(ctx, &model.WebhookFilter{Pagination: pg})
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(webhooks), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(webhooks, len(webhooks), pg)), nil
 }
 
 func (s *Server) handleWebhookGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

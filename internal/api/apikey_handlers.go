@@ -35,7 +35,7 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *Handler) getAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	key, err := h.svc.APIKeys.Get(r.Context(), id)
@@ -87,7 +87,7 @@ func (h *Handler) deleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.APIKeys.Delete(r.Context(), id); err != nil {

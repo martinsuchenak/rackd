@@ -140,6 +140,12 @@ func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFil
 
 	query += " ORDER BY created_at DESC"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list API keys: %w", err)

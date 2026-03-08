@@ -47,7 +47,7 @@ func (h *Handler) getCircuit(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createCircuit(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateCircuitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *Handler) updateCircuit(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateCircuitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

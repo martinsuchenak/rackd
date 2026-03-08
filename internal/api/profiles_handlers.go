@@ -19,7 +19,7 @@ func (h *Handler) listProfiles(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 	var profile model.ScanProfile
 	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	if err := h.svc.ScanProfiles.Create(r.Context(), &profile); err != nil {
@@ -43,7 +43,7 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var profile model.ScanProfile
 	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	if err := h.svc.ScanProfiles.Update(r.Context(), id, &profile); err != nil {

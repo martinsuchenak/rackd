@@ -33,7 +33,7 @@ func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 	var device model.Device
 	if err := json.NewDecoder(r.Body).Decode(&device); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if errs := ValidateDevice(&device); len(errs) > 0 {
@@ -51,7 +51,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *Handler) getDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 
@@ -157,11 +157,11 @@ func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) searchDevices(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter 'q' is required")
+		h.badRequest(w, "Query parameter 'q' is required")
 		return
 	}
 	if len(query) > 256 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Query parameter must be 256 characters or less")
+		h.badRequest(w, "Query parameter must be 256 characters or less")
 		return
 	}
 
@@ -236,11 +236,11 @@ func toCustomFieldSlice(arr []any) []model.CustomFieldValueInput {
 func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 	var devices []*model.Device
 	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(devices) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
@@ -255,11 +255,11 @@ func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
 	var devices []*model.Device
 	if err := json.NewDecoder(r.Body).Decode(&devices); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(devices) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
@@ -276,11 +276,11 @@ func (h *Handler) bulkDeleteDevices(w http.ResponseWriter, r *http.Request) {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(req.IDs) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
@@ -298,11 +298,11 @@ func (h *Handler) bulkAddTags(w http.ResponseWriter, r *http.Request) {
 		Tags      []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(req.DeviceIDs) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
@@ -320,11 +320,11 @@ func (h *Handler) bulkRemoveTags(w http.ResponseWriter, r *http.Request) {
 		Tags      []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(req.DeviceIDs) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 

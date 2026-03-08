@@ -12,5 +12,6 @@ type Datacenter struct {
 }
 
 type DatacenterFilter struct {
+	Pagination
 	Name string
 }

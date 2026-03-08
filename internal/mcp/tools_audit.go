@@ -27,12 +27,14 @@ func (s *Server) registerAuditTools() {
 
 func (s *Server) handleAuditList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	filter := &model.AuditFilter{
+		Pagination: model.Pagination{
+			Limit:  req.IntOr("limit", 50),
+			Offset: req.IntOr("offset", 0),
+		},
 		Resource:   req.StringOr("resource", ""),
 		ResourceID: req.StringOr("resource_id", ""),
 		UserID:     req.StringOr("user_id", ""),
 		Action:     req.StringOr("action", ""),
-		Limit:      req.IntOr("limit", 50),
-		Offset:     req.IntOr("offset", 0),
 	}
 
 	if v := req.StringOr("start_time", ""); v != "" {

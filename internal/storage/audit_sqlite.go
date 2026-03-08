@@ -64,14 +64,7 @@ func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFi
 
 	query += " ORDER BY timestamp DESC"
 
-	if filter != nil && filter.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, filter.Limit)
-		if filter.Offset > 0 {
-			query += " OFFSET ?"
-			args = append(args, filter.Offset)
-		}
-	}
+	query, args = appendPagination(query, args, &filter.Pagination)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

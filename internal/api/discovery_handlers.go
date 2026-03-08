@@ -24,7 +24,7 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 		req.ScanType = model.ScanTypeQuick
 	}
 	if !isValidScanType(req.ScanType) {
-		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "scan_type must be quick, full, or deep")
+		h.badRequest(w, "scan_type must be quick, full, or deep")
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 	discoveredID := r.PathValue("id")
 	var req promoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *Handler) promoteDevice(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    now,
 	}
 	if device.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_FIELD", "name is required")
+		h.badRequest(w, "name is required")
 		return
 	}
 
@@ -170,11 +170,11 @@ type discoveryRuleRequest struct {
 func (h *Handler) createDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 	var req discoveryRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		h.invalidJSON(w)
 		return
 	}
 	if req.NetworkID == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_FIELD", "network_id is required")
+		h.badRequest(w, "network_id is required")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *Handler) updateDiscoveryRule(w http.ResponseWriter, r *http.Request) {
 
 	var req discoveryRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+		h.invalidJSON(w)
 		return
 	}
 	existing.Enabled = req.Enabled

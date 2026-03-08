@@ -26,12 +26,14 @@ type NetworkPool struct {
 }
 
 type NetworkFilter struct {
+	Pagination
 	Name         string
 	DatacenterID string
 	VLANID       int
 }
 
 type NetworkPoolFilter struct {
+	Pagination
 	NetworkID string
 	Tags      []string
 }

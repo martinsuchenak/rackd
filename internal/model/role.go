@@ -32,11 +32,13 @@ type UserRole struct {
 }
 
 type RoleFilter struct {
+	Pagination
 	Name     string
 	IsSystem *bool
 }
 
 type PermissionFilter struct {
+	Pagination
 	Resource string
 	Action   string
 }

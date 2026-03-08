@@ -72,11 +72,11 @@ This is well-maintained across devices, networks, datacenters, circuits, NAT, re
 
 ### Inconsistencies found
 
-**Error code inconsistency:** The `handleServiceError` method maps service errors to consistent codes (`NOT_FOUND`, `FORBIDDEN`, `VALIDATION_ERROR`, etc.), but individual handlers sometimes return `INVALID_JSON` or `INVALID_INPUT` directly, bypassing this centralized mapping. All handlers should use `handleServiceError` exclusively.
+**Error code standardized (FIXED).** All handler-level validation errors now use `invalidJSON()` (code: `INVALID_JSON`) for decode failures and `badRequest()` (code: `INVALID_INPUT`) for all other request validation. Service-layer errors go through `handleServiceError` exclusively.
 
 **Update handler patterns diverge:** Device and network update handlers use map-based partial updates (decode into `map[string]interface{}`), while webhook and circuit updates use typed request structs with pointer fields for optionality. The pointer-based approach is safer and should be standardized.
 
-**Pagination not enforced:** List endpoints accept `limit` and `offset` parameters but don't enforce maximum page sizes. A request for `limit=1000000` will attempt to load all records. Add a server-side cap (e.g., 1000).
+**Pagination enforced (FIXED).** All list endpoints now apply `LIMIT`/`OFFSET` via a shared `Pagination` struct embedded in every filter type. Default page size is 100, max is 1000. The `parsePagination()` handler helper reads `limit`/`offset` query params and clamps values.
 
 **Health endpoint inconsistency:** `/healthz` and `/readyz` return plain text or simple JSON, while all other endpoints return structured `{"error": ..., "code": ...}` responses. This is acceptable for health checks but should be documented.
 
@@ -246,8 +246,8 @@ Tests exist for:
 3. ~~**Document that `COOKIE_SECURE=true` and `RATE_LIMIT_ENABLED=true` are required for production.**~~ **FIXED.** Both now default to `true`. Dev environments opt out explicitly.
 
 ### Short-term (consistency)
-4. Standardize API error codes through `handleServiceError` exclusively
-5. Enforce pagination limits on all list endpoints
+4. ~~Standardize API error codes through `handleServiceError` exclusively~~ **FIXED.** All handler-level validation errors now use two standardized helpers: `invalidJSON()` (code: `INVALID_JSON`) for JSON decode failures, and `badRequest()` (code: `INVALID_INPUT`) for all other request validation. Eliminated ad-hoc codes (`MISSING_FIELD`, `MISSING_QUERY`, `MISSING_RESOURCE_ID`, `INVALID_TYPE`, `INVALID_ID`, `MISSING_USERNAME`, `MISSING_PASSWORD`). Service-layer errors continue through `handleServiceError`.
+5. ~~Enforce pagination limits on all list endpoints~~ **FIXED.** Added `Pagination` struct (Limit/Offset with `Clamp()`) embedded in all filter types. All storage List methods now apply `LIMIT`/`OFFSET` via shared `appendPagination` helper. Default page size: 100, max: 1000. Handler-level `parsePagination()` reads `limit`/`offset` query params and clamps.
 6. Update `docs/authentication.md` and `docs/security.md` to reflect current implementation
 7. Generate or update OpenAPI spec to cover all endpoints
 8. Create `docs/configuration-reference.md` from config.go

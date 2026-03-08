@@ -30,6 +30,7 @@ type Reservation struct {
 
 // ReservationFilter defines filter criteria for listing reservations
 type ReservationFilter struct {
+	Pagination
 	PoolID     string
 	Status     ReservationStatus
 	ReservedBy string

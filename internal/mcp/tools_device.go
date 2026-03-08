@@ -27,6 +27,8 @@ func (s *Server) registerDeviceTools() {
 			mcp.String("network_id", "Filter by network"),
 			mcp.String("pool_id", "Filter by IP pool"),
 			mcp.String("status", "Filter by status (planned, active, maintenance, decommissioned)"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		),
 		s.handleDeviceList,
 	)
@@ -121,6 +123,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 	}
 
 	filter := &model.DeviceFilter{
+		Pagination:   mcpPagination(req),
 		Tags:         req.StringSliceOr("tags", nil),
 		DatacenterID: req.StringOr("datacenter_id", ""),
 		NetworkID:    req.StringOr("network_id", ""),
@@ -131,7 +134,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(devices), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(devices, len(devices), filter.Pagination)), nil
 }
 
 func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

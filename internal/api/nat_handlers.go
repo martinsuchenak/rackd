@@ -53,7 +53,7 @@ func (h *Handler) getNATMapping(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createNATMapping(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateNATRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *Handler) updateNATMapping(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateNATRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

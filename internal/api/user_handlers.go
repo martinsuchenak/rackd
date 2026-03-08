@@ -30,7 +30,7 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	resp, err := h.svc.Users.Get(r.Context(), id)
@@ -46,7 +46,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -63,13 +63,13 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.UpdateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.Users.Delete(r.Context(), id); err != nil {
@@ -102,13 +102,13 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.ChangePasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -127,13 +127,13 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.ResetPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

@@ -104,6 +104,7 @@ type CustomFieldFilter struct {
 
 // CustomFieldDefinitionFilter for listing definitions
 type CustomFieldDefinitionFilter struct {
+	Pagination
 	Type string `json:"type,omitempty"`
 }
 

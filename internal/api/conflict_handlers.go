@@ -38,12 +38,12 @@ func (h *Handler) getConflict(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) resolveConflict(w http.ResponseWriter, r *http.Request) {
 	var resolution model.ConflictResolution
 	if err := json.NewDecoder(r.Body).Decode(&resolution); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
 	if resolution.ConflictID == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "conflict_id is required")
+		h.badRequest(w, "conflict_id is required")
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *Handler) detectConflicts(w http.ResponseWriter, r *http.Request) {
 	conflictType := r.URL.Query().Get("type")
 
 	if conflictType != "" && conflictType != "duplicate_ip" && conflictType != "overlapping_subnet" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_TYPE", "type must be 'duplicate_ip' or 'overlapping_subnet'")
+		h.badRequest(w, "type must be 'duplicate_ip' or 'overlapping_subnet'")
 		return
 	}
 

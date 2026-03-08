@@ -232,21 +232,19 @@ func TestToolsRegistered(t *testing.T) {
 
 	tools := srv.Inner().ListTools()
 
+	// Only native (non-discoverable) tools appear in ListTools().
+	// Discoverable tools are registered but hidden until discovered via keywords.
 	expectedTools := []string{
+		"search",
 		"device_save",
 		"device_get",
 		"device_list",
 		"device_delete",
-		"device_add_relationship",
-		"device_get_relationships",
 		"datacenter_list",
-		"datacenter_save",
+		"datacenter_get",
 		"network_list",
-		"network_save",
+		"network_get",
 		"pool_get_next_ip",
-		"discovery_scan",
-		"discovery_list",
-		"discovery_promote",
 	}
 
 	toolNames := make(map[string]bool)

@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -57,9 +56,7 @@ func (s *SQLiteStorage) ListSnapshots(ctx context.Context, filter *model.Snapsho
 
 	query += " ORDER BY timestamp DESC"
 
-	if filter != nil && filter.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", filter.Limit)
-	}
+	query, args = appendPagination(query, args, &filter.Pagination)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

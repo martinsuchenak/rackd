@@ -17,6 +17,8 @@ func (s *Server) registerNATTools() {
 			mcp.String("device_id", "Filter by device"),
 			mcp.String("datacenter_id", "Filter by datacenter"),
 			mcp.String("network_id", "Filter by network"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("nat", "port", "forward", "mapping", "translation", "firewall"),
 		s.handleNATList,
 	)
@@ -56,7 +58,9 @@ func (s *Server) registerNATTools() {
 }
 
 func (s *Server) handleNATList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	pg := mcpPagination(req)
 	filter := &model.NATFilter{
+		Pagination:   pg,
 		ExternalIP:   req.StringOr("external_ip", ""),
 		InternalIP:   req.StringOr("internal_ip", ""),
 		Protocol:     model.NATProtocol(req.StringOr("protocol", "")),
@@ -68,7 +72,7 @@ func (s *Server) handleNATList(ctx context.Context, req *mcp.ToolRequest) (*mcp.
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(mappings), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(mappings, len(mappings), pg)), nil
 }
 
 func (s *Server) handleNATGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

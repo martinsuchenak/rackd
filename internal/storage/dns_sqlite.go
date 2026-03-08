@@ -132,6 +132,12 @@ func (s *SQLiteStorage) ListDNSProviders(ctx context.Context, filter *model.DNSP
 
 	query += " ORDER BY name"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS providers: %w", err)
@@ -419,6 +425,12 @@ func (s *SQLiteStorage) ListDNSZones(ctx context.Context, filter *model.DNSZoneF
 	}
 
 	query += " ORDER BY name"
+
+	var pgz *model.Pagination
+	if filter != nil {
+		pgz = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pgz)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -826,6 +838,12 @@ func (s *SQLiteStorage) ListDNSRecords(ctx context.Context, filter *model.DNSRec
 	}
 
 	query += " ORDER BY zone_id, name, type"
+
+	var pgr *model.Pagination
+	if filter != nil {
+		pgr = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pgr)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

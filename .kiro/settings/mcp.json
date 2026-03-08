@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "rackd": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer 019ccb25-ec73-7720-aa74-2f74f560f44a"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "network_list"
+      ]
+    }
+  }
+}

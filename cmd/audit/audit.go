@@ -52,7 +52,7 @@ func listCommand() *cli.Command {
 				Resource:   cmd.GetString("resource"),
 				ResourceID: cmd.GetString("resource-id"),
 				Action:     cmd.GetString("action"),
-				Limit:      cmd.GetInt("limit"),
+				Pagination: model.Pagination{Limit: cmd.GetInt("limit")},
 			}
 
 			ctx = service.SystemContext(ctx, "cli")

@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -10,24 +9,13 @@ import (
 
 // listAuditLogs handles GET /api/audit
 func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
 	filter := &model.AuditFilter{
+		Pagination: pg,
 		Resource:   r.URL.Query().Get("resource"),
 		ResourceID: r.URL.Query().Get("resource_id"),
 		UserID:     r.URL.Query().Get("user_id"),
 		Action:     r.URL.Query().Get("action"),
-		Limit:      100,
-	}
-
-	if limit := r.URL.Query().Get("limit"); limit != "" {
-		if l, err := strconv.Atoi(limit); err == nil && l > 0 {
-			filter.Limit = l
-		}
-	}
-
-	if offset := r.URL.Query().Get("offset"); offset != "" {
-		if o, err := strconv.Atoi(offset); err == nil && o >= 0 {
-			filter.Offset = o
-		}
 	}
 
 	if start := r.URL.Query().Get("start_time"); start != "" {

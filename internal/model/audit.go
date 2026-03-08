@@ -20,6 +20,7 @@ type AuditLog struct {
 
 // AuditFilter for querying audit logs
 type AuditFilter struct {
+	Pagination
 	Resource   string
 	ResourceID string
 	UserID     string
@@ -27,6 +28,4 @@ type AuditFilter struct {
 	Source     string
 	StartTime  *time.Time
 	EndTime    *time.Time
-	Limit      int
-	Offset     int
 }

@@ -208,6 +208,12 @@ func (s *SQLiteStorage) ListCircuits(ctx context.Context, filter *model.CircuitF
 
 	query += " ORDER BY name"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list circuits: %w", err)

@@ -136,7 +136,7 @@ func TestAuditLogPagination(t *testing.T) {
 	}
 
 	// Get first page
-	page1, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Limit: 5, Offset: 0})
+	page1, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Pagination: model.Pagination{Limit: 5, Offset: 0}})
 	if err != nil {
 		t.Fatalf("Failed to get page 1: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestAuditLogPagination(t *testing.T) {
 	}
 
 	// Get second page
-	page2, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Limit: 5, Offset: 5})
+	page2, err := store.ListAuditLogs(context.Background(), &model.AuditFilter{Pagination: model.Pagination{Limit: 5, Offset: 5}})
 	if err != nil {
 		t.Fatalf("Failed to get page 2: %v", err)
 	}

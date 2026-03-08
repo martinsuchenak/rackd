@@ -77,6 +77,12 @@ func (s *SQLiteStorage) ListWebhooks(ctx context.Context, filter *model.WebhookF
 
 	query += " ORDER BY created_at DESC"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -231,10 +237,7 @@ func (s *SQLiteStorage) ListDeliveries(ctx context.Context, filter *model.Delive
 
 	query += " ORDER BY created_at DESC"
 
-	if filter != nil && filter.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, filter.Limit)
-	}
+	query, args = appendPagination(query, args, &filter.Pagination)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

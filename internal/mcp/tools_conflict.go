@@ -13,6 +13,8 @@ func (s *Server) registerConflictTools() {
 		mcp.NewTool("conflict_list", "List detected IP/subnet conflicts",
 			mcp.String("type", "Filter by conflict type"),
 			mcp.String("status", "Filter by status"),
+			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
+			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("conflict", "duplicate", "ip", "subnet", "overlap", "collision"),
 		s.handleConflictList,
 	)
@@ -34,15 +36,17 @@ func (s *Server) registerConflictTools() {
 }
 
 func (s *Server) handleConflictList(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
+	pg := mcpPagination(req)
 	filter := &model.ConflictFilter{
-		Type:   model.ConflictType(req.StringOr("type", "")),
-		Status: model.ConflictStatus(req.StringOr("status", "")),
+		Pagination: pg,
+		Type:       model.ConflictType(req.StringOr("type", "")),
+		Status:     model.ConflictStatus(req.StringOr("status", "")),
 	}
 	conflicts, err := s.svc.Conflicts.List(ctx, filter)
 	if err != nil {
 		return nil, mcp.NewToolErrorInternal(err.Error())
 	}
-	return mcp.NewToolResponseJSON(conflicts), nil
+	return mcp.NewToolResponseJSON(paginatedResponse(conflicts, len(conflicts), pg)), nil
 }
 
 func (s *Server) handleConflictDetect(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {

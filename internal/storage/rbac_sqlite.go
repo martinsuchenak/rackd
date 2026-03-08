@@ -107,6 +107,12 @@ func (s *SQLiteStorage) ListPermissions(ctx context.Context, filter *model.Permi
 
 	query += " ORDER BY resource, action"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list permissions: %w", err)
@@ -216,6 +222,12 @@ func (s *SQLiteStorage) ListRoles(ctx context.Context, filter *model.RoleFilter)
 	}
 
 	query += " ORDER BY is_system DESC, name"
+
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

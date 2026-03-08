@@ -23,7 +23,7 @@ func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 	var dc model.Datacenter
 	if err := json.NewDecoder(r.Body).Decode(&dc); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *Handler) getDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	dc, err := h.svc.Datacenters.Get(r.Context(), id)
@@ -58,7 +58,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	dc, err := h.svc.Datacenters.Get(r.Context(), id)
@@ -69,7 +69,7 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handler) deleteDatacenter(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.Datacenters.Delete(r.Context(), id); err != nil {
@@ -113,7 +113,7 @@ func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	devices, err := h.svc.Datacenters.GetDevices(r.Context(), id)
@@ -127,7 +127,7 @@ func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) searchDatacenters(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_QUERY", "query parameter 'q' is required")
+		h.badRequest(w, "query parameter 'q' is required")
 		return
 	}
 

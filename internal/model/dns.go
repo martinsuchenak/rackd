@@ -50,6 +50,7 @@ type DNSProvider = DNSProviderConfig
 
 // DNSProviderFilter for filtering DNS providers
 type DNSProviderFilter struct {
+	Pagination
 	Type DNSProviderType
 }
 
@@ -208,6 +209,7 @@ type DNSRecord struct {
 
 // DNSZoneFilter for filtering DNS zones
 type DNSZoneFilter struct {
+	Pagination
 	ProviderID string
 	NetworkID  *string
 	AutoSync   *bool
@@ -215,6 +217,7 @@ type DNSZoneFilter struct {
 
 // DNSRecordFilter for filtering DNS records
 type DNSRecordFilter struct {
+	Pagination
 	ZoneID     string
 	DeviceID   *string
 	Type       string

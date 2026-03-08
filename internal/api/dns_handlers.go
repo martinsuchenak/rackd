@@ -33,7 +33,7 @@ func (h *Handler) listDNSProviders(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createDNSProvider(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateDNSProviderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *Handler) getDNSProvider(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	provider, err := h.svc.DNS.GetProvider(r.Context(), id)
@@ -66,12 +66,12 @@ func (h *Handler) updateDNSProvider(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.UpdateDNSProviderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *Handler) deleteDNSProvider(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.DNS.DeleteProvider(r.Context(), id); err != nil {
@@ -103,7 +103,7 @@ func (h *Handler) testDNSProvider(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.DNS.TestProvider(r.Context(), id); err != nil {
@@ -118,7 +118,7 @@ func (h *Handler) listDNSProviderZones(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	filter := &model.DNSZoneFilter{
@@ -171,7 +171,7 @@ func (h *Handler) listDNSZones(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createDNSZone(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateDNSZoneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -188,7 +188,7 @@ func (h *Handler) getDNSZone(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	zone, err := h.svc.DNS.GetZone(r.Context(), id)
@@ -204,12 +204,12 @@ func (h *Handler) updateDNSZone(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.UpdateDNSZoneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -226,7 +226,7 @@ func (h *Handler) deleteDNSZone(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.DNS.DeleteZone(r.Context(), id); err != nil {
@@ -241,7 +241,7 @@ func (h *Handler) syncDNSZone(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	result, err := h.svc.DNS.SyncZone(r.Context(), id)
@@ -257,7 +257,7 @@ func (h *Handler) importDNSZone(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	result, err := h.svc.DNS.ImportFromDNS(r.Context(), id)
@@ -273,7 +273,7 @@ func (h *Handler) listDNSZoneRecords(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	filter := &model.DNSRecordFilter{
@@ -313,7 +313,7 @@ func (h *Handler) getDNSRecord(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	record, err := h.svc.DNS.GetRecord(r.Context(), id)
@@ -329,12 +329,12 @@ func (h *Handler) updateDNSRecord(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.UpdateDNSRecordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -351,7 +351,7 @@ func (h *Handler) deleteDNSRecord(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.DNS.DeleteRecord(r.Context(), id); err != nil {
@@ -366,12 +366,12 @@ func (h *Handler) linkDNSRecord(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.LinkDNSRecordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -388,12 +388,12 @@ func (h *Handler) promoteDNSRecord(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var req model.PromoteDNSRecordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 

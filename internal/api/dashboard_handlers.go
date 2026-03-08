@@ -39,7 +39,7 @@ func (h *Handler) getUtilizationTrend(w http.ResponseWriter, r *http.Request) {
 
 	resourceID := r.URL.Query().Get("resource_id")
 	if resourceID == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_RESOURCE_ID", "resource_id parameter is required")
+		h.badRequest(w, "resource_id parameter is required")
 		return
 	}
 

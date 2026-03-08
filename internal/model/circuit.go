@@ -68,6 +68,7 @@ type Circuit struct {
 
 // CircuitFilter for filtering circuits
 type CircuitFilter struct {
+	Pagination
 	Provider     string
 	Status       CircuitStatus
 	DatacenterID string

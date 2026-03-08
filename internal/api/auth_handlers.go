@@ -38,17 +38,17 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
 	if req.Username == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_USERNAME", "Username is required")
+		h.badRequest(w, "Username is required")
 		return
 	}
 
 	if req.Password == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_PASSWORD", "Password is required")
+		h.badRequest(w, "Password is required")
 		return
 	}
 

@@ -54,6 +54,7 @@ type NATMapping struct {
 
 // NATFilter for filtering NAT mappings
 type NATFilter struct {
+	Pagination
 	ExternalIP   string
 	InternalIP   string
 	Protocol     NATProtocol

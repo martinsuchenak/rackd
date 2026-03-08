@@ -29,7 +29,7 @@ func NewWebhookService(store storage.ExtendedStorage) *WebhookService {
 
 // List returns all webhooks matching the filter
 func (s *WebhookService) List(ctx context.Context, filter *model.WebhookFilter) ([]model.Webhook, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "list"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "list"); err != nil {
 		return nil, err
 	}
 
@@ -43,7 +43,7 @@ func (s *WebhookService) List(ctx context.Context, filter *model.WebhookFilter) 
 
 // Get returns a single webhook by ID
 func (s *WebhookService) Get(ctx context.Context, id string) (*model.Webhook, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "read"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "read"); err != nil {
 		return nil, err
 	}
 
@@ -60,7 +60,7 @@ func (s *WebhookService) Get(ctx context.Context, id string) (*model.Webhook, er
 
 // Create creates a new webhook
 func (s *WebhookService) Create(ctx context.Context, req *model.CreateWebhookRequest) (*model.Webhook, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "create"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "create"); err != nil {
 		return nil, err
 	}
 
@@ -111,7 +111,7 @@ func (s *WebhookService) Create(ctx context.Context, req *model.CreateWebhookReq
 
 // Update updates an existing webhook
 func (s *WebhookService) Update(ctx context.Context, id string, req *model.UpdateWebhookRequest) (*model.Webhook, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "update"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "update"); err != nil {
 		return nil, err
 	}
 
@@ -169,7 +169,7 @@ func (s *WebhookService) Update(ctx context.Context, id string, req *model.Updat
 
 // Delete deletes a webhook
 func (s *WebhookService) Delete(ctx context.Context, id string) error {
-	if err := requirePermission(ctx, s.store, "webhooks", "delete"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "delete"); err != nil {
 		return err
 	}
 
@@ -185,7 +185,7 @@ func (s *WebhookService) Delete(ctx context.Context, id string) error {
 
 // ListDeliveries returns delivery records for a webhook
 func (s *WebhookService) ListDeliveries(ctx context.Context, filter *model.DeliveryFilter) ([]model.WebhookDelivery, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "read"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "read"); err != nil {
 		return nil, err
 	}
 
@@ -199,7 +199,7 @@ func (s *WebhookService) ListDeliveries(ctx context.Context, filter *model.Deliv
 
 // GetDelivery returns a single delivery record
 func (s *WebhookService) GetDelivery(ctx context.Context, id string) (*model.WebhookDelivery, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "read"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "read"); err != nil {
 		return nil, err
 	}
 
@@ -216,7 +216,7 @@ func (s *WebhookService) GetDelivery(ctx context.Context, id string) (*model.Web
 
 // Ping sends a test event to a webhook
 func (s *WebhookService) Ping(ctx context.Context, id string) (*model.WebhookDelivery, error) {
-	if err := requirePermission(ctx, s.store, "webhooks", "update"); err != nil {
+	if err := requirePermission(ctx, s.store, "webhook", "update"); err != nil {
 		return nil, err
 	}
 

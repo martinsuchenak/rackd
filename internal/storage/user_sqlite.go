@@ -167,6 +167,12 @@ func (s *SQLiteStorage) ListUsers(ctx context.Context, filter *model.UserFilter)
 
 	query += " ORDER BY created_at DESC"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)

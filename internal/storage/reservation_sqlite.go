@@ -215,6 +215,12 @@ func (s *SQLiteStorage) ListReservations(ctx context.Context, filter *model.Rese
 
 	query += " ORDER BY reserved_at DESC"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list reservations: %w", err)

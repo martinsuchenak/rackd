@@ -100,6 +100,12 @@ func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *
 
 	query += " ORDER BY name ASC"
 
+	var pg *model.Pagination
+	if filter != nil {
+		pg = &filter.Pagination
+	}
+	query, args = appendPagination(query, args, pg)
+
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err

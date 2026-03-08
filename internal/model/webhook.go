@@ -115,18 +115,19 @@ func (s DeliveryStatus) IsValid() bool {
 
 // WebhookFilter for querying webhooks
 type WebhookFilter struct {
+	Pagination
 	Active *bool
 	Events []EventType
 }
 
 // DeliveryFilter for querying deliveries
 type DeliveryFilter struct {
+	Pagination
 	WebhookID string
 	Status    DeliveryStatus
 	EventType EventType
 	After     *time.Time
 	Before    *time.Time
-	Limit     int
 }
 
 // Event represents an internal event to be dispatched

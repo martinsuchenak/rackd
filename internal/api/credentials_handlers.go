@@ -24,7 +24,7 @@ func (h *Handler) listCredentials(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 	var input model.CredentialInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	cred, err := h.svc.Credentials.Create(r.Context(), &input)
@@ -49,7 +49,7 @@ func (h *Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var input model.CredentialInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		h.invalidJSON(w)
 		return
 	}
 	cred, err := h.svc.Credentials.Update(r.Context(), id, &input)

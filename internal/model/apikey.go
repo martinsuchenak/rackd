@@ -16,6 +16,7 @@ type APIKey struct {
 
 // APIKeyFilter represents filter criteria for listing API keys
 type APIKeyFilter struct {
+	Pagination
 	Name   string
 	UserID string
 }

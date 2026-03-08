@@ -69,6 +69,7 @@ type Address struct {
 }
 
 type DeviceFilter struct {
+	Pagination
 	Tags         []string
 	DatacenterID string
 	NetworkID    string

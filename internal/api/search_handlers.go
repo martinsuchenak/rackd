@@ -20,7 +20,7 @@ type SearchResponse struct {
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_QUERY", "query parameter 'q' is required")
+		h.badRequest(w, "query parameter 'q' is required")
 		return
 	}
 

@@ -25,7 +25,7 @@ func (h *Handler) listNetworks(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 	var network model.Network
 	if err := json.NewDecoder(r.Body).Decode(&network); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (h *Handler) getNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	network, err := h.svc.Networks.Get(r.Context(), id)
@@ -55,7 +55,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	network, err := h.svc.Networks.Get(r.Context(), id)
@@ -66,7 +66,7 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *Handler) deleteNetwork(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.Networks.Delete(r.Context(), id); err != nil {
@@ -111,7 +111,7 @@ func (h *Handler) getNetworkDevices(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	devices, err := h.svc.Networks.GetDevices(r.Context(), id)
@@ -126,7 +126,7 @@ func (h *Handler) getNetworkUtilization(w http.ResponseWriter, r *http.Request) 
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	utilization, err := h.svc.Networks.GetUtilization(r.Context(), id)
@@ -141,7 +141,7 @@ func (h *Handler) listNetworkPools(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	pools, err := h.svc.Pools.ListByNetwork(r.Context(), id)
@@ -156,12 +156,12 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 	networkID := r.PathValue("id")
 
 	if networkID == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	var pool model.NetworkPool
 	if err := json.NewDecoder(r.Body).Decode(&pool); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	pool.NetworkID = networkID
@@ -177,7 +177,7 @@ func (h *Handler) getNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	pool, err := h.svc.Pools.Get(r.Context(), id)
@@ -192,7 +192,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	pool, err := h.svc.Pools.Get(r.Context(), id)
@@ -203,7 +203,7 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (h *Handler) deleteNetworkPool(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	if err := h.svc.Pools.Delete(r.Context(), id); err != nil {
@@ -253,7 +253,7 @@ func (h *Handler) getNextIP(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	ip, err := h.svc.Pools.GetNextIP(r.Context(), id)
@@ -268,7 +268,7 @@ func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if id == "" {
-		h.writeError(w, http.StatusBadRequest, "INVALID_ID", "ID is required")
+		h.badRequest(w, "ID is required")
 		return
 	}
 	heatmap, err := h.svc.Pools.GetHeatmap(r.Context(), id)
@@ -282,7 +282,7 @@ func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		h.writeError(w, http.StatusBadRequest, "MISSING_QUERY", "query parameter 'q' is required")
+		h.badRequest(w, "query parameter 'q' is required")
 		return
 	}
 
@@ -297,11 +297,11 @@ func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 	var networks []*model.Network
 	if err := json.NewDecoder(r.Body).Decode(&networks); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(networks) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
@@ -318,11 +318,11 @@ func (h *Handler) bulkDeleteNetworks(w http.ResponseWriter, r *http.Request) {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Invalid JSON")
+		h.invalidJSON(w)
 		return
 	}
 	if len(req.IDs) > 100 {
-		h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", "Maximum 100 items allowed in bulk operations")
+		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
 
