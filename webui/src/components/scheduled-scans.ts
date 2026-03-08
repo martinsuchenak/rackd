@@ -56,9 +56,9 @@ export function scheduledScansList() {
       this.error = '';
       try {
         const [scansRes, networksRes, profilesRes] = await Promise.all([
-          fetch('/api/scheduled-scans'),
-          fetch('/api/networks'),
-          fetch('/api/scan-profiles'),
+          fetch('/api/scheduled-scans', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
+          fetch('/api/networks', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
+          fetch('/api/scan-profiles', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
         ]);
 
         if (scansRes.ok) this.scans = (await scansRes.json()) || [];
@@ -102,7 +102,8 @@ export function scheduledScansList() {
         const url = isEdit ? `/api/scheduled-scans/${this.form.id}` : '/api/scheduled-scans';
         const response = await fetch(url, {
           method: isEdit ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
           body: JSON.stringify(this.form),
         });
 
@@ -123,7 +124,8 @@ export function scheduledScansList() {
         const updated = { ...scan, enabled: !scan.enabled };
         const response = await fetch(`/api/scheduled-scans/${scan.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
           body: JSON.stringify(updated),
         });
 
@@ -147,6 +149,8 @@ export function scheduledScansList() {
       try {
         const response = await fetch(`/api/scheduled-scans/${this.deleteTarget.id}`, {
           method: 'DELETE',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
         });
         if (response.ok) {
           this.showDeleteModal = false;

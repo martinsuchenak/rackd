@@ -11,7 +11,6 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/metrics"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -70,32 +69,65 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// resolveAPIKeyCaller builds a Caller for an authenticated API key.
-// If the key has a UserID, it resolves the owner and returns a CallerTypeUser
-// so that RBAC is enforced using the owner's roles. Legacy keys (no UserID)
-// get CallerTypeAPIKey which bypasses RBAC.
-func resolveAPIKeyCaller(store storage.ExtendedStorage, key *model.APIKey, ip, source string) *service.Caller {
-	if key.UserID != "" {
-		user, err := store.GetUser(context.Background(), key.UserID)
-		if err == nil && user.IsActive {
-			return &service.Caller{
-				Type:      service.CallerTypeUser,
-				UserID:    user.ID,
-				Username:  user.Username,
-				IPAddress: ip,
-				Source:    source,
-			}
-		}
-		log.Warn("API key owner not found or inactive", "key_name", key.Name, "user_id", key.UserID)
+// API key authentication errors
+var (
+	ErrAuthInvalidToken = fmt.Errorf("invalid token")
+	ErrAuthExpiredKey   = fmt.Errorf("expired API key")
+	ErrAuthLegacyKey    = fmt.Errorf("legacy API key without user association")
+	ErrAuthOwnerInvalid = fmt.Errorf("API key owner not found or inactive")
+)
+
+// AuthenticateAPIKey validates a Bearer token as an API key and returns the
+// resolved Caller. This is the single source of truth for API key authentication
+// used by both the REST API middleware and the MCP server.
+//
+// It enforces that all API keys must be associated with an active user — legacy
+// keys (no UserID) are rejected.
+func AuthenticateAPIKey(ctx context.Context, store storage.ExtendedStorage, token, ip, source string) (*service.Caller, error) {
+	if store == nil {
+		return nil, ErrAuthInvalidToken
 	}
-	// Legacy key (no user association) — no longer supported
+
+	hash := auth.HashToken(token)
+	key, err := store.GetAPIKeyByKey(ctx, hash)
+	if err != nil || subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) != 1 {
+		return nil, ErrAuthInvalidToken
+	}
+
+	if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
+		log.Debug("Auth failed: expired API key", "key_name", key.Name)
+		return nil, ErrAuthExpiredKey
+	}
+
+	// Update last used (async, don't block request)
+	go func() {
+		store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
+	}()
+
 	// API keys must be associated with a user to enforce RBAC
-	log.Warn("Legacy API key rejected - no user association",
-		"key_name", key.Name,
-		"key_id", key.ID,
-		"ip", ip,
-	)
-	return nil
+	if key.UserID == "" {
+		log.Warn("Legacy API key rejected - no user association",
+			"key_name", key.Name,
+			"key_id", key.ID,
+			"ip", ip,
+		)
+		return nil, ErrAuthLegacyKey
+	}
+
+	user, err := store.GetUser(ctx, key.UserID)
+	if err != nil || !user.IsActive {
+		log.Warn("API key owner not found or inactive", "key_name", key.Name, "user_id", key.UserID)
+		return nil, ErrAuthOwnerInvalid
+	}
+
+	log.Trace("Auth successful (API key)", "key_name", key.Name, "source", source)
+	return &service.Caller{
+		Type:      service.CallerTypeUser,
+		UserID:    user.ID,
+		Username:  user.Username,
+		IPAddress: ip,
+		Source:    source,
+	}, nil
 }
 
 // AuthMiddleware validates API keys
@@ -109,43 +141,23 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 			return
 		}
 
-		providedToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Try API key authentication
-		if store != nil {
-			hash := auth.HashToken(providedToken)
-			key, err := store.GetAPIKeyByKey(r.Context(), hash)
-			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
-				// Check expiration
-				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
-					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
-					w.Header().Set("Content-Type", "application/json")
-					http.Error(w, `{"error":"Unauthorized","code":"EXPIRED_KEY"}`, http.StatusUnauthorized)
-					return
-				}
-
-				// Update last used (async, don't block request)
-				go func() {
-					store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
-				}()
-
-				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
-				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
-				if caller == nil {
-					// Legacy API key without user association - rejected
-					w.Header().Set("Content-Type", "application/json")
-					http.Error(w, `{"error":"Unauthorized","code":"LEGACY_API_KEY_UNSUPPORTED"}`, http.StatusUnauthorized)
-					return
-				}
-				r = r.WithContext(service.WithCaller(r.Context(), caller))
-				next(w, r)
-				return
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, false), "api")
+		if err != nil {
+			code := "UNAUTHORIZED"
+			if err == ErrAuthExpiredKey {
+				code = "EXPIRED_KEY"
+			} else if err == ErrAuthLegacyKey {
+				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
+			log.Debug("Auth failed", "path", r.URL.Path, "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, fmt.Sprintf(`{"error":"Unauthorized","code":"%s"}`, code), http.StatusUnauthorized)
+			return
 		}
 
-		log.Debug("Auth failed: invalid token", "path", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+		r = r.WithContext(service.WithCaller(r.Context(), caller))
+		next(w, r)
 	}
 }
 
@@ -197,43 +209,23 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 			return
 		}
 
-		providedToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Try API key authentication
-		if store != nil {
-			hash := auth.HashToken(providedToken)
-			key, err := store.GetAPIKeyByKey(r.Context(), hash)
-			if err == nil && subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) == 1 {
-				// Check expiration
-				if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
-					log.Debug("Auth failed: expired API key", "path", r.URL.Path, "key_name", key.Name)
-					w.Header().Set("Content-Type", "application/json")
-					http.Error(w, `{"error":"Unauthorized","code":"EXPIRED_KEY"}`, http.StatusUnauthorized)
-					return
-				}
-
-				// Update last used (async, don't block request)
-				go func() {
-					store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
-				}()
-
-				log.Trace("Auth successful (API key)", "path", r.URL.Path, "key_name", key.Name)
-				caller := resolveAPIKeyCaller(store, key, getClientIP(r, false), "api")
-				if caller == nil {
-					// Legacy API key without user association - rejected
-					w.Header().Set("Content-Type", "application/json")
-					http.Error(w, `{"error":"Unauthorized","code":"LEGACY_API_KEY_UNSUPPORTED"}`, http.StatusUnauthorized)
-					return
-				}
-				r = r.WithContext(service.WithCaller(r.Context(), caller))
-				next(w, r)
-				return
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, false), "api")
+		if err != nil {
+			code := "UNAUTHORIZED"
+			if err == ErrAuthExpiredKey {
+				code = "EXPIRED_KEY"
+			} else if err == ErrAuthLegacyKey {
+				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
+			log.Debug("Auth failed", "path", r.URL.Path, "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			http.Error(w, fmt.Sprintf(`{"error":"Unauthorized","code":"%s"}`, code), http.StatusUnauthorized)
+			return
 		}
 
-		log.Debug("Auth failed: invalid token", "path", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+		r = r.WithContext(service.WithCaller(r.Context(), caller))
+		next(w, r)
 	}
 }
 

@@ -103,11 +103,23 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
 	defer store.Close()
 
-	// Create an API key
+	// Create a user to associate with the API key
+	user := &model.User{
+		Username: "testuser",
+		Email:    "test@example.com",
+		FullName: "Test User",
+		IsActive: true,
+	}
+	if err := store.CreateUser(context.Background(), user); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	// Create an API key associated with the user
 	apiKeySecret := "test-token-12345"
 	key := &model.APIKey{
-		Name: "test-key",
-		Key:  auth.HashToken(apiKeySecret),
+		Name:   "test-key",
+		Key:    auth.HashToken(apiKeySecret),
+		UserID: user.ID,
 	}
 	if err := store.CreateAPIKey(context.Background(), key); err != nil {
 		t.Fatalf("failed to create API key: %v", err)
@@ -140,6 +152,34 @@ func TestHandleRequest_WithAuth_InvalidToken(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status 401, got %d", w.Code)
+	}
+}
+
+func TestHandleRequest_WithAuth_LegacyKeyRejected(t *testing.T) {
+	srv, store := newTestServerWithAuth(t)
+	defer store.Close()
+
+	// Create an API key WITHOUT a user association (legacy key)
+	apiKeySecret := "legacy-key-no-user"
+	key := &model.APIKey{
+		Name: "legacy-key",
+		Key:  auth.HashToken(apiKeySecret),
+		// No UserID — this is the legacy pattern that must be rejected
+	}
+	if err := store.CreateAPIKey(context.Background(), key); err != nil {
+		t.Fatalf("failed to create API key: %v", err)
+	}
+
+	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKeySecret)
+	w := httptest.NewRecorder()
+
+	srv.HandleRequest(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected legacy key to be rejected with 401, got %d", w.Code)
 	}
 }
 

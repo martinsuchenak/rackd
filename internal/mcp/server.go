@@ -1,15 +1,12 @@
 package mcp
 
 import (
-	"context"
-	"crypto/subtle"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/paularlott/mcp"
 
-	"github.com/martinsuchenak/rackd/internal/auth"
+	"github.com/martinsuchenak/rackd/internal/api"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -77,7 +74,7 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			if authHeader == "" {
 				log.Debug("MCP auth failed: no Authorization header")
 			} else {
-				log.Debug("MCP auth failed: missing Bearer prefix", "auth_header_prefix", authHeader[:min(len(authHeader), 20)])
+				log.Debug("MCP auth failed: missing Bearer prefix")
 			}
 			s.writeUnauthorized(w)
 			return
@@ -100,48 +97,14 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Strategy 2: Fall back to API key authentication
+		// Strategy 2: Fall back to API key authentication using shared logic
 		if caller == nil {
-			hash := auth.HashToken(token)
-			key, err := s.store.GetAPIKeyByKey(r.Context(), hash)
-
-			if err != nil || subtle.ConstantTimeCompare([]byte(hash), []byte(key.Key)) != 1 {
-				log.Debug("MCP auth failed: invalid token")
+			var err error
+			caller, err = api.AuthenticateAPIKey(r.Context(), s.store, token, r.RemoteAddr, "mcp")
+			if err != nil {
+				log.Debug("MCP auth failed", "error", err)
 				s.writeUnauthorized(w)
 				return
-			}
-
-			if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
-				log.Debug("MCP auth failed: expired API key", "key_name", key.Name)
-				s.writeUnauthorized(w)
-				return
-			}
-
-			go func() {
-				s.store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
-			}()
-
-			log.Trace("MCP auth successful (API key)", "key_name", key.Name)
-
-			if key.UserID != "" {
-				user, err := s.store.GetUser(r.Context(), key.UserID)
-				if err == nil && user.IsActive {
-					caller = &service.Caller{
-						Type:      service.CallerTypeUser,
-						UserID:    user.ID,
-						Username:  user.Username,
-						IPAddress: r.RemoteAddr,
-						Source:    "mcp",
-					}
-				}
-			}
-			if caller == nil {
-				caller = &service.Caller{
-					Type:     service.CallerTypeAPIKey,
-					UserID:   key.ID,
-					Username: key.Name,
-					Source:   "mcp",
-				}
 			}
 		}
 

@@ -45,7 +45,10 @@ export function credentialsList() {
       this.loading = true;
       this.error = '';
       try {
-        const response = await fetch('/api/credentials');
+        const response = await fetch('/api/credentials', {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
         if (response.ok) {
           this.credentials = (await response.json()) || [];
         } else {
@@ -93,7 +96,8 @@ export function credentialsList() {
         const url = isEdit ? `/api/credentials/${this.form.id}` : '/api/credentials';
         const response = await fetch(url, {
           method: isEdit ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
           body: JSON.stringify(this.form),
         });
 
@@ -119,6 +123,8 @@ export function credentialsList() {
       try {
         const response = await fetch(`/api/credentials/${this.deleteTarget.id}`, {
           method: 'DELETE',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
         });
         if (response.ok) {
           this.showDeleteModal = false;
