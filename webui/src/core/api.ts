@@ -74,6 +74,8 @@ import type {
   UpdateDNSRecordRequest,
   SyncResult,
   ImportResult,
+  APIKey,
+  CreateAPIKeyRequest,
 } from './types';
 
 export type {
@@ -818,6 +820,17 @@ export class RackdAPI {
   }
   async promoteDNSRecord(id: string, req: { name?: string; datacenter_id?: string; tags?: string[] }): Promise<DNSRecord> {
     return this.request<DNSRecord>('POST', `/api/dns/records/${id}/promote`, req);
+  }
+
+  // API Keys
+  async listAPIKeys(): Promise<APIKey[]> {
+    return this.request<APIKey[]>('GET', '/api/keys');
+  }
+  async createAPIKey(req: CreateAPIKeyRequest): Promise<APIKey> {
+    return this.request<APIKey>('POST', '/api/keys', req);
+  }
+  async deleteAPIKey(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/keys/${id}`);
   }
 
 }

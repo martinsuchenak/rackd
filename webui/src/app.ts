@@ -32,6 +32,7 @@ import { dashboardComponent } from './components/dashboard';
 import { circuitComponent } from './components/circuits';
 import { natComponent } from './components/nat';
 import { dnsProvidersComponent, dnsZonesComponent, dnsRecordsComponent } from './components/dns';
+import { apiKeysList } from './components/api-keys';
 
 // Update page title based on route
 function updatePageTitle(route: string) {
@@ -60,6 +61,7 @@ function updatePageTitle(route: string) {
     '/users': 'User Management',
     '/roles': 'Role Management',
     '/oauth-clients': 'OAuth Clients',
+    '/api-keys': 'API Keys',
   };
   const path = route.split('?')[0];
   document.title = `${titles[path] || 'Page'} - Rackd`;
@@ -134,6 +136,7 @@ function router() {
         { label: 'Users', path: '/users', order: 90, required_permissions: [{ resource: 'users', action: 'list' }] },
         { label: 'Roles', path: '/roles', order: 91, required_permissions: [{ resource: 'roles', action: 'list' }] },
         { label: 'OAuth Clients', path: '/oauth-clients', order: 93, required_permissions: [{ resource: 'users', action: 'list' }] },
+        { label: 'API Keys', path: '/api-keys', order: 94, required_permissions: [{ resource: 'apikeys', action: 'list' }] },
       ];
       const dynamic = (window.rackdConfig?.nav_items ?? []).filter(
         (item: any) => !base.some((b) => (b.path === item.path || (b.path === '/' && item.path === '')) || b.label === item.label)
@@ -415,6 +418,7 @@ async function init(): Promise<void> {
   Alpine.data('dnsProvidersComponent', dnsProvidersComponent);
   Alpine.data('dnsZonesComponent', dnsZonesComponent);
   Alpine.data('dnsRecordsComponent', dnsRecordsComponent);
+  Alpine.data('apiKeysList', apiKeysList);
 
   // Expose Alpine globally
   window.Alpine = Alpine;

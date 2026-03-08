@@ -830,3 +830,20 @@ export interface ImportResult {
   skipped_ids?: string[];
   failed_ids?: string[];
 }
+
+export interface APIKey {
+  id: string;
+  name: string;
+  key?: string; // only present on creation
+  user_id: string;
+  description: string;
+  created_at: string;
+  last_used_at?: string;
+  expires_at?: string;
+}
+
+export interface CreateAPIKeyRequest {
+  name: string;
+  description?: string;
+  expires_at?: string;
+}

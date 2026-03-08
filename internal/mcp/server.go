@@ -218,12 +218,23 @@ func (s *Server) registerTools() {
 }
 
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
-	log.Debug("MCP request received", "remote_addr", r.RemoteAddr)
+	log.Debug("MCP request received", "remote_addr", r.RemoteAddr, "method", r.Method)
+
+	// Pass OPTIONS (CORS preflight) and DELETE (session termination) directly to the MCP library
+	// without auth — OPTIONS must not require auth per CORS spec, and DELETE carries MCP-Session-Id
+	if r.Method == http.MethodOptions {
+		s.mcpServer.HandleRequest(w, r)
+		return
+	}
 
 	if s.requireAuth {
 		authHeader := r.Header.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			log.Debug("MCP auth failed: missing Bearer prefix")
+			if authHeader == "" {
+				log.Debug("MCP auth failed: no Authorization header")
+			} else {
+				log.Debug("MCP auth failed: missing Bearer prefix", "auth_header_prefix", authHeader[:min(len(authHeader), 20)])
+			}
 			s.writeUnauthorized(w)
 			return
 		}
@@ -308,6 +319,8 @@ func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 func (s *Server) writeUnauthorized(w http.ResponseWriter) {
 	if s.oauthEnabled {
 		w.Header().Set("WWW-Authenticate", `Bearer resource_metadata="/.well-known/oauth-protected-resource"`)
+	} else {
+		w.Header().Set("WWW-Authenticate", `Bearer realm="rackd", error="invalid_token", error_description="Bearer token required"`)
 	}
 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 }

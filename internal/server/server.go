@@ -138,9 +138,10 @@ func RunWithAdvancedFeatures(
 	if services.OAuth != nil {
 		mcpServer.SetOAuthService(services.OAuth)
 	}
-	mcpLimiter := api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)
-	mcpHandler := api.RateLimitMiddleware(mcpLimiter, cfg.TrustProxy)(http.HandlerFunc(mcpServer.HandleRequest))
+	mcpHandler := http.HandlerFunc(mcpServer.HandleRequest)
 	mux.Handle("POST /mcp", mcpHandler)
+	mux.Handle("OPTIONS /mcp", mcpHandler)
+	mux.Handle("DELETE /mcp", mcpHandler)
 
 	// UI config (minimal)
 	uiBuilder := api.NewUIConfigBuilder()
@@ -274,9 +275,10 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	if services.OAuth != nil {
 		mcpServer.SetOAuthService(services.OAuth)
 	}
-	mcpLimiter := api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)
-	mcpHandler := api.RateLimitMiddleware(mcpLimiter, cfg.TrustProxy)(http.HandlerFunc(mcpServer.HandleRequest))
+	mcpHandler := http.HandlerFunc(mcpServer.HandleRequest)
 	mux.Handle("POST /mcp", mcpHandler)
+	mux.Handle("OPTIONS /mcp", mcpHandler)
+	mux.Handle("DELETE /mcp", mcpHandler)
 
 	// UI config (minimal)
 	uiBuilder := api.NewUIConfigBuilder()
