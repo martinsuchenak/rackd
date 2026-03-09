@@ -131,3 +131,11 @@ docker:
 ## docker-run: Run Docker container
 docker-run:
 	docker run -p 8080:8080 -v $(PWD)/data:/data $(BINARY):$(VERSION)
+
+## push-tag: Create and push a git tag (usage: make push-tag TAG=v1.0.0)
+push-tag:
+ifndef TAG
+	$(error TAG is undefined. Usage: make push-tag TAG=v1.0.0)
+endif
+	git tag $(TAG)
+	git push origin $(TAG)
