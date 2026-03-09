@@ -262,7 +262,6 @@ Tests exist for:
 14. ~~Add `--skip-tls-verify` flag to CLI client~~ **FIXED.** The existing `VerifySSL` config field is now wired to the HTTP client's TLS settings. Set `RACKD_VERIFY_SSL=false` or `"verify_ssl": false` in config to skip certificate verification for self-signed certs.
 
 15. ~~Refactor Handler struct to use options pattern~~ **FIXED.** Replaced 8 individual `Set*` methods on the `Handler` struct with a `HandlerOption` functional options pattern. `NewHandler` now accepts variadic `...HandlerOption` args. Option functions: `WithSessionManager`, `WithCredentialsStorage`, `WithProfileStorage`, `WithScheduledScanStorage`, `WithLoginRateLimiter`, `WithCookieConfig`, `WithTrustProxy`, `WithServices`. All call sites in `server.go` and test files updated.
-15. Refactor Handler struct to use options pattern
 16. Standardize storage layer time handling and error sentinels~~ **FIXED.**
 17. Add performance benchmarks
 18. Implement CORS configuration
