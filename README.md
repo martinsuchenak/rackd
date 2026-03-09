@@ -6,18 +6,40 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 
 ## Features
 
+### Core Capabilities
+
 - **Device Inventory**: Track servers, switches, routers, and other network devices
 - **IP Address Management (IPAM)**: Manage networks, subnets, VLANs, and IP pools
 - **Network Discovery**: Automated network scanning and device discovery
 - **Datacenter Management**: Organize devices by physical location
 - **Device Relationships**: Track dependencies and connections between devices
 - **Full-Text Search**: Fast FTS5-powered search across devices, networks, and datacenters
+
+### DNS & Network Services
+
+- **DNS Management**: Zone management with external provider sync (Cloudflare, Route53, PowerDNS)
+- **NAT Tracking**: Manage NAT pools and mappings
+- **Circuit Tracking**: Document network circuits and providers
+
+### Security & Access Control
+
+- **RBAC**: Role-Based Access Control with fine-grained permissions
 - **Audit Trail**: Complete change history for compliance and troubleshooting
-- **Monitoring & Metrics**: Prometheus-compatible metrics and health checks
+- **Webhooks**: Event-driven integrations with external systems
+
+### Extensibility
+
+- **Custom Fields**: User-defined fields on devices and networks
+- **IP Reservations**: Reserve IPs for future use with owner tracking
+- **Import/Export**: JSON/CSV bulk data operations
+- **MCP Server**: Model Context Protocol integration for AI/automation tools
+
+### Interfaces
+
 - **Web UI**: Modern, responsive interface built with Alpine.js and TailwindCSS
 - **CLI Tool**: Full-featured command-line interface for automation
-- **MCP Server**: Model Context Protocol integration for AI/automation tools
 - **REST API**: Complete HTTP API for integrations
+- **Monitoring & Metrics**: Prometheus-compatible metrics and health checks
 
 ## Quick Start
 
@@ -43,7 +65,9 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Installation](docs/installation.md) - Installation methods and requirements
 - [Quick Start Guide](docs/quickstart.md) - Get up and running in 5 minutes
 - [Configuration](docs/configuration.md) - Environment variables and settings
+- [Configuration Reference](docs/configuration-reference.md) - Complete configuration options
 - [Authentication](docs/authentication.md) - API key management and security
+- [User Authentication](docs/user-authentication.md) - User login and session management
 
 ### Core Features
 
@@ -59,6 +83,28 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Datacenter Management](docs/datacenters.md) - Physical location tracking
 - [Discovery](docs/discovery.md) - Network scanning and auto-discovery
 - [Relationships](docs/relationships.md) - Device dependencies and connections
+- [DNS Management](docs/dns.md) - DNS zones, providers, and sync
+- [Webhooks](docs/webhooks.md) - Event notifications and integrations
+- [Custom Fields](docs/custom-fields.md) - User-defined fields
+- [Circuits](docs/circuits.md) - Network circuit tracking
+- [NAT](docs/nat.md) - NAT pool management
+- [Reservations](docs/reservations.md) - IP reservation tracking
+- [Conflicts](docs/conflicts.md) - IP conflict detection and resolution
+
+### Security & Compliance
+
+- [RBAC](docs/rbac.md) - Role-Based Access Control
+- [Security](docs/security.md) - Security best practices
+- [Audit Trail](docs/audit.md) - Change history and compliance logging
+- [Rate Limiting](docs/ratelimit.md) - API rate limiting configuration
+
+### Operations
+
+- [Deployment](docs/deployment.md) - Docker, Nomad, and production deployment
+- [Monitoring](docs/monitoring.md) - Metrics, health checks, and observability
+- [Backup & Restore](docs/backup.md) - Data backup strategies
+- [Import/Export](docs/import-export.md) - Bulk data operations
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ### Development
 
@@ -66,15 +112,6 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Development Guide](docs/development.md) - Building and contributing
 - [Database Schema](docs/database.md) - SQLite schema reference
 - [Testing](docs/testing.md) - Testing strategy and guidelines
-
-### Operations
-
-- [Deployment](docs/deployment.md) - Docker, Nomad, and production deployment
-- [Monitoring](docs/monitoring.md) - Metrics, health checks, and observability
-- [Audit Trail](docs/audit.md) - Change history and compliance logging
-- [Backup & Restore](docs/backup.md) - Data backup strategies
-- [Security](docs/security.md) - Security best practices
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ## Technology Stack
 
