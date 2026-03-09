@@ -30,6 +30,10 @@ node_modules/
 *.swo
 *~
 
+.claude/
+.kiro/
+.omc/
+
 # OS
 .DS_Store
 Thumbs.db
