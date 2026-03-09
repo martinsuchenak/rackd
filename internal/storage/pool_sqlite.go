@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -34,7 +33,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 		pool.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	pool.CreatedAt = now
 	pool.UpdatedAt = now
 
@@ -162,7 +161,7 @@ func (s *SQLiteStorage) UpdateNetworkPool(ctx context.Context, pool *model.Netwo
 		return ErrPoolNotFound
 	}
 
-	pool.UpdatedAt = time.Now().UTC()
+	pool.UpdatedAt = nowUTC()
 
 	// Update pool
 	_, err = tx.ExecContext(ctx, `

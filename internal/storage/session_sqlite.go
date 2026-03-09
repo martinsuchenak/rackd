@@ -60,7 +60,7 @@ func (s *SQLiteSessionStore) Get(ctx context.Context, token string) (*auth.Sessi
 	sess.CreatedAt = createdAt
 	sess.ExpiresAt = expiresAt
 
-	if time.Now().UTC().After(sess.ExpiresAt) {
+	if nowUTC().After(sess.ExpiresAt) {
 		_ = s.Delete(ctx, token)
 		return nil, auth.ErrSessionExpired
 	}
@@ -82,6 +82,6 @@ func (s *SQLiteSessionStore) DeleteByUser(ctx context.Context, userID string) er
 
 // Cleanup removes all expired sessions
 func (s *SQLiteSessionStore) Cleanup(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at < ?", time.Now().UTC())
+	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at < ?", nowUTC())
 	return err
 }

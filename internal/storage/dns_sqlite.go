@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -45,7 +44,7 @@ func (s *SQLiteStorage) createDNSProviderInTx(ctx context.Context, tx *sql.Tx, p
 		provider.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	provider.CreatedAt = now
 	provider.UpdatedAt = now
 
@@ -186,7 +185,7 @@ func (s *SQLiteStorage) UpdateDNSProvider(ctx context.Context, provider *model.D
 		return ErrDNSProviderNotFound
 	}
 
-	provider.UpdatedAt = time.Now().UTC()
+	provider.UpdatedAt = nowUTC()
 
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE dns_provider_configs SET name = ?, type = ?, endpoint = ?, token = ?, description = ?, updated_at = ?
@@ -272,7 +271,7 @@ func (s *SQLiteStorage) createDNSZoneInTx(ctx context.Context, tx *sql.Tx, zone 
 		zone.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	zone.CreatedAt = now
 	zone.UpdatedAt = now
 
@@ -499,7 +498,7 @@ func (s *SQLiteStorage) UpdateDNSZone(ctx context.Context, zone *model.DNSZone) 
 		return ErrDNSZoneNotFound
 	}
 
-	zone.UpdatedAt = time.Now().UTC()
+	zone.UpdatedAt = nowUTC()
 
 	var networkIDParam, ptrZoneParam, lastSyncErrorParam sql.NullString
 	if zone.NetworkID != nil {
@@ -677,7 +676,7 @@ func (s *SQLiteStorage) createDNSRecordInTx(ctx context.Context, tx *sql.Tx, rec
 		record.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	record.CreatedAt = now
 	record.UpdatedAt = now
 
@@ -912,7 +911,7 @@ func (s *SQLiteStorage) UpdateDNSRecord(ctx context.Context, record *model.DNSRe
 		return ErrDNSRecordNotFound
 	}
 
-	record.UpdatedAt = time.Now().UTC()
+	record.UpdatedAt = nowUTC()
 
 	var deviceIDParam, addressIDParam, errorMessageParam sql.NullString
 	if record.DeviceID != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 )
 
 // GetSSHHostKey retrieves a stored SSH host key for a specific host.
@@ -34,7 +33,7 @@ func (s *SQLiteStorage) SaveSSHHostKey(ctx context.Context, host string, key []b
 		ON CONFLICT(host) DO UPDATE SET
 			key_data = excluded.key_data,
 			updated_at = ?
-	`, host, key, time.Now(), time.Now())
+	`, host, key, nowUTC(), nowUTC())
 
 	return err
 }

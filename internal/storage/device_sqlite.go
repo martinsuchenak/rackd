@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -210,7 +209,7 @@ func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device
 		device.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	device.CreatedAt = now
 	device.UpdatedAt = now
 
@@ -376,11 +375,11 @@ func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device
 		return fmt.Errorf("failed to check device existence: %w", err)
 	}
 
-	device.UpdatedAt = time.Now().UTC()
+	device.UpdatedAt = nowUTC()
 
 	// Track status changes
 	if device.Status != "" && device.Status != currentStatus {
-		now := time.Now().UTC()
+		now := nowUTC()
 		device.StatusChangedAt = &now
 		// StatusChangedBy should be set by the service layer from context
 	} else if device.Status == "" {
@@ -521,7 +520,7 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 
 		if filter.StaleDays > 0 {
 			// Filter devices not seen in discovery for X days
-			staleCutoff := time.Now().AddDate(0, 0, -filter.StaleDays)
+			staleCutoff := nowUTC().AddDate(0, 0, -filter.StaleDays)
 			conditions = append(conditions, `status = 'active' AND NOT EXISTS (
 				SELECT 1 FROM discovered_devices dd
 				WHERE dd.promoted_to_device_id = devices.id

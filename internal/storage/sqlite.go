@@ -144,6 +144,11 @@ func newUUID() string {
 	}
 	return id.String()
 }
+// nowUTC returns the current time in UTC.
+// All storage methods MUST use this instead of time.Now() directly.
+func nowUTC() time.Time {
+	return time.Now().UTC()
+}
 
 // nullString returns a sql.NullString for empty strings
 func nullString(s string) sql.NullString {
@@ -198,7 +203,7 @@ func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resource
 	}
 
 	entry := &model.AuditLog{
-		Timestamp:  time.Now(),
+		Timestamp:  nowUTC(),
 		Action:     action,
 		Resource:   resource,
 		ResourceID: resourceID,

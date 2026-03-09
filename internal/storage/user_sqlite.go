@@ -29,10 +29,10 @@ func (s *SQLiteStorage) CreateUser(ctx context.Context, user *model.User) error 
 		user.ID = newUUID()
 	}
 	if user.CreatedAt.IsZero() {
-		user.CreatedAt = time.Now()
+		user.CreatedAt = nowUTC()
 	}
 	if user.UpdatedAt.IsZero() {
-		user.UpdatedAt = time.Now()
+		user.UpdatedAt = nowUTC()
 	}
 
 	query := `INSERT INTO users (id, username, email, full_name, password_hash, is_active, is_admin, created_at, updated_at, last_login_at) 
@@ -67,7 +67,7 @@ func (s *SQLiteStorage) GetUser(ctx context.Context, id string) (*model.User, er
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -97,7 +97,7 @@ func (s *SQLiteStorage) GetUserByUsername(ctx context.Context, username string) 
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -127,7 +127,7 @@ func (s *SQLiteStorage) GetUserByEmail(ctx context.Context, email string) (*mode
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -211,7 +211,7 @@ func (s *SQLiteStorage) UpdateUser(ctx context.Context, user *model.User) error 
 		return ErrInvalidID
 	}
 
-	user.UpdatedAt = time.Now()
+	user.UpdatedAt = nowUTC()
 
 	query := `UPDATE users SET email = ?, full_name = ?, is_active = ?, is_admin = ?, updated_at = ? 
 	          WHERE id = ?`
@@ -230,7 +230,7 @@ func (s *SQLiteStorage) UpdateUser(ctx context.Context, user *model.User) error 
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -247,7 +247,7 @@ func (s *SQLiteStorage) DeleteUser(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to check user existence: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 
 	_, err = s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
@@ -280,7 +280,7 @@ func (s *SQLiteStorage) UpdateUserPassword(ctx context.Context, id, passwordHash
 
 	query := `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`
 
-	_, err := s.db.ExecContext(ctx, query, passwordHash, time.Now(), id)
+	_, err := s.db.ExecContext(ctx, query, passwordHash, nowUTC(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update user password: %w", err)
 	}

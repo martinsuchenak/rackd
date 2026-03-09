@@ -41,6 +41,10 @@ var (
 	ErrDNSProviderNotFound = errors.New("DNS provider not found")
 	ErrDNSZoneNotFound     = errors.New("DNS zone not found")
 	ErrDNSRecordNotFound   = errors.New("DNS record not found")
+	ErrAPIKeyNotFound      = errors.New("API key not found")
+	ErrRoleNotFound        = errors.New("role not found")
+	ErrPermissionNotFound  = errors.New("permission not found")
+	ErrConflictNotFound    = errors.New("conflict not found")
 )
 
 // DeviceStorage defines device persistence operations

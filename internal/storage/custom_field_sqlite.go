@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -15,7 +14,7 @@ func (s *SQLiteStorage) CreateCustomFieldDefinition(ctx context.Context, def *mo
 	if def.ID == "" {
 		def.ID = newUUID()
 	}
-	def.CreatedAt = time.Now().UTC()
+	def.CreatedAt = nowUTC()
 	def.UpdatedAt = def.CreatedAt
 
 	optionsJSON, err := json.Marshal(def.Options)
@@ -117,7 +116,7 @@ func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *
 
 // UpdateCustomFieldDefinition updates an existing custom field definition
 func (s *SQLiteStorage) UpdateCustomFieldDefinition(ctx context.Context, def *model.CustomFieldDefinition) error {
-	def.UpdatedAt = time.Now().UTC()
+	def.UpdatedAt = nowUTC()
 
 	optionsJSON, err := json.Marshal(def.Options)
 	if err != nil {
@@ -149,14 +148,20 @@ func (s *SQLiteStorage) UpdateCustomFieldDefinition(ctx context.Context, def *mo
 
 // DeleteCustomFieldDefinition deletes a custom field definition and all its values
 func (s *SQLiteStorage) DeleteCustomFieldDefinition(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	// First delete all values for this definition
-	_, err := s.db.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ?`, id)
+	_, err = tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ?`, id)
 	if err != nil {
 		return err
 	}
 
 	// Then delete the definition
-	result, err := s.db.ExecContext(ctx, `DELETE FROM custom_field_definitions WHERE id = ?`, id)
+	result, err := tx.ExecContext(ctx, `DELETE FROM custom_field_definitions WHERE id = ?`, id)
 	if err != nil {
 		return err
 	}
@@ -169,7 +174,7 @@ func (s *SQLiteStorage) DeleteCustomFieldDefinition(ctx context.Context, id stri
 		return ErrCustomFieldNotFound
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // SetCustomFieldValue sets a custom field value for a device (upsert)

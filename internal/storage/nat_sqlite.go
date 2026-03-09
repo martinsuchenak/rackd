@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -17,7 +16,7 @@ func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NAT
 		mapping.ID = newUUID()
 	}
 
-	mapping.CreatedAt = time.Now().UTC()
+	mapping.CreatedAt = nowUTC()
 	mapping.UpdatedAt = mapping.CreatedAt
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
@@ -197,7 +196,7 @@ func (s *SQLiteStorage) UpdateNATMapping(ctx context.Context, mapping *model.NAT
 		return ErrInvalidID
 	}
 
-	mapping.UpdatedAt = time.Now().UTC()
+	mapping.UpdatedAt = nowUTC()
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
 

@@ -26,7 +26,7 @@ func (s *SQLiteStorage) CreateConflict(ctx context.Context, conflict *model.Conf
 	}
 
 	if conflict.DetectedAt.IsZero() {
-		conflict.DetectedAt = time.Now().UTC()
+		conflict.DetectedAt = nowUTC()
 	}
 
 	// Convert arrays to JSON for storage
@@ -92,7 +92,7 @@ func (s *SQLiteStorage) GetConflict(ctx context.Context, id string) (*model.Conf
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("conflict not found")
+		return nil, ErrConflictNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get conflict: %w", err)
@@ -233,7 +233,7 @@ func (s *SQLiteStorage) UpdateConflictStatus(ctx context.Context, id string, sta
 
 	var resolvedAt interface{}
 	if status == model.ConflictStatusResolved {
-		resolvedAt = time.Now().UTC()
+		resolvedAt = nowUTC()
 	} else {
 		resolvedAt = nil
 	}
@@ -301,7 +301,7 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 			IPAddress:   ip,
 			DeviceIDs:   deviceIDs,
 			DeviceNames: deviceNames,
-			DetectedAt:  time.Now().UTC(),
+			DetectedAt:  nowUTC(),
 		})
 	}
 
@@ -374,7 +374,7 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 					NetworkIDs:   []string{n1.ID, n2.ID},
 					NetworkNames: []string{n1.Name, n2.Name},
 					Subnets:      []string{n1.Subnet, n2.Subnet},
-					DetectedAt:   time.Now().UTC(),
+					DetectedAt:   nowUTC(),
 				})
 			}
 		}
@@ -445,7 +445,7 @@ func (s *SQLiteStorage) MarkConflictsResolvedForDevice(ctx context.Context, devi
 	}
 
 	// Mark them as resolved
-	now := time.Now().UTC()
+	now := nowUTC()
 	for _, c := range conflicts {
 		if c.Status == model.ConflictStatusActive {
 			_, err := s.db.ExecContext(ctx, `

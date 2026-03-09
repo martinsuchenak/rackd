@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -23,28 +23,42 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		reservation.ID = newUUID()
 	}
 
-	// Validate pool exists
-	var poolExists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM network_pools WHERE id = ?)`, reservation.PoolID).Scan(&poolExists)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Validate pool exists and get IP range for validation
+	var startIP, endIP string
+	err = tx.QueryRowContext(ctx, `SELECT start_ip, end_ip FROM network_pools WHERE id = ?`, reservation.PoolID).Scan(&startIP, &endIP)
+	if err == sql.ErrNoRows {
+		return ErrPoolNotFound
+	}
 	if err != nil {
 		return fmt.Errorf("failed to check pool existence: %w", err)
 	}
-	if !poolExists {
-		return ErrPoolNotFound
-	}
 
 	// Validate IP is in pool range
-	inRange, err := s.ValidateIPInPool(ctx, reservation.PoolID, reservation.IPAddress)
-	if err != nil {
-		return fmt.Errorf("failed to validate IP in pool: %w", err)
+	checkIP := net.ParseIP(reservation.IPAddress)
+	poolStartIP := net.ParseIP(startIP)
+	poolEndIP := net.ParseIP(endIP)
+	if checkIP == nil || poolStartIP == nil || poolEndIP == nil {
+		return fmt.Errorf("invalid IP address")
 	}
-	if !inRange {
+	checkIP = checkIP.To4()
+	poolStartIP = poolStartIP.To4()
+	poolEndIP = poolEndIP.To4()
+	if checkIP == nil || poolStartIP == nil || poolEndIP == nil {
+		return fmt.Errorf("only IPv4 addresses are currently supported")
+	}
+	if !ipInRange(checkIP, poolStartIP, poolEndIP) {
 		return fmt.Errorf("IP address %s is not within pool range", reservation.IPAddress)
 	}
 
 	// Check if IP is already used by a device
 	var usedByDevice bool
-	err = s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM addresses WHERE pool_id = ? AND ip = ?)`,
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM addresses WHERE pool_id = ? AND ip = ?)`,
 		reservation.PoolID, reservation.IPAddress).Scan(&usedByDevice)
 	if err != nil {
 		return fmt.Errorf("failed to check IP usage: %w", err)
@@ -54,15 +68,19 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	}
 
 	// Check if IP is already reserved
-	isReserved, err := s.IsIPReserved(ctx, reservation.PoolID, reservation.IPAddress)
+	var reservedCount int
+	err = tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM reservations
+		WHERE pool_id = ? AND ip_address = ? AND status = ?
+	`, reservation.PoolID, reservation.IPAddress, string(model.ReservationStatusActive)).Scan(&reservedCount)
 	if err != nil {
 		return fmt.Errorf("failed to check reservation: %w", err)
 	}
-	if isReserved {
+	if reservedCount > 0 {
 		return ErrIPAlreadyReserved
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	if reservation.ReservedAt.IsZero() {
 		reservation.ReservedAt = now
 	}
@@ -74,7 +92,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		reservation.Status = model.ReservationStatusActive
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO reservations (
 			id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 			expires_at, status, notes, created_at, updated_at
@@ -89,6 +107,10 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 			return ErrIPAlreadyReserved
 		}
 		return fmt.Errorf("failed to create reservation: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	s.auditLog(ctx, "create", "reservation", reservation.ID, reservation)
@@ -239,7 +261,7 @@ func (s *SQLiteStorage) UpdateReservation(ctx context.Context, reservation *mode
 		return ErrInvalidID
 	}
 
-	reservation.UpdatedAt = time.Now().UTC()
+	reservation.UpdatedAt = nowUTC()
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE reservations SET
@@ -317,8 +339,8 @@ func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE reservations SET status = ?, updated_at = ?
 		WHERE status = ? AND expires_at IS NOT NULL AND expires_at < ?
-	`, string(model.ReservationStatusExpired), time.Now().UTC(),
-		string(model.ReservationStatusActive), time.Now().UTC())
+	`, string(model.ReservationStatusExpired), nowUTC(),
+		string(model.ReservationStatusActive), nowUTC())
 	if err != nil {
 		return 0, fmt.Errorf("failed to expire reservations: %w", err)
 	}

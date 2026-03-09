@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -15,7 +14,7 @@ func (s *SQLiteStorage) CreateAuditLog(ctx context.Context, log *model.AuditLog)
 		log.ID = uuid.New().String()
 	}
 	if log.Timestamp.IsZero() {
-		log.Timestamp = time.Now()
+		log.Timestamp = nowUTC()
 	}
 
 	_, err := s.db.ExecContext(ctx, `
@@ -109,7 +108,7 @@ func (s *SQLiteStorage) GetAuditLog(ctx context.Context, id string) (*model.Audi
 
 // DeleteOldAuditLogs deletes audit logs older than specified days
 func (s *SQLiteStorage) DeleteOldAuditLogs(ctx context.Context, olderThanDays int) error {
-	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
 	_, err := s.db.ExecContext(ctx, "DELETE FROM audit_logs WHERE timestamp < ?", cutoff)
 	return err
 }

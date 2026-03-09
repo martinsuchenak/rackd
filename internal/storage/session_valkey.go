@@ -66,7 +66,7 @@ func (s *ValkeySessionStore) Get(ctx context.Context, token string) (*auth.Sessi
 		return nil, err
 	}
 
-	if time.Now().UTC().After(session.ExpiresAt) {
+	if nowUTC().After(session.ExpiresAt) {
 		_ = s.Delete(ctx, token)
 		return nil, auth.ErrSessionExpired
 	}

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -16,7 +15,7 @@ func (s *SQLiteStorage) CreateCircuit(ctx context.Context, circuit *model.Circui
 		return ErrInvalidID
 	}
 
-	circuit.CreatedAt = time.Now().UTC()
+	circuit.CreatedAt = nowUTC()
 	circuit.UpdatedAt = circuit.CreatedAt
 
 	tagsJSON, _ := json.Marshal(circuit.Tags)
@@ -277,7 +276,7 @@ func (s *SQLiteStorage) UpdateCircuit(ctx context.Context, circuit *model.Circui
 		return ErrInvalidID
 	}
 
-	circuit.UpdatedAt = time.Now().UTC()
+	circuit.UpdatedAt = nowUTC()
 
 	tagsJSON, _ := json.Marshal(circuit.Tags)
 

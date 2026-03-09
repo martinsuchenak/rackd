@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -57,7 +56,7 @@ func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {
 	if scan.ID == "" {
 		scan.ID = uuid.Must(uuid.NewV7()).String()
 	}
-	now := time.Now()
+	now := nowUTC()
 	scan.CreatedAt = now
 	scan.UpdatedAt = now
 
@@ -69,7 +68,7 @@ func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {
 }
 
 func (s *SQLiteScheduledScanStorage) Update(scan *model.ScheduledScan) error {
-	scan.UpdatedAt = time.Now()
+	scan.UpdatedAt = nowUTC()
 
 	res, err := s.db.Exec(`
 		UPDATE scheduled_scans SET network_id=?, profile_id=?, name=?, cron_expression=?, enabled=?, description=?, last_run_at=?, next_run_at=?, updated_at=?

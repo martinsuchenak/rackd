@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -202,7 +201,7 @@ func (s *SQLiteStorage) createNetworkInTx(ctx context.Context, tx *sql.Tx, netwo
 		network.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	network.CreatedAt = now
 	network.UpdatedAt = now
 
@@ -238,7 +237,7 @@ func (s *SQLiteStorage) UpdateNetwork(ctx context.Context, network *model.Networ
 		return ErrNetworkNotFound
 	}
 
-	network.UpdatedAt = time.Now().UTC()
+	network.UpdatedAt = nowUTC()
 
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE networks SET name = ?, subnet = ?, vlan_id = ?, datacenter_id = ?, description = ?, updated_at = ?

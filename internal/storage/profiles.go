@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -77,7 +76,7 @@ func (s *SQLiteProfileStorage) Create(ctx context.Context, profile *model.ScanPr
 	if profile.ID == "" {
 		profile.ID = uuid.Must(uuid.NewV7()).String()
 	}
-	now := time.Now()
+	now := nowUTC()
 	profile.CreatedAt = now
 	profile.UpdatedAt = now
 
@@ -93,7 +92,7 @@ func (s *SQLiteProfileStorage) Update(ctx context.Context, profile *model.ScanPr
 	if err := profile.Validate(); err != nil {
 		return err
 	}
-	profile.UpdatedAt = time.Now()
+	profile.UpdatedAt = nowUTC()
 
 	portsJSON, _ := json.Marshal(profile.Ports)
 	res, err := s.db.Exec(`

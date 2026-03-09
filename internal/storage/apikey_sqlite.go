@@ -25,7 +25,7 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 		key.ID = newUUID()
 	}
 	if key.CreatedAt.IsZero() {
-		key.CreatedAt = time.Now()
+		key.CreatedAt = nowUTC()
 	}
 
 	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at)
@@ -64,7 +64,7 @@ func (s *SQLiteStorage) GetAPIKey(ctx context.Context, id string) (*model.APIKey
 		&key.CreatedAt, &lastUsedAt, &expiresAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("API key not found")
+		return nil, ErrAPIKeyNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key: %w", err)
@@ -97,7 +97,7 @@ func (s *SQLiteStorage) GetAPIKeyByKey(ctx context.Context, keyStr string) (*mod
 		&key.CreatedAt, &lastUsedAt, &expiresAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("API key not found")
+		return nil, ErrAPIKeyNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key: %w", err)
@@ -210,7 +210,7 @@ func (s *SQLiteStorage) DeleteAPIKey(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to check API key existence: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("API key not found")
+		return ErrAPIKeyNotFound
 	}
 
 	_, err = s.db.ExecContext(ctx, `DELETE FROM api_keys WHERE id = ?`, id)

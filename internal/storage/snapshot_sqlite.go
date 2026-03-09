@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"strings"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -14,7 +13,7 @@ func (s *SQLiteStorage) CreateSnapshot(ctx context.Context, snapshot *model.Util
 	if snapshot.ID == "" {
 		snapshot.ID = newUUID()
 	}
-	snapshot.CreatedAt = time.Now().UTC()
+	snapshot.CreatedAt = nowUTC()
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO utilization_snapshots (id, type, resource_id, resource_name, total_ips, used_ips, utilization, timestamp, created_at)
@@ -89,14 +88,14 @@ func (s *SQLiteStorage) GetLatestSnapshots(ctx context.Context, snapshotType mod
 
 // DeleteOldSnapshots removes snapshots older than specified days
 func (s *SQLiteStorage) DeleteOldSnapshots(ctx context.Context, olderThanDays int) error {
-	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
 	_, err := s.db.ExecContext(ctx, `DELETE FROM utilization_snapshots WHERE timestamp < ?`, cutoff)
 	return err
 }
 
 // GetUtilizationTrend retrieves utilization points for a specific resource over time
 func (s *SQLiteStorage) GetUtilizationTrend(ctx context.Context, resourceType model.SnapshotType, resourceID string, days int) ([]model.UtilizationTrendPoint, error) {
-	cutoff := time.Now().AddDate(0, 0, -days)
+	cutoff := nowUTC().AddDate(0, 0, -days)
 	query := `
 		SELECT timestamp, utilization, used_ips
 		FROM utilization_snapshots
@@ -159,7 +158,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 		`SELECT COUNT(*) FROM discovered_devices WHERE promoted_to_device_id IS NULL`).Scan(&stats.DiscoveredDevices)
 
 	// Stale devices (active devices not seen in discovery for X days)
-	staleCutoff := time.Now().AddDate(0, 0, -staleDays)
+	staleCutoff := nowUTC().AddDate(0, 0, -staleDays)
 
 	// Get count
 	s.db.QueryRowContext(ctx, `

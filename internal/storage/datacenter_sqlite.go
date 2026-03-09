@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -152,7 +151,7 @@ func (s *SQLiteStorage) CreateDatacenter(ctx context.Context, dc *model.Datacent
 		dc.ID = newUUID()
 	}
 
-	now := time.Now().UTC()
+	now := nowUTC()
 	dc.CreatedAt = now
 	dc.UpdatedAt = now
 
@@ -188,7 +187,7 @@ func (s *SQLiteStorage) UpdateDatacenter(ctx context.Context, dc *model.Datacent
 		return ErrDatacenterNotFound
 	}
 
-	dc.UpdatedAt = time.Now().UTC()
+	dc.UpdatedAt = nowUTC()
 
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE datacenters SET name = ?, location = ?, description = ?, updated_at = ?

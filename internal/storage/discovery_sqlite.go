@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
+	"fmt"
 
 	"github.com/martinsuchenak/rackd/internal/model"
 )
@@ -14,7 +14,7 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *mode
 	if device.ID == "" {
 		device.ID = newUUID()
 	}
-	now := time.Now()
+	now := nowUTC()
 	device.CreatedAt = now
 	device.UpdatedAt = now
 	if device.FirstSeen.IsZero() {
@@ -41,7 +41,7 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *mode
 
 // UpdateDiscoveredDevice updates an existing discovered device
 func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
-	device.UpdatedAt = time.Now()
+	device.UpdatedAt = nowUTC()
 	device.LastSeen = device.UpdatedAt
 
 	openPorts, _ := json.Marshal(device.OpenPorts)
@@ -200,18 +200,35 @@ func (s *SQLiteStorage) DeleteDiscoveredDevice(ctx context.Context, id string) e
 
 // PromoteDiscoveredDevice links a discovered device to a created device
 func (s *SQLiteStorage) PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error {
-	now := time.Now()
-	result, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Check that the discovered device exists
+	var exists bool
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM discovered_devices WHERE id = ?)`, discoveredID).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check discovered device existence: %w", err)
+	}
+	if !exists {
+		return ErrDiscoveryNotFound
+	}
+
+	now := nowUTC()
+	_, err = tx.ExecContext(ctx, `
 		UPDATE discovered_devices SET promoted_to_device_id = ?, promoted_at = ?, updated_at = ?
 		WHERE id = ?
 	`, deviceID, now, now, discoveredID)
 	if err != nil {
 		return err
 	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return ErrDiscoveryNotFound
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
+
 	s.auditLog(ctx, "promote", "discovered_device", discoveredID, nil)
 	return nil
 }
@@ -221,7 +238,7 @@ func (s *SQLiteStorage) CreateDiscoveryScan(ctx context.Context, scan *model.Dis
 	if scan.ID == "" {
 		scan.ID = newUUID()
 	}
-	now := time.Now()
+	now := nowUTC()
 	scan.CreatedAt = now
 	scan.UpdatedAt = now
 
@@ -241,7 +258,7 @@ func (s *SQLiteStorage) CreateDiscoveryScan(ctx context.Context, scan *model.Dis
 
 // UpdateDiscoveryScan updates an existing discovery scan
 func (s *SQLiteStorage) UpdateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error {
-	scan.UpdatedAt = time.Now()
+	scan.UpdatedAt = nowUTC()
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE discovery_scans SET status = ?, scan_type = ?, total_hosts = ?, scanned_hosts = ?,
 			found_hosts = ?, progress_percent = ?, error_message = ?, started_at = ?, completed_at = ?,
@@ -367,7 +384,7 @@ func (s *SQLiteStorage) SaveDiscoveryRule(ctx context.Context, rule *model.Disco
 	if rule.ID == "" {
 		rule.ID = newUUID()
 	}
-	now := time.Now()
+	now := nowUTC()
 	rule.UpdatedAt = now
 
 	enabled := 0
@@ -472,7 +489,7 @@ func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(ctx context.Context, ne
 
 // CleanupOldDiscoveries removes discovered devices older than specified days
 func (s *SQLiteStorage) CleanupOldDiscoveries(ctx context.Context, olderThanDays int) error {
-	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
 	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM discovered_devices WHERE last_seen < ? AND promoted_to_device_id IS NULL
 	`, cutoff)

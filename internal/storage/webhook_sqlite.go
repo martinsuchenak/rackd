@@ -15,7 +15,7 @@ func (s *SQLiteStorage) CreateWebhook(ctx context.Context, webhook *model.Webhoo
 	if webhook.ID == "" {
 		webhook.ID = newUUID()
 	}
-	webhook.CreatedAt = time.Now().UTC()
+	webhook.CreatedAt = nowUTC()
 	webhook.UpdatedAt = webhook.CreatedAt
 
 	eventsJSON, err := json.Marshal(webhook.Events)
@@ -94,7 +94,7 @@ func (s *SQLiteStorage) ListWebhooks(ctx context.Context, filter *model.WebhookF
 
 // UpdateWebhook updates an existing webhook
 func (s *SQLiteStorage) UpdateWebhook(ctx context.Context, webhook *model.Webhook) error {
-	webhook.UpdatedAt = time.Now().UTC()
+	webhook.UpdatedAt = nowUTC()
 
 	eventsJSON, err := json.Marshal(webhook.Events)
 	if err != nil {
@@ -168,7 +168,7 @@ func (s *SQLiteStorage) CreateDelivery(ctx context.Context, delivery *model.Webh
 	if delivery.ID == "" {
 		delivery.ID = newUUID()
 	}
-	delivery.CreatedAt = time.Now().UTC()
+	delivery.CreatedAt = nowUTC()
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO webhook_deliveries (id, webhook_id, event_type, payload, response_code, response_body, error, duration_ms, status, attempt_number, next_retry, created_at)
@@ -273,7 +273,7 @@ func (s *SQLiteStorage) UpdateDelivery(ctx context.Context, delivery *model.Webh
 
 // DeleteOldDeliveries removes delivery records older than specified days
 func (s *SQLiteStorage) DeleteOldDeliveries(ctx context.Context, olderThanDays int) error {
-	cutoff := time.Now().AddDate(0, 0, -olderThanDays)
+	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
 	_, err := s.db.ExecContext(ctx, `DELETE FROM webhook_deliveries WHERE created_at < ?`, cutoff)
 	return err
 }
@@ -289,7 +289,7 @@ func (s *SQLiteStorage) GetPendingDeliveries(ctx context.Context, limit int) ([]
 		query += " LIMIT ?"
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, model.DeliveryStatusPending, model.DeliveryStatusRetrying, time.Now().UTC(), limit)
+	rows, err := s.db.QueryContext(ctx, query, model.DeliveryStatusPending, model.DeliveryStatusRetrying, nowUTC(), limit)
 	if err != nil {
 		return nil, err
 	}
