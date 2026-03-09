@@ -10,6 +10,7 @@ import (
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DeviceFilter{
+		Pagination:   parsePagination(r),
 		Tags:         parseArrayParam(r, "tags"),
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		NetworkID:    r.URL.Query().Get("network_id"),
