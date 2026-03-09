@@ -144,16 +144,13 @@ make build
 
 See [Development Guide](docs/development.md) for detailed build instructions.
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## Support
 
 - **Documentation**: [docs/](docs/)
 - **Issues**: [GitHub Issues](https://github.com/martinsuchenak/rackd/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/martinsuchenak/rackd/discussions)
+- **Website**: [getrackd.dev](https://getrackd.dev)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
