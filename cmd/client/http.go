@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -14,10 +15,18 @@ type Client struct {
 }
 
 func NewClient(cfg *Config) *Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if !cfg.VerifySSL {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	return &Client{
-		serverURL:  cfg.ServerURL,
-		token:      cfg.Token,
-		httpClient: &http.Client{Timeout: cfg.GetTimeout()},
+		serverURL: cfg.ServerURL,
+		token:     cfg.Token,
+		httpClient: &http.Client{
+			Timeout:   cfg.GetTimeout(),
+			Transport: transport,
+		},
 	}
 }
 

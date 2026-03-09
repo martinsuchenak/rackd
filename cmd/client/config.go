@@ -36,6 +36,9 @@ func LoadConfig() *Config {
 	if token := os.Getenv("RACKD_TOKEN"); token != "" {
 		cfg.Token = token
 	}
+	if v := os.Getenv("RACKD_VERIFY_SSL"); v == "false" || v == "0" {
+		cfg.VerifySSL = false
+	}
 
 	return &cfg
 }

@@ -97,7 +97,7 @@ All CLI commands follow a consistent pattern: `rackd {resource} {action}`. Each 
 - No `rackd scan-profile` CLI commands
 - No `rackd oauth` client management CLI commands
 
-**HTTP client has no TLS verification control:** The CLI's `http.Client` in `cmd/client/http.go` uses default TLS settings. There's no `--insecure` flag for self-signed certificates, which is common in infrastructure tools. Add a `--skip-tls-verify` flag.
+**HTTP client has no TLS verification control:** ~~The CLI's `http.Client` in `cmd/client/http.go` uses default TLS settings. There's no `--insecure` flag for self-signed certificates, which is common in infrastructure tools. Add a `--skip-tls-verify` flag.~~ **FIXED.** The `VerifySSL` config field (default `true`) is now wired to the HTTP transport's TLS settings. Set `RACKD_VERIFY_SSL=false` env var or `"verify_ssl": false` in `~/.config/rackd/config.json` to skip certificate verification.
 
 **No request timeout in CLI client:** The client uses `cfg.GetTimeout()` which defaults to 30s. This is fine, but long-running operations like bulk imports or discovery scans may need longer timeouts. Consider per-command timeout overrides.
 
@@ -116,7 +116,7 @@ The MCP server registers tools for: search, devices, networks, datacenters, circ
 
 **Self-relationship not prevented:** The device relationship MCP tool (`device_add_relationship`) doesn't validate that `parent_id != child_id`. This should be enforced at the service layer.
 
-**Missing DNS tools:** The MCP server doesn't register DNS management tools, even though the API has full DNS provider/zone/record endpoints. This is a feature gap for AI-driven DNS management.
+**Missing DNS tools:** ~~The MCP server doesn't register DNS management tools, even though the API has full DNS provider/zone/record endpoints. This is a feature gap for AI-driven DNS management.~~ **FIXED.** Added 16 DNS tools covering providers, zones, and records — all discoverable via keywords (dns, provider, zone, record, domain, etc.).
 
 **MCP version hardcoded:** `mcp.NewServer("rackd", "1.0.0")` hardcodes the version instead of using the build-time `version` variable from `main.go`.
 
@@ -254,11 +254,11 @@ Tests exist for:
 
 ### Medium-term (completeness)
 9. Add CLI commands for scheduled scans, scan profiles, and OAuth client management
-10. Add DNS tools to MCP server
+10. ~~Add DNS tools to MCP server~~ **FIXED.** Added 16 DNS tools covering providers (list, get, save, delete, test), zones (list, get, save, delete, sync, import), and records (list, get, save, delete, link). All discoverable via keywords.
 11. Add integration tests for full HTTP request flow
 12. Add security-focused test suite
 13. Implement `rackd backup` and `rackd migrate` commands
-14. Add `--skip-tls-verify` flag to CLI client
+14. ~~Add `--skip-tls-verify` flag to CLI client~~ **FIXED.** The existing `VerifySSL` config field is now wired to the HTTP client's TLS settings. Set `RACKD_VERIFY_SSL=false` or `"verify_ssl": false` in config to skip certificate verification for self-signed certs.
 
 ### Long-term (quality)
 15. Refactor Handler struct to use options pattern

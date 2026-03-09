@@ -36,7 +36,7 @@ func NewServer(services *service.Services, store storage.ExtendedStorage, requir
 	s.mcpServer.SetInstructions(`rackd is a network infrastructure management system.
 Use the native tools for common operations (search, device CRUD, network/datacenter lookup, IP allocation).
 Use tool_search to discover additional tools for: circuits, NAT mappings, reservations, webhooks,
-custom fields, discovery scans, conflict detection, and audit logs.`)
+custom fields, discovery scans, conflict detection, DNS management, and audit logs.`)
 	s.registerTools()
 	return s
 }
@@ -57,6 +57,7 @@ func (s *Server) registerTools() {
 	s.registerDiscoveryTools()
 	s.registerConflictTools()
 	s.registerAuditTools()
+	s.registerDNSTools()
 }
 
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
