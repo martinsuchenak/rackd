@@ -120,16 +120,17 @@ func RunWithAdvancedFeatures(
 	}
 
 	// API routes
-	handler := api.NewHandler(store, scanner)
-	handler.SetSessionManager(sessionManager)
-	handler.SetCredentialsStorage(credStore)
-	handler.SetProfileStorage(profileStore)
-	handler.SetScheduledScanStorage(scheduledStore)
-	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
-	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
-	handler.SetTrustProxy(cfg.TrustProxy)
-	handler.SetServices(services)
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
+	handler := api.NewHandler(store, scanner,
+		api.WithSessionManager(sessionManager),
+		api.WithCredentialsStorage(credStore),
+		api.WithProfileStorage(profileStore),
+		api.WithScheduledScanStorage(scheduledStore),
+		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
+		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
+		api.WithTrustProxy(cfg.TrustProxy),
+		api.WithServices(services),
+	)
 	handler.RegisterRoutes(mux)
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)
@@ -261,12 +262,13 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	}
 
 	// API routes
-	handler := api.NewHandler(store, scanner)
-	handler.SetSessionManager(sessionManager)
-	handler.SetLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow))
-	handler.SetCookieConfig(cfg.CookieSecure, cfg.SessionTTL)
-	handler.SetTrustProxy(cfg.TrustProxy)
-	handler.SetServices(services)
+	handler := api.NewHandler(store, scanner,
+		api.WithSessionManager(sessionManager),
+		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
+		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
+		api.WithTrustProxy(cfg.TrustProxy),
+		api.WithServices(services),
+	)
 	handler.RegisterRoutes(mux)
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)

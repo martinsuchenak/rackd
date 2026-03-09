@@ -59,9 +59,10 @@ func TestLoginReturnsPermissions(t *testing.T) {
 	// Setup handler and server
 	sessionManager := auth.NewSessionManager(time.Hour, nil)
 	services := service.NewServices(store, sessionManager, nil)
-	h := NewHandler(store, nil)
-	h.SetSessionManager(sessionManager)
-	h.SetServices(services)
+	h := NewHandler(store, nil,
+		WithSessionManager(sessionManager),
+		WithServices(services),
+	)
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

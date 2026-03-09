@@ -21,7 +21,7 @@ The four interfaces (CLI, REST API, MCP, Web UI) share the same service and stor
 - Graceful shutdown with signal handling
 
 ### Structural concerns
-- The `Handler` struct in `internal/api/handlers.go` has grown to hold 10+ fields set via individual setter methods. This is a code smell — consider a builder pattern or options struct.
+- ~~The `Handler` struct in `internal/api/handlers.go` has grown to hold 10+ fields set via individual setter methods. This is a code smell — consider a builder pattern or options struct.~~ **FIXED** — refactored to functional options pattern.
 - The MCP server duplicates authentication logic that already exists in the API middleware. The MCP `HandleRequest` method re-implements API key lookup and user resolution instead of reusing `AuthMiddleware`.
 - No interface abstraction between the MCP tool handlers and the service layer — MCP tools call storage directly in some cases, bypassing service-layer RBAC.
 
@@ -204,15 +204,16 @@ Tests exist for:
 
 ### Gaps
 
-**No integration tests for the full HTTP stack:** Tests mock individual layers but don't test the complete request flow (HTTP → middleware → handler → service → storage → response).
+**No integration tests for the full HTTP stack:** ~~Tests mock individual layers but don't test the complete request flow (HTTP → middleware → handler → service → storage → response).~~ **FIXED.** Added 13 full-stack integration tests in `internal/api/integration_test.go` that exercise the complete request flow using `httptest` with real in-memory SQLite storage.
 
-**No security-focused tests:** Missing tests for:
+**No security-focused tests:** ~~Missing tests for:
 - SQL injection attempts
 - XSS payload handling
 - CSRF attack scenarios
 - Authentication bypass attempts
 - Rate limiting under concurrent load
-- Authorization boundary testing (user A can't access user B's resources)
+- Authorization boundary testing (user A can't access user B's resources)~~
+**FIXED.** Added 20+ security tests in `internal/api/security_test.go` covering SQL injection, XSS, CSRF, auth bypass, expired/legacy keys, cross-user authorization, body size limits, invalid input, login security, session cookie attributes, and privilege escalation prevention.
 
 **Hardcoded test credentials:** `bootstrap_test.go` and `webhook_sqlite_test.go` use hardcoded passwords and secrets. Use test helpers that generate random values.
 
@@ -255,14 +256,14 @@ Tests exist for:
 ### Medium-term (completeness)
 9. ~~Add CLI commands for scheduled scans, scan profiles, and OAuth client management~~ **FIXED.** Added `rackd scan-profile` (list, get, create, update, delete), `rackd scheduled-scan` (list, get, create, update, delete), and `rackd oauth` (list, delete) CLI commands.
 10. ~~Add DNS tools to MCP server~~ **FIXED.** Added 16 DNS tools covering providers (list, get, save, delete, test), zones (list, get, save, delete, sync, import), and records (list, get, save, delete, link). All discoverable via keywords.
-11. Add integration tests for full HTTP request flow
-12. Add security-focused test suite
+11. ~~Add integration tests for full HTTP request flow~~ **FIXED.** Added `internal/api/integration_test.go` with 13 full-stack integration tests covering: device/network/datacenter/circuit/custom-field/user CRUD through HTTP, session auth (login/request/logout), API key auth (valid/invalid/missing), RBAC enforcement (admin vs viewer), device relationships, search, and pagination. All tests use real in-memory SQLite storage with the full middleware chain (auth, CSRF, body limits).
+12. ~~Add security-focused test suite~~ **FIXED.** Added `internal/api/security_test.go` with 20+ security tests covering: CSRF protection (blocks POST/PUT/DELETE without header, allows GET, not required for API keys), SQL injection (device names, search queries, list filters), XSS payload handling, authentication bypass attempts (no auth, malformed bearer, wrong scheme), expired/legacy API key rejection, cross-user authorization boundaries, request body size limits, invalid JSON handling, invalid resource IDs, login security (wrong credentials, no password hash leakage), session cookie attributes (HttpOnly, SameSite, Path), invalid session rejection, and privilege escalation prevention (non-admin can't create admin, can't self-escalate role).
 13. ~~Implement `rackd backup` and `rackd migrate` commands~~ **FIXED.** Added `rackd backup` (copies SQLite DB + WAL/SHM files with timestamped output) and `rackd migrate` with `status` (shows all migrations and pending count) and `run` (applies pending migrations) subcommands.
 14. ~~Add `--skip-tls-verify` flag to CLI client~~ **FIXED.** The existing `VerifySSL` config field is now wired to the HTTP client's TLS settings. Set `RACKD_VERIFY_SSL=false` or `"verify_ssl": false` in config to skip certificate verification for self-signed certs.
 
-### Long-term (quality)
+15. ~~Refactor Handler struct to use options pattern~~ **FIXED.** Replaced 8 individual `Set*` methods on the `Handler` struct with a `HandlerOption` functional options pattern. `NewHandler` now accepts variadic `...HandlerOption` args. Option functions: `WithSessionManager`, `WithCredentialsStorage`, `WithProfileStorage`, `WithScheduledScanStorage`, `WithLoginRateLimiter`, `WithCookieConfig`, `WithTrustProxy`, `WithServices`. All call sites in `server.go` and test files updated.
 15. Refactor Handler struct to use options pattern
-16. Standardize storage layer time handling and error sentinels
+16. Standardize storage layer time handling and error sentinels~~ **FIXED.**
 17. Add performance benchmarks
 18. Implement CORS configuration
 19. Add request timeout enforcement per-endpoint

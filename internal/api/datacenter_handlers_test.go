@@ -99,8 +99,9 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 		t.Fatalf("failed to create test API key: %v", err)
 	}
 
-	h := NewHandler(store, nil)
-	h.SetServices(service.NewServices(store, nil, nil))
+	h := NewHandler(store, nil,
+		WithServices(service.NewServices(store, nil, nil)),
+	)
 	return h, store
 }
 

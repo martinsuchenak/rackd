@@ -118,8 +118,9 @@ func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorag
 	}
 
 	scanner := &mockScanner{store: store}
-	h := NewHandler(store, scanner)
-	h.SetServices(service.NewServices(store, nil, scanner))
+	h := NewHandler(store, scanner,
+		WithServices(service.NewServices(store, nil, scanner)),
+	)
 	return h, store, scanner
 }
 

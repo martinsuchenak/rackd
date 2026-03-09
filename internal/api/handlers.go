@@ -30,41 +30,59 @@ type Handler struct {
 	svc              *service.Services
 }
 
-func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner) *Handler {
-	return &Handler{store: s, scanner: scanner}
+// HandlerOption configures a Handler during construction.
+type HandlerOption func(*Handler)
+
+// WithSessionManager sets the session manager for authentication.
+func WithSessionManager(sm *auth.SessionManager) HandlerOption {
+	return func(h *Handler) { h.sessionManager = sm }
 }
 
-func (h *Handler) SetCredentialsStorage(cs credentials.Storage) {
-	h.credStore = cs
+// WithCredentialsStorage sets the credentials storage backend.
+func WithCredentialsStorage(cs credentials.Storage) HandlerOption {
+	return func(h *Handler) { h.credStore = cs }
 }
 
-func (h *Handler) SetProfileStorage(ps storage.ProfileStorage) {
-	h.profileStore = ps
+// WithProfileStorage sets the scan profile storage backend.
+func WithProfileStorage(ps storage.ProfileStorage) HandlerOption {
+	return func(h *Handler) { h.profileStore = ps }
 }
 
-func (h *Handler) SetScheduledScanStorage(ss storage.ScheduledScanStorage) {
-	h.scheduledStore = ss
+// WithScheduledScanStorage sets the scheduled scan storage backend.
+func WithScheduledScanStorage(ss storage.ScheduledScanStorage) HandlerOption {
+	return func(h *Handler) { h.scheduledStore = ss }
 }
 
-func (h *Handler) SetSessionManager(sm *auth.SessionManager) {
-	h.sessionManager = sm
+// WithLoginRateLimiter sets the rate limiter for login attempts.
+func WithLoginRateLimiter(rl *RateLimiter) HandlerOption {
+	return func(h *Handler) { h.loginRateLimiter = rl }
 }
 
-func (h *Handler) SetLoginRateLimiter(rl *RateLimiter) {
-	h.loginRateLimiter = rl
+// WithCookieConfig sets cookie security and session TTL.
+func WithCookieConfig(secure bool, sessionTTL time.Duration) HandlerOption {
+	return func(h *Handler) {
+		h.cookieSecure = secure
+		h.sessionTTL = sessionTTL
+	}
 }
 
-func (h *Handler) SetCookieConfig(secure bool, sessionTTL time.Duration) {
-	h.cookieSecure = secure
-	h.sessionTTL = sessionTTL
+// WithTrustProxy enables trusting X-Forwarded-For headers.
+func WithTrustProxy(trustProxy bool) HandlerOption {
+	return func(h *Handler) { h.trustProxy = trustProxy }
 }
 
-func (h *Handler) SetTrustProxy(trustProxy bool) {
-	h.trustProxy = trustProxy
+// WithServices sets the service registry.
+func WithServices(svc *service.Services) HandlerOption {
+	return func(h *Handler) { h.svc = svc }
 }
 
-func (h *Handler) SetServices(svc *service.Services) {
-	h.svc = svc
+// NewHandler creates a new API handler with the given storage, scanner, and options.
+func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner, opts ...HandlerOption) *Handler {
+	h := &Handler{store: s, scanner: scanner}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {

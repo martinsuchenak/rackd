@@ -48,10 +48,11 @@ func newTestServer(t *testing.T) *testServer {
 
 	svc := service.NewServices(store, sm, nil)
 
-	h := NewHandler(store, nil)
-	h.SetSessionManager(sm)
-	h.SetCookieConfig(false, 24*time.Hour)
-	h.SetServices(svc)
+	h := NewHandler(store, nil,
+		WithSessionManager(sm),
+		WithCookieConfig(false, 24*time.Hour),
+		WithServices(svc),
+	)
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

@@ -19,8 +19,9 @@ func TestSearch(t *testing.T) {
 	}
 	defer store.Close()
 
-	handler := NewHandler(store, nil)
-	handler.SetServices(service.NewServices(store, nil, nil))
+	handler := NewHandler(store, nil,
+		WithServices(service.NewServices(store, nil, nil)),
+	)
 	ctx := context.Background()
 
 	// Create test data
