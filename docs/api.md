@@ -915,7 +915,19 @@ curl -X POST http://localhost:8080/api/discovery/devices/discovered-uuid/promote
 
 ## Rate Limiting
 
-Currently, no rate limiting is implemented. Consider implementing appropriate rate limiting for production deployments.
+Rate limiting is **enabled by default** to protect against API abuse:
+
+- **General API**: 100 requests per minute per client (configurable)
+- **Login endpoints**: 5 requests per minute per IP (configurable)
+
+Rate limit headers are included in all responses:
+- `X-RateLimit-Limit`: Maximum requests per window
+- `X-RateLimit-Remaining`: Remaining requests in current window
+- `X-RateLimit-Reset`: Time when the window resets
+
+When rate limited, the API returns HTTP 429 with a `Retry-After` header.
+
+See [Rate Limiting](ratelimit.md) for detailed configuration options.
 
 ## Versioning
 

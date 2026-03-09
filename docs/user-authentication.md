@@ -11,7 +11,7 @@ On first startup, Rackd can create an initial admin user if you provide credenti
 ```bash
 # Required
 INITIAL_ADMIN_USERNAME=admin          # Username for initial admin
-INITIAL_ADMIN_PASSWORD=securepass     # Password (min 8 characters)
+INITIAL_ADMIN_PASSWORD=securepass     # Password (min 12 characters)
 
 # Optional
 INITIAL_ADMIN_EMAIL=admin@example.com  # Email (default: admin@localhost)
@@ -153,7 +153,7 @@ rackd user password --id <user-id>
 1. **Change Default Password**: After first login, change the initial admin password
 2. **Use Secrets Management**: Store admin credentials in secrets managers (Kubernetes Secrets, Vault, etc.)
 3. **Enable Audit Logging**: Set `AUDIT_ENABLED=true` to track all user actions
-4. **Use Strong Passwords**: Minimum 8 characters with bcrypt hashing (cost factor 12)
+4. **Use Strong Passwords**: Minimum 12 characters with bcrypt hashing (cost factor 14)
 5. **Set Appropriate Session TTL**: Adjust based on your security requirements
 
 ## Authentication Flow

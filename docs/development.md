@@ -154,6 +154,349 @@ rackd/
 - **`webui/`**: Frontend application built with Alpine.js and TailwindCSS
 - **`api/`**: OpenAPI specifications for the REST API
 
+## Code Organization Patterns
+
+Rackd follows a consistent "one file per resource" pattern across all layers. Understanding this pattern makes it easy to navigate and extend the codebase.
+
+### Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CLI (cmd/)           Web UI (webui/)      API Clients          │
+│  One file per         One component per    External consumers   │
+│  command group        resource/view                            │
+├─────────────────────────────────────────────────────────────────┤
+│  API Layer (internal/api/)                                      │
+│  One file per resource - HTTP handlers, routing, validation     │
+├─────────────────────────────────────────────────────────────────┤
+│  Service Layer (internal/service/)                              │
+│  One file per resource - Business logic, RBAC checks            │
+├─────────────────────────────────────────────────────────────────┤
+│  Storage Layer (internal/storage/)                              │
+│  One file per resource - Database operations                    │
+├─────────────────────────────────────────────────────────────────┤
+│  Model Layer (internal/model/)                                  │
+│  One file per resource - Data structures, DTOs                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### File Organization by Layer
+
+#### Model Layer (`internal/model/`)
+
+Each resource has its own file defining data structures:
+
+```
+internal/model/
+├── device.go           # Device, DeviceFilter, DeviceResponse
+├── network.go          # Network, NetworkFilter, Pool
+├── datacenter.go       # Datacenter, DatacenterFilter
+├── user.go             # User, UserResponse, Session
+├── role.go             # Role, Permission, RoleResponse
+├── audit.go            # AuditLog, AuditFilter
+├── dns.go              # DNSProvider, DNSZone, DNSRecord
+└── discovery.go        # DiscoveredDevice, ScanConfig
+```
+
+#### Storage Layer (`internal/storage/`)
+
+Each resource's database operations in a separate file:
+
+```
+internal/storage/
+├── storage.go          # Interface definitions (DeviceStorage, NetworkStorage, etc.)
+├── sqlite.go           # SQLiteStorage struct, connection management
+├── device.go           # Device CRUD operations
+├── network.go          # Network and Pool CRUD operations
+├── datacenter.go       # Datacenter CRUD operations
+├── user.go             # User and Session operations
+├── role.go             # Role and Permission operations
+├── audit.go            # Audit log operations
+├── dns.go              # DNS provider and zone operations
+├── discovery.go        # Discovery scan operations
+├── migrations.go       # Database schema migrations
+└── *_test.go           # Tests alongside implementation
+```
+
+#### Service Layer (`internal/service/`)
+
+Business logic with RBAC enforcement:
+
+```
+internal/service/
+├── services.go         # Services container, initialization
+├── device.go           # DeviceService with RBAC checks
+├── network.go          # NetworkService with RBAC checks
+├── datacenter.go       # DatacenterService with RBAC checks
+├── user.go             # UserService
+├── role.go             # RoleService
+├── audit.go            # AuditService
+├── dns.go              # DNSService
+├── discovery.go        # DiscoveryService
+├── rbac.go             # Permission checking utilities
+└── context.go          # Request context utilities
+```
+
+#### API Layer (`internal/api/`)
+
+HTTP handlers for each resource:
+
+```
+internal/api/
+├── handlers.go         # Route registration, handler setup
+├── device.go           # Device HTTP handlers
+├── network.go          # Network HTTP handlers
+├── datacenter.go       # Datacenter HTTP handlers
+├── user.go             # User HTTP handlers
+├── role.go             # Role HTTP handlers
+├── auth.go             # Authentication handlers
+├── dns.go              # DNS HTTP handlers
+├── discovery.go        # Discovery HTTP handlers
+├── middleware.go       # Auth, logging, CORS middleware
+└── *_test.go           # API tests
+```
+
+#### MCP Layer (`internal/mcp/`)
+
+Model Context Protocol tools for AI integration:
+
+```
+internal/mcp/
+├── server.go           # MCP server setup
+├── device.go           # Device tools
+├── network.go          # Network tools
+├── datacenter.go       # Datacenter tools
+└── discovery.go        # Discovery tools
+```
+
+#### CLI Layer (`cmd/`)
+
+Each command group is a package with one file per subcommand:
+
+```
+cmd/
+├── server/             # Server command
+│   └── server.go
+├── device/             # Device management commands
+│   ├── device.go       # Command group registration
+│   ├── add.go          # Add subcommand
+│   ├── get.go          # Get subcommand
+│   ├── list.go         # List subcommand
+│   ├── update.go       # Update subcommand
+│   └── delete.go       # Delete subcommand
+├── network/            # Network management commands
+│   ├── network.go      # Command group registration
+│   ├── pool.go         # Pool subcommands
+│   ├── add.go          # Add subcommand
+│   ├── get.go          # Get subcommand
+│   ├── list.go         # List subcommand
+│   └── delete.go       # Delete subcommand
+├── datacenter/         # Datacenter management commands
+│   ├── datacenter.go   # Command group registration
+│   ├── add.go          # Add subcommand
+│   ├── get.go          # Get subcommand
+│   ├── list.go         # List subcommand
+│   ├── update.go       # Update subcommand
+│   └── delete.go       # Delete subcommand
+├── discovery/          # Discovery commands
+│   ├── discovery.go    # Command group registration
+│   ├── scan.go         # Scan subcommand
+│   ├── list.go         # List subcommand
+│   └── promote.go      # Promote subcommand
+├── user/               # User management commands
+│   └── user.go
+├── role/               # Role management commands
+│   └── role.go
+├── apikey/             # API key management commands
+│   └── apikey.go
+├── dns/                # DNS management commands
+│   ├── dns.go          # Command group registration
+│   ├── provider.go     # Provider subcommands
+│   ├── zone.go         # Zone subcommands
+│   ├── import.go       # Import subcommand
+│   ├── sync.go         # Sync subcommand
+│   └── records.go      # Records subcommand
+├── webhook/            # Webhook management commands
+│   ├── webhook.go      # Command group registration
+│   ├── create.go       # Create subcommand
+│   ├── get.go          # Get subcommand
+│   ├── list.go         # List subcommand
+│   ├── update.go       # Update subcommand
+│   ├── delete.go       # Delete subcommand
+│   ├── ping.go         # Ping subcommand
+│   └── events.go       # Events subcommand
+├── audit/              # Audit log commands
+│   └── audit.go
+├── backup/             # Backup commands
+│   └── backup.go
+├── import/             # Import commands
+│   └── import.go
+├── export/             # Export commands
+│   └── export.go
+├── migrate/            # Migration commands
+│   └── migrate.go
+└── client/             # Shared CLI client utilities
+    ├── config.go       # Configuration handling
+    ├── http.go         # HTTP client
+    ├── table.go        # Table output formatting
+    └── errors.go       # Error handling
+```
+
+#### Web UI Layer (`webui/src/`)
+
+Frontend components organized by feature:
+
+```
+webui/src/
+├── components/         # Alpine.js components (TypeScript)
+│   ├── device.ts       # Device list/edit logic
+│   ├── network.ts      # Network management logic
+│   ├── datacenter.ts   # Datacenter management logic
+│   ├── user.ts         # User management logic
+│   ├── role.ts         # Role management logic
+│   └── ...
+├── partials/           # HTML templates (one per view)
+│   ├── device.html     # Device list/edit views
+│   ├── network.html    # Network views
+│   ├── datacenter.html # Datacenter views
+│   ├── user.html       # User views
+│   └── ...
+├── core/               # Core utilities
+│   ├── api.ts          # API client
+│   ├── router.ts       # Client-side routing
+│   └── utils.ts        # Helper functions
+├── app.ts              # Main application entry
+├── index.html          # Main HTML template
+└── styles.css          # TailwindCSS styles
+```
+
+### Content Security Policy (CSP) Compliance
+
+The Web UI enforces a strict Content Security Policy. All frontend code must comply:
+
+**CSP Header:**
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+```
+
+**Requirements:**
+
+1. **No inline scripts** - All JavaScript must be in external `.ts` files compiled to `.js`
+   ```html
+   <!-- ❌ Forbidden -->
+   <script>console.log('hello')</script>
+   <button onclick="doSomething()">Click</button>
+
+   <!-- ✅ Correct - use Alpine.js directives -->
+   <button @click="doSomething()">Click</button>
+   ```
+
+2. **No `eval()` or dynamic code execution** - The CSP blocks `unsafe-eval`:
+   - No `eval()`, `new Function()`, or `setTimeout(string)`
+   - Alpine.js CSP-compatible build (`@alpinejs/csp`) is used
+
+3. **Event handlers via Alpine.js** - Use Alpine directives instead of inline handlers:
+   ```html
+   <!-- ❌ Forbidden -->
+   <input onchange="validate(this)">
+
+   <!-- ✅ Correct -->
+   <input @change="validate($event)">
+   ```
+
+4. **Styles** - `unsafe-inline` is allowed for styles due to TailwindCSS dynamic classes, but prefer static classes when possible
+
+5. **Images** - Only `self` and `data:` URIs allowed (for inline base64 images)
+
+6. **API calls** - Only same-origin requests via `/api/*` endpoints
+
+**Testing CSP Compliance:**
+
+Check browser console for CSP violations during development. Any blocked resource will show a warning.
+
+### Adding a New Resource
+
+Follow this checklist to add a new resource type:
+
+1. **Model** (`internal/model/widget.go`)
+   ```go
+   type Widget struct {
+       ID          string    `json:"id"`
+       Name        string    `json:"name"`
+       CreatedAt   time.Time `json:"created_at"`
+   }
+
+   type WidgetFilter struct {
+       Name string
+       model.Pagination
+   }
+   ```
+
+2. **Storage Interface** (`internal/storage/storage.go`)
+   ```go
+   type WidgetStorage interface {
+       CreateWidget(ctx context.Context, widget *model.Widget) error
+       GetWidget(ctx context.Context, id string) (*model.Widget, error)
+       ListWidgets(ctx context.Context, filter *model.WidgetFilter) ([]model.Widget, error)
+       UpdateWidget(ctx context.Context, widget *model.Widget) error
+       DeleteWidget(ctx context.Context, id string) error
+   }
+   ```
+
+3. **Storage Implementation** (`internal/storage/widget.go` and `widget_test.go`)
+
+4. **Service** (`internal/service/widget.go` and `widget_test.go`)
+   - Include RBAC permission checks
+   - Business logic validation
+
+5. **API Handlers** (`internal/api/widget.go` and `widget_test.go`)
+   - Register routes in `handlers.go`
+
+6. **MCP Tools** (`internal/mcp/widget.go`)
+   - Register tools in `server.go`
+
+7. **CLI Commands** (`cmd/widget/widget.go`)
+   - Register in `main.go`
+
+8. **Web UI** (`webui/src/components/widget.ts` and `webui/src/partials/widget.html`)
+
+9. **Database Migration** (`internal/storage/migrations.go`)
+   - Add table creation SQL
+   - Add default permissions
+
+10. **Documentation** (`docs/`)
+    - Update API reference
+    - Update CLI reference
+
+### Test Organization
+
+Each source file has a corresponding test file in the same directory:
+
+```
+internal/storage/
+├── device.go
+├── device_test.go
+├── network.go
+├── network_test.go
+└── ...
+
+internal/api/
+├── device.go
+├── device_test.go
+└── ...
+```
+
+Integration tests use `testing.Short()` to skip during short test runs:
+
+```go
+func TestWidgetIntegration(t *testing.T) {
+    if testing.Short() {
+        t.Skip("skipping integration test")
+    }
+    // ...
+}
+```
+
 ## Testing
 
 ### Test Organization

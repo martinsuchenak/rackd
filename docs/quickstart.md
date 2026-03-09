@@ -19,7 +19,7 @@ Access web UI at http://localhost:8080
 
 ```bash
 # CLI
-./rackd-linux-amd64 datacenter create --name "Main DC" --location "New York"
+./rackd-linux-amd64 datacenter add --name "Main DC" --location "New York"
 
 # Or via Web UI: Datacenters → Add Datacenter
 ```
@@ -28,7 +28,7 @@ Access web UI at http://localhost:8080
 
 ```bash
 # Create network with CIDR
-./rackd-linux-amd64 network create --name "Office LAN" --cidr "192.168.1.0/24" --datacenter-id 1
+./rackd-linux-amd64 network add --name "Office LAN" --cidr "192.168.1.0/24"
 
 # Or via Web UI: Networks → Add Network
 ```
@@ -37,11 +37,9 @@ Access web UI at http://localhost:8080
 
 ```bash
 # Add a server
-./rackd-linux-amd64 device create \
+./rackd-linux-amd64 device add \
   --name "web-server-01" \
-  --type "server" \
-  --ip "192.168.1.10" \
-  --datacenter-id 1
+  --description "Production web server"
 
 # Or via Web UI: Devices → Add Device
 ```
@@ -50,10 +48,10 @@ Access web UI at http://localhost:8080
 
 ```bash
 # Scan network for devices
-./rackd-linux-amd64 discovery scan --network "192.168.1.0/24"
+./rackd-linux-amd64 discovery scan 192.168.1.0/24
 
 # View discovered devices
-./rackd-linux-amd64 device list
+./rackd-linux-amd64 discovery list
 ```
 
 ## 6. Basic Operations (1 minute)
@@ -65,10 +63,10 @@ Access web UI at http://localhost:8080
 ./rackd-linux-amd64 device list
 
 # Get device details
-./rackd-linux-amd64 device get --id 1
+./rackd-linux-amd64 device get <device-id>
 
 # Update device
-./rackd-linux-amd64 device update --id 1 --description "Production web server"
+./rackd-linux-amd64 device update <device-id> --description "Updated description"
 ```
 
 ## Next Steps

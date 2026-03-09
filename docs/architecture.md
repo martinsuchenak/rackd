@@ -293,13 +293,18 @@ mux.HandleFunc("PUT /api/devices/{id}", handler)
 ## Security Architecture
 
 ### Authentication
-- Optional bearer token authentication
-- Separate tokens for API and MCP
+Rackd supports multiple authentication methods:
+- **Session-based authentication** - For Web UI users with secure cookies
+- **API Keys** - Bearer tokens for programmatic access, tied to user accounts
+- **OAuth 2.1 with PKCE** - For MCP clients (AI tools like Claude Desktop)
 - Constant-time comparison to prevent timing attacks
 
-### Authorization
-- Currently single-user (no RBAC in OSS)
-- All authenticated requests have full access
+### Authorization (RBAC)
+Rackd implements role-based access control (RBAC):
+- **Built-in roles**: `admin`, `operator`, `viewer`
+- **Custom roles**: Create roles with specific permission sets
+- **Permissions**: Fine-grained `resource:action` format (e.g., `devices:create`)
+- All API and MCP requests go through RBAC checks at the service layer
 
 ### Data Protection
 - Credentials encrypted at rest (AES-256-GCM)
@@ -365,10 +370,7 @@ type Scanner interface {
 
 ### Potential Enhancements
 - PostgreSQL storage backend (for larger deployments)
-- Multi-user support with RBAC
 - SSO/OIDC integration
-- Audit logging
-- Metrics and monitoring
 - GraphQL API
 - WebSocket for real-time updates
 - Plugin system

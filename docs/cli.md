@@ -474,6 +474,643 @@ rackd discovery promote disc-123 \
   --tags production,web
 ```
 
+### user
+
+Manage users.
+
+#### user list
+
+List all users.
+
+```bash
+rackd user list [options]
+```
+
+**Options:**
+- `--username <username>` - Filter by username
+- `--email <email>` - Filter by email
+
+**Examples:**
+
+```bash
+# List all users
+rackd user list
+
+# Filter by username
+rackd user list --username admin
+```
+
+#### user create
+
+Create a new user.
+
+```bash
+rackd user create [options]
+```
+
+**Options:**
+- `--username <username>` - Username (required)
+- `--email <email>` - Email address (required)
+- `--full-name <name>` - Full name
+- `--admin` - Make user an admin
+
+**Examples:**
+
+```bash
+# Create a user
+rackd user create --username jsmith --email john@example.com --full-name "John Smith"
+
+# Create an admin user
+rackd user create --username admin --email admin@example.com --admin
+```
+
+#### user update
+
+Update a user.
+
+```bash
+rackd user update --id <user-id> [options]
+```
+
+**Options:**
+- `--id <id>` - User ID (required)
+- `--email <email>` - Email address
+- `--full-name <name>` - Full name
+- `--active` - Set user active
+- `--inactive` - Set user inactive
+- `--admin` - Grant admin status
+- `--not-admin` - Remove admin status
+
+**Examples:**
+
+```bash
+# Update user email
+rackd user update --id user-123 --email newemail@example.com
+
+# Deactivate a user
+rackd user update --id user-123 --inactive
+```
+
+#### user delete
+
+Delete a user.
+
+```bash
+rackd user delete --id <user-id>
+```
+
+#### user password
+
+Change a user's password.
+
+```bash
+rackd user password --id <user-id>
+```
+
+You will be prompted for the old and new passwords.
+
+### role
+
+Manage roles and permissions.
+
+#### role list
+
+List roles.
+
+```bash
+rackd role list [options]
+```
+
+**Options:**
+- `--name <name>` - Filter by name
+
+#### role permissions
+
+List available permissions.
+
+```bash
+rackd role permissions [options]
+```
+
+**Options:**
+- `--resource <resource>` - Filter by resource
+- `--action <action>` - Filter by action
+
+#### role create
+
+Create a new role.
+
+```bash
+rackd role create [options]
+```
+
+**Options:**
+- `--name <name>` - Role name (required)
+- `--description <desc>` - Role description
+
+**Examples:**
+
+```bash
+rackd role create --name "Network Admin" --description "Full network management"
+```
+
+#### role delete
+
+Delete a role.
+
+```bash
+rackd role delete --id <role-id>
+```
+
+#### role assign
+
+Assign a role to a user.
+
+```bash
+rackd role assign --user-id <user-id> --role-id <role-id>
+```
+
+#### role revoke
+
+Revoke a role from a user.
+
+```bash
+rackd role revoke --user-id <user-id> --role-id <role-id>
+```
+
+### apikey
+
+Manage API keys.
+
+#### apikey list
+
+List API keys.
+
+```bash
+rackd apikey list
+```
+
+#### apikey create
+
+Create a new API key.
+
+```bash
+rackd apikey create [options]
+```
+
+**Options:**
+- `--name <name>` - API key name (required)
+- `--description <desc>` - Description
+- `--expires <date>` - Expiration date (YYYY-MM-DD)
+
+**Examples:**
+
+```bash
+# Create a basic API key
+rackd apikey create --name "CI/CD Pipeline"
+
+# Create with expiration
+rackd apikey create --name "Temp Key" --expires 2024-12-31
+```
+
+**Output:**
+
+```
+API Key created successfully!
+
+ID:   key-123
+Name: CI/CD Pipeline
+Key:  rak_live_xxxxxxxxxxxx
+
+⚠️  Save this key securely - it will not be shown again!
+```
+
+#### apikey delete
+
+Delete an API key.
+
+```bash
+rackd apikey delete --id <key-id>
+```
+
+#### apikey generate
+
+Generate a random API key (offline, for manual use).
+
+```bash
+rackd apikey generate
+```
+
+### credentials
+
+Manage credentials and encryption.
+
+#### credentials rotate-key
+
+Rotate the master encryption key used for credentials.
+
+```bash
+rackd credentials rotate-key [options]
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+- `--new-key <key>` - New 32-byte hex-encoded encryption key (required)
+
+**Examples:**
+
+```bash
+# Generate a new key
+openssl rand -hex 32
+
+# Rotate the key (requires ENCRYPTION_KEY env var to be set)
+rackd credentials rotate-key --new-key <new-64-char-hex-string>
+```
+
+### dns
+
+DNS management commands.
+
+#### dns provider
+
+Manage DNS providers.
+
+##### dns provider list
+
+List DNS providers.
+
+```bash
+rackd dns provider list [options]
+```
+
+**Options:**
+- `--type <type>` - Filter by provider type (technitium, powerdns, bind)
+- `--output <format>` - Output format (table/json/yaml)
+
+##### dns provider create
+
+Create a DNS provider.
+
+```bash
+rackd dns provider create [options]
+```
+
+**Options:**
+- `--name <name>` - Provider name (required)
+- `--type <type>` - Provider type: technitium, powerdns, bind (required)
+- `--endpoint <url>` - API endpoint URL
+- `--token-env <var>` - Environment variable containing API token
+- `--token-file <path>` - File containing API token
+- `--description <desc>` - Description
+
+**Examples:**
+
+```bash
+# Create Technitium provider
+rackd dns provider create \
+  --name "Main DNS" \
+  --type technitium \
+  --endpoint http://dns.example.com:5380 \
+  --token-env TECHNITIUM_TOKEN
+
+# Create PowerDNS provider
+rackd dns provider create \
+  --name "PowerDNS" \
+  --type powerdns \
+  --endpoint http://pdns.example.com:8081 \
+  --token-env POWERDNS_API_KEY
+```
+
+##### dns provider test
+
+Test DNS provider connection.
+
+```bash
+rackd dns provider test --id <provider-id>
+```
+
+##### dns provider update
+
+Update a DNS provider.
+
+```bash
+rackd dns provider update --id <id> [options]
+```
+
+##### dns provider delete
+
+Delete a DNS provider.
+
+```bash
+rackd dns provider delete --id <id> [--force]
+```
+
+#### dns zone
+
+Manage DNS zones.
+
+##### dns zone list
+
+List DNS zones.
+
+```bash
+rackd dns zone list [options]
+```
+
+**Options:**
+- `--provider <id>` - Filter by provider ID
+- `--network <id>` - Filter by network ID
+- `--output <format>` - Output format (table/json/yaml)
+
+##### dns zone create
+
+Create a DNS zone.
+
+```bash
+rackd dns zone create [options]
+```
+
+**Options:**
+- `--name <name>` - Zone name, e.g., example.com (required)
+- `--provider <id>` - Provider ID (required)
+- `--network <id>` - Network ID (for auto PTR records)
+- `--enable-auto-sync` - Enable automatic sync
+- `--create-ptr` - Create PTR records
+- `--ttl <seconds>` - Default TTL
+
+**Examples:**
+
+```bash
+rackd dns zone create \
+  --name example.com \
+  --provider prov-123 \
+  --network net-456 \
+  --create-ptr \
+  --enable-auto-sync
+```
+
+##### dns zone update
+
+Update a DNS zone.
+
+```bash
+rackd dns zone update --id <id> [options]
+```
+
+##### dns zone delete
+
+Delete a DNS zone.
+
+```bash
+rackd dns zone delete --id <id> [--force]
+```
+
+#### dns records
+
+List DNS records for a zone.
+
+```bash
+rackd dns records --zone <zone-id> [options]
+```
+
+**Options:**
+- `--zone <id>` - Zone ID (required)
+- `--type <type>` - Filter by record type (A, AAAA, CNAME, MX, TXT, PTR, NS, SRV)
+- `--device <id>` - Filter by device ID
+- `--name <name>` - Filter by record name
+- `--output <format>` - Output format (table/json/yaml)
+
+#### dns sync
+
+Sync a DNS zone to the provider.
+
+```bash
+rackd dns sync --zone <zone-id> [options]
+```
+
+**Options:**
+- `--zone <id>` - Zone ID (required)
+- `--force` - Force sync even if unchanged
+
+#### dns import
+
+Import DNS records from provider.
+
+```bash
+rackd dns import --zone <zone-id> [options]
+```
+
+**Options:**
+- `--zone <id>` - Zone ID (required)
+- `--delete` - Delete local records not found on provider
+
+### audit
+
+Audit log management.
+
+#### audit list
+
+List audit logs.
+
+```bash
+rackd audit list [options]
+```
+
+**Options:**
+- `--resource <type>` - Filter by resource type
+- `--resource-id <id>` - Filter by resource ID
+- `--action <action>` - Filter by action
+- `--limit <n>` - Limit number of results (default: 50)
+
+**Examples:**
+
+```bash
+# List recent audit logs
+rackd audit list
+
+# Filter by resource type
+rackd audit list --resource devices --limit 100
+
+# Filter by specific device
+rackd audit list --resource-id dev-123
+```
+
+#### audit export
+
+Export audit logs.
+
+```bash
+rackd audit export [options]
+```
+
+**Options:**
+- `--format <format>` - Export format (json/csv, default: json)
+- `--output <file>` - Output file (default: stdout)
+- `--resource <type>` - Filter by resource type
+- `--resource-id <id>` - Filter by resource ID
+
+### backup
+
+Backup the Rackd database.
+
+```bash
+rackd backup [options]
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+- `--output <file>` - Output file (default: rackd-backup-<timestamp>.db)
+
+**Examples:**
+
+```bash
+# Create backup with auto-generated filename
+rackd backup
+
+# Create backup with specific filename
+rackd backup --output /backups/rackd-$(date +%Y%m%d).db
+```
+
+### import
+
+Import data from CSV or JSON files.
+
+#### import devices
+
+Import devices from file.
+
+```bash
+rackd import devices --file <path> [options]
+```
+
+**Options:**
+- `--file <path>` - Input file (JSON or CSV, required)
+- `--format <format>` - Input format (json/csv, auto-detected if omitted)
+- `--dry-run` - Validate without importing
+
+**Examples:**
+
+```bash
+# Import from JSON
+rackd import devices --file devices.json
+
+# Import from CSV with dry run
+rackd import devices --file devices.csv --dry-run
+```
+
+#### import networks
+
+Import networks from file.
+
+```bash
+rackd import networks --file <path> [options]
+```
+
+#### import datacenters
+
+Import datacenters from file.
+
+```bash
+rackd import datacenters --file <path> [options]
+```
+
+### export
+
+Export data to CSV or JSON.
+
+#### export devices
+
+Export devices.
+
+```bash
+rackd export devices [options]
+```
+
+**Options:**
+- `--format <format>` - Output format (json/csv, default: json)
+- `--output <file>` - Output file (default: stdout)
+
+**Examples:**
+
+```bash
+# Export to JSON file
+rackd export devices --output devices.json
+
+# Export to CSV
+rackd export devices --format csv --output devices.csv
+```
+
+#### export networks
+
+Export networks.
+
+```bash
+rackd export networks [options]
+```
+
+#### export datacenters
+
+Export datacenters.
+
+```bash
+rackd export datacenters [options]
+```
+
+#### export all
+
+Export all data (devices, networks, datacenters).
+
+```bash
+rackd export all [options]
+```
+
+**Options:**
+- `--format <format>` - Output format (json only)
+- `--output <file>` - Output file (default: stdout)
+
+### migrate
+
+Database migration management.
+
+#### migrate status
+
+Show migration status.
+
+```bash
+rackd migrate status [options]
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+
+**Output:**
+
+```
+VERSION     NAME                    STATUS      APPLIED AT
+001         initial_schema          applied     2024-01-15 10:30:00
+002         add_rbac_tables         applied     2024-01-15 10:30:00
+003         add_dns_tables          pending     -
+
+Total: 3 migrations, 1 pending
+```
+
+#### migrate run
+
+Run pending migrations.
+
+```bash
+rackd migrate run [options]
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+
+**Examples:**
+
+```bash
+rackd migrate run
+```
+
 ### version
 
 Show version information.
