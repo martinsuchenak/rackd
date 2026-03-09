@@ -93,9 +93,9 @@ All CLI commands follow a consistent pattern: `rackd {resource} {action}`. Each 
 
 **Missing CLI commands for several API features:**
 - No `rackd circuit` commands for circuit management (the package exists but verify completeness)
-- No `rackd scheduled-scan` CLI commands (only API endpoints exist)
-- No `rackd scan-profile` CLI commands
-- No `rackd oauth` client management CLI commands
+- ~~No `rackd scheduled-scan` CLI commands (only API endpoints exist)~~ **FIXED.** Added `rackd scheduled-scan` with list, get, create, update, delete subcommands.
+- ~~No `rackd scan-profile` CLI commands~~ **FIXED.** Added `rackd scan-profile` with list, get, create, update, delete subcommands.
+- ~~No `rackd oauth` client management CLI commands~~ **FIXED.** Added `rackd oauth` with list and delete subcommands.
 
 **HTTP client has no TLS verification control:** ~~The CLI's `http.Client` in `cmd/client/http.go` uses default TLS settings. There's no `--insecure` flag for self-signed certificates, which is common in infrastructure tools. Add a `--skip-tls-verify` flag.~~ **FIXED.** The `VerifySSL` config field (default `true`) is now wired to the HTTP transport's TLS settings. Set `RACKD_VERIFY_SSL=false` env var or `"verify_ssl": false` in `~/.config/rackd/config.json` to skip certificate verification.
 
@@ -232,9 +232,9 @@ Tests exist for:
 
 **Dockerfile uses `golang:1.25-alpine`:** Go 1.25 doesn't exist yet (current is 1.22). The Makefile references `GOTOOLCHAIN=go1.26.0`. These should match the actual Go version in `go.mod`.
 
-**No database migration tooling:** Schema changes are applied via auto-migration at startup. For production deployments, this is risky — a failed migration could corrupt data. Consider adding a `rackd migrate` command with rollback support.
+**No database migration tooling:** ~~Schema changes are applied via auto-migration at startup. For production deployments, this is risky — a failed migration could corrupt data. Consider adding a `rackd migrate` command with rollback support.~~ **FIXED.** Added `rackd migrate status` (shows all migrations and pending count) and `rackd migrate run` (applies pending migrations).
 
-**No backup/restore commands:** The docs mention backup capabilities but no `rackd backup` or `rackd restore` commands exist. For a single-file SQLite database, this is straightforward to implement.
+**No backup/restore commands:** ~~The docs mention backup capabilities but no `rackd backup` or `rackd restore` commands exist. For a single-file SQLite database, this is straightforward to implement.~~ **FIXED.** Added `rackd backup` command that copies the SQLite DB file plus WAL/SHM files to a timestamped backup.
 
 ---
 
@@ -253,11 +253,11 @@ Tests exist for:
 8. ~~Create `docs/configuration-reference.md` from config.go~~ **FIXED.** Created comprehensive `docs/configuration-reference.md` with all environment variables from `internal/config/config.go`, organized by category (Server, Security, Sessions, Initial Admin, Discovery, Audit, OAuth, Snapshots, DNS).
 
 ### Medium-term (completeness)
-9. Add CLI commands for scheduled scans, scan profiles, and OAuth client management
+9. ~~Add CLI commands for scheduled scans, scan profiles, and OAuth client management~~ **FIXED.** Added `rackd scan-profile` (list, get, create, update, delete), `rackd scheduled-scan` (list, get, create, update, delete), and `rackd oauth` (list, delete) CLI commands.
 10. ~~Add DNS tools to MCP server~~ **FIXED.** Added 16 DNS tools covering providers (list, get, save, delete, test), zones (list, get, save, delete, sync, import), and records (list, get, save, delete, link). All discoverable via keywords.
 11. Add integration tests for full HTTP request flow
 12. Add security-focused test suite
-13. Implement `rackd backup` and `rackd migrate` commands
+13. ~~Implement `rackd backup` and `rackd migrate` commands~~ **FIXED.** Added `rackd backup` (copies SQLite DB + WAL/SHM files with timestamped output) and `rackd migrate` with `status` (shows all migrations and pending count) and `run` (applies pending migrations) subcommands.
 14. ~~Add `--skip-tls-verify` flag to CLI client~~ **FIXED.** The existing `VerifySSL` config field is now wired to the HTTP client's TLS settings. Set `RACKD_VERIFY_SSL=false` or `"verify_ssl": false` in config to skip certificate verification for self-signed certs.
 
 ### Long-term (quality)

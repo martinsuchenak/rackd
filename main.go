@@ -7,6 +7,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/cmd/apikey"
 	"github.com/martinsuchenak/rackd/cmd/audit"
+	"github.com/martinsuchenak/rackd/cmd/backup"
 	"github.com/martinsuchenak/rackd/cmd/circuit"
 	cmdconflict "github.com/martinsuchenak/rackd/cmd/conflict"
 	"github.com/martinsuchenak/rackd/cmd/credential"
@@ -16,10 +17,14 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/discovery"
 	"github.com/martinsuchenak/rackd/cmd/export"
 	importcmd "github.com/martinsuchenak/rackd/cmd/import"
+	"github.com/martinsuchenak/rackd/cmd/migrate"
 	"github.com/martinsuchenak/rackd/cmd/nat"
 	"github.com/martinsuchenak/rackd/cmd/network"
+	"github.com/martinsuchenak/rackd/cmd/oauth"
 	"github.com/martinsuchenak/rackd/cmd/reservation"
 	"github.com/martinsuchenak/rackd/cmd/role"
+	"github.com/martinsuchenak/rackd/cmd/scanprofile"
+	"github.com/martinsuchenak/rackd/cmd/scheduledscan"
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/martinsuchenak/rackd/cmd/user"
 	"github.com/martinsuchenak/rackd/cmd/webhook"
@@ -56,6 +61,11 @@ func main() {
 			audit.Command(),
 			export.Command(),
 			importcmd.Command(),
+			scanprofile.Command(),
+			scheduledscan.Command(),
+			oauth.Command(),
+			backup.Command(),
+			migrate.Command(),
 			{
 				Name:  "version",
 				Usage: "Show version information",

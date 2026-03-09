@@ -270,6 +270,35 @@ func RunMigrations(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// MigrationStatus describes the state of a single migration.
+type MigrationStatus struct {
+	Version   string
+	Name      string
+	Applied   bool
+	AppliedAt string // empty if not applied
+}
+
+// GetMigrationStatus returns the status of all known migrations.
+func GetMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
+	if err := createMigrationTable(ctx, db); err != nil {
+		return nil, err
+	}
+	applied, err := getAppliedMigrations(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	var out []MigrationStatus
+	for _, m := range migrations {
+		ms := MigrationStatus{Version: m.Version, Name: m.Name}
+		if rec, ok := applied[m.Version]; ok {
+			ms.Applied = true
+			ms.AppliedAt = rec.AppliedAt.Format("2006-01-02 15:04:05")
+		}
+		out = append(out, ms)
+	}
+	return out, nil
+}
+
 // createMigrationTable creates the schema_migrations table
 func createMigrationTable(ctx context.Context, db *sql.DB) error {
 	_, err := db.ExecContext(ctx, `
