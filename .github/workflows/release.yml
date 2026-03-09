@@ -28,9 +28,7 @@ jobs:
           bun-version: latest
 
       - name: Build UI Assets
-        run: |
-          make ui-install
-          make ui-build
+        run: make ui-build
 
       - name: Delete release
         run: gh release delete ${{ github.ref_name }} --yes || true
