@@ -1243,6 +1243,14 @@ export function deviceDetail() {
       return this.device?.updated_at;
     },
 
+    getTags(): string[] {
+      return this.device?.tags || [];
+    },
+
+    getDomains(): string[] {
+      return this.device?.domains || [];
+    },
+
     getAddresses(): Address[] {
       return this.device?.addresses || [];
     },

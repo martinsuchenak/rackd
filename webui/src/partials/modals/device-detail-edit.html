@@ -189,41 +189,46 @@
                 <span x-show="fieldDef.required" class="text-red-500">*</span>
               </label>
               <!-- Text type -->
-              <input x-show="fieldDef.type === 'text'"
-                     :id="'cf-detail-' + fieldDef.key"
-                     type="text"
-                     :value="getCustomFieldValue(fieldDef.id)"
-                     @input="setCustomFieldValue(fieldDef.id, $event.target.value)"
-                     :placeholder="fieldDef.description"
-                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <!-- Number type -->
-              <input x-show="fieldDef.type === 'number'"
-                     :id="'cf-detail-' + fieldDef.key"
-                     type="number"
-                     :value="getCustomFieldValue(fieldDef.id)"
-                     @input="setCustomFieldValue(fieldDef.id, $event.target.value ? Number($event.target.value) : null)"
-                     :placeholder="fieldDef.description"
-                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <!-- Boolean type -->
-              <div x-show="fieldDef.type === 'boolean'" class="flex items-center">
+              <template x-if="fieldDef.type === 'text'">
                 <input :id="'cf-detail-' + fieldDef.key"
-                       type="checkbox"
-                       :checked="getCustomFieldValue(fieldDef.id) === true"
-                       @change="setCustomFieldValue(fieldDef.id, $event.target.checked)"
-                       class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300" x-text="fieldDef.description || 'Yes'"></span>
-              </div>
+                       type="text"
+                       :value="getCustomFieldValue(fieldDef.id)"
+                       @input="setCustomFieldValue(fieldDef.id, $event.target.value)"
+                       :placeholder="fieldDef.description"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </template>
+              <!-- Number type -->
+              <template x-if="fieldDef.type === 'number'">
+                <input :id="'cf-detail-' + fieldDef.key"
+                       type="number"
+                       :value="getCustomFieldValue(fieldDef.id)"
+                       @input="setCustomFieldValue(fieldDef.id, $event.target.value ? Number($event.target.value) : null)"
+                       :placeholder="fieldDef.description"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </template>
+              <!-- Boolean type -->
+              <template x-if="fieldDef.type === 'boolean'">
+                <div class="flex items-center">
+                  <input :id="'cf-detail-' + fieldDef.key"
+                         type="checkbox"
+                         :checked="getCustomFieldValue(fieldDef.id) === true"
+                         @change="setCustomFieldValue(fieldDef.id, $event.target.checked)"
+                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <span class="ml-2 text-sm text-gray-700 dark:text-gray-300" x-text="fieldDef.description || 'Yes'"></span>
+                </div>
+              </template>
               <!-- Select type -->
-              <select x-show="fieldDef.type === 'select'"
-                      :id="'cf-detail-' + fieldDef.key"
-                      :value="getCustomFieldValue(fieldDef.id) || ''"
-                      @change="setCustomFieldValue(fieldDef.id, $event.target.value || null)"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">-- Select --</option>
-                <template x-for="opt in fieldDef.options || []" :key="opt">
-                  <option :value="opt" x-text="opt"></option>
-                </template>
-              </select>
+              <template x-if="fieldDef.type === 'select'">
+                <select :id="'cf-detail-' + fieldDef.key"
+                        :value="getCustomFieldValue(fieldDef.id) || ''"
+                        @change="setCustomFieldValue(fieldDef.id, $event.target.value || null)"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">-- Select --</option>
+                  <template x-for="opt in fieldDef.options || []" :key="opt">
+                    <option :value="opt" x-text="opt"></option>
+                  </template>
+                </select>
+              </template>
               <p x-show="fieldDef.description && fieldDef.type !== 'boolean'" class="text-xs text-gray-500 dark:text-gray-400" x-text="fieldDef.description"></p>
             </div>
           </template>
