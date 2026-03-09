@@ -263,6 +263,6 @@ Tests exist for:
 
 15. ~~Refactor Handler struct to use options pattern~~ **FIXED.** Replaced 8 individual `Set*` methods on the `Handler` struct with a `HandlerOption` functional options pattern. `NewHandler` now accepts variadic `...HandlerOption` args. Option functions: `WithSessionManager`, `WithCredentialsStorage`, `WithProfileStorage`, `WithScheduledScanStorage`, `WithLoginRateLimiter`, `WithCookieConfig`, `WithTrustProxy`, `WithServices`. All call sites in `server.go` and test files updated.
 16. Standardize storage layer time handling and error sentinels~~ **FIXED.**
-17. Add performance benchmarks
+17. ~~Add performance benchmarks~~ **FIXED.** Added `internal/api/benchmark_test.go` with 18 benchmarks covering: storage layer (create/get/list/search/tag-filter devices), auth (API key auth, session validation, password hash/verify, RBAC permission check), HTTP handlers (list/get/create devices, global search), JSON serialization, and full middleware chain overhead. Run with `go test -bench=. -benchmem ./internal/api/`.
 18. Implement CORS configuration
 19. Add request timeout enforcement per-endpoint
