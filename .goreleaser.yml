@@ -50,10 +50,11 @@ brews:
       owner: martinsuchenak
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Formula
     homepage: "https://github.com/martinsuchenak/rackd"
     description: "Device inventory and IPAM management"
     license: "MIT"
     install: |
       bin.install "rackd"
     test: |
-      system "#{bin}/rackd", "version"
+      system "#{bin}/rackd", "--version"
