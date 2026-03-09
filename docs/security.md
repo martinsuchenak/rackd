@@ -1,114 +1,150 @@
 # Security
 
-This document covers security considerations and best practices for deploying and operating Rackd in production environments.
+Security considerations and hardening guide for production Rackd deployments.
 
 ## Authentication
 
-### Default Authentication
-Rackd uses session-based authentication with secure cookies:
+Rackd requires authentication on all API endpoints. Three methods are supported:
 
-```bash
-# Set authentication credentials
-export RACKD_AUTH_USERNAME="admin"
-export RACKD_AUTH_PASSWORD="secure-password-here"
-```
+- Session cookies (Web UI login)
+- API keys (Bearer token, tied to a user account)
+- OAuth 2.1 with PKCE (MCP clients)
 
-### Session Security
-- Sessions expire after 24 hours of inactivity
-- Secure, HttpOnly cookies prevent XSS attacks
-- CSRF protection on all state-changing operations
-- Session tokens are cryptographically random
+See [Authentication](authentication.md) for details on each method.
 
-## API Tokens
+## Secure Defaults
 
-### Token Generation
-```bash
-# Generate API token via CLI
-rackd auth token create --name "automation" --expires "30d"
+Rackd ships with secure defaults for production use:
 
-# Generate token via API
-curl -X POST http://localhost:8080/api/v1/auth/tokens \
-  -H "Content-Type: application/json" \
-  -d '{"name": "integration", "expires_at": "2024-12-31T23:59:59Z"}'
-```
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `COOKIE_SECURE` | `true` | Session cookies only sent over HTTPS |
+| `RATE_LIMIT_ENABLED` | `true` | API rate limiting active |
+| `RATE_LIMIT_REQUESTS` | `100` | 100 requests per minute per IP |
+| `LOGIN_RATE_LIMIT_REQUESTS` | `5` | 5 login attempts per minute per IP |
 
-### Token Security
-- Tokens are SHA-256 hashed in database
-- Support expiration dates
-- Can be revoked individually
-- Rate limited to prevent brute force attacks
+For local development without TLS, use `--dev-mode` which disables `COOKIE_SECURE` and `RATE_LIMIT_ENABLED` automatically.
 
-### Using Tokens
-```bash
-# CLI with token
-export RACKD_API_TOKEN="your-token-here"
-rackd devices list
+## CSRF Protection
 
-# HTTP requests
-curl -H "Authorization: Bearer your-token-here" \
-  http://localhost:8080/api/v1/devices
-```
+State-changing requests (POST, PUT, DELETE, PATCH) from session-authenticated users must include the `X-Requested-With: XMLHttpRequest` header. Requests without it are rejected with 403. This prevents cross-origin form submissions from exploiting session cookies.
+
+The built-in Web UI sends this header on all requests. External integrations using session auth must include it as well.
+
+## Password Security
+
+- Minimum length: 12 characters (enforced server-side)
+- Hashing: bcrypt with cost factor 14
+- Password changes invalidate all active sessions for the user
+- Login rate limiting prevents brute-force attacks
+
+## API Key Security
+
+- Keys are SHA-256 hashed before storage — plaintext is never persisted
+- Token comparison uses constant-time comparison to prevent timing attacks
+- Every key must be associated with a user account for RBAC enforcement
+- Legacy keys (no user association) are rejected at the auth boundary
+- Expired keys return a specific `EXPIRED_KEY` error code
+- Last-used timestamps are tracked for auditing
+
+## Session Security
+
+- Sessions use cryptographically random tokens
+- Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` (by default)
+- 24-hour TTL with sliding expiration
+- Sessions are invalidated on password change
+- Session store supports SQLite (default) or Valkey for distributed deployments
+
+## OAuth 2.1 Security
+
+- PKCE required (no plain code challenge)
+- Refresh token rotation with replay detection
+- Dynamic client registration
+- Token revocation endpoint
 
 ## Credential Encryption
 
-### Database Encryption
-Sensitive fields are encrypted at rest using AES-256-GCM:
+Device credentials (SSH passwords, SNMP community strings) are encrypted at rest using AES-256-GCM. The encryption key is derived from the server's internal key material.
 
-```bash
-# Set encryption key (32 bytes, base64 encoded)
-export RACKD_ENCRYPTION_KEY="your-32-byte-key-base64-encoded"
-```
+## Webhook Security
 
-### Encrypted Fields
-- Device passwords and SSH keys
-- SNMP community strings
-- API credentials for external systems
-- Certificate private keys
+- HMAC-SHA256 signatures on webhook payloads (when a secret is configured)
+- SSRF protection: loopback, link-local (169.254.x.x), and unspecified addresses are blocked
+- Secure HTTP client with `SafeDialContext` prevents DNS rebinding
+- URL length capped at 2048 characters
+- Only HTTP and HTTPS schemes allowed
 
-### Key Management
-```bash
-# Generate encryption key
-openssl rand -base64 32
+## Content Security Policy
 
-# Rotate encryption key (requires restart)
-export RACKD_ENCRYPTION_KEY_OLD="old-key"
-export RACKD_ENCRYPTION_KEY="new-key"
-rackd server --rotate-keys
-```
+The Web UI sets a strict CSP header:
+- No `unsafe-eval` or `unsafe-inline` for scripts
+- Alpine.js CSP-compatible build
+- `default-src 'self'` baseline
 
-## TLS/HTTPS
+## Security Headers
 
-### Enable TLS
-```bash
-# Using certificate files
-export RACKD_TLS_CERT="/path/to/cert.pem"
-export RACKD_TLS_KEY="/path/to/key.pem"
-rackd server --port 8443
+Rackd sets the following headers on all responses:
 
-# Using Let's Encrypt
-export RACKD_ACME_DOMAIN="rackd.example.com"
-export RACKD_ACME_EMAIL="admin@example.com"
-rackd server --acme
-```
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Content-Security-Policy` (see above)
 
-### Certificate Requirements
-- TLS 1.2 minimum (TLS 1.3 preferred)
-- RSA 2048-bit or ECDSA P-256 minimum
-- Valid certificate chain
-- Proper SAN entries for all hostnames
+## Audit Logging
 
-### Reverse Proxy Configuration
+When `AUDIT_ENABLED=true`, Rackd logs all API operations including:
+
+- Timestamp, action, resource type, resource ID
+- User ID and username (from API key or session)
+- Client IP address
+- Success/failure status
+- Change details (before/after for updates)
+
+Audit logs are retained for 90 days by default (`AUDIT_RETENTION_DAYS`).
+
+Query audit logs:
+- `GET /api/audit` — list with filters (action, resource, user, date range)
+- `GET /api/audit/export` — export as CSV
+- `GET /api/audit/{id}` — get single entry
+
+## Rate Limiting
+
+Two rate limiters protect against abuse:
+
+1. General API: 100 requests/minute per IP (configurable)
+2. Login/sensitive endpoints: 5 requests/minute per IP (configurable)
+
+Rate limit headers are included in responses:
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `X-RateLimit-Reset`
+
+## RBAC
+
+All API operations are authorized through role-based access control at the service layer. Both REST API and MCP requests go through the same RBAC checks.
+
+Built-in system roles:
+- `admin` — all permissions
+- `operator` — read/write on infrastructure resources
+- `viewer` — read-only access
+
+Custom roles can be created and assigned arbitrary permission sets.
+
+## Network Security Recommendations
+
+### Reverse Proxy
+
+Run Rackd behind a reverse proxy for TLS termination:
+
 ```nginx
-# Nginx configuration
 server {
     listen 443 ssl http2;
     server_name rackd.example.com;
-    
+
     ssl_certificate /path/to/cert.pem;
-    ssl_private_key /path/to/key.pem;
+    ssl_certificate_key /path/to/key.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    
+
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
@@ -119,215 +155,42 @@ server {
 }
 ```
 
-## Security Headers
+Set `TRUST_PROXY=true` when behind a reverse proxy so Rackd reads the real client IP from forwarded headers.
 
-### Default Headers
-Rackd automatically sets security headers:
+### File Permissions
 
-```
-Strict-Transport-Security: max-age=31536000; includeSubDomains
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'
-```
-
-### Custom Headers
 ```bash
-# Additional security headers
-export RACKD_SECURITY_HEADERS='{"X-Custom-Header": "value"}'
+chmod 600 /var/lib/rackd/rackd.db
+chmod 600 /etc/rackd/.env
+chown rackd:rackd /var/lib/rackd/
 ```
 
-## Network Security
+### Run as Non-Root
 
-### Firewall Configuration
 ```bash
-# Allow only necessary ports
-ufw allow 22/tcp    # SSH
-ufw allow 8080/tcp  # Rackd HTTP
-ufw allow 8443/tcp  # Rackd HTTPS
-ufw deny incoming
-ufw enable
+useradd -r -s /bin/false rackd
+sudo -u rackd ./rackd server
 ```
 
-### Network Isolation
-- Run Rackd in isolated network segment
-- Use VPN for remote access
-- Implement network monitoring
-- Regular security scanning
+### Firewall
 
-### Discovery Security
+Only expose the HTTP port. Bind to localhost if using a reverse proxy:
+
 ```bash
-# Limit discovery networks
-export RACKD_DISCOVERY_NETWORKS="10.0.0.0/8,192.168.0.0/16"
-
-# Discovery credentials (encrypted)
-export RACKD_SNMP_COMMUNITY="encrypted-community-string"
-export RACKD_SSH_KEY="/path/to/discovery-key"
+LISTEN_ADDR=127.0.0.1:8080
 ```
 
-## Access Control
+## Discovery Security
 
-### Role-Based Access
-```bash
-# Create user with specific role
-rackd users create --username "operator" --role "readonly"
+Network discovery scans probe hosts via ARP, TCP, and optionally SNMP. Considerations:
 
-# Available roles
-# - admin: Full access
-# - operator: Read/write devices and networks
-# - readonly: View-only access
-# - discovery: Discovery operations only
-```
+- Scans are limited to the configured network's subnet
+- Maximum subnet size is /16 (65,534 hosts) — larger subnets may cause resource exhaustion
+- SNMPv2c is disabled by default (`DISCOVERY_SNMPV2C_ENABLED=false`)
+- Discovery credentials are encrypted at rest
 
-### API Permissions
-```json
-{
-  "token": "abc123",
-  "permissions": [
-    "devices:read",
-    "devices:write",
-    "networks:read",
-    "discovery:run"
-  ]
-}
-```
+## See Also
 
-### Network-Based Restrictions
-```bash
-# Restrict access by IP/network
-export RACKD_ALLOWED_NETWORKS="10.0.0.0/8,192.168.1.0/24"
-export RACKD_BLOCKED_IPS="192.168.1.100,10.0.0.50"
-```
-
-## Security Best Practices
-
-### Deployment Security
-1. **Run as non-root user**
-   ```bash
-   useradd -r -s /bin/false rackd
-   sudo -u rackd ./rackd server
-   ```
-
-2. **File permissions**
-   ```bash
-   chmod 600 /etc/rackd/config.yaml
-   chmod 600 /var/lib/rackd/rackd.db
-   chown rackd:rackd /var/lib/rackd/
-   ```
-
-3. **System hardening**
-   ```bash
-   # Disable unnecessary services
-   systemctl disable apache2 nginx
-   
-   # Update system regularly
-   apt update && apt upgrade -y
-   
-   # Configure fail2ban
-   apt install fail2ban
-   ```
-
-### Operational Security
-1. **Regular backups**
-   ```bash
-   # Automated encrypted backups
-   rackd backup --encrypt --output /backup/rackd-$(date +%Y%m%d).db.enc
-   ```
-
-2. **Log monitoring**
-   ```bash
-   # Monitor authentication failures
-   tail -f /var/log/rackd/access.log | grep "401\|403"
-   
-   # Set up log rotation
-   logrotate /etc/logrotate.d/rackd
-   ```
-
-3. **Security scanning**
-   ```bash
-   # Regular vulnerability scans
-   nmap -sV -sC localhost
-   
-   # Dependency scanning
-   go list -json -m all | nancy sleuth
-   ```
-
-### Configuration Security
-```yaml
-# /etc/rackd/config.yaml
-server:
-  bind: "127.0.0.1:8080"  # Bind to localhost only
-  read_timeout: "30s"
-  write_timeout: "30s"
-  
-security:
-  session_timeout: "24h"
-  max_login_attempts: 5
-  lockout_duration: "15m"
-  password_min_length: 12
-  require_https: true
-  
-database:
-  backup_interval: "6h"
-  backup_retention: "30d"
-```
-
-### Incident Response
-1. **Security incident checklist**
-   - Isolate affected systems
-   - Preserve logs and evidence
-   - Rotate all credentials
-   - Update security measures
-   - Document lessons learned
-
-2. **Emergency procedures**
-   ```bash
-   # Disable all API tokens
-   rackd auth tokens revoke --all
-   
-   # Force logout all sessions
-   rackd auth sessions clear
-   
-   # Enable maintenance mode
-   rackd server --maintenance
-   ```
-
-## Compliance Considerations
-
-### Data Protection
-- Encrypt sensitive data at rest and in transit
-- Implement data retention policies
-- Provide data export/deletion capabilities
-- Maintain audit logs
-
-### Audit Logging
-```bash
-# Enable comprehensive audit logging
-export RACKD_AUDIT_LOG="/var/log/rackd/audit.log"
-export RACKD_AUDIT_LEVEL="info"
-
-# Log format includes:
-# - Timestamp
-# - User/token identification
-# - Action performed
-# - Resource affected
-# - Source IP address
-```
-
-### Regular Security Reviews
-- Monthly access reviews
-- Quarterly security assessments
-- Annual penetration testing
-- Continuous vulnerability monitoring
-
-## Security Updates
-
-Stay informed about security updates:
-- Monitor [GitHub Security Advisories](https://github.com/martinsuchenak/rackd/security/advisories)
-- Subscribe to release notifications
-- Test updates in staging environment
-- Maintain update schedule
-
-For security issues, contact: security@rackd.dev
+- [Authentication](authentication.md) — authentication methods and user management
+- [Configuration Reference](configuration-reference.md) — all environment variables
+- [Deployment](deployment.md) — production deployment guide

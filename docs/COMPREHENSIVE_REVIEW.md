@@ -175,13 +175,13 @@ The `docs/` directory contains 30+ markdown files covering architecture, API, CL
 
 ### Gaps and inaccuracies
 
-**`docs/authentication.md` is outdated:** It still describes the old API key model ("API keys provide a secure way to authenticate API requests without requiring user accounts") but the codebase now has full user management, session auth, and OAuth 2.1. The "Future Enhancements" section lists features that are already implemented (user management, RBAC, session management, audit logging).
+**`docs/authentication.md` is outdated:** ~~It still describes the old API key model ("API keys provide a secure way to authenticate API requests without requiring user accounts") but the codebase now has full user management, session auth, and OAuth 2.1. The "Future Enhancements" section lists features that are already implemented (user management, RBAC, session management, audit logging).~~ **FIXED.** Completely rewritten to document session auth, API keys with RBAC, OAuth 2.1 with PKCE, user management, and role-based permissions.
 
-**`docs/security.md` references non-existent features:** It mentions `rackd auth token create`, `rackd users create --role`, `RACKD_ALLOWED_NETWORKS`, `RACKD_BLOCKED_IPS`, and `rackd backup --encrypt` — none of which exist in the codebase. The security doc appears to be aspirational rather than reflecting actual implementation.
+**`docs/security.md` references non-existent features:** ~~It mentions `rackd auth token create`, `rackd users create --role`, `RACKD_ALLOWED_NETWORKS`, `RACKD_BLOCKED_IPS`, and `rackd backup --encrypt` — none of which exist in the codebase. The security doc appears to be aspirational rather than reflecting actual implementation.~~ **FIXED.** Completely rewritten to document actual security features: secure defaults, CSRF protection, password security, API key security, session security, OAuth 2.1, credential encryption, webhook security, CSP, audit logging, rate limiting, and RBAC.
 
-**OpenAPI spec is incomplete:** The `api/openapi.yaml` file defines schemas for basic resources but doesn't cover the full API surface (missing: auth, users, roles, OAuth, circuits, NAT, reservations, webhooks, custom fields, DNS, conflicts, audit, bulk operations). The spec should be generated from or validated against the actual route registrations.
+**OpenAPI spec is incomplete:** ~~The `api/openapi.yaml` file defines schemas for basic resources but doesn't cover the full API surface (missing: auth, users, roles, OAuth, circuits, NAT, reservations, webhooks, custom fields, DNS, conflicts, audit, bulk operations). The spec should be generated from or validated against the actual route registrations.~~ **FIXED.** Complete OpenAPI 3.1.0 spec covering all 170 operations across 105 paths with 74 schemas and 26 tags.
 
-**Missing configuration reference:** There's no single document listing all environment variables with their defaults, types, and descriptions. The `internal/config/config.go` file is the source of truth but users shouldn't have to read Go code. Create a `docs/configuration-reference.md`.
+**Missing configuration reference:** ~~There's no single document listing all environment variables with their defaults, types, and descriptions. The `internal/config/config.go` file is the source of truth but users shouldn't have to read Go code. Create a `docs/configuration-reference.md`.~~ **FIXED.** Created `docs/configuration-reference.md` with all environment variables organized by category.
 
 **No MCP integration guide:** `docs/mcp.md` likely exists but should include: available tools list, authentication setup (API key vs OAuth), example tool calls, and integration with popular AI clients.
 
@@ -248,9 +248,9 @@ Tests exist for:
 ### Short-term (consistency)
 4. ~~Standardize API error codes through `handleServiceError` exclusively~~ **FIXED.** All handler-level validation errors now use two standardized helpers: `invalidJSON()` (code: `INVALID_JSON`) for JSON decode failures, and `badRequest()` (code: `INVALID_INPUT`) for all other request validation. Eliminated ad-hoc codes (`MISSING_FIELD`, `MISSING_QUERY`, `MISSING_RESOURCE_ID`, `INVALID_TYPE`, `INVALID_ID`, `MISSING_USERNAME`, `MISSING_PASSWORD`). Service-layer errors continue through `handleServiceError`.
 5. ~~Enforce pagination limits on all list endpoints~~ **FIXED.** Added `Pagination` struct (Limit/Offset with `Clamp()`) embedded in all filter types. All storage List methods now apply `LIMIT`/`OFFSET` via shared `appendPagination` helper. Default page size: 100, max: 1000. Handler-level `parsePagination()` reads `limit`/`offset` query params and clamps.
-6. Update `docs/authentication.md` and `docs/security.md` to reflect current implementation
-7. Generate or update OpenAPI spec to cover all endpoints
-8. Create `docs/configuration-reference.md` from config.go
+6. ~~Update `docs/authentication.md` and `docs/security.md` to reflect current implementation~~ **FIXED.** Both documents completely rewritten to reflect the actual codebase: session auth, API keys with RBAC, OAuth 2.1 with PKCE, CSRF protection, secure defaults, credential encryption, webhook security, CSP, audit logging, and rate limiting.
+7. ~~Generate or update OpenAPI spec to cover all endpoints~~ **FIXED.** Complete OpenAPI 3.1.0 spec (`api/openapi.yaml`) covering all 170 operations across 105 paths with 74 schemas and 26 tags. Covers every endpoint from route registrations.
+8. ~~Create `docs/configuration-reference.md` from config.go~~ **FIXED.** Created comprehensive `docs/configuration-reference.md` with all environment variables from `internal/config/config.go`, organized by category (Server, Security, Sessions, Initial Admin, Discovery, Audit, OAuth, Snapshots, DNS).
 
 ### Medium-term (completeness)
 9. Add CLI commands for scheduled scans, scan profiles, and OAuth client management

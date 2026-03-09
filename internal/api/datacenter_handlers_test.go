@@ -67,7 +67,9 @@ func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 	}
 
 	// Get all existing permissions (created by migrations) and assign to admin role
-	allPerms, err := store.ListPermissions(context.Background(), nil)
+	allPerms, err := store.ListPermissions(context.Background(), &model.PermissionFilter{
+		Pagination: model.Pagination{Limit: model.MaxPageSize},
+	})
 	if err != nil {
 		t.Fatalf("failed to list permissions: %v", err)
 	}
