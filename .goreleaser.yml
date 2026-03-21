@@ -44,17 +44,20 @@ changelog:
       - "^test:"
       - "^ci:"
 
-brews:
+homebrew_casks:
   - name: rackd
     repository:
       owner: martinsuchenak
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    directory: Formula
+    directory: Casks
     homepage: "https://github.com/martinsuchenak/rackd"
     description: "Device inventory and IPAM management"
-    license: "MIT"
-    install: |
-      bin.install "rackd"
-    test: |
-      system "#{bin}/rackd", "--version"
+    binaries:
+      - rackd
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/rackd"]
+          end
