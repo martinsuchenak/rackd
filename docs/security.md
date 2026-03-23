@@ -33,7 +33,7 @@ The built-in Web UI sends this header on all requests. External integrations usi
 
 ## Password Security
 
-- Minimum length: 12 characters (enforced server-side)
+- Minimum length: 8 characters (enforced server-side)
 - Hashing: bcrypt with cost factor 14
 - Password changes invalidate all active sessions for the user
 - Login rate limiting prevents brute-force attacks

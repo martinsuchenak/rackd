@@ -157,7 +157,7 @@ POST   /api/users/{id}/reset-password — admin password reset
 ```
 
 Password requirements:
-- Minimum 12 characters
+- Minimum 8 characters
 - Hashed with bcrypt (cost 14)
 - Password change invalidates all existing sessions
 

@@ -167,6 +167,9 @@ export function userMenu() {
             for (const detail of err.details) {
               if (detail.field && detail.message) {
                 this.validationErrors[detail.field] = detail.message;
+              } else if (detail.message) {
+                // No field specified - show as general error
+                this.error = detail.message;
               }
             }
           } else if (err.code === 'INVALID_PASSWORD') {

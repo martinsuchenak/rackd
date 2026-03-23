@@ -60,8 +60,8 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 	if req.Username == "" {
 		errs = append(errs, ValidationError{Field: "username", Message: "Username is required"})
 	}
-	if len(req.Password) < 12 {
-		errs = append(errs, ValidationError{Field: "password", Message: "Password must be at least 12 characters"})
+	if len(req.Password) < 8 {
+		errs = append(errs, ValidationError{Field: "password", Message: "Password must be at least 8 characters"})
 	}
 	if req.Email == "" {
 		errs = append(errs, ValidationError{Field: "email", Message: "Email is required"})
@@ -235,8 +235,8 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	if req.OldPassword == "" {
 		return ValidationErrors{{Field: "old_password", Message: "Old password is required"}}
 	}
-	if len(req.NewPassword) < 12 {
-		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 12 characters"}}
+	if len(req.NewPassword) < 8 {
+		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 8 characters"}}
 	}
 
 	user, err := s.store.GetUser(ctx, id)
@@ -248,7 +248,7 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, req.OldPassword); err != nil {
-		return ErrValidation
+		return ValidationErrors{{Field: "old_password", Message: "Current password is incorrect"}}
 	}
 
 	passwordHash, err := auth.HashPassword(req.NewPassword)
@@ -277,8 +277,8 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 		return err
 	}
 
-	if len(req.NewPassword) < 12 {
-		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 12 characters"}}
+	if len(req.NewPassword) < 8 {
+		return ValidationErrors{{Field: "new_password", Message: "New password must be at least 8 characters"}}
 	}
 
 	user, err := s.store.GetUser(ctx, id)

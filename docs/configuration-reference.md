@@ -41,7 +41,7 @@ These are only used on first startup when no users exist.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `INITIAL_ADMIN_USERNAME` | string | _(empty)_ | Bootstrap admin username |
-| `INITIAL_ADMIN_PASSWORD` | string | _(empty)_ | Bootstrap admin password (min 12 characters) |
+| `INITIAL_ADMIN_PASSWORD` | string | _(empty)_ | Bootstrap admin password (min 8 characters) |
 | `INITIAL_ADMIN_EMAIL` | string | `admin@localhost` | Bootstrap admin email |
 | `INITIAL_ADMIN_FULL_NAME` | string | `System Administrator` | Bootstrap admin display name |
 
