@@ -16,13 +16,13 @@
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3">
         <div>
           <label for="filter-username" class="sr-only">Search by username</label>
-          <input id="filter-username" type="text" x-model="filter.username" @input.debounce.300="applyFilter()"
+          <input id="filter-username" type="text" x-model="filterUsername" @input.debounce.300="applyFilter()"
             placeholder="Search by username..."
             class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
         </div>
         <div>
           <label for="filter-email" class="sr-only">Search by email</label>
-          <input id="filter-email" type="text" x-model="filter.email" @input.debounce.300="applyFilter()"
+          <input id="filter-email" type="text" x-model="filterEmail" @input.debounce.300="applyFilter()"
             placeholder="Search by email..."
             class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
         </div>
@@ -154,7 +154,7 @@
               <label for="create-username"
                 class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Username <span
                   aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-username" type="text" x-model="createForm.username" required aria-required="true"
+              <input id="create-username" type="text" x-model="createUsername" required aria-required="true"
                 :aria-invalid="!!validationErrors.username"
                 :aria-describedby="validationErrors.username ? 'create-username-error' : undefined"
                 class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
@@ -165,7 +165,7 @@
             <div>
               <label for="create-email" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email
                 <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-email" type="email" x-model="createForm.email" required aria-required="true"
+              <input id="create-email" type="email" x-model="createEmail" required aria-required="true"
                 :aria-invalid="!!validationErrors.email"
                 :aria-describedby="validationErrors.email ? 'create-email-error' : undefined"
                 class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
@@ -176,14 +176,14 @@
             <div>
               <label for="create-fullname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full
                 Name</label>
-              <input id="create-fullname" type="text" x-model="createForm.full_name"
+              <input id="create-fullname" type="text" x-model="createFullName" />
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
             <div>
               <label for="create-password"
                 class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Password <span
                   aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-password" type="password" x-model="createForm.password" required aria-required="true"
+              <input id="create-password" type="password" x-model="createPassword" required aria-required="true"
                 :aria-invalid="!!validationErrors.password"
                 :aria-describedby="validationErrors.password ? 'create-password-error' : undefined"
                 class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
@@ -225,7 +225,7 @@
               <div>
                 <label :for="'edit-email-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
-                <input :id="'edit-email-' + selectedUser.id" type="email" x-model="editForm.email"
+                <input :id="'edit-email-' + selectedUser.id" type="email" x-model="editEmail"
                   :aria-invalid="!!validationErrors.email"
                   class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                   :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -235,13 +235,13 @@
               <div>
                 <label :for="'edit-fullname-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
-                <input :id="'edit-fullname-' + selectedUser.id" type="text" x-model="editForm.full_name"
+                <input :id="'edit-fullname-' + selectedUser.id" type="text" x-model="editFullName"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
               </div>
               <div>
                 <label :for="'edit-active-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Active Status</label>
-                <select :id="'edit-active-' + selectedUser.id" x-model="editForm.is_active"
+                <select :id="'edit-active-' + selectedUser.id" x-model="editIsActive"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option :value="true">Active</option>
                   <option :value="false">Inactive</option>
@@ -322,21 +322,20 @@
                 <label :for="'old-password-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="'old-password-' + selectedUser.id" type="password" x-model="passwordForm.old_password"
-                  required aria-required="true" :aria-invalid="!!validationErrors.old_password"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
-                <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300"
-                  role="alert" x-text="validationErrors.old_password"></p>
+                <input :id="'old-password-' + selectedUser.id" type="password" x-model="passwordOldPassword"
+                required aria-required="true" :aria-invalid="!!validationErrors.old_password"
+                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <p x-show="validationErrors.old_password" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert" x-text="validationErrors.old_password"></p>
               </div>
               <div>
                 <label :for="'new-password-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="'new-password-' + selectedUser.id" type="password" x-model="passwordForm.new_password"
-                  required aria-required="true" :aria-invalid="!!validationErrors.new_password"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <input :id="'new-password-' + selectedUser.id" type="password" x-model="passwordNewPassword"
+                required aria-required="true" :aria-invalid="!!validationErrors.new_password"
+                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
                 <p x-show="validationErrors.new_password" class="mt-1 text-sm text-red-700 dark:text-red-300"
                   role="alert" x-text="validationErrors.new_password"></p>
               </div>
@@ -344,11 +343,10 @@
                 <label :for="'confirm-password-' + selectedUser.id"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="'confirm-password-' + selectedUser.id" type="password"
-                  x-model="passwordForm.confirm_password" required aria-required="true"
-                  :aria-invalid="!!validationErrors.confirm_password"
-                  class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
-                  :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                <input :id="'confirm-password-' + selectedUser.id" type="password" x-model="passwordConfirmPassword"
+                required aria-required="true" :aria-invalid="!!validationErrors.confirm_password"
+                class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
                 <p x-show="validationErrors.confirm_password" class="mt-1 text-sm text-red-700 dark:text-red-300"
                   role="alert" x-text="validationErrors.confirm_password"></p>
               </div>
@@ -474,7 +472,7 @@
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="'reset-new-password-' + selectedUser.id" type="password"
-                  x-model="resetPasswordForm.new_password" required aria-required="true"
+                  x-model="resetPasswordNew" required aria-required="true"
                   :aria-invalid="!!validationErrors.new_password"
                   class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                   :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -486,7 +484,7 @@
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
                 <input :id="'reset-confirm-password-' + selectedUser.id" type="password"
-                  x-model="resetPasswordForm.confirm_password" required aria-required="true"
+                  x-model="resetPasswordConfirm" required aria-required="true"
                   :aria-invalid="!!validationErrors.confirm_password"
                   class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                   :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">

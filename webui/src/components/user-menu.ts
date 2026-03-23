@@ -12,15 +12,13 @@ export function userMenu() {
     saving: false,
     currentUser: null as User | null,
     validationErrors: {} as Record<string, string>,
-    editForm: {
-      email: '',
-      full_name: '',
-    },
-    passwordForm: {
-      old_password: '',
-      new_password: '',
-      confirm_password: '',
-    },
+    // Edit form - flat properties for CSP compatibility
+    editEmail: '',
+    editFullName: '',
+    // Password form - flat properties for CSP compatibility
+    passwordOldPassword: '',
+    passwordNewPassword: '',
+    passwordConfirmPassword: '',
     error: '',
 
     get username(): string {
@@ -72,10 +70,8 @@ export function userMenu() {
       this.error = '';
       try {
         this.currentUser = await api.getCurrentUser();
-        this.editForm = {
-          email: this.currentUser.email || '',
-          full_name: this.currentUser.full_name || '',
-        };
+        this.editEmail = this.currentUser.email || '';
+        this.editFullName = this.currentUser.full_name || '';
         this.showEditModal = true;
       } catch {
         this.error = 'Failed to load profile';
@@ -90,7 +86,7 @@ export function userMenu() {
     async saveProfile(): Promise<void> {
       this.validationErrors = {};
 
-      if (this.editForm.email && !this.editForm.email.includes('@')) {
+      if (this.editEmail && !this.editEmail.includes('@')) {
         this.validationErrors.email = 'Invalid email format';
         return;
       }
@@ -98,8 +94,8 @@ export function userMenu() {
       this.saving = true;
       try {
         const updates: UpdateUserRequest = {};
-        if (this.editForm.email) updates.email = this.editForm.email;
-        if (this.editForm.full_name) updates.full_name = this.editForm.full_name;
+        if (this.editEmail) updates.email = this.editEmail;
+        if (this.editFullName) updates.full_name = this.editFullName;
         await api.updateUser(this.currentUser!.id, updates);
         this.closeEditModal();
       } catch (err) {
@@ -121,7 +117,9 @@ export function userMenu() {
       this.open = false;
       this.validationErrors = {};
       this.error = '';
-      this.passwordForm = { old_password: '', new_password: '', confirm_password: '' };
+      this.passwordOldPassword = '';
+      this.passwordNewPassword = '';
+      this.passwordConfirmPassword = '';
       try {
         this.currentUser = await api.getCurrentUser();
         this.showPasswordModal = true;
@@ -133,21 +131,23 @@ export function userMenu() {
     closePasswordModal(): void {
       this.showPasswordModal = false;
       this.validationErrors = {};
-      this.passwordForm = { old_password: '', new_password: '', confirm_password: '' };
+      this.passwordOldPassword = '';
+      this.passwordNewPassword = '';
+      this.passwordConfirmPassword = '';
     },
 
     async doChangePassword(): Promise<void> {
       this.validationErrors = {};
 
-      if (!this.passwordForm.old_password) {
+      if (!this.passwordOldPassword) {
         this.validationErrors.old_password = 'Current password is required';
       }
-      if (!this.passwordForm.new_password) {
+      if (!this.passwordNewPassword) {
         this.validationErrors.new_password = 'New password is required';
-      } else if (this.passwordForm.new_password.length < 8) {
+      } else if (this.passwordNewPassword.length < 8) {
         this.validationErrors.new_password = 'Password must be at least 8 characters';
       }
-      if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+      if (this.passwordNewPassword !== this.passwordConfirmPassword) {
         this.validationErrors.confirm_password = 'Passwords do not match';
       }
 
@@ -156,13 +156,20 @@ export function userMenu() {
       this.saving = true;
       try {
         await api.changePassword(this.currentUser!.id, {
-          old_password: this.passwordForm.old_password,
-          new_password: this.passwordForm.new_password,
+          old_password: this.passwordOldPassword,
+          new_password: this.passwordNewPassword,
         });
         this.closePasswordModal();
       } catch (err) {
         if (err instanceof RackdAPIError) {
-          if (err.code === 'INVALID_PASSWORD') {
+          // Handle field-specific validation errors from server (array format)
+          if (Array.isArray(err.details)) {
+            for (const detail of err.details) {
+              if (detail.field && detail.message) {
+                this.validationErrors[detail.field] = detail.message;
+              }
+            }
+          } else if (err.code === 'INVALID_PASSWORD') {
             this.validationErrors.old_password = err.message;
           } else {
             this.error = err.message;

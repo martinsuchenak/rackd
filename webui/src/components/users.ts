@@ -1,6 +1,6 @@
 // Users Component for Rackd Web UI
 
-import type { User, UserFilter, CreateUserRequest, UpdateUserRequest, Role } from '../core/types';
+import type { User, UserFilter, UpdateUserRequest, Role } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { formatDate } from '../core/utils';
 
@@ -8,7 +8,9 @@ interface UsersListData {
   users: User[];
   loading: boolean;
   error: string;
-  filter: UserFilter;
+  // Filter - flat properties for CSP compatibility
+  filterUsername: string;
+  filterEmail: string;
   page: number;
   pageSize: number;
   totalPages: number;
@@ -22,10 +24,22 @@ interface UsersListData {
   saving: boolean;
   deleting: boolean;
   validationErrors: Record<string, string>;
-  createForm: CreateUserRequest;
-  editForm: { email: string; full_name: string; is_active: boolean };
-  passwordForm: { old_password: string; new_password: string; confirm_password: string };
-  resetPasswordForm: { new_password: string; confirm_password: string };
+  // Create form - flat properties for CSP compatibility
+  createUsername: string;
+  createPassword: string;
+  createEmail: string;
+  createFullName: string;
+  // Edit form - flat properties for CSP compatibility
+  editEmail: string;
+  editFullName: string;
+  editIsActive: boolean;
+  // Password form - flat properties for CSP compatibility
+  passwordOldPassword: string;
+  passwordNewPassword: string;
+  passwordConfirmPassword: string;
+  // Reset password form - flat properties for CSP compatibility
+  resetPasswordNew: string;
+  resetPasswordConfirm: string;
   currentUser: User | null;
   availableRoles: Role[];
   userRolesCache: Map<string, Role[]>;
@@ -70,7 +84,9 @@ export function usersList() {
     users: [] as User[],
     loading: true,
     error: '',
-    filter: {} as UserFilter,
+    // Filter - flat properties for CSP compatibility
+    filterUsername: '',
+    filterEmail: '',
     page: 1,
     pageSize: 10,
     showCreateModal: false,
@@ -82,27 +98,22 @@ export function usersList() {
     saving: false,
     deleting: false,
     validationErrors: {} as Record<string, string>,
-    createForm: {
-      username: '',
-      password: '',
-      email: '',
-      full_name: '',
-      is_admin: false,
-    } as CreateUserRequest,
-    editForm: {
-      email: '',
-      full_name: '',
-      is_active: true,
-    },
-    passwordForm: {
-      old_password: '',
-      new_password: '',
-      confirm_password: '',
-    },
-    resetPasswordForm: {
-      new_password: '',
-      confirm_password: '',
-    },
+    // Create form - flat properties for CSP compatibility
+    createUsername: '',
+    createPassword: '',
+    createEmail: '',
+    createFullName: '',
+    // Edit form - flat properties for CSP compatibility
+    editEmail: '',
+    editFullName: '',
+    editIsActive: true,
+    // Password form - flat properties for CSP compatibility
+    passwordOldPassword: '',
+    passwordNewPassword: '',
+    passwordConfirmPassword: '',
+    // Reset password form - flat properties for CSP compatibility
+    resetPasswordNew: '',
+    resetPasswordConfirm: '',
     currentUser: null as User | null,
     availableRoles: [] as Role[],
     userRolesCache: new Map<string, Role[]>(),
@@ -135,8 +146,12 @@ export function usersList() {
       this.loading = true;
       this.error = '';
 
+      const filter: UserFilter = {};
+      if (this.filterUsername) filter.username = this.filterUsername;
+      if (this.filterEmail) filter.email = this.filterEmail;
+
       try {
-        this.users = await api.listUsers(this.filter);
+        this.users = await api.listUsers(filter);
       } catch (err) {
         if (err instanceof RackdAPIError) {
           this.error = err.message;
@@ -190,7 +205,8 @@ export function usersList() {
     },
 
     clearFilter(): void {
-      this.filter = {} as UserFilter;
+      this.filterUsername = '';
+      this.filterEmail = '';
       this.page = 1;
       this.loadUsers();
     },
@@ -202,25 +218,19 @@ export function usersList() {
     openCreateModal(): void {
       this.showCreateModal = true;
       this.validationErrors = {};
-      this.createForm = {
-        username: '',
-        password: '',
-        email: '',
-        full_name: '',
-        is_admin: false,
-      };
+      this.createUsername = '';
+      this.createPassword = '';
+      this.createEmail = '';
+      this.createFullName = '';
     },
 
     closeCreateModal(): void {
       this.showCreateModal = false;
       this.validationErrors = {};
-      this.createForm = {
-        username: '',
-        password: '',
-        email: '',
-        full_name: '',
-        is_admin: false,
-      };
+      this.createUsername = '';
+      this.createPassword = '';
+      this.createEmail = '';
+      this.createFullName = '';
     },
 
     openEditModal(user: User): void {
@@ -228,11 +238,9 @@ export function usersList() {
       this.selectedUser = user;
       this.validationErrors = {};
       // Pre-populate edit form with user's current values
-      this.editForm = {
-        email: user.email || '',
-        full_name: user.full_name || '',
-        is_active: user.is_active !== false,
-      };
+      this.editEmail = user.email || '';
+      this.editFullName = user.full_name || '';
+      this.editIsActive = user.is_active !== false;
     },
 
     closeEditModal(): void {
@@ -255,42 +263,34 @@ export function usersList() {
       this.showPasswordModal = true;
       this.selectedUser = user;
       this.validationErrors = {};
-      this.passwordForm = {
-        old_password: '',
-        new_password: '',
-        confirm_password: '',
-      };
+      this.passwordOldPassword = '';
+      this.passwordNewPassword = '';
+      this.passwordConfirmPassword = '';
     },
 
     closePasswordModal(): void {
       this.showPasswordModal = false;
       this.selectedUser = null;
       this.validationErrors = {};
-      this.passwordForm = {
-        old_password: '',
-        new_password: '',
-        confirm_password: '',
-      };
+      this.passwordOldPassword = '';
+      this.passwordNewPassword = '';
+      this.passwordConfirmPassword = '';
     },
 
     openResetPasswordModal(user: User): void {
       this.showResetPasswordModal = true;
       this.selectedUser = user;
       this.validationErrors = {};
-      this.resetPasswordForm = {
-        new_password: '',
-        confirm_password: '',
-      };
+      this.resetPasswordNew = '';
+      this.resetPasswordConfirm = '';
     },
 
     closeResetPasswordModal(): void {
       this.showResetPasswordModal = false;
       this.selectedUser = null;
       this.validationErrors = {};
-      this.resetPasswordForm = {
-        new_password: '',
-        confirm_password: '',
-      };
+      this.resetPasswordNew = '';
+      this.resetPasswordConfirm = '';
     },
 
     hasRole(role: Role): boolean {
@@ -371,19 +371,19 @@ export function usersList() {
     async doCreateUser(): Promise<void> {
       this.validationErrors = {};
 
-      if (!this.createForm.username) {
+      if (!this.createUsername) {
         this.validationErrors.username = 'Username is required';
       }
 
-      if (!this.createForm.password) {
+      if (!this.createPassword) {
         this.validationErrors.password = 'Password is required';
-      } else if (this.createForm.password.length < 8) {
+      } else if (this.createPassword.length < 8) {
         this.validationErrors.password = 'Password must be at least 8 characters';
       }
 
-      if (!this.createForm.email) {
+      if (!this.createEmail) {
         this.validationErrors.email = 'Email is required';
-      } else if (!this.createForm.email.includes('@')) {
+      } else if (!this.createEmail.includes('@')) {
         this.validationErrors.email = 'Invalid email format';
       }
 
@@ -394,7 +394,12 @@ export function usersList() {
       this.saving = true;
 
       try {
-        await api.createUser(this.createForm);
+        await api.createUser({
+          username: this.createUsername,
+          password: this.createPassword,
+          email: this.createEmail,
+          full_name: this.createFullName,
+        });
         this.closeCreateModal();
         await this.loadUsers();
       } catch (err) {
@@ -422,19 +427,19 @@ export function usersList() {
       this.validationErrors = {};
       const updates: UpdateUserRequest = {};
 
-      if (this.editForm.email) {
-        if (!this.editForm.email.includes('@')) {
+      if (this.editEmail) {
+        if (!this.editEmail.includes('@')) {
           this.validationErrors.email = 'Invalid email format';
           return;
         }
-        updates.email = this.editForm.email;
+        updates.email = this.editEmail;
       }
 
-      if (this.editForm.full_name) {
-        updates.full_name = this.editForm.full_name;
+      if (this.editFullName) {
+        updates.full_name = this.editFullName;
       }
 
-      updates.is_active = this.editForm.is_active;
+      updates.is_active = this.editIsActive;
 
       if (Object.keys(this.validationErrors).length > 0) {
         return;
@@ -495,17 +500,17 @@ export function usersList() {
 
       this.validationErrors = {};
 
-      if (!this.passwordForm.old_password) {
+      if (!this.passwordOldPassword) {
         this.validationErrors.old_password = 'Old password is required';
       }
 
-      if (!this.passwordForm.new_password) {
+      if (!this.passwordNewPassword) {
         this.validationErrors.new_password = 'New password is required';
-      } else if (this.passwordForm.new_password.length < 8) {
+      } else if (this.passwordNewPassword.length < 8) {
         this.validationErrors.new_password = 'Password must be at least 8 characters';
       }
 
-      if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+      if (this.passwordNewPassword !== this.passwordConfirmPassword) {
         this.validationErrors.confirm_password = 'Passwords do not match';
       }
 
@@ -517,8 +522,8 @@ export function usersList() {
 
       try {
         await api.changePassword(this.selectedUser.id, {
-          old_password: this.passwordForm.old_password,
-          new_password: this.passwordForm.new_password,
+          old_password: this.passwordOldPassword,
+          new_password: this.passwordNewPassword,
         });
         this.closePasswordModal();
       } catch (err) {
@@ -543,13 +548,13 @@ export function usersList() {
 
       this.validationErrors = {};
 
-      if (!this.resetPasswordForm.new_password) {
+      if (!this.resetPasswordNew) {
         this.validationErrors.new_password = 'New password is required';
-      } else if (this.resetPasswordForm.new_password.length < 8) {
+      } else if (this.resetPasswordNew.length < 8) {
         this.validationErrors.new_password = 'Password must be at least 8 characters';
       }
 
-      if (this.resetPasswordForm.new_password !== this.resetPasswordForm.confirm_password) {
+      if (this.resetPasswordNew !== this.resetPasswordConfirm) {
         this.validationErrors.confirm_password = 'Passwords do not match';
       }
 
@@ -560,7 +565,7 @@ export function usersList() {
       this.saving = true;
 
       try {
-        await api.resetPassword(this.selectedUser.id, this.resetPasswordForm.new_password);
+        await api.resetPassword(this.selectedUser.id, this.resetPasswordNew);
         this.closeResetPasswordModal();
       } catch (err) {
         if (err instanceof RackdAPIError) {

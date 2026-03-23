@@ -225,7 +225,7 @@
                       <div>
                         <label for="profile-email"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>
-                        <input id="profile-email" type="email" x-model="editForm.email"
+                        <input id="profile-email" type="email" x-model="editEmail"
                           :aria-invalid="!!validationErrors.email"
                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                           :class="validationErrors.email ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -235,7 +235,7 @@
                       <div>
                         <label for="profile-fullname"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Name</label>
-                        <input id="profile-fullname" type="text" x-model="editForm.full_name"
+                        <input id="profile-fullname" type="text" x-model="editFullName"
                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                       </div>
                     </div>
@@ -277,7 +277,7 @@
                         <label for="my-old-password"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Current Password <span
                             aria-hidden="true">*</span></label>
-                        <input id="my-old-password" type="password" x-model="passwordForm.old_password" required
+                        <input id="my-old-password" type="password" x-model="passwordOldPassword" required
                           :aria-invalid="!!validationErrors.old_password"
                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                           :class="validationErrors.old_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -288,7 +288,7 @@
                         <label for="my-new-password"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">New Password <span
                             aria-hidden="true">*</span></label>
-                        <input id="my-new-password" type="password" x-model="passwordForm.new_password" required
+                        <input id="my-new-password" type="password" x-model="passwordNewPassword" required
                           :aria-invalid="!!validationErrors.new_password"
                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                           :class="validationErrors.new_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
@@ -299,7 +299,7 @@
                         <label for="my-confirm-password"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Confirm New Password
                           <span aria-hidden="true">*</span></label>
-                        <input id="my-confirm-password" type="password" x-model="passwordForm.confirm_password" required
+                        <input id="my-confirm-password" type="password" x-model="passwordConfirmPassword" required
                           :aria-invalid="!!validationErrors.confirm_password"
                           class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                           :class="validationErrors.confirm_password ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
