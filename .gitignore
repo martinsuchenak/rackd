@@ -51,3 +51,11 @@ Thumbs.db
 # UI Assets
 webui/dist/
 internal/ui/assets/
+
+
+# Cache
+.gocache/
+.gomodcache/
+.gopath/
+.npm-cache/
+.tmp/

@@ -4,7 +4,7 @@ BINARY := rackd
 BUILD_DIR := ./build
 WEBUI_DIR := ./webui
 ASSETS_DIR := ./internal/ui/assets
-GO := GOTOOLCHAIN=go1.26.0 go
+GO := GOTOOLCHAIN=go1.26.1 go
 
 # Version info
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")

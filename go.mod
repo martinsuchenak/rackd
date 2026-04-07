@@ -1,18 +1,18 @@
 module github.com/martinsuchenak/rackd
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gosnmp/gosnmp v1.43.2
-	github.com/paularlott/cli v0.7.12
+	github.com/paularlott/cli v0.8.3
 	github.com/paularlott/logger v0.3.0
-	github.com/paularlott/mcp v0.14.1
+	github.com/paularlott/mcp v0.15.2
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/robfig/cron/v3 v3.0.1
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/term v0.41.0
-	modernc.org/sqlite v1.48.0
+	modernc.org/sqlite v1.48.1
 	pgregory.net/rapid v1.2.0
 )
 
