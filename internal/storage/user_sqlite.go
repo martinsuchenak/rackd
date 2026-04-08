@@ -213,11 +213,11 @@ func (s *SQLiteStorage) UpdateUser(ctx context.Context, user *model.User) error 
 
 	user.UpdatedAt = nowUTC()
 
-	query := `UPDATE users SET email = ?, full_name = ?, is_active = ?, is_admin = ?, updated_at = ? 
+	query := `UPDATE users SET username = ?, email = ?, full_name = ?, password_hash = ?, is_active = ?, is_admin = ?, updated_at = ? 
 	          WHERE id = ?`
 
 	result, err := s.db.ExecContext(ctx, query,
-		user.Email, user.FullName, user.IsActive, user.IsAdmin,
+		user.Username, user.Email, user.FullName, user.PasswordHash, user.IsActive, user.IsAdmin,
 		user.UpdatedAt, user.ID,
 	)
 	if err != nil {

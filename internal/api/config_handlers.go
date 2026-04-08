@@ -35,6 +35,7 @@ type UserInfo struct {
 	ID          string             `json:"id"`
 	Username    string             `json:"username"`
 	Email       string             `json:"email"`
+	FullName    string             `json:"full_name,omitempty"`
 	Roles       []model.Role       `json:"roles"`
 	Permissions []model.Permission `json:"permissions"`
 }
@@ -91,14 +92,23 @@ func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager
 				if session, err := sessionManager.GetSession(token); err == nil {
 					ctx := r.Context()
 
+					user, err := store.GetUser(ctx, session.UserID)
+					if err != nil {
+						user = &model.User{
+							ID:       session.UserID,
+							Username: session.Username,
+						}
+					}
+
 					// Get user roles and permissions
 					roles, _ := store.GetUserRoles(ctx, session.UserID)
 					permissions, _ := store.GetUserPermissions(ctx, session.UserID)
 
 					cfg.UserInfo = &UserInfo{
-						ID:          session.UserID,
-						Username:    session.Username,
-						Email:       "",
+						ID:          user.ID,
+						Username:    user.Username,
+						Email:       user.Email,
+						FullName:    user.FullName,
 						Roles:       roles,
 						Permissions: permissions,
 					}

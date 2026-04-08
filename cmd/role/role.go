@@ -1,7 +1,6 @@
 package role
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -172,12 +171,7 @@ func CreateRoleCommand() *cli.Command {
 				Description: cmd.GetString("description"),
 			}
 
-			body, err := json.Marshal(req)
-			if err != nil {
-				return fmt.Errorf("failed to marshal request: %w", err)
-			}
-
-			resp, err := c.DoRequest("POST", "/api/roles", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/roles", req)
 			if err != nil {
 				return err
 			}
@@ -255,12 +249,7 @@ func AssignRoleCommand() *cli.Command {
 				RoleID: cmd.GetString("role-id"),
 			}
 
-			body, err := json.Marshal(req)
-			if err != nil {
-				return fmt.Errorf("failed to marshal request: %w", err)
-			}
-
-			resp, err := c.DoRequest("POST", "/api/users/grant-role", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/users/grant-role", req)
 			if err != nil {
 				return err
 			}
@@ -301,12 +290,7 @@ func RevokeRoleCommand() *cli.Command {
 				RoleID: cmd.GetString("role-id"),
 			}
 
-			body, err := json.Marshal(req)
-			if err != nil {
-				return fmt.Errorf("failed to marshal request: %w", err)
-			}
-
-			resp, err := c.DoRequest("POST", "/api/users/revoke-role", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/users/revoke-role", req)
 			if err != nil {
 				return err
 			}

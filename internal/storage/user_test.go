@@ -180,11 +180,17 @@ func TestUpdateUser(t *testing.T) {
 	defer db.Close()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
+	newHash, err := auth.HashPassword("updatedpassword123")
+	if err != nil {
+		t.Fatalf("Failed to hash updated password: %v", err)
+	}
 
+	created.Username = "updateduser"
 	created.Email = "updated@example.com"
 	created.FullName = "Updated Name"
+	created.PasswordHash = newHash
 
-	err := db.UpdateUser(context.Background(), created)
+	err = db.UpdateUser(context.Background(), created)
 	if err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
 	}
@@ -198,8 +204,20 @@ func TestUpdateUser(t *testing.T) {
 		t.Errorf("UpdateUser() Email = %v, want updated@example.com", user.Email)
 	}
 
+	if user.Username != "updateduser" {
+		t.Errorf("UpdateUser() Username = %v, want updateduser", user.Username)
+	}
+
 	if user.FullName != "Updated Name" {
 		t.Errorf("UpdateUser() FullName = %v, want Updated Name", user.FullName)
+	}
+
+	if user.PasswordHash != newHash {
+		t.Error("UpdateUser() did not update password hash")
+	}
+
+	if err := auth.VerifyPassword(user.PasswordHash, "updatedpassword123"); err != nil {
+		t.Errorf("UpdateUser() password verification failed: %v", err)
 	}
 }
 

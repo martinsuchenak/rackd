@@ -108,6 +108,10 @@ func CreateCommand() *cli.Command {
 				Name:  "admin",
 				Usage: "Make user an admin",
 			},
+			&cli.StringSliceFlag{
+				Name:  "role-id",
+				Usage: "Assign role ID to the user (can be repeated)",
+			},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := client.LoadConfig()
@@ -141,6 +145,8 @@ func CreateCommand() *cli.Command {
 				return fmt.Errorf("password must be at least 8 characters")
 			}
 
+			roleIDs := cmd.GetStringSlice("role-id")
+
 			req := map[string]interface{}{
 				"username":  username,
 				"email":     email,
@@ -170,6 +176,15 @@ func CreateCommand() *cli.Command {
 			fmt.Printf("Email:    %s\n", user.Email)
 			fmt.Printf("Admin:    %t\n", user.IsAdmin)
 
+			for _, roleID := range roleIDs {
+				if err := assignRole(c, user.ID, roleID); err != nil {
+					return fmt.Errorf("user created but failed to assign role %s: %w", roleID, err)
+				}
+			}
+			if len(roleIDs) > 0 {
+				fmt.Printf("Roles:    %v\n", roleIDs)
+			}
+
 			return nil
 		},
 	}
@@ -184,6 +199,10 @@ func UpdateCommand() *cli.Command {
 				Name:     "id",
 				Usage:    "User ID",
 				Required: true,
+			},
+			&cli.StringFlag{
+				Name:  "username",
+				Usage: "Username",
 			},
 			&cli.StringFlag{
 				Name:  "email",
@@ -209,6 +228,14 @@ func UpdateCommand() *cli.Command {
 				Name:  "not-admin",
 				Usage: "Remove admin status",
 			},
+			&cli.StringSliceFlag{
+				Name:  "add-role-id",
+				Usage: "Assign role ID to the user (can be repeated)",
+			},
+			&cli.StringSliceFlag{
+				Name:  "remove-role-id",
+				Usage: "Revoke role ID from the user (can be repeated)",
+			},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := client.LoadConfig()
@@ -216,7 +243,19 @@ func UpdateCommand() *cli.Command {
 
 			req := make(map[string]interface{})
 			id := cmd.GetString("id")
+			addRoleIDs := cmd.GetStringSlice("add-role-id")
+			removeRoleIDs := cmd.GetStringSlice("remove-role-id")
 
+			if cmd.GetBool("active") && cmd.GetBool("inactive") {
+				return fmt.Errorf("cannot set both --active and --inactive")
+			}
+			if cmd.GetBool("admin") && cmd.GetBool("not-admin") {
+				return fmt.Errorf("cannot set both --admin and --not-admin")
+			}
+
+			if username := cmd.GetString("username"); username != "" {
+				req["username"] = username
+			}
 			if email := cmd.GetString("email"); email != "" {
 				req["email"] = email
 			}
@@ -240,29 +279,100 @@ func UpdateCommand() *cli.Command {
 				req["is_admin"] = notAdmin
 			}
 
-			resp, err := c.DoRequest("PUT", fmt.Sprintf("/api/users/%s", id), req)
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				return client.HandleError(resp)
-			}
-
 			var user model.UserResponse
-			if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-				return fmt.Errorf("failed to decode response: %w", err)
+			if len(req) > 0 {
+				resp, err := c.DoRequest("PUT", fmt.Sprintf("/api/users/%s", id), req)
+				if err != nil {
+					return err
+				}
+				defer resp.Body.Close()
+
+				if resp.StatusCode != http.StatusOK {
+					return client.HandleError(resp)
+				}
+
+				if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+					return fmt.Errorf("failed to decode response: %w", err)
+				}
+			}
+
+			if len(req) == 0 && len(addRoleIDs) == 0 && len(removeRoleIDs) == 0 {
+				return fmt.Errorf("no changes requested")
+			}
+
+			for _, roleID := range addRoleIDs {
+				if err := assignRole(c, id, roleID); err != nil {
+					return fmt.Errorf("failed to assign role %s: %w", roleID, err)
+				}
+			}
+			for _, roleID := range removeRoleIDs {
+				if err := revokeRole(c, id, roleID); err != nil {
+					return fmt.Errorf("failed to revoke role %s: %w", roleID, err)
+				}
+			}
+
+			if len(req) == 0 {
+				refetchResp, err := c.DoRequest("GET", fmt.Sprintf("/api/users/%s", id), nil)
+				if err != nil {
+					return err
+				}
+				defer refetchResp.Body.Close()
+				if refetchResp.StatusCode != http.StatusOK {
+					return client.HandleError(refetchResp)
+				}
+				if err := json.NewDecoder(refetchResp.Body).Decode(&user); err != nil {
+					return fmt.Errorf("failed to decode response: %w", err)
+				}
 			}
 
 			fmt.Printf("User updated successfully!\n")
 			fmt.Printf("ID:       %s\n", user.ID)
 			fmt.Printf("Username: %s\n", user.Username)
 			fmt.Printf("Email:    %s\n", user.Email)
+			if len(addRoleIDs) > 0 {
+				fmt.Printf("Added roles:   %v\n", addRoleIDs)
+			}
+			if len(removeRoleIDs) > 0 {
+				fmt.Printf("Removed roles: %v\n", removeRoleIDs)
+			}
 
 			return nil
 		},
 	}
+}
+
+func assignRole(c *client.Client, userID, roleID string) error {
+	resp, err := c.DoRequest("POST", "/api/users/grant-role", model.GrantRoleRequest{
+		UserID: userID,
+		RoleID: roleID,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return client.HandleError(resp)
+	}
+
+	return nil
+}
+
+func revokeRole(c *client.Client, userID, roleID string) error {
+	resp, err := c.DoRequest("POST", "/api/users/revoke-role", model.RevokeRoleRequest{
+		UserID: userID,
+		RoleID: roleID,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return client.HandleError(resp)
+	}
+
+	return nil
 }
 
 func DeleteCommand() *cli.Command {

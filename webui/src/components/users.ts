@@ -30,6 +30,7 @@ interface UsersListData {
   createEmail: string;
   createFullName: string;
   // Edit form - flat properties for CSP compatibility
+  editUsername: string;
   editEmail: string;
   editFullName: string;
   editIsActive: boolean;
@@ -104,6 +105,7 @@ export function usersList() {
     createEmail: '',
     createFullName: '',
     // Edit form - flat properties for CSP compatibility
+    editUsername: '',
     editEmail: '',
     editFullName: '',
     editIsActive: true,
@@ -238,6 +240,7 @@ export function usersList() {
       this.selectedUser = user;
       this.validationErrors = {};
       // Pre-populate edit form with user's current values
+      this.editUsername = user.username || '';
       this.editEmail = user.email || '';
       this.editFullName = user.full_name || '';
       this.editIsActive = user.is_active !== false;
@@ -427,12 +430,18 @@ export function usersList() {
       this.validationErrors = {};
       const updates: UpdateUserRequest = {};
 
+      if (!this.editUsername.trim()) {
+        this.validationErrors.username = 'Username is required';
+      } else {
+        updates.username = this.editUsername.trim();
+      }
+
       if (this.editEmail) {
         if (!this.editEmail.includes('@')) {
           this.validationErrors.email = 'Invalid email format';
-          return;
+        } else {
+          updates.email = this.editEmail;
         }
-        updates.email = this.editEmail;
       }
 
       if (this.editFullName) {
@@ -448,13 +457,28 @@ export function usersList() {
       this.saving = true;
 
       try {
-        await api.updateUser(this.selectedUser.id, updates);
+        const updatedUser = await api.updateUser(this.selectedUser.id, updates);
+        if (this.currentUser && this.currentUser.id === updatedUser.id) {
+          this.currentUser = updatedUser;
+        }
+        if (this.currentUser && this.currentUser.id === updatedUser.id && window.rackdConfig?.user) {
+          window.rackdConfig.user = {
+            ...window.rackdConfig.user,
+            username: updatedUser.username,
+            email: updatedUser.email,
+            full_name: updatedUser.full_name,
+          };
+        }
         this.closeEditModal();
         await this.loadUsers();
       } catch (err) {
         if (err instanceof RackdAPIError) {
-          if (err.code === 'EMAIL_EXISTS') {
-            this.validationErrors.email = err.message;
+          if (Array.isArray(err.details)) {
+            for (const detail of err.details) {
+              if (detail.field && detail.message) {
+                this.validationErrors[detail.field] = detail.message;
+              }
+            }
           } else {
             this.error = err.message;
           }
@@ -634,4 +658,3 @@ export function usersList() {
     }
   };
 }
-

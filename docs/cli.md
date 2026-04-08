@@ -513,6 +513,7 @@ rackd user create [options]
 - `--email <email>` - Email address (required)
 - `--full-name <name>` - Full name
 - `--admin` - Make user an admin
+- `--role-id <role-id>` - Assign a role ID to the new user (repeatable)
 
 **Examples:**
 
@@ -522,6 +523,9 @@ rackd user create --username jsmith --email john@example.com --full-name "John S
 
 # Create an admin user
 rackd user create --username admin --email admin@example.com --admin
+
+# Create a user and assign RBAC roles
+rackd user create --username operator --email op@example.com --role-id <role-id-1> --role-id <role-id-2>
 ```
 
 #### user update
@@ -534,12 +538,15 @@ rackd user update --id <user-id> [options]
 
 **Options:**
 - `--id <id>` - User ID (required)
+- `--username <username>` - Username
 - `--email <email>` - Email address
 - `--full-name <name>` - Full name
 - `--active` - Set user active
 - `--inactive` - Set user inactive
 - `--admin` - Grant admin status
 - `--not-admin` - Remove admin status
+- `--add-role-id <role-id>` - Assign a role ID to the user (repeatable)
+- `--remove-role-id <role-id>` - Revoke a role ID from the user (repeatable)
 
 **Examples:**
 
@@ -549,6 +556,9 @@ rackd user update --id user-123 --email newemail@example.com
 
 # Deactivate a user
 rackd user update --id user-123 --inactive
+
+# Rename a user and update RBAC role assignments
+rackd user update --id user-123 --username jsmith --add-role-id <role-id> --remove-role-id <old-role-id>
 ```
 
 #### user delete

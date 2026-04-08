@@ -13,6 +13,7 @@ export function userMenu() {
     currentUser: null as User | null,
     validationErrors: {} as Record<string, string>,
     // Edit form - flat properties for CSP compatibility
+    editUsername: '',
     editEmail: '',
     editFullName: '',
     // Password form - flat properties for CSP compatibility
@@ -25,8 +26,16 @@ export function userMenu() {
       return window.rackdConfig?.user?.username || '';
     },
 
+    get fullName(): string {
+      return window.rackdConfig?.user?.full_name || '';
+    },
+
+    get displayName(): string {
+      return this.fullName || this.username;
+    },
+
     get initial(): string {
-      return this.username.charAt(0).toUpperCase();
+      return this.displayName.charAt(0).toUpperCase();
     },
 
     get isAdmin(): boolean {
@@ -70,6 +79,7 @@ export function userMenu() {
       this.error = '';
       try {
         this.currentUser = await api.getCurrentUser();
+        this.editUsername = this.currentUser.username || '';
         this.editEmail = this.currentUser.email || '';
         this.editFullName = this.currentUser.full_name || '';
         this.showEditModal = true;
@@ -83,25 +93,47 @@ export function userMenu() {
       this.validationErrors = {};
     },
 
+    syncUserConfig(user: User): void {
+      if (!window.rackdConfig?.user) {
+        return;
+      }
+      window.rackdConfig.user = {
+        ...window.rackdConfig.user,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+      };
+    },
+
     async saveProfile(): Promise<void> {
       this.validationErrors = {};
 
+      if (!this.editUsername.trim()) {
+        this.validationErrors.username = 'Username is required';
+      }
       if (this.editEmail && !this.editEmail.includes('@')) {
         this.validationErrors.email = 'Invalid email format';
-        return;
       }
+      if (Object.keys(this.validationErrors).length > 0) return;
 
       this.saving = true;
       try {
         const updates: UpdateUserRequest = {};
+        updates.username = this.editUsername.trim();
         if (this.editEmail) updates.email = this.editEmail;
         if (this.editFullName) updates.full_name = this.editFullName;
-        await api.updateUser(this.currentUser!.id, updates);
+        const user = await api.updateUser(this.currentUser!.id, updates);
+        this.currentUser = user;
+        this.syncUserConfig(user);
         this.closeEditModal();
       } catch (err) {
         if (err instanceof RackdAPIError) {
-          if (err.code === 'EMAIL_EXISTS') {
-            this.validationErrors.email = err.message;
+          if (Array.isArray(err.details)) {
+            for (const detail of err.details) {
+              if (detail.field && detail.message) {
+                this.validationErrors[detail.field] = detail.message;
+              }
+            }
           } else {
             this.error = err.message;
           }

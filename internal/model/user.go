@@ -70,6 +70,7 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
+	Username string `json:"username,omitempty"`
 	Email    string `json:"email,omitempty"`
 	FullName string `json:"full_name,omitempty"`
 	IsActive *bool  `json:"is_active,omitempty"`

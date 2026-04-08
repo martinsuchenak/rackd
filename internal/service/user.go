@@ -159,6 +159,12 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 		return nil, ErrForbidden
 	}
 
+	if req.Username != "" && req.Username != user.Username {
+		if existing, _ := s.store.GetUserByUsername(ctx, req.Username); existing != nil && existing.ID != id {
+			return nil, ValidationErrors{{Field: "username", Message: "Username already exists"}}
+		}
+		user.Username = req.Username
+	}
 	if req.Email != "" {
 		user.Email = req.Email
 	}

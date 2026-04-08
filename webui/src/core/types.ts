@@ -253,6 +253,7 @@ export interface UserInfo {
   id: string;
   username: string;
   email: string;
+  full_name?: string;
   roles: string[];
   permissions?: Permission[];
   is_admin?: boolean;
@@ -301,6 +302,7 @@ export interface CreateUserRequest {
 }
 
 export interface UpdateUserRequest {
+  username?: string;
   email?: string;
   full_name?: string;
   is_active?: boolean;

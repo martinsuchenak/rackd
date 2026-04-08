@@ -170,7 +170,7 @@
                   class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-800 dark:text-blue-200 text-sm font-medium"
                   x-text="initial"></div>
                 <span class="text-sm font-medium text-gray-800 dark:text-gray-200 hidden sm:inline"
-                  x-text="username"></span>
+                  x-text="displayName"></span>
                 <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" fill="none" stroke="currentColor"
                   viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -182,7 +182,8 @@
                 class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1"
                 role="menu">
                 <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="username"></p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-50" x-text="displayName"></p>
+                  <p x-show="fullName" class="text-xs text-gray-500 dark:text-gray-400" x-text="username"></p>
                   <p x-show="roleNames" class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="roleNames">
                   </p>
                 </div>
@@ -222,6 +223,16 @@
                     role="alert" x-text="error"></div>
                   <form @submit.prevent="saveProfile()">
                     <div class="space-y-4">
+                      <div>
+                        <label for="profile-username"
+                          class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Username</label>
+                        <input id="profile-username" type="text" x-model="editUsername"
+                          :aria-invalid="!!validationErrors.username"
+                          class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
+                          :class="validationErrors.username ? 'border-red-600 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'">
+                        <p x-show="validationErrors.username" class="mt-1 text-sm text-red-700 dark:text-red-300"
+                          role="alert" x-text="validationErrors.username"></p>
+                      </div>
                       <div>
                         <label for="profile-email"
                           class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Email</label>

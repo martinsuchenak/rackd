@@ -59,3 +59,4 @@ internal/ui/assets/
 .gopath/
 .npm-cache/
 .tmp/
+.cache/
