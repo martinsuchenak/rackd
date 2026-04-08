@@ -34,6 +34,146 @@ import { natComponent } from './components/nat';
 import { dnsProvidersComponent, dnsZonesComponent, dnsRecordsComponent } from './components/dns';
 import { apiKeysList } from './components/api-keys';
 
+function parseModelPath(expression: string): string[] | null {
+  const trimmed = expression.trim();
+  if (!trimmed || /[()\[\]]/.test(trimmed)) return null;
+  const parts = trimmed.split('.').map(part => part.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : null;
+}
+
+function getScopeEntry(el: HTMLElement, rootKey: string): Record<string, unknown> | null {
+  const stack = (Alpine as any).closestDataStack?.(el) as Array<Record<string, unknown>> | undefined;
+  if (!stack) return null;
+  for (const scope of stack) {
+    if (scope && Object.prototype.hasOwnProperty.call(scope, rootKey)) {
+      return scope;
+    }
+  }
+  return null;
+}
+
+function setModelValue(el: HTMLElement, expression: string, value: unknown): void {
+  const path = parseModelPath(expression);
+  if (!path) return;
+
+  const [rootKey, ...rest] = path;
+  const scope = getScopeEntry(el, rootKey);
+  if (!scope) return;
+
+  if (rest.length === 0) {
+    scope[rootKey] = value;
+    return;
+  }
+
+  let target = scope[rootKey] as Record<string, unknown> | undefined;
+  if (!target || typeof target !== 'object') return;
+
+  for (let i = 0; i < rest.length - 1; i++) {
+    const next = target[rest[i]];
+    if (!next || typeof next !== 'object') return;
+    target = next as Record<string, unknown>;
+  }
+
+  target[rest[rest.length - 1]] = value;
+}
+
+function getInputValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, currentValue: unknown, modifiers: string[]): unknown {
+  if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+    if (Array.isArray(currentValue)) {
+      const next = [...currentValue];
+      const idx = next.findIndex(v => String(v) === el.value);
+      if (el.checked && idx === -1) next.push(el.value);
+      if (!el.checked && idx !== -1) next.splice(idx, 1);
+      return next;
+    }
+    return el.checked;
+  }
+
+  if (el instanceof HTMLInputElement && el.type === 'radio') {
+    return el.value;
+  }
+
+  if (el instanceof HTMLSelectElement && el.multiple) {
+    return Array.from(el.selectedOptions).map(option => option.value);
+  }
+
+  let value: unknown = el.value;
+  if (modifiers.includes('number')) {
+    value = value === '' ? '' : Number(value);
+  }
+  if (modifiers.includes('trim') && typeof value === 'string') {
+    value = value.trim();
+  }
+  return value;
+}
+
+function syncModelValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, value: unknown): void {
+  (Alpine as any).mutateDom?.(() => {
+    if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+      el.checked = Array.isArray(value) ? value.map(String).includes(el.value) : !!value;
+      return;
+    }
+
+    if (el instanceof HTMLInputElement && el.type === 'radio') {
+      el.checked = String(value) === el.value;
+      return;
+    }
+
+    if (el instanceof HTMLSelectElement && el.multiple && Array.isArray(value)) {
+      const selected = value.map(String);
+      Array.from(el.options).forEach(option => {
+        option.selected = selected.includes(option.value);
+      });
+      return;
+    }
+
+    const normalized = value == null ? '' : String(value);
+    if (el.value !== normalized) {
+      el.value = normalized;
+    }
+  });
+}
+
+function registerCspSafeModelDirective(): void {
+  Alpine.directive('model', (
+    el: Element,
+    { expression, modifiers }: { expression: string; modifiers: string[] },
+    {
+      effect,
+      cleanup,
+      evaluateLater,
+    }: {
+      effect: (callback: () => void) => void;
+      cleanup: (callback: () => void) => void;
+      evaluateLater: (expression: string) => (callback: (value: unknown) => void) => void;
+    }
+  ) => {
+    const target = el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    const evaluateGet = evaluateLater(expression);
+
+    const eventName =
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLInputElement && ['checkbox', 'radio'].includes(target.type))
+        ? 'change'
+        : 'input';
+
+    const listener = () => {
+      evaluateGet((currentValue: unknown) => {
+        setModelValue(target, expression, getInputValue(target, currentValue, modifiers));
+      });
+    };
+
+    target.addEventListener(eventName, listener);
+    cleanup(() => target.removeEventListener(eventName, listener));
+
+    effect(() => {
+      evaluateGet((value: unknown) => {
+        syncModelValue(target, value);
+      });
+    });
+  });
+}
+
 // Update page title based on route
 function updatePageTitle(route: string) {
   const titles: Record<string, string> = {
@@ -426,6 +566,7 @@ async function init(): Promise<void> {
   // Register plugins
   Alpine.plugin(focus);
   Alpine.plugin(collapse);
+  registerCspSafeModelDirective();
 
   // Start Alpine
   Alpine.start();

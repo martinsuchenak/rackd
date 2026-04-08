@@ -120,7 +120,7 @@
             <div>
               <label for="create-name" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name
                 <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-name" type="text" x-model="formData.name" required aria-required="true"
+              <input id="create-name" type="text" x-model="providerName" required aria-required="true"
                 :aria-invalid="!!validationErrors.name"
                 :aria-describedby="getAriaDescribedBy('create-name-error', !!validationErrors.name)"
                 :class="getInputClass(!!validationErrors.name)">
@@ -130,7 +130,7 @@
             <div>
               <label for="create-type"
                 class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Type</label>
-              <select id="create-type" x-model="formData.type"
+              <select id="create-type" x-model="providerType"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 <option value="technitium">Technitium</option>
                 <option value="powerdns">PowerDNS</option>
@@ -141,7 +141,7 @@
               <label for="create-endpoint"
                 class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Endpoint <span
                   aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-endpoint" type="url" x-model="formData.endpoint" placeholder="https://dns.example.com"
+              <input id="create-endpoint" type="url" x-model="providerEndpoint" placeholder="https://dns.example.com"
                 required aria-required="true" :aria-invalid="!!validationErrors.endpoint"
                 :aria-describedby="getAriaDescribedBy('create-endpoint-error', !!validationErrors.endpoint)"
                 :class="getInputClass(!!validationErrors.endpoint)">
@@ -151,7 +151,7 @@
             <div>
               <label for="create-token" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">API
                 Token <span aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-              <input id="create-token" type="password" x-model="formData.token" required aria-required="true"
+              <input id="create-token" type="password" x-model="providerToken" required aria-required="true"
                 :aria-invalid="!!validationErrors.token"
                 :aria-describedby="getAriaDescribedBy('create-token-error', !!validationErrors.token)"
                 :class="getInputClass(!!validationErrors.token)">
@@ -161,7 +161,7 @@
             <div>
               <label for="create-description"
                 class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
-              <textarea id="create-description" x-model="formData.description" rows="2"
+              <textarea id="create-description" x-model="providerDescription" rows="2"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
             </div>
           </div>
@@ -201,7 +201,7 @@
                 <label :for="getEditInputId(selectedProvider.id, 'edit-name')"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="getEditInputId(selectedProvider.id, 'edit-name')" type="text" x-model="formData.name"
+                <input :id="getEditInputId(selectedProvider.id, 'edit-name')" type="text" x-model="providerName"
                   required aria-required="true" :aria-invalid="!!validationErrors.name"
                   :aria-describedby="getAriaDescribedBy(getEditInputId(selectedProvider.id, 'edit-name-error'), !!validationErrors.name)"
                   :class="getInputClass(!!validationErrors.name)">
@@ -212,7 +212,7 @@
                 <label :for="getEditInputId(selectedProvider.id, 'edit-endpoint')"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Endpoint <span
                     aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
-                <input :id="getEditInputId(selectedProvider.id, 'edit-endpoint')" type="url" x-model="formData.endpoint"
+                <input :id="getEditInputId(selectedProvider.id, 'edit-endpoint')" type="url" x-model="providerEndpoint"
                   required aria-required="true" :aria-invalid="!!validationErrors.endpoint"
                   :aria-describedby="getAriaDescribedBy(getEditInputId(selectedProvider.id, 'edit-endpoint-error'), !!validationErrors.endpoint)"
                   :class="getInputClass(!!validationErrors.endpoint)">
@@ -223,7 +223,7 @@
               <div>
                 <label :for="getEditInputId(selectedProvider.id, 'edit-token')"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">API Token</label>
-                <input :id="getEditInputId(selectedProvider.id, 'edit-token')" type="password" x-model="formData.token"
+                <input :id="getEditInputId(selectedProvider.id, 'edit-token')" type="password" x-model="providerToken"
                   placeholder="Leave blank to keep existing"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to keep the existing token</p>
@@ -231,7 +231,7 @@
               <div>
                 <label :for="getEditInputId(selectedProvider.id, 'edit-description')"
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Description</label>
-                <textarea :id="getEditInputId(selectedProvider.id, 'edit-description')" x-model="formData.description"
+                <textarea :id="getEditInputId(selectedProvider.id, 'edit-description')" x-model="providerDescription"
                   rows="2"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500"></textarea>
               </div>

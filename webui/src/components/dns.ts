@@ -34,14 +34,12 @@ interface DNSProvidersData {
   testingConnection: boolean;
   testResult: { success: boolean; message: string } | null;
 
-  // Form data
-  formData: {
-    name: string;
-    type: DNSProviderType;
-    endpoint: string;
-    token: string;
-    description: string;
-  };
+  // Form data - flat properties for CSP compatibility
+  providerName: string;
+  providerType: DNSProviderType;
+  providerEndpoint: string;
+  providerToken: string;
+  providerDescription: string;
   validationErrors: ProviderValidationErrors;
   saving: boolean;
   deleting: boolean;
@@ -99,13 +97,11 @@ export function dnsProvidersComponent(): DNSProvidersData {
     testingConnection: false,
     testResult: null,
 
-    formData: {
-      name: '',
-      type: 'technitium',
-      endpoint: '',
-      token: '',
-      description: ''
-    },
+    providerName: '',
+    providerType: 'technitium',
+    providerEndpoint: '',
+    providerToken: '',
+    providerDescription: '',
     validationErrors: {},
     saving: false,
     deleting: false,
@@ -142,13 +138,11 @@ export function dnsProvidersComponent(): DNSProvidersData {
       this.testResult = null;
       this.validationErrors = {};
 
-      this.formData = {
-        name: '',
-        type: 'technitium',
-        endpoint: '',
-        token: '',
-        description: ''
-      };
+      this.providerName = '';
+      this.providerType = 'technitium';
+      this.providerEndpoint = '';
+      this.providerToken = '';
+      this.providerDescription = '';
       this.modalType = 'create';
     },
 
@@ -158,13 +152,11 @@ export function dnsProvidersComponent(): DNSProvidersData {
       this.testResult = null;
 
       this.selectedProvider = provider;
-      this.formData = {
-        name: provider.name,
-        type: provider.type,
-        endpoint: provider.endpoint,
-        token: '', // Never populate token for security
-        description: provider.description || ''
-      };
+      this.providerName = provider.name;
+      this.providerType = provider.type;
+      this.providerEndpoint = provider.endpoint;
+      this.providerToken = ''; // Never populate token for security
+      this.providerDescription = provider.description || '';
       this.modalType = 'edit';
     },
 
@@ -189,6 +181,11 @@ export function dnsProvidersComponent(): DNSProvidersData {
       this.selectedProvider = null;
       this.validationErrors = {};
       this.testResult = null;
+      this.providerName = '';
+      this.providerType = 'technitium';
+      this.providerEndpoint = '';
+      this.providerToken = '';
+      this.providerDescription = '';
     },
 
     closeDeleteModal(): void {
@@ -220,16 +217,16 @@ export function dnsProvidersComponent(): DNSProvidersData {
     validateForm(): boolean {
       this.validationErrors = {};
 
-      if (!this.formData.name.trim()) {
+      if (!this.providerName.trim()) {
         this.validationErrors.name = 'Name is required';
       }
 
-      if (!this.formData.endpoint.trim()) {
+      if (!this.providerEndpoint.trim()) {
         this.validationErrors.endpoint = 'Endpoint is required';
       }
 
       // Token required for create, optional for edit (user may leave blank to keep existing)
-      if (!this.selectedProvider && !this.formData.token.trim()) {
+      if (!this.selectedProvider && !this.providerToken.trim()) {
         this.validationErrors.token = 'Token is required';
       }
 
@@ -248,23 +245,23 @@ export function dnsProvidersComponent(): DNSProvidersData {
         if (this.selectedProvider) {
           // Update existing provider
           const updateData: UpdateDNSProviderRequest = {
-            name: this.formData.name,
-            endpoint: this.formData.endpoint,
-            description: this.formData.description || undefined
+            name: this.providerName,
+            endpoint: this.providerEndpoint,
+            description: this.providerDescription || undefined
           };
           // Only include token if provided
-          if (this.formData.token.trim()) {
-            updateData.token = this.formData.token;
+          if (this.providerToken.trim()) {
+            updateData.token = this.providerToken;
           }
           await api.updateDNSProvider(this.selectedProvider.id, updateData);
         } else {
           // Create new provider
           const createData: CreateDNSProviderRequest = {
-            name: this.formData.name,
-            type: this.formData.type,
-            endpoint: this.formData.endpoint,
-            token: this.formData.token,
-            description: this.formData.description || undefined
+            name: this.providerName,
+            type: this.providerType,
+            endpoint: this.providerEndpoint,
+            token: this.providerToken,
+            description: this.providerDescription || undefined
           };
           await api.createDNSProvider(createData);
         }
