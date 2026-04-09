@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -252,4 +253,72 @@ func TestSyncDeviceDNS_NoCNAMEWithoutHostname(t *testing.T) {
 			t.Fatalf("expected 0 records for device without hostname, got %d", len(ss.createdRecords))
 		}
 	})
+}
+
+func TestDeviceService_CreateValidatesStatusAndSetsStatusChangedBy(t *testing.T) {
+	store := newServiceTestStorage()
+	store.setPermission("user-1", "devices", "create", true)
+	svc := NewDeviceService(store)
+
+	err := svc.Create(userContext("user-1"), &model.Device{
+		ID:     "dev-1",
+		Name:   "switch-1",
+		Status: model.DeviceStatus("broken"),
+	})
+	if err == nil || !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected validation error for invalid status, got %v", err)
+	}
+
+	device := &model.Device{
+		ID:     "dev-2",
+		Name:   "switch-2",
+		Status: model.DeviceStatusActive,
+	}
+	if err := svc.Create(userContext("user-1"), device); err != nil {
+		t.Fatalf("expected valid device create to succeed, got %v", err)
+	}
+	if store.deviceCreated == nil || store.deviceCreated.StatusChangedBy != "user-1" {
+		t.Fatalf("expected status_changed_by to be set from caller, got %#v", store.deviceCreated)
+	}
+}
+
+func TestDeviceService_SearchUsesListPermission(t *testing.T) {
+	store := newServiceTestStorage()
+	store.devices["dev-1"] = &model.Device{ID: "dev-1", Name: "router-1"}
+	store.setPermission("user-1", "devices", "list", true)
+	svc := NewDeviceService(store)
+
+	results, err := svc.Search(userContext("user-1"), "router-1")
+	if err != nil {
+		t.Fatalf("Search returned unexpected error: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "dev-1" {
+		t.Fatalf("expected search result for router-1, got %#v", results)
+	}
+}
+
+func TestDeviceService_DeleteMapsMissingDeviceToNotFound(t *testing.T) {
+	store := newServiceTestStorage()
+	store.setPermission("user-1", "devices", "delete", true)
+	svc := NewDeviceService(store)
+
+	err := svc.Delete(userContext("user-1"), "missing")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found error, got %v", err)
+	}
+}
+
+func TestValidateStatusAndExtractPTRNameHelpers(t *testing.T) {
+	if err := validateStatus(model.DeviceStatus("invalid")); err == nil || !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected validation error for invalid device status, got %v", err)
+	}
+	if err := validateStatus(model.DeviceStatusActive); err != nil {
+		t.Fatalf("expected active status to be valid, got %v", err)
+	}
+	if ptr := extractPTRName("10.20.30.40"); ptr != "40.30.20.in-addr.arpa" {
+		t.Fatalf("unexpected PTR name %q", ptr)
+	}
+	if ptr := extractPTRName("bad-ip"); ptr != "" {
+		t.Fatalf("expected invalid IP PTR extraction to return empty string, got %q", ptr)
+	}
 }
