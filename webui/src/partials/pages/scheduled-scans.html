@@ -45,7 +45,7 @@
                     <tr x-show="loading">
                         <td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading...</td>
                     </tr>
-                    <tr x-show="!loading && scans.length === 0">
+                    <tr x-show="showEmptyState">
                         <td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No scheduled
                             scans found</td>
                     </tr>

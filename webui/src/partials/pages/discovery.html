@@ -99,7 +99,11 @@
               <tr>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  IP Address</th>
+                  <button type="button" @click="setDeviceSort('ip')" :aria-sort="getDeviceSortAriaSort('ip')"
+                    class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer">
+                    <span>IP Address</span>
+                    <span aria-hidden="true" x-text="getDeviceSortIndicator('ip')"></span>
+                  </button></th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Hostname</th>
@@ -120,10 +124,18 @@
                   Services</th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Last Seen</th>
+                  <button type="button" @click="setDeviceSort('last_seen')" :aria-sort="getDeviceSortAriaSort('last_seen')"
+                    class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer">
+                    <span>Last Seen</span>
+                    <span aria-hidden="true" x-text="getDeviceSortIndicator('last_seen')"></span>
+                  </button></th>
                 <th
                   class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Conf.</th>
+                  <button type="button" @click="setDeviceSort('confidence')" :aria-sort="getDeviceSortAriaSort('confidence')"
+                    class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer">
+                    <span>Conf.</span>
+                    <span aria-hidden="true" x-text="getDeviceSortIndicator('confidence')"></span>
+                  </button></th>
                 <th
                   class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions</th>

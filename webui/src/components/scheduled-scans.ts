@@ -32,6 +32,10 @@ export function scheduledScansList() {
       return this.modalType === 'delete';
     },
 
+    get showEmptyState(): boolean {
+      return !this.loading && Array.isArray(this.scans) && this.scans.length === 0;
+    },
+
     async init(): Promise<void> {
       await this.load();
     },

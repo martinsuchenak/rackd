@@ -62,6 +62,9 @@ interface DiscoveryListData {
   getServiceTitle(service: any): string;
   getConfidenceLabel(device: DiscoveredDevice | null): string;
   getServiceLabel(service: any): string;
+  setDeviceSort(column: 'confidence' | 'last_seen' | 'ip'): void;
+  getDeviceSortAriaSort(column: 'confidence' | 'last_seen' | 'ip'): 'ascending' | 'descending' | 'none';
+  getDeviceSortIndicator(column: 'confidence' | 'last_seen' | 'ip'): string;
 }
 
 export function discoveryList() {
@@ -75,6 +78,8 @@ export function discoveryList() {
     error: '',
     pollInterval: null as ReturnType<typeof setInterval> | null,
     deviceFilter: '',
+    deviceSortColumn: 'confidence' as 'confidence' | 'last_seen' | 'ip',
+    deviceSortDirection: 'desc' as 'asc' | 'desc',
     // Scan modal
     showScanModal: false,
     scanNetworkId: '',
@@ -100,16 +105,63 @@ export function discoveryList() {
     // Computed property for filtered devices
     get filteredDevices() {
       const filter = this.deviceFilter.toLowerCase().trim();
-      if (!filter) {
-        return this.discoveredDevices;
-      }
-      return this.discoveredDevices.filter(d =>
+      const devices = !filter
+        ? [...this.discoveredDevices]
+        : this.discoveredDevices.filter(d =>
         d.ip.toLowerCase().includes(filter) ||
         (d.hostname && d.hostname.toLowerCase().includes(filter)) ||
         (d.mac_address && d.mac_address.toLowerCase().includes(filter)) ||
         (d.os_guess && d.os_guess.toLowerCase().includes(filter)) ||
         (d.vendor && d.vendor.toLowerCase().includes(filter))
       );
+
+      devices.sort((a, b) => this.compareDiscoveredDevices(a, b));
+      return devices;
+    },
+
+    compareDiscoveredDevices(a: DiscoveredDevice, b: DiscoveredDevice): number {
+      let result = 0;
+      switch (this.deviceSortColumn) {
+        case 'confidence':
+          result = (a.confidence || 0) - (b.confidence || 0);
+          break;
+        case 'last_seen':
+          result = new Date(a.last_seen || 0).getTime() - new Date(b.last_seen || 0).getTime();
+          break;
+        case 'ip':
+          result = a.ip.localeCompare(b.ip, undefined, { numeric: true, sensitivity: 'base' });
+          break;
+      }
+
+      if (result === 0) {
+        result = a.ip.localeCompare(b.ip, undefined, { numeric: true, sensitivity: 'base' });
+      }
+
+      return this.deviceSortDirection === 'asc' ? result : -result;
+    },
+
+    setDeviceSort(column: 'confidence' | 'last_seen' | 'ip'): void {
+      if (this.deviceSortColumn === column) {
+        this.deviceSortDirection = this.deviceSortDirection === 'asc' ? 'desc' : 'asc';
+        return;
+      }
+
+      this.deviceSortColumn = column;
+      this.deviceSortDirection = column === 'ip' ? 'asc' : 'desc';
+    },
+
+    getDeviceSortAriaSort(column: 'confidence' | 'last_seen' | 'ip'): 'ascending' | 'descending' | 'none' {
+      if (this.deviceSortColumn !== column) {
+        return 'none';
+      }
+      return this.deviceSortDirection === 'asc' ? 'ascending' : 'descending';
+    },
+
+    getDeviceSortIndicator(column: 'confidence' | 'last_seen' | 'ip'): string {
+      if (this.deviceSortColumn !== column) {
+        return '';
+      }
+      return this.deviceSortDirection === 'asc' ? '▲' : '▼';
     },
 
     openScanModal(): void {
@@ -350,12 +402,12 @@ export function discoveryList() {
     },
     getConfidenceStyle(): string {
       const conf = this.promoteDevice?.confidence || 0;
-      return `width: ${conf * 10}%`;
+      return `width: ${Math.max(0, Math.min(100, (conf / 3) * 100))}%`;
     },
     getConfidenceClass(): string {
       const conf = this.promoteDevice?.confidence || 0;
-      if (conf >= 8) return 'bg-green-500';
-      if (conf >= 5) return 'bg-yellow-500';
+      if (conf >= 3) return 'bg-green-500';
+      if (conf >= 2) return 'bg-yellow-500';
       return 'bg-gray-500';
     },
     getPromoteVendorPlaceholder(): string {
@@ -448,9 +500,9 @@ export function discoveryList() {
     },
     getConfidenceBadgeClass(conf: number): any {
       return {
-        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': conf >= 8,
-        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': conf >= 5 && conf < 8,
-        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': conf < 5
+        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': conf >= 3,
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400': conf >= 2 && conf < 3,
+        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400': conf < 2
       };
     },
     getScanStatusClass(status: string): any {
@@ -503,7 +555,7 @@ export function discoveryList() {
     },
     getConfidenceLabel(d: DiscoveredDevice | null): string {
       const conf = d ? d.confidence : 0;
-      return `${conf}/10`;
+      return `${conf}/3`;
     },
     getServiceLabel(svc: any): string {
       if (!svc) return '';
