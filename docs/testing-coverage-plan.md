@@ -301,6 +301,40 @@ Goal:
 
 - cover the CLI surfaces users are most likely to rely on operationally
 
+Status:
+
+- Completed
+
+Current progress:
+
+- Added dedicated CLI regression tests for the previously uncovered top-priority admin surfaces:
+  - [`cmd/user/user_test.go`](/Users/martinsuchenak/Devel/projects/rackd/cmd/user/user_test.go)
+  - [`cmd/role/role_test.go`](/Users/martinsuchenak/Devel/projects/rackd/cmd/role/role_test.go)
+  - [`cmd/dns/dns_test.go`](/Users/martinsuchenak/Devel/projects/rackd/cmd/dns/dns_test.go)
+- Covered in the new CLI suites:
+  - command/subcommand structure validation for user, role, and DNS command trees
+  - request-path and payload-construction coverage for user CRUD and role grant/revoke helpers
+  - request-path and payload-construction coverage for role CRUD, permission lookup, and user-role assignment helpers
+  - request-path coverage for DNS provider and zone CRUD, provider test, and record listing flows
+  - light regression coverage around DNS token env/file input handling
+- Validated the full CLI tree with `go test ./cmd/...` and `go test -cover ./cmd/...`
+- The highest-priority CLI packages from this phase now all have direct regression coverage:
+  - `cmd/user`: `8.2%`
+  - `cmd/role`: `6.7%`
+  - `cmd/dns`: `4.3%`
+  - `cmd/network`: `8.1%`
+  - `cmd/device`: `11.9%`
+  - `cmd/discovery`: `5.6%`
+  - `cmd/scheduledscan`: `6.2%`
+- Lower-priority CLI packages remain at `0.0%` in some cases, but they were explicitly outside this phase's success boundary:
+  - `cmd/audit`
+  - `cmd/circuit`
+  - `cmd/customfield`
+  - `cmd/nat`
+  - `cmd/webhook`
+- While validating this phase, an adjacent regression was also locked down in the service layer:
+  - circuit creation now generates an ID before persistence, covered by [`internal/service/circuit_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/service/circuit_test.go)
+
 Priority order:
 
 1. `cmd/user`
@@ -323,6 +357,12 @@ Success criteria:
 
 - all critical admin commands have regression tests for their main flags
 - known bug-prone payload builders are covered
+
+Follow-up items that can wait until later:
+
+- deeper direct flag-to-request assertions in `cmd/network`, `cmd/device`, `cmd/discovery`, and `cmd/scheduledscan`, which already had baseline coverage before this phase
+- explicit error-output assertions for interactive or confirmation-heavy CLI paths
+- first-pass coverage for the lower-priority zero-coverage command packages if those features start changing more actively
 
 ## Phase 4: Deepen Storage And Discovery Where It Matters
 
