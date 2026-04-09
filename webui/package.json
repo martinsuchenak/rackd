@@ -9,7 +9,8 @@
     "build:js": "bun build ./src/app.ts --outdir ./dist --minify",
     "build:html": "bun run ./scripts/build-html.ts",
     "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "validate:types": "bun run ./scripts/validate-openapi-types.ts"
   },
   "dependencies": {
     "@alpinejs/collapse": "^3.15.11",

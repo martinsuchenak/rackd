@@ -88,7 +88,7 @@ components:
 
     Datacenter:
       type: object
-      required: [id, name, created_at, updated_at]
+      required: [id, name, location, description, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -171,7 +171,7 @@ components:
 
     Network:
       type: object
-      required: [id, name, subnet, created_at, updated_at]
+      required: [id, name, subnet, vlan_id, datacenter_id, description, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -224,6 +224,7 @@ components:
 
     NetworkUtilization:
       type: object
+      required: [network_id, total_ips, used_ips, available_ips, utilization]
       properties:
         network_id: { type: string, format: uuid }
         total_ips: { type: integer }
@@ -275,6 +276,7 @@ components:
 
     ServiceInfo:
       type: object
+      required: [port, protocol, service, version]
       properties:
         port: { type: integer }
         protocol: { type: string }
@@ -283,6 +285,7 @@ components:
 
     DiscoveredDevice:
       type: object
+      required: [id, ip, mac_address, hostname, network_id, status, confidence, os_guess, vendor, open_ports, services, first_seen, last_seen, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         ip: { type: string }
@@ -310,6 +313,7 @@ components:
 
     DiscoveryScan:
       type: object
+      required: [id, network_id, status, scan_type, total_hosts, scanned_hosts, found_hosts, progress_percent, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         network_id: { type: string, format: uuid }
@@ -398,6 +402,7 @@ components:
 
     ScanProfile:
       type: object
+      required: [id, name, scan_type, timeout_sec, max_workers, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -431,6 +436,7 @@ components:
 
     ScheduledScan:
       type: object
+      required: [id, network_id, profile_id, name, cron_expression, enabled, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         network_id: { type: string, format: uuid }
@@ -458,9 +464,12 @@ components:
 
     APIKey:
       type: object
+      required: [id, name, user_id, description, created_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        key: { type: string, description: Secret key (only returned on creation) }
+        user_id: { type: string, format: uuid }
         description: { type: string }
         created_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
@@ -470,12 +479,6 @@ components:
     APIKeyWithSecret:
       allOf:
         - $ref: '#/components/schemas/APIKey'
-        - type: object
-          required: [key]
-          properties:
-            key:
-              type: string
-              description: Secret key (only returned on creation)
 
     APIKeyInput:
       type: object
@@ -560,14 +563,21 @@ components:
 
     User:
       type: object
+      required: [id, username, is_active, is_admin, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
         email: { type: string }
-        display_name: { type: string }
-        enabled: { type: boolean }
+        full_name: { type: string }
+        is_active: { type: boolean }
+        is_admin: { type: boolean }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
       additionalProperties: true
 
     UserInput:
@@ -577,21 +587,24 @@ components:
         username: { type: string }
         password: { type: string }
         email: { type: string }
-        display_name: { type: string }
-        enabled: { type: boolean, default: true }
+        full_name: { type: string }
+        is_admin: { type: boolean, default: false }
+        role_id: { type: string, format: uuid }
 
     UserUpdate:
       type: object
       properties:
+        username: { type: string }
         email: { type: string }
-        display_name: { type: string }
-        enabled: { type: boolean }
+        full_name: { type: string }
+        is_active: { type: boolean }
+        is_admin: { type: boolean }
 
     PasswordChange:
       type: object
       required: [new_password]
       properties:
-        current_password: { type: string }
+        old_password: { type: string }
         new_password: { type: string }
 
     RoleGrant:
@@ -603,11 +616,16 @@ components:
 
     Role:
       type: object
+      required: [id, name, is_system, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         description: { type: string }
-        built_in: { type: boolean }
+        is_system: { type: boolean }
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
@@ -624,12 +642,13 @@ components:
 
     Permission:
       type: object
+      required: [id, name, resource, action, created_at]
       properties:
         id: { type: string }
         name: { type: string }
-        description: { type: string }
         resource: { type: string }
         action: { type: string }
+        created_at: { type: string, format: date-time }
 
     OAuthClient:
       type: object
@@ -731,15 +750,18 @@ components:
 
     Webhook:
       type: object
+      required: [id, name, url, has_secret, events, active, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         url: { type: string, format: uri }
-        secret: { type: string }
+        has_secret: { type: boolean }
         events:
           type: array
           items: { type: string }
-        enabled: { type: boolean }
+        active: { type: boolean }
+        description: { type: string }
+        created_by: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
@@ -754,63 +776,88 @@ components:
         events:
           type: array
           items: { type: string }
-        enabled: { type: boolean, default: true }
+        active: { type: boolean, default: true }
+        description: { type: string }
 
     WebhookDelivery:
       type: object
+      required: [id, webhook_id, event_type, payload, duration_ms, status, attempt_number, created_at]
       properties:
         id: { type: string, format: uuid }
         webhook_id: { type: string, format: uuid }
-        event: { type: string }
-        status_code: { type: integer }
-        success: { type: boolean }
-        request_body: { type: string }
+        event_type: { type: string }
+        payload: { type: string }
+        response_code: { type: integer }
         response_body: { type: string }
-        delivered_at: { type: string, format: date-time }
+        error: { type: string }
+        duration_ms: { type: integer }
+        status: { type: string, enum: [pending, success, failed, retrying, abandoned] }
+        attempt_number: { type: integer }
+        next_retry: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
       additionalProperties: true
 
     CustomField:
       type: object
+      required: [id, name, key, type, required, description, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        label: { type: string }
-        type: { type: string }
+        key: { type: string }
+        type: { type: string, enum: [text, number, boolean, select] }
         required: { type: boolean }
         options:
           type: array
           items: { type: string }
-        resource_type: { type: string }
+        description: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     CustomFieldInput:
       type: object
-      required: [name, type, resource_type]
+      required: [name, key, type, required]
       properties:
         name: { type: string }
-        label: { type: string }
-        type: { type: string }
+        key: { type: string }
+        type: { type: string, enum: [text, number, boolean, select] }
         required: { type: boolean, default: false }
         options:
           type: array
           items: { type: string }
-        resource_type: { type: string }
+        description: { type: string }
 
     Circuit:
       type: object
+      required: [id, name, circuit_id, provider, type, status, capacity_mbps, description, tags, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         provider: { type: string }
         circuit_id: { type: string }
-        type: { type: string }
-        bandwidth: { type: string }
-        status: { type: string }
-        a_side_device_id: { type: string, format: uuid }
-        z_side_device_id: { type: string, format: uuid }
+        type: { type: string, enum: [fiber, copper, microwave, dark_fiber] }
+        status: { type: string, enum: [active, maintenance, down, decommissioned] }
+        capacity_mbps: { type: integer }
+        datacenter_a_id: { type: string, format: uuid }
+        datacenter_b_id: { type: string, format: uuid }
+        device_a_id: { type: string, format: uuid }
+        device_b_id: { type: string, format: uuid }
+        port_a: { type: string }
+        port_b: { type: string }
+        ip_address_a: { type: string }
+        ip_address_b: { type: string }
+        vlan_id: { type: integer }
         description: { type: string }
+        install_date: { type: string, format: date-time }
+        terminate_date: { type: string, format: date-time }
+        monthly_cost: { type: number }
+        contract_number: { type: string }
+        contact_name: { type: string }
+        contact_phone: { type: string }
+        contact_email: { type: string }
+        tags:
+          type: array
+          items: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
@@ -822,112 +869,157 @@ components:
         name: { type: string }
         provider: { type: string }
         circuit_id: { type: string }
-        type: { type: string }
-        bandwidth: { type: string }
-        status: { type: string }
-        a_side_device_id: { type: string, format: uuid }
-        z_side_device_id: { type: string, format: uuid }
+        type: { type: string, enum: [fiber, copper, microwave, dark_fiber] }
+        status: { type: string, enum: [active, maintenance, down, decommissioned] }
+        capacity_mbps: { type: integer }
+        datacenter_a_id: { type: string, format: uuid }
+        datacenter_b_id: { type: string, format: uuid }
+        device_a_id: { type: string, format: uuid }
+        device_b_id: { type: string, format: uuid }
+        port_a: { type: string }
+        port_b: { type: string }
+        ip_address_a: { type: string }
+        ip_address_b: { type: string }
+        vlan_id: { type: integer }
         description: { type: string }
+        install_date: { type: string, format: date-time }
+        terminate_date: { type: string, format: date-time }
+        monthly_cost: { type: number }
+        contract_number: { type: string }
+        contact_name: { type: string }
+        contact_phone: { type: string }
+        contact_email: { type: string }
+        tags:
+          type: array
+          items: { type: string }
 
     NATRule:
       type: object
+      required: [id, name, external_ip, external_port, internal_ip, internal_port, protocol, description, enabled, tags, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string, enum: [static, dynamic, pat] }
-        source_ip: { type: string }
-        translated_ip: { type: string }
-        source_port: { type: integer }
-        translated_port: { type: integer }
-        protocol: { type: string }
+        external_ip: { type: string }
+        external_port: { type: integer }
+        internal_ip: { type: string }
+        internal_port: { type: integer }
+        protocol: { type: string, enum: [tcp, udp, any] }
         device_id: { type: string, format: uuid }
         description: { type: string }
         enabled: { type: boolean }
+        datacenter_id: { type: string, format: uuid }
+        network_id: { type: string, format: uuid }
+        tags:
+          type: array
+          items: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     NATRuleInput:
       type: object
-      required: [name, type, source_ip, translated_ip]
+      required: [name, external_ip, external_port, internal_ip, internal_port]
       properties:
         name: { type: string }
-        type: { type: string, enum: [static, dynamic, pat] }
-        source_ip: { type: string }
-        translated_ip: { type: string }
-        source_port: { type: integer }
-        translated_port: { type: integer }
-        protocol: { type: string }
+        external_ip: { type: string }
+        external_port: { type: integer }
+        internal_ip: { type: string }
+        internal_port: { type: integer }
+        protocol: { type: string, enum: [tcp, udp, any] }
         device_id: { type: string, format: uuid }
         description: { type: string }
         enabled: { type: boolean, default: true }
+        datacenter_id: { type: string, format: uuid }
+        network_id: { type: string, format: uuid }
+        tags:
+          type: array
+          items: { type: string }
 
     DNSProvider:
       type: object
+      required: [id, name, type, endpoint, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string }
-        config: { type: object, additionalProperties: true }
+        type: { type: string, enum: [technitium, powerdns, bind] }
+        endpoint: { type: string }
+        description: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     DNSProviderInput:
       type: object
-      required: [name, type]
+      required: [name, type, endpoint, token]
       properties:
         name: { type: string }
-        type: { type: string }
-        config: { type: object, additionalProperties: true }
+        type: { type: string, enum: [technitium, powerdns, bind] }
+        endpoint: { type: string }
+        token: { type: string }
+        description: { type: string }
 
     DNSZone:
       type: object
+      required: [id, name, provider_id, auto_sync, create_ptr, ttl, description, last_sync_status, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         provider_id: { type: string, format: uuid }
-        type: { type: string, enum: [primary, secondary] }
-        status: { type: string }
+        network_id: { type: string, format: uuid }
+        auto_sync: { type: boolean }
+        create_ptr: { type: boolean }
+        ptr_zone: { type: string }
+        ttl: { type: integer }
         description: { type: string }
+        last_sync_at: { type: string, format: date-time }
+        last_sync_status: { type: string, enum: [success, failed, partial] }
+        last_sync_error: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     DNSZoneInput:
       type: object
-      required: [name, provider_id]
+      required: [name, provider_id, auto_sync, create_ptr, ttl]
       properties:
         name: { type: string }
         provider_id: { type: string, format: uuid }
-        type: { type: string, enum: [primary, secondary] }
+        network_id: { type: string, format: uuid }
+        auto_sync: { type: boolean }
+        create_ptr: { type: boolean }
+        ptr_zone: { type: string }
+        ttl: { type: integer }
         description: { type: string }
 
     DNSRecord:
       type: object
+      required: [id, zone_id, name, type, value, ttl, sync_status, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         zone_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        address_id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, NS, SRV, PTR] }
+        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, NS, SOA, SRV, PTR] }
         value: { type: string }
         ttl: { type: integer }
-        priority: { type: integer }
-        device_id: { type: string, format: uuid }
+        sync_status: { type: string, enum: [synced, pending, failed] }
+        last_sync_at: { type: string, format: date-time }
+        error_message: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     DNSRecordInput:
       type: object
-      required: [name, type, value]
+      required: [zone_id, name, type, value, ttl]
       properties:
         zone_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, NS, SRV, PTR] }
+        type: { type: string, enum: [A, AAAA, CNAME, MX, TXT, NS, SOA, SRV, PTR] }
         value: { type: string }
         ttl: { type: integer, default: 3600 }
-        priority: { type: integer }
 
     DeviceStatusCounts:
       type: object

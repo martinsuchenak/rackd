@@ -33,8 +33,8 @@
           class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="planned">Planned</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="down">Down</option>
           <option value="decommissioned">Decommissioned</option>
         </select>
       </div>
@@ -118,8 +118,8 @@
               <td class="px-6 py-4">
                 <span class="px-2 py-1 text-xs font-medium rounded-full" :class="{
                         'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200': circuit.status === 'active',
-                        'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200': circuit.status === 'inactive',
-                        'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200': circuit.status === 'planned',
+                        'bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-200': circuit.status === 'maintenance',
+                        'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-200': circuit.status === 'down',
                         'bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-200': circuit.status === 'decommissioned'
                       }" x-text="formatStatus(circuit.status)"></span>
               </td>
@@ -219,8 +219,8 @@
                 <select id="create-status" x-model="formData.status"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                   <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="planned">Planned</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="down">Down</option>
                   <option value="decommissioned">Decommissioned</option>
                 </select>
               </div>
@@ -388,8 +388,8 @@
                   <select :id="'edit-status-' + getSelectedCircuitId()" x-model="formData.status"
                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
                     <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="planned">Planned</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="down">Down</option>
                     <option value="decommissioned">Decommissioned</option>
                   </select>
                 </div>

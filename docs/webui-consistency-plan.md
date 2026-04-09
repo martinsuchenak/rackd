@@ -397,6 +397,36 @@ Reduce drift between frontend shared types and backend API schemas.
 
 - CI or a documented validation step can detect schema drift
 
+### Status
+
+Completed on 2026-04-09.
+
+### Progress Notes
+
+- Added [`webui/scripts/validate-openapi-types.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/scripts/validate-openapi-types.ts), a contract validator that checks a curated API-facing subset of [`webui/src/core/types.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/types.ts) against [`api/openapi.yaml`](/Users/martinsuchenak/Devel/projects/rackd/api/openapi.yaml)
+- Registered the validator as `bun run validate:types` in [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json)
+- Updated the OpenAPI schemas for the validated frontend contract set, including:
+  - users, roles, permissions, API keys
+  - webhooks and webhook deliveries
+  - custom fields
+  - circuits and NAT
+  - DNS providers, zones, and records
+  - required-field metadata for discovery, scan profile, scheduled scan, network, and datacenter schemas
+- Fixed a real contract mismatch in the frontend circuit model by aligning [`webui/src/core/types.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/types.ts), [`webui/src/components/circuits.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/circuits.ts), and [`webui/src/partials/pages/circuits.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/circuits.html) to backend circuit statuses (`active`, `maintenance`, `down`, `decommissioned`)
+- Documented the validation step in [`docs/webui.md`](/Users/martinsuchenak/Devel/projects/rackd/docs/webui.md)
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun run validate:types
+bun run typecheck
+bun run build:js
+bun run build:html
+```
+
 ## PR 8: Frontend Regression Coverage
 
 ### Goal

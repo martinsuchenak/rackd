@@ -392,8 +392,8 @@ export function circuitComponent(): CircuitData {
     formatStatus(status: string): string {
       const statusMap: Record<string, string> = {
         'active': 'Active',
-        'inactive': 'Inactive',
-        'planned': 'Planned',
+        'maintenance': 'Maintenance',
+        'down': 'Down',
         'decommissioned': 'Decommissioned'
       };
       return statusMap[status] || status;

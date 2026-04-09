@@ -1,4 +1,6 @@
-// Shared types for Rackd Web UI
+// Shared types for Rackd Web UI.
+// API-facing interfaces in this file are validated against api/openapi.yaml via
+// `cd webui && bun run validate:types`. UI-only view models are excluded.
 
 export interface Address {
   id?: string;
@@ -317,7 +319,7 @@ export interface NavItem {
 export interface UserInfo {
   id: string;
   username: string;
-  email: string;
+  email?: string;
   full_name?: string;
   roles: Role[];
   permissions: Permission[];
@@ -327,8 +329,8 @@ export interface UserInfo {
 export interface User {
   id: string;
   username: string;
-  email: string;
-  full_name: string;
+  email?: string;
+  full_name?: string;
   is_active: boolean;
   is_admin: boolean;
   created_at: string;
@@ -390,7 +392,7 @@ export interface Permission {
 export interface Role {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   is_system: boolean;
   created_at: string;
   updated_at: string;
@@ -603,7 +605,7 @@ export interface UpdateCustomFieldDefinitionRequest {
 
 // Circuit Types
 export type CircuitType = 'fiber' | 'copper' | 'microwave' | 'dark_fiber';
-export type CircuitStatus = 'active' | 'inactive' | 'planned' | 'decommissioned';
+export type CircuitStatus = 'active' | 'maintenance' | 'down' | 'decommissioned';
 
 export interface Circuit {
   id: string;
@@ -622,7 +624,7 @@ export interface Circuit {
   ip_address_a?: string;
   ip_address_b?: string;
   vlan_id?: number;
-  description?: string;
+  description: string;
   install_date?: string;
   terminate_date?: string;
   monthly_cost?: number;
@@ -630,7 +632,7 @@ export interface Circuit {
   contact_name?: string;
   contact_phone?: string;
   contact_email?: string;
-  tags?: string[];
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -713,7 +715,7 @@ export interface NATMapping {
   enabled: boolean;
   datacenter_id?: string;
   network_id?: string;
-  tags?: string[];
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -801,9 +803,9 @@ export interface DNSZone {
   create_ptr: boolean;
   ptr_zone?: string;
   ttl: number;
-  description?: string;
+  description: string;
   last_sync_at?: string;
-  last_sync_status?: SyncStatus;
+  last_sync_status: SyncStatus;
   last_sync_error?: string;
   created_at: string;
   updated_at: string;

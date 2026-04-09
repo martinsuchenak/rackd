@@ -307,6 +307,14 @@ bun install
 bun run build
 ```
 
+### API Contract Validation
+The shared API-facing TypeScript types are checked against [`api/openapi.yaml`](/Users/martinsuchenak/Devel/projects/rackd/api/openapi.yaml):
+```bash
+cd webui
+bun run validate:types
+```
+This validator covers the frontend's central API contract types and is intended to catch schema drift before UI code starts relying on mismatched fields.
+
 ### Hot Reload
 Development server with hot reload:
 ```bash
