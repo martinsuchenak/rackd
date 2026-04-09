@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -86,6 +87,7 @@ func (s *CircuitService) Create(ctx context.Context, req *model.CreateCircuitReq
 	}
 
 	circuit := &model.Circuit{
+		ID:             uuid.Must(uuid.NewV7()).String(),
 		Name:           req.Name,
 		CircuitID:      req.CircuitID,
 		Provider:       req.Provider,

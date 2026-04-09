@@ -313,6 +313,25 @@ func TestWebhookHandlers(t *testing.T) {
 			t.Errorf("expected %d, got %d", http.StatusNotFound, w.Code)
 		}
 	})
+
+	t.Run("Webhook_ForbiddenWithoutPermission", func(t *testing.T) {
+		_, limitedToken := createAPIUserForStore(t, store, "limited-webhook-user")
+
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/webhooks", nil), limitedToken)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(`{"name":"limited","url":"https://example.com/hook","events":["device.created"]}`)), limitedToken)
+		req.Header.Set("Content-Type", "application/json")
+		w = httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestGetEventLabel(t *testing.T) {

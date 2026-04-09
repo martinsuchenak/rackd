@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,6 +55,9 @@ func (s *RoleService) Get(ctx context.Context, id string) (*model.Role, error) {
 
 	role, err := s.store.GetRole(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrRoleNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -67,6 +71,9 @@ func (s *RoleService) Update(ctx context.Context, id string, role *model.Role) e
 
 	existing, err := s.store.GetRole(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrRoleNotFound) {
+			return ErrNotFound
+		}
 		return err
 	}
 
@@ -87,6 +94,9 @@ func (s *RoleService) Delete(ctx context.Context, id string) error {
 
 	role, err := s.store.GetRole(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrRoleNotFound) {
+			return ErrNotFound
+		}
 		return err
 	}
 

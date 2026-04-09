@@ -32,7 +32,7 @@ These are the best places to invest next.
 - `internal/service`: `7.8%`
   - High risk and central business logic
   - Owns validation, RBAC checks, orchestration, and side effects
-- `internal/api`: `44.1%`
+- `internal/api`: `65.6%`
   - Better than service, but still below target for an externally exposed boundary
   - High-value area for auth, RBAC, request validation, and error behavior
 - `cmd/*` as a group
@@ -217,6 +217,63 @@ Success criteria:
 Goal:
 
 - push `internal/api` from `44.1%` toward `60-70%`
+
+Status:
+
+- Completed
+
+Current progress:
+
+- Added API handler regression tests split by module:
+  - [`user_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/user_handlers_test.go)
+  - [`apikey_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/apikey_handlers_test.go)
+  - [`reservation_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/reservation_handlers_test.go)
+  - [`profiles_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/profiles_handlers_test.go)
+  - [`scheduled_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/scheduled_handlers_test.go)
+  - [`credentials_handlers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/credentials_handlers_test.go)
+- Added shared API test scaffolding in [`test_helpers_phase2_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/api/test_helpers_phase2_test.go) to attach session, credential, profile, and scheduled-scan dependencies without collapsing back into a single monolithic test file
+- Covered:
+  - user list/get/create/update flows
+  - user password change and admin reset-password handlers
+  - API key list/create/get/delete plus invalid JSON handling
+  - reservation create/list/release/delete plus request validation
+  - scan-profile create/get/update/delete plus invalid JSON handling
+  - scheduled-scan create/get/update/delete plus invalid JSON handling
+  - credential create/get/update/delete plus invalid JSON handling
+- Added a second pass covering:
+  - explicit `403 Forbidden` assertions for low-permission callers on users, API keys, reservations, scan profiles, scheduled scans, and credentials
+  - explicit `404 Not Found` assertions for get/update/delete/release paths on the new CRUD-focused handler tests
+  - duplicate-user conflict handling at the API boundary
+- The new API tests also exposed a real service-layer bug: API key get/delete paths leaked storage-layer not-found errors and returned `500`; this was fixed by mapping missing API keys to `service.ErrNotFound`
+- Added a third pass with dedicated per-module tests for:
+  - roles, including create/get/update/delete, permission assignment flow, grant/revoke-to-user, invalid JSON, missing-role behavior, and forbidden access for low-permission callers
+  - bulk device/network endpoints, including happy-path request handling, invalid JSON, bulk-size limits, and forbidden access for low-permission callers
+  - conflicts, including list/get/resolve/delete, detect validation, summary endpoint coverage, missing-conflict behavior, and forbidden access for low-permission callers
+- That pass exposed another real service-layer bug: missing roles were leaking storage-layer errors and returning `500`; this was fixed by mapping missing roles to `service.ErrNotFound`
+- Added a fourth pass covering:
+  - a dedicated circuit handler test file for create/get/update/delete, invalid JSON, not-found, and forbidden-access paths
+  - forbidden-access assertions for discovery, NAT, webhooks, and custom fields using low-permission API users without refactoring those older suites into a monolithic new harness
+- That pass also fixed a real circuit-service issue: circuit creation now generates an ID before persistence, which the dedicated API test exposed and the old integration note had already hinted at
+- Added a final pass with a dedicated DNS handler suite covering:
+  - provider create/list/get/update/delete
+  - zone create/list/get/update/delete plus provider-zone listing
+  - record list/get/update/delete/link/promote
+  - invalid JSON, not-found, and forbidden-access paths for the DNS surface
+- Added a DNS-specific API test setup path so the handler tests can exercise the real DNS service without talking to an external provider
+- Package-local API coverage improved from `44.1%` to `65.6%` in direct `go test -cover ./internal/api` runs, which lands Phase 2 inside the original `60-70%` target band
+
+Next Phase 2 targets:
+
+- broader permission matrices and deeper error-path assertions on the remaining mutation-heavy handlers that still rely mostly on older broad suites, especially DNS and the more specialized discovery/webhook branches
+- more conflict/error-path assertions where handlers front special service errors beyond generic not-found and validation cases
+- auth/session edge cases that are still only indirectly covered
+- remaining externally exposed handlers that do not yet have dedicated per-module tests
+
+Follow-up items that can wait until later:
+
+- deeper auth/session edge-case handler coverage beyond the existing integration/security suites
+- more provider-interaction-specific DNS error branches such as sync/import/test-provider failures
+- additional specialized discovery and webhook branch coverage where the current broad suites already provide baseline protection
 
 Focus:
 

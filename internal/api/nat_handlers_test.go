@@ -434,4 +434,23 @@ func TestNATHandlers(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("NAT_ForbiddenWithoutPermission", func(t *testing.T) {
+		_, limitedToken := createAPIUserForStore(t, store, "limited-nat-user")
+
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/nat", nil), limitedToken)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(`{"name":"limited","external_ip":"203.0.113.50","external_port":443,"internal_ip":"192.168.1.50","internal_port":443}`)), limitedToken)
+		req.Header.Set("Content-Type", "application/json")
+		w = httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }

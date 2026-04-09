@@ -252,6 +252,25 @@ func TestDiscoveryHandlers(t *testing.T) {
 		}
 	})
 
+	t.Run("Discovery_ForbiddenWithoutPermission", func(t *testing.T) {
+		_, limitedToken := createAPIUserForStore(t, store, "limited-discovery-user")
+
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/discovery/scans", nil), limitedToken)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/discovery/networks/"+network.ID+"/scan", bytes.NewBufferString(`{"scan_type":"quick"}`)), limitedToken)
+		req.Header.Set("Content-Type", "application/json")
+		w = httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
 	t.Run("ListDiscoveredDevices", func(t *testing.T) {
 		req := authReq(httptest.NewRequest("GET", "/api/discovery/devices", nil))
 		w := httptest.NewRecorder()

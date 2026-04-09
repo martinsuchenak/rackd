@@ -394,4 +394,23 @@ func TestCustomFieldHandlers(t *testing.T) {
 			t.Errorf("expected %d, got %d", http.StatusNotFound, w.Code)
 		}
 	})
+
+	t.Run("CustomField_ForbiddenWithoutPermission", func(t *testing.T) {
+		_, limitedToken := createAPIUserForStore(t, store, "limited-custom-field-user")
+
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/custom-fields", nil), limitedToken)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(`{"name":"Limited","key":"limited","type":"text"}`)), limitedToken)
+		req.Header.Set("Content-Type", "application/json")
+		w = httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }

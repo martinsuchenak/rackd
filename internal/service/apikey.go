@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,6 +74,9 @@ func (s *APIKeyService) Get(ctx context.Context, id string) (*model.APIKey, erro
 
 	key, err := s.store.GetAPIKey(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrAPIKeyNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -91,6 +95,9 @@ func (s *APIKeyService) Delete(ctx context.Context, id string) error {
 
 	key, err := s.store.GetAPIKey(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrAPIKeyNotFound) {
+			return ErrNotFound
+		}
 		return err
 	}
 
@@ -99,7 +106,14 @@ func (s *APIKeyService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	return s.store.DeleteAPIKey(ctx, id)
+	if err := s.store.DeleteAPIKey(ctx, id); err != nil {
+		if errors.Is(err, storage.ErrAPIKeyNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	return nil
 }
 
 // requireOwnership verifies the caller owns the key or is an admin.

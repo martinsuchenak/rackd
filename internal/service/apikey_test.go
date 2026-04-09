@@ -72,3 +72,18 @@ func TestAPIKeyService_CreateRequiresNameAndAssignsCallerOwnership(t *testing.T)
 		t.Fatalf("expected created API key to be assigned to caller, got %#v", store.apiKeys)
 	}
 }
+
+func TestAPIKeyService_GetAndDeleteMapNotFound(t *testing.T) {
+	store := newServiceTestStorage()
+	store.setPermission("user-1", "apikeys", "read", true)
+	store.setPermission("user-1", "apikeys", "delete", true)
+	svc := NewAPIKeyService(store)
+
+	if _, err := svc.Get(userContext("user-1"), "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found from Get, got %v", err)
+	}
+
+	if err := svc.Delete(userContext("user-1"), "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found from Delete, got %v", err)
+	}
+}

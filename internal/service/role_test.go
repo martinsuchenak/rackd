@@ -36,3 +36,24 @@ func TestRoleService_DeleteRejectsSystemRole(t *testing.T) {
 		t.Fatalf("expected system role error, got %v", err)
 	}
 }
+
+func TestRoleService_GetUpdateDeleteMapNotFound(t *testing.T) {
+	store := newServiceTestStorage()
+	store.setPermission("user-1", "roles", "read", true)
+	store.setPermission("user-1", "roles", "update", true)
+	store.setPermission("user-1", "roles", "delete", true)
+
+	svc := NewRoleService(store)
+
+	if _, err := svc.Get(userContext("user-1"), "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found from Get, got %v", err)
+	}
+
+	if err := svc.Update(userContext("user-1"), "missing", &model.Role{Description: "missing"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found from Update, got %v", err)
+	}
+
+	if err := svc.Delete(userContext("user-1"), "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found from Delete, got %v", err)
+	}
+}

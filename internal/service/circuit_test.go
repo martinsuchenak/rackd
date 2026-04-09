@@ -31,6 +31,9 @@ func TestCircuitService_CreateDefaultsStatusAndUpdateValidatesStatus(t *testing.
 	if circuit.Status != model.CircuitStatusActive {
 		t.Fatalf("expected default circuit status active, got %q", circuit.Status)
 	}
+	if circuit.ID == "" {
+		t.Fatal("expected created circuit to receive an ID")
+	}
 
 	invalidStatus := model.CircuitStatus("bad")
 	_, err = svc.Update(userContext("user-1"), "circuit-1", &model.UpdateCircuitRequest{Status: &invalidStatus})
