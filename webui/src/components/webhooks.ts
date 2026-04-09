@@ -2,8 +2,9 @@
 
 import type { Webhook, WebhookDelivery, EventTypeOption, EventType, CreateWebhookRequest, UpdateWebhookRequest } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import type { ListPageState, ValidationErrors as PageValidationErrors } from '../core/page-state';
 
-interface ValidationErrors {
+interface ValidationErrors extends PageValidationErrors {
   name?: string;
   url?: string;
   events?: string;
@@ -11,16 +12,13 @@ interface ValidationErrors {
 
 type ModalType = '' | 'create' | 'edit' | 'delete' | 'deliveries';
 
-interface WebhookData {
+interface WebhookData extends ListPageState<Webhook, Exclude<ModalType, ''>> {
   webhooks: Webhook[];
   deliveries: WebhookDelivery[];
   eventTypes: EventTypeOption[];
-  loading: boolean;
-  error: string;
-
-  // Single modal state
-  modalType: ModalType;
   selectedWebhook: Webhook | null;
+  get items(): Webhook[];
+  get selectedItem(): Webhook | null;
 
   // Form data
   formData: {
@@ -59,7 +57,9 @@ interface WebhookData {
 
   // CRUD operations
   saveWebhook(): Promise<void>;
+  save(): Promise<void>;
   doDelete(): Promise<void>;
+  deleteConfirmed(): Promise<void>;
   doDeleteWebhook(): Promise<void>;
 
   // Webhook actions
@@ -97,7 +97,7 @@ export function webhookComponent(): WebhookData {
       active: true,
       description: ''
     },
-    validationErrors: {},
+    validationErrors: {} as ValidationErrors,
     saving: false,
     deleting: false,
 
@@ -106,6 +106,8 @@ export function webhookComponent(): WebhookData {
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
     get showDeliveriesModal(): boolean { return this.modalType === 'deliveries'; },
+    get items(): Webhook[] { return this.webhooks; },
+    get selectedItem(): Webhook | null { return this.selectedWebhook; },
     get deleteModalTitle(): string { return 'Delete Webhook'; },
     get deleteModalName(): string { return this.getSelectedWebhookName(); },
     get deleteModalDescription(): string {
@@ -295,6 +297,14 @@ export function webhookComponent(): WebhookData {
 
     async doDelete(): Promise<void> {
       await this.doDeleteWebhook();
+    },
+
+    async deleteConfirmed(): Promise<void> {
+      await this.doDeleteWebhook();
+    },
+
+    async save(): Promise<void> {
+      await this.saveWebhook();
     },
 
     async pingWebhook(id: string): Promise<void> {

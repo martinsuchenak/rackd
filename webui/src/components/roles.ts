@@ -2,25 +2,27 @@
 
 import type { Role, Permission, RoleFilter, CreateRoleRequest, UpdateRoleRequest } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import type { ListPageState } from '../core/page-state';
 
-interface RolesListData {
+type ModalType = '' | 'create' | 'edit' | 'delete' | 'view' | 'permissions';
+
+interface RolesListData extends ListPageState<Role, Exclude<ModalType, ''>> {
   roles: Role[];
   permissions: Permission[];
-  loading: boolean;
-  error: string;
   filter: RoleFilter;
   page: number;
   pageSize: number;
   totalPages: number;
   pagedRoles: Role[];
-  showCreateModal: boolean;
-  showEditModal: boolean;
-  showDeleteModal: boolean;
+  modalType: ModalType;
   selectedRole: Role | null;
-  showPermissionsModal: boolean;
-  saving: boolean;
-  deleting: boolean;
-  validationErrors: Record<string, string>;
+  get items(): Role[];
+  get selectedItem(): Role | null;
+  get showCreateModal(): boolean;
+  get showEditModal(): boolean;
+  get showDeleteModal(): boolean;
+  get showViewModal(): boolean;
+  get showPermissionsModal(): boolean;
   createForm: CreateRoleRequest;
   editForm: UpdateRoleRequest;
   availablePermissions: Permission[];
@@ -41,9 +43,12 @@ interface RolesListData {
   closeViewModal(): void;
   openPermissionsModal(role: Role): void;
   closePermissionsModal(): void;
+  closeModal(): void;
   doCreateRole(): Promise<void>;
   doUpdateRole(): Promise<void>;
   doDeleteRole(): Promise<void>;
+  save(): Promise<void>;
+  deleteConfirmed(): Promise<void>;
   togglePermission(permissionId: string): void;
   getSelectedRoleName(): string;
   getSelectedRoleDescription(): string;
@@ -60,11 +65,7 @@ export function rolesList() {
     filter: {} as RoleFilter,
     page: 1,
     pageSize: 10,
-    showCreateModal: false,
-    showEditModal: false,
-    showDeleteModal: false,
-    showViewModal: false,
-    showPermissionsModal: false,
+    modalType: '' as ModalType,
     selectedRole: null as Role | null,
     saving: false,
     deleting: false,
@@ -89,6 +90,14 @@ export function rolesList() {
       const start = (this.page - 1) * this.pageSize;
       return this.roles.slice(start, start + this.pageSize);
     },
+
+    get items(): Role[] { return this.roles; },
+    get selectedItem(): Role | null { return this.selectedRole; },
+    get showCreateModal(): boolean { return this.modalType === 'create'; },
+    get showEditModal(): boolean { return this.modalType === 'edit'; },
+    get showDeleteModal(): boolean { return this.modalType === 'delete'; },
+    get showViewModal(): boolean { return this.modalType === 'view'; },
+    get showPermissionsModal(): boolean { return this.modalType === 'permissions'; },
 
     get deleteModalTitle(): string {
       return this.selectedRole?.is_system ? 'Cannot Delete System Role' : 'Delete Role';
@@ -173,7 +182,8 @@ export function rolesList() {
     },
 
     openCreateModal(): void {
-      this.showCreateModal = true;
+      this.modalType = '';
+      this.selectedRole = null;
       this.validationErrors = {};
       this.createForm = {
         name: '',
@@ -181,21 +191,15 @@ export function rolesList() {
         permissions: [],
       };
       this.selectedPermissionIds = [];
+      this.modalType = 'create';
     },
 
     closeCreateModal(): void {
-      this.showCreateModal = false;
-      this.validationErrors = {};
-      this.createForm = {
-        name: '',
-        description: '',
-        permissions: [],
-      };
-      this.selectedPermissionIds = [];
+      this.closeModal();
     },
 
     openEditModal(role: Role): void {
-      this.showEditModal = true;
+      this.modalType = '';
       this.selectedRole = role;
       this.validationErrors = {};
       this.editForm = {
@@ -203,49 +207,68 @@ export function rolesList() {
         permissions: role.permissions ? role.permissions.map(p => p.id) : [],
       };
       this.selectedPermissionIds = role.permissions ? role.permissions.map(p => p.id) : [];
+      this.modalType = 'edit';
     },
 
     closeEditModal(): void {
-      this.showEditModal = false;
-      this.selectedRole = null;
-      this.validationErrors = {};
-      this.editForm = {
-        description: '',
-        permissions: [],
-      };
-      this.selectedPermissionIds = [];
+      this.closeModal();
     },
 
     openDeleteModal(role: Role): void {
-      this.showDeleteModal = true;
+      this.modalType = '';
       this.selectedRole = role;
+      this.modalType = 'delete';
     },
 
     closeDeleteModal(): void {
-      this.showDeleteModal = false;
-      this.selectedRole = null;
+      this.closeModal();
     },
 
     openViewModal(role: Role): void {
-      this.showViewModal = true;
+      this.modalType = '';
       this.selectedRole = role;
+      this.modalType = 'view';
     },
 
     closeViewModal(): void {
-      this.showViewModal = false;
-      this.selectedRole = null;
+      this.closeModal();
     },
 
     openPermissionsModal(role: Role): void {
-      this.showPermissionsModal = true;
+      this.modalType = '';
       this.selectedRole = role;
       this.selectedPermissionIds = role.permissions ? role.permissions.map(p => p.id) : [];
+      this.modalType = 'permissions';
     },
 
     closePermissionsModal(): void {
-      this.showPermissionsModal = false;
+      this.closeModal();
+    },
+
+    closeModal(): void {
+      const previousModalType = this.modalType;
+      this.modalType = '';
       this.selectedRole = null;
-      this.selectedPermissionIds = [];
+      this.validationErrors = {};
+
+      if (previousModalType === 'create') {
+        this.createForm = {
+          name: '',
+          description: '',
+          permissions: [],
+        };
+      }
+
+      if (previousModalType === 'edit') {
+        this.editForm = {
+          description: '',
+          permissions: [],
+        };
+      }
+
+      if (previousModalType === 'create' || previousModalType === 'edit' || previousModalType === 'permissions') {
+        this.selectedPermissionIds = [];
+      }
     },
 
     togglePermission(permissionId: string): void {
@@ -334,6 +357,18 @@ export function rolesList() {
       } finally {
         this.deleting = false;
       }
+    },
+
+    async save(): Promise<void> {
+      if (this.modalType === 'edit') {
+        await this.doUpdateRole();
+        return;
+      }
+      await this.doCreateRole();
+    },
+
+    async deleteConfirmed(): Promise<void> {
+      await this.doDeleteRole();
     },
 
     getSelectedRoleName(): string {

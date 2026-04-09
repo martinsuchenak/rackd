@@ -347,6 +347,33 @@ Normalize CRUD/list component state shape and method names.
 
 - Migrated components share the same mental model and naming pattern
 
+### Status
+
+Completed on 2026-04-09.
+
+### Progress Notes
+
+- Added shared list-page state types in [`webui/src/core/page-state.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/page-state.ts)
+- Migrated the first target components to the shared internal pattern built around `items`, `selectedItem`, `modalType`, `loading`, `saving`, `deleting`, `error`, and `validationErrors`:
+  - [`webui/src/components/scan-profiles.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/scan-profiles.ts)
+  - [`webui/src/components/webhooks.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/webhooks.ts)
+  - [`webui/src/components/users.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/users.ts)
+  - [`webui/src/components/roles.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/roles.ts)
+- Added compatibility getters so the existing templates keep working while the component state follows one modal model
+- Standardized shared action methods in the migrated batch with `closeModal`, `save`, and `deleteConfirmed`
+- Updated [`webui/src/partials/pages/scan-profiles.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/scan-profiles.html) to use the shared delete confirmation modal flow instead of `confirm()`
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun run typecheck
+bun run build:js
+bun run build:html
+```
+
 ## PR 7: OpenAPI Contract Hardening
 
 ### Goal

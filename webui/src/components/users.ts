@@ -4,11 +4,12 @@ import type { User, UserFilter, UpdateUserRequest, Role } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import { getPermissionsStore } from '../core/alpine';
 import { formatDate } from '../core/utils';
+import type { ListPageState } from '../core/page-state';
 
-interface UsersListData {
+type ModalType = '' | 'create' | 'edit' | 'delete' | 'password' | 'reset-password' | 'roles';
+
+interface UsersListData extends ListPageState<User, Exclude<ModalType, ''>> {
   users: User[];
-  loading: boolean;
-  error: string;
   // Filter - flat properties for CSP compatibility
   filterUsername: string;
   filterEmail: string;
@@ -16,15 +17,16 @@ interface UsersListData {
   pageSize: number;
   totalPages: number;
   pagedUsers: User[];
-  showCreateModal: boolean;
-  showEditModal: boolean;
-  showDeleteModal: boolean;
-  showPasswordModal: boolean;
-  showResetPasswordModal: boolean;
+  modalType: ModalType;
   selectedUser: User | null;
-  saving: boolean;
-  deleting: boolean;
-  validationErrors: Record<string, string>;
+  get items(): User[];
+  get selectedItem(): User | null;
+  get showCreateModal(): boolean;
+  get showEditModal(): boolean;
+  get showDeleteModal(): boolean;
+  get showPasswordModal(): boolean;
+  get showResetPasswordModal(): boolean;
+  get showRoleManager(): boolean;
   // Create form - flat properties for CSP compatibility
   createUsername: string;
   createPassword: string;
@@ -45,7 +47,6 @@ interface UsersListData {
   currentUser: User | null;
   availableRoles: Role[];
   userRolesCache: Map<string, Role[]>;
-  showRoleManager: boolean;
   roleSaving: boolean;
   init(): Promise<void>;
   loadUsers(): Promise<void>;
@@ -66,9 +67,12 @@ interface UsersListData {
   closeResetPasswordModal(): void;
   openRoleManager(user: User): void;
   closeRoleManager(): void;
+  closeModal(): void;
   doCreateUser(): Promise<void>;
   doUpdateUser(): Promise<void>;
   doDeleteUser(): Promise<void>;
+  save(): Promise<void>;
+  deleteConfirmed(): Promise<void>;
   doChangePassword(): Promise<void>;
   doResetPassword(): Promise<void>;
   grantRole(role: Role): Promise<void>;
@@ -92,11 +96,7 @@ export function usersList() {
     filterEmail: '',
     page: 1,
     pageSize: 10,
-    showCreateModal: false,
-    showEditModal: false,
-    showDeleteModal: false,
-    showPasswordModal: false,
-    showResetPasswordModal: false,
+    modalType: '' as ModalType,
     selectedUser: null as User | null,
     saving: false,
     deleting: false,
@@ -121,7 +121,6 @@ export function usersList() {
     currentUser: null as User | null,
     availableRoles: [] as Role[],
     userRolesCache: new Map<string, Role[]>(),
-    showRoleManager: false,
     roleSaving: false,
 
     get totalPages(): number {
@@ -133,12 +132,25 @@ export function usersList() {
       return this.users.slice(start, start + this.pageSize);
     },
 
+    get items(): User[] { return this.users; },
+    get selectedItem(): User | null { return this.selectedUser; },
+    get showCreateModal(): boolean { return this.modalType === 'create'; },
+    get showEditModal(): boolean { return this.modalType === 'edit'; },
+    get showDeleteModal(): boolean { return this.modalType === 'delete'; },
+    get showPasswordModal(): boolean { return this.modalType === 'password'; },
+    get showResetPasswordModal(): boolean { return this.modalType === 'reset-password'; },
+    get showRoleManager(): boolean { return this.modalType === 'roles'; },
+
     get deleteModalTitle(): string {
       return 'Delete User';
     },
 
     get deleteModalName(): string {
       return this.selectedUser?.username || '';
+    },
+
+    get deleteModalDescription(): string {
+      return `Are you sure you want to delete ${this.getSelectedUsername()}? This action cannot be undone.`;
     },
 
     async init(): Promise<void> {
@@ -220,25 +232,22 @@ export function usersList() {
     },
 
     openCreateModal(): void {
-      this.showCreateModal = true;
+      this.modalType = '';
+      this.selectedUser = null;
       this.validationErrors = {};
       this.createUsername = '';
       this.createPassword = '';
       this.createEmail = '';
       this.createFullName = '';
+      this.modalType = 'create';
     },
 
     closeCreateModal(): void {
-      this.showCreateModal = false;
-      this.validationErrors = {};
-      this.createUsername = '';
-      this.createPassword = '';
-      this.createEmail = '';
-      this.createFullName = '';
+      this.closeModal();
     },
 
     openEditModal(user: User): void {
-      this.showEditModal = true;
+      this.modalType = '';
       this.selectedUser = user;
       this.validationErrors = {};
       // Pre-populate edit form with user's current values
@@ -246,56 +255,48 @@ export function usersList() {
       this.editEmail = user.email || '';
       this.editFullName = user.full_name || '';
       this.editIsActive = user.is_active !== false;
+      this.modalType = 'edit';
     },
 
     closeEditModal(): void {
-      this.showEditModal = false;
-      this.selectedUser = null;
-      this.validationErrors = {};
+      this.closeModal();
     },
 
     openDeleteModal(user: User): void {
-      this.showDeleteModal = true;
+      this.modalType = '';
       this.selectedUser = user;
+      this.modalType = 'delete';
     },
 
     closeDeleteModal(): void {
-      this.showDeleteModal = false;
-      this.selectedUser = null;
+      this.closeModal();
     },
 
     openPasswordModal(user: User): void {
-      this.showPasswordModal = true;
+      this.modalType = '';
       this.selectedUser = user;
       this.validationErrors = {};
       this.passwordOldPassword = '';
       this.passwordNewPassword = '';
       this.passwordConfirmPassword = '';
+      this.modalType = 'password';
     },
 
     closePasswordModal(): void {
-      this.showPasswordModal = false;
-      this.selectedUser = null;
-      this.validationErrors = {};
-      this.passwordOldPassword = '';
-      this.passwordNewPassword = '';
-      this.passwordConfirmPassword = '';
+      this.closeModal();
     },
 
     openResetPasswordModal(user: User): void {
-      this.showResetPasswordModal = true;
+      this.modalType = '';
       this.selectedUser = user;
       this.validationErrors = {};
       this.resetPasswordNew = '';
       this.resetPasswordConfirm = '';
+      this.modalType = 'reset-password';
     },
 
     closeResetPasswordModal(): void {
-      this.showResetPasswordModal = false;
-      this.selectedUser = null;
-      this.validationErrors = {};
-      this.resetPasswordNew = '';
-      this.resetPasswordConfirm = '';
+      this.closeModal();
     },
 
     hasRole(role: Role): boolean {
@@ -306,15 +307,43 @@ export function usersList() {
     },
 
     async openRoleManager(user: User): Promise<void> {
+      this.modalType = '';
       this.selectedUser = user;
       // Load roles and assign to selectedUser for hasRole() to work
       this.selectedUser.roles = await this.loadUserRoles(user.id);
-      this.showRoleManager = true;
+      this.modalType = 'roles';
     },
 
     closeRoleManager(): void {
-      this.showRoleManager = false;
+      this.closeModal();
+    },
+
+    closeModal(): void {
+      const wasCreate = this.modalType === 'create';
+      const wasPassword = this.modalType === 'password';
+      const wasResetPassword = this.modalType === 'reset-password';
+
+      this.modalType = '';
       this.selectedUser = null;
+      this.validationErrors = {};
+
+      if (wasCreate) {
+        this.createUsername = '';
+        this.createPassword = '';
+        this.createEmail = '';
+        this.createFullName = '';
+      }
+
+      if (wasPassword) {
+        this.passwordOldPassword = '';
+        this.passwordNewPassword = '';
+        this.passwordConfirmPassword = '';
+      }
+
+      if (wasResetPassword) {
+        this.resetPasswordNew = '';
+        this.resetPasswordConfirm = '';
+      }
     },
 
     async grantRole(role: Role): Promise<void> {
@@ -517,6 +546,18 @@ export function usersList() {
       } finally {
         this.deleting = false;
       }
+    },
+
+    async deleteConfirmed(): Promise<void> {
+      await this.doDeleteUser();
+    },
+
+    async save(): Promise<void> {
+      if (this.modalType === 'edit') {
+        await this.doUpdateUser();
+        return;
+      }
+      await this.doCreateUser();
     },
 
     async doChangePassword(): Promise<void> {
