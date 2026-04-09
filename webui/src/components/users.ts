@@ -2,6 +2,7 @@
 
 import type { User, UserFilter, UpdateUserRequest, Role } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import { getPermissionsStore } from '../core/alpine';
 import { formatDate } from '../core/utils';
 
 interface UsersListData {
@@ -645,13 +646,11 @@ export function usersList() {
     },
 
     canUpdateRoles(): boolean {
-      // @ts-ignore - Alpine store access
-      return Alpine.store('permissions').canUpdate('roles');
+      return !!getPermissionsStore()?.canUpdate('roles');
     },
 
     canListRoles(): boolean {
-      // @ts-ignore - Alpine store access
-      return Alpine.store('permissions').canList('roles');
+      return !!getPermissionsStore()?.canList('roles');
     },
 
     getLastLoginLabel(user: User): string {

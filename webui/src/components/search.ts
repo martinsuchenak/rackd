@@ -2,6 +2,7 @@
 
 import type { SearchResult } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import { dispatchNav } from '../core/alpine';
 import { debounce } from '../core/utils';
 
 interface SearchData {
@@ -28,6 +29,7 @@ interface SearchData {
   getActiveDescendant(): string | undefined;
   hasResults(): boolean;
   setSelectedIndex(index: number): void;
+  $dispatch?: (event: string, detail?: unknown) => void;
 }
 
 export function globalSearch(): SearchData {
@@ -115,7 +117,7 @@ export function globalSearch(): SearchData {
           ? `/networks/detail?id=${result.network?.id}`
           : `/datacenters/detail?id=${result.datacenter?.id}`;
 
-      (this as any).$dispatch('nav', path);
+      dispatchNav(this, path);
       this.clear();
     },
 

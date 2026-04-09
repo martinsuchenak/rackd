@@ -134,6 +134,10 @@ Make all frontend permission checks use backend RBAC resource names consistently
 
 ## PR 3: Typed Alpine Helper Layer
 
+### Status
+
+- Completed on 2026-04-09
+
 ### Goal
 
 Move Alpine-specific store and event access behind typed helpers.
@@ -164,6 +168,28 @@ Move Alpine-specific store and event access behind typed helpers.
 
 - No `@ts-ignore` remains for permissions store access
 - Cross-component navigation and store access are typed and reusable
+
+### Progress Notes
+
+- Added [`webui/src/core/alpine.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/alpine.ts) with shared helpers for:
+  - permissions store access
+  - toast store access
+  - navigation dispatch
+  - Alpine property watching
+  - localized access to Alpine internals used by the CSP-safe model directive
+- Updated [`webui/src/app.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/app.ts) to use the shared Alpine helper for:
+  - permissions refresh
+  - toast access
+  - CSP-safe model internals
+- Updated [`webui/src/components/search.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/search.ts) to replace the direct `$dispatch` type escape
+- Updated [`webui/src/components/users.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/users.ts) to remove `@ts-ignore` around the permissions store
+- Updated [`webui/src/components/devices.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/devices.ts) and [`webui/src/components/networks.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/networks.ts) to replace direct `$watch` type escapes in modal focus-trap handling
+- Updated [`webui/src/components/devices.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/devices.ts) and [`webui/src/components/nat.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/nat.ts) to remove a few remaining straightforward union-type `as any` casts
+
+### Validation
+
+- `cd webui && bun run typecheck`
+- `cd webui && bun run build:js`
 
 ## PR 4: Config Bootstrap Consolidation
 

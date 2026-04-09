@@ -2,6 +2,7 @@
 
 import type { Datacenter, Network, NetworkPool, NetworkUtilization, Device } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import { watchAlpineProperty } from '../core/alpine';
 import { debounce, isValidCIDR, createFocusTrap } from '../core/utils';
 
 interface NetworkListData {
@@ -44,6 +45,8 @@ interface NetworkListData {
   getDevicesAriaLabel(network: Network): string;
   getEditAriaLabel(network: Network): string;
   getDeleteAriaLabel(network: Network): string;
+  focusTrapCleanup: (() => void) | null;
+  $watch?: (property: string, callback: (value: unknown) => void) => void;
 }
 
 export function networkList() {
@@ -81,15 +84,16 @@ export function networkList() {
 
     async init(): Promise<void> {
       await Promise.all([this.loadNetworks(), this.loadDatacenters()]);
-      (this as any).$watch('showModal', (show: boolean) => {
+      watchAlpineProperty(this, 'showModal', (value) => {
+        const show = value === true;
         if (show) {
           setTimeout(() => {
             const modal = document.querySelector('[role="dialog"]') as HTMLElement;
-            if (modal) (this as any).focusTrapCleanup = createFocusTrap(modal);
+            if (modal) this.focusTrapCleanup = createFocusTrap(modal);
           }, 50);
         } else {
-          (this as any).focusTrapCleanup?.();
-          (this as any).focusTrapCleanup = null;
+          this.focusTrapCleanup?.();
+          this.focusTrapCleanup = null;
         }
       });
     },
@@ -663,12 +667,12 @@ export function networkDetail(): NetworkDetailData {
     },
 
     getUtilizationAriaLabel(): string {
-      const percent = (typeof (this as any).utilizationPercent === 'function') ? (this as any).utilizationPercent() : 0;
+      const percent = this.utilizationPercent();
       return `Network utilization: ${percent} percent`;
     },
 
     getUtilizationWidthStyle(): string {
-      const percent = (typeof (this as any).utilizationPercent === 'function') ? (this as any).utilizationPercent() : 0;
+      const percent = this.utilizationPercent();
       return `width: ${percent}%`;
     },
 

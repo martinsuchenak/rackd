@@ -5,6 +5,7 @@ import focus from '@alpinejs/focus';
 import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
+import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
 import { canAccessRoute, getPageTitle, mergeNavItems } from './core/features';
 
 // Components
@@ -43,7 +44,7 @@ function parseModelPath(expression: string): string[] | null {
 }
 
 function getScopeEntry(el: HTMLElement, rootKey: string): Record<string, unknown> | null {
-  const stack = (Alpine as any).closestDataStack?.(el) as Array<Record<string, unknown>> | undefined;
+  const stack = getClosestDataStack(el);
   if (!stack) return null;
   for (const scope of stack) {
     if (scope && Object.prototype.hasOwnProperty.call(scope, rootKey)) {
@@ -109,7 +110,7 @@ function getInputValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaEl
 }
 
 function syncModelValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, value: unknown): void {
-  (Alpine as any).mutateDom?.(() => {
+  mutateDom(() => {
     if (el instanceof HTMLInputElement && el.type === 'checkbox') {
       el.checked = Array.isArray(value) ? value.map(String).includes(el.value) : !!value;
       return;
@@ -301,27 +302,6 @@ function themeToggle() {
   };
 }
 
-interface PermissionsStore {
-  permissions: Permission[];
-  roles: Role[];
-  loaded: boolean;
-  can(resource: string, action: string): boolean;
-  canList(resource: string): boolean;
-  canRead(resource: string): boolean;
-  canCreate(resource: string): boolean;
-  canUpdate(resource: string): boolean;
-  canDelete(resource: string): boolean;
-  hasAnyPermission(resource: string, ...actions: string[]): boolean;
-  hasAllPermissions(resource: string, ...actions: string[]): boolean;
-}
-
-interface ToastStore {
-  success: (msg: string) => void;
-  error: (msg: string) => void;
-  info: (msg: string) => void;
-  warning: (msg: string) => void;
-}
-
 // Permissions store for checking user permissions (accessible as $store.permissions in all components)
 function initPermissionsStore() {
   const userPermissions: Permission[] = window.rackdConfig?.user?.permissions ?? [];
@@ -444,17 +424,17 @@ async function init(): Promise<void> {
         const config = await api.getConfig();
         window.rackdConfig = config;
         // Reinitialize permissions store with updated data
-        const permissionsStore = Alpine.store('permissions') as PermissionsStore;
+        const permissionsStore = getPermissionsStore();
         if (permissionsStore) {
-          const userPermissions: Permission[] = (config.user?.permissions ?? []) as any;
-          const userRoles: Role[] = (config.user?.roles ?? []) as any;
+          const userPermissions: Permission[] = config.user?.permissions ?? [];
+          const userRoles: Role[] = config.user?.roles ?? [];
           permissionsStore.permissions = userPermissions;
           permissionsStore.roles = userRoles;
-          (Alpine.store('toast') as ToastStore)?.success('Permissions refreshed successfully');
+          getToastStore()?.success('Permissions refreshed successfully');
         }
       } catch (error) {
         console.error('Failed to refresh permissions:', error);
-        (Alpine.store('toast') as ToastStore)?.error('Failed to refresh permissions. Please reload the page.');
+        getToastStore()?.error('Failed to refresh permissions. Please reload the page.');
       }
     });
   });

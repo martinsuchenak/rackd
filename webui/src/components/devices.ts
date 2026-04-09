@@ -2,6 +2,7 @@
 
 import type { Address, Datacenter, Device, DeviceFilter, DeviceRelationship, Network, NetworkPool, CustomFieldDefinition, CustomFieldValueInput } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
+import { watchAlpineProperty } from '../core/alpine';
 import { debounce, formatDate, createFocusTrap, isValidIP } from '../core/utils';
 
 interface DeviceListData {
@@ -42,6 +43,8 @@ interface DeviceListData {
   getMakeModelLabel(device: Device): string;
   getEditAriaLabel(device: Device): string;
   getDeleteAriaLabel(device: Device): string;
+  focusTrapCleanup: (() => void) | null;
+  $watch?: (property: string, callback: (value: unknown) => void) => void;
 }
 
 export function deviceList() {
@@ -139,7 +142,8 @@ export function deviceList() {
       await this.loadAllPools();
 
       // Watch for modal open/close to manage focus trap
-      (this as any).$watch('showDeviceModal', (show: boolean) => {
+      watchAlpineProperty(this, 'showDeviceModal', (value) => {
+        const show = value === true;
         if (show) {
           setTimeout(() => {
             const modal = document.querySelector('[role="dialog"]') as HTMLElement;
@@ -221,7 +225,7 @@ export function deviceList() {
           // Build filter with status and stale
           const filter: DeviceFilter = { ...this.filter };
           if (this.statusFilter) {
-            filter.status = this.statusFilter as any;
+            filter.status = this.statusFilter as DeviceFilter['status'];
           }
           if (this.staleFilter) {
             filter.stale = true;
@@ -264,15 +268,23 @@ export function deviceList() {
     }, 300),
 
     setFilter(key: keyof DeviceFilter, value: string): void {
+      const nextFilter: DeviceFilter = { ...this.filter };
       if (value) {
         if (key === 'tags') {
-          (this.filter as any).tags = value.split(',');
-        } else {
-          (this.filter as any)[key] = value;
+          nextFilter.tags = value.split(',');
+        } else if (key === 'status') {
+          nextFilter.status = value as DeviceFilter['status'];
+        } else if (key === 'datacenter_id' || key === 'network_id' || key === 'pool_id') {
+          nextFilter[key] = value;
         }
-      } else {
-        delete (this.filter as any)[key];
+      } else if (key === 'tags') {
+        delete nextFilter.tags;
+      } else if (key === 'status') {
+        delete nextFilter.status;
+      } else if (key === 'datacenter_id' || key === 'network_id' || key === 'pool_id') {
+        delete nextFilter[key];
       }
+      this.filter = nextFilter;
       this.loadDevices();
     },
 

@@ -1,5 +1,5 @@
 import { api } from '../core/api';
-import type { NATMapping, NATFilter, CreateNATRequest, UpdateNATRequest, Device, Datacenter, Network } from '../core/types';
+import type { NATMapping, NATFilter, CreateNATRequest, UpdateNATRequest, Device, Datacenter, Network, NATProtocol } from '../core/types';
 
 export function natComponent() {
   return {
@@ -55,7 +55,7 @@ export function natComponent() {
       const filters: NATFilter = {};
       if (this.filterExternalIP) filters.external_ip = this.filterExternalIP;
       if (this.filterInternalIP) filters.internal_ip = this.filterInternalIP;
-      if (this.filterProtocol) filters.protocol = this.filterProtocol as any;
+      if (this.filterProtocol) filters.protocol = this.filterProtocol as NATProtocol;
       if (this.filterEnabled !== '') filters.enabled = this.filterEnabled === 'true';
 
       try {
