@@ -91,14 +91,12 @@
     </div>
 
     <!-- Create Custom Field Modal -->
-    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+    <div x-show="showCreateModal" x-cloak :class="$store.ui.modalViewport()" role="dialog"
       aria-modal="true" aria-labelledby="create-modal-title" @keydown.escape.window="closeModal()">
-      <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-      <div
-        class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+      <div :class="$store.ui.modalBackdrop()" @click="closeModal()" aria-hidden="true"></div>
+      <div :class="$store.ui.modalPanel('lg', true)"
         x-trap.inert.noscroll="showCreateModal">
-        <button @click="closeModal()"
-          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        <button @click="closeModal()" :class="$store.ui.modalCloseButton()"
           aria-label="Close dialog">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -181,14 +179,12 @@
     </div>
 
     <!-- Edit Custom Field Modal -->
-    <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+    <div x-show="showEditModal" x-cloak :class="$store.ui.modalViewport()" role="dialog"
       aria-modal="true" aria-labelledby="edit-modal-title" @keydown.escape.window="closeModal()">
-      <div class="fixed inset-0 bg-black/50" @click="closeModal()" aria-hidden="true"></div>
-      <div
-        class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+      <div :class="$store.ui.modalBackdrop()" @click="closeModal()" aria-hidden="true"></div>
+      <div :class="$store.ui.modalPanel('lg', true)"
         x-trap.inert.noscroll="showEditModal">
-        <button @click="closeModal()"
-          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        <button @click="closeModal()" :class="$store.ui.modalCloseButton()"
           aria-label="Close dialog">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -268,27 +264,6 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="alertdialog" aria-modal="true" aria-labelledby="delete-modal-title" aria-describedby="delete-modal-desc"
-      @keydown.escape.window="closeDeleteModal()">
-      <div class="fixed inset-0 bg-black/50" @click="closeDeleteModal()" aria-hidden="true"></div>
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
-        x-trap.inert.noscroll="showDeleteModal">
-        <h2 id="delete-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">Delete Custom
-          Field</h2>
-        <p id="delete-modal-desc" class="text-gray-600 dark:text-gray-300 mb-4">Are you sure you want to delete <strong
-            x-text="getSelectedFieldName()"></strong>? This will also delete all values assigned to
-          devices. This action cannot be undone.</p>
-        <div class="flex justify-end gap-3">
-          <button @click="closeDeleteModal()"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">Cancel</button>
-          <button @click="doDeleteField()" :disabled="deleting"
-            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-[3px] focus:ring-red-500 disabled:opacity-50 min-h-[44px]">
-            <span x-show="!deleting">Delete</span>
-            <span x-show="deleting">Deleting...</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <include src="partials/modals/delete-confirm.html"></include>
   </div>
 </template>

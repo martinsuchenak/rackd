@@ -7,6 +7,7 @@ import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
 import { canAccessRoute, getPageTitle, mergeNavItems } from './core/features';
+import { createUIStore } from './core/ui';
 
 // Components
 import { nav } from './components/nav';
@@ -448,6 +449,7 @@ async function init(): Promise<void> {
 
   // Toast store for notifications (accessible as $store.toast in all components)
   const toast = toastComponent();
+  Alpine.store('ui', createUIStore());
   Alpine.store('toast', toast);
 
   // Listen for permission denied events from API client

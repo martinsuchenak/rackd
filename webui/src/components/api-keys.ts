@@ -28,6 +28,11 @@ export function apiKeysList() {
     get showCreateModal(): boolean { return this.modalType === 'create'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
     get showRevealModal(): boolean { return this.modalType === 'reveal'; },
+    get deleteModalTitle(): string { return 'Delete API Key'; },
+    get deleteModalName(): string { return this.getSelectedKeyName(); },
+    get deleteModalDescription(): string {
+      return `Are you sure you want to delete ${this.getSelectedKeyName()}? Any clients using this key will lose access immediately.`;
+    },
 
     async init(): Promise<void> {
       await Promise.all([this.loadKeys(), this.loadUsers()]);
@@ -77,6 +82,10 @@ export function apiKeysList() {
       this.selectedKey = null;
       this.newKeyValue = '';
       this.validationErrors = {};
+    },
+
+    cancelDelete(): void {
+      this.closeModal();
     },
 
     validateForm(): boolean {

@@ -279,6 +279,32 @@ Reduce duplicated modal markup and normalize dialog behavior.
 - Migrated dialogs use one shell pattern
 - Close behavior and focus behavior are uniform
 
+### Status
+
+Completed on 2026-04-09.
+
+### Progress Notes
+
+- Added a shared modal UI helper in [`webui/src/core/ui.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/ui.ts) and registered it in [`webui/src/app.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/app.ts) as `$store.ui`
+- Standardized modal viewport, backdrop, panel sizing, and close-button classes across the first migration batch:
+  - [`webui/src/partials/pages/api-keys.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/api-keys.html)
+  - [`webui/src/partials/pages/custom-fields.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/custom-fields.html)
+  - [`webui/src/partials/pages/circuits.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/circuits.html)
+  - [`webui/src/partials/pages/webhooks.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/webhooks.html)
+- Reused the shared delete confirmation partial in those screens and extended the component contract so each page can provide feature-specific delete titles and descriptions
+- Updated [`webui/src/partials/modals/delete-confirm.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/modals/delete-confirm.html) to use the shared modal shell helpers
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun run typecheck
+bun run build:js
+bun run build:html
+```
+
 ## PR 6: Shared List-Page State Pattern
 
 ### Goal

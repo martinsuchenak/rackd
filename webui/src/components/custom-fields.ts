@@ -39,6 +39,9 @@ interface CustomFieldData {
   get showCreateModal(): boolean;
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
+  get deleteModalTitle(): string;
+  get deleteModalName(): string;
+  get deleteModalDescription(): string;
 
   init(): Promise<void>;
   loadDefinitions(): Promise<void>;
@@ -50,9 +53,11 @@ interface CustomFieldData {
   openDeleteModal(field: CustomFieldDefinition): void;
   closeModal(): void;
   closeDeleteModal(): void;
+  cancelDelete(): void;
 
   // CRUD operations
   saveField(): Promise<void>;
+  doDelete(): Promise<void>;
   doDeleteField(): Promise<void>;
 
   // Form helpers
@@ -96,6 +101,11 @@ export function customFieldComponent(): CustomFieldData {
     get showCreateModal(): boolean { return this.modalType === 'create'; },
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
+    get deleteModalTitle(): string { return 'Delete Custom Field'; },
+    get deleteModalName(): string { return this.getSelectedFieldName(); },
+    get deleteModalDescription(): string {
+      return `Are you sure you want to delete ${this.getSelectedFieldName()}? This will also delete all values assigned to devices. This action cannot be undone.`;
+    },
 
     async init(): Promise<void> {
       await Promise.all([
@@ -175,6 +185,10 @@ export function customFieldComponent(): CustomFieldData {
     closeDeleteModal(): void {
       this.modalType = '';
       this.selectedField = null;
+    },
+
+    cancelDelete(): void {
+      this.closeDeleteModal();
     },
 
     isSelectType(): boolean {
@@ -271,6 +285,10 @@ export function customFieldComponent(): CustomFieldData {
       } finally {
         this.deleting = false;
       }
+    },
+
+    async doDelete(): Promise<void> {
+      await this.doDeleteField();
     },
 
     formatDate(dateStr: string): string {

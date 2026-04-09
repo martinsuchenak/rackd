@@ -40,6 +40,9 @@ interface WebhookData {
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
   get showDeliveriesModal(): boolean;
+  get deleteModalTitle(): string;
+  get deleteModalName(): string;
+  get deleteModalDescription(): string;
 
   init(): Promise<void>;
   loadWebhooks(): Promise<void>;
@@ -52,9 +55,11 @@ interface WebhookData {
   closeModal(): void;
   closeDeleteModal(): void;
   closeDeliveriesModal(): void;
+  cancelDelete(): void;
 
   // CRUD operations
   saveWebhook(): Promise<void>;
+  doDelete(): Promise<void>;
   doDeleteWebhook(): Promise<void>;
 
   // Webhook actions
@@ -101,6 +106,11 @@ export function webhookComponent(): WebhookData {
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
     get showDeliveriesModal(): boolean { return this.modalType === 'deliveries'; },
+    get deleteModalTitle(): string { return 'Delete Webhook'; },
+    get deleteModalName(): string { return this.getSelectedWebhookName(); },
+    get deleteModalDescription(): string {
+      return `Are you sure you want to delete ${this.getSelectedWebhookName()}? This action cannot be undone.`;
+    },
 
     async init(): Promise<void> {
       await Promise.all([
@@ -187,6 +197,10 @@ export function webhookComponent(): WebhookData {
     closeDeleteModal(): void {
       this.modalType = '';
       this.selectedWebhook = null;
+    },
+
+    cancelDelete(): void {
+      this.closeDeleteModal();
     },
 
     closeDeliveriesModal(): void {
@@ -277,6 +291,10 @@ export function webhookComponent(): WebhookData {
       } finally {
         this.deleting = false;
       }
+    },
+
+    async doDelete(): Promise<void> {
+      await this.doDeleteWebhook();
     },
 
     async pingWebhook(id: string): Promise<void> {

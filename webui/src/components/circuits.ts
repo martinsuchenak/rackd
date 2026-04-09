@@ -58,6 +58,9 @@ interface CircuitData {
   get showCreateModal(): boolean;
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
+  get deleteModalTitle(): string;
+  get deleteModalName(): string;
+  get deleteModalDescription(): string;
 
   init(): Promise<void>;
   loadCircuits(): Promise<void>;
@@ -70,9 +73,11 @@ interface CircuitData {
   openDeleteModal(circuit: Circuit): void;
   closeModal(): void;
   closeDeleteModal(): void;
+  cancelDelete(): void;
 
   // CRUD operations
   saveCircuit(): Promise<void>;
+  doDelete(): Promise<void>;
   doDeleteCircuit(): Promise<void>;
 
   // Form helpers
@@ -137,6 +142,11 @@ export function circuitComponent(): CircuitData {
     get showCreateModal(): boolean { return this.modalType === 'create'; },
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
+    get deleteModalTitle(): string { return 'Delete Circuit'; },
+    get deleteModalName(): string { return this.getSelectedCircuitName(); },
+    get deleteModalDescription(): string {
+      return `Are you sure you want to delete ${this.getSelectedCircuitName()}? This action cannot be undone.`;
+    },
 
     async init(): Promise<void> {
       await Promise.all([
@@ -253,6 +263,10 @@ export function circuitComponent(): CircuitData {
       this.selectedCircuit = null;
     },
 
+    cancelDelete(): void {
+      this.closeDeleteModal();
+    },
+
     validateForm(): boolean {
       this.validationErrors = {};
 
@@ -357,6 +371,10 @@ export function circuitComponent(): CircuitData {
       } finally {
         this.deleting = false;
       }
+    },
+
+    async doDelete(): Promise<void> {
+      await this.doDeleteCircuit();
     },
 
     getDatacenterName(id: string): string {
