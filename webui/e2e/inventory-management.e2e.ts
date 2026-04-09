@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createDatacenter, createDevice, createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
 
-test('datacenter list supports edit and delete flows', async ({ page }) => {
+test('@inventory datacenter list supports edit and delete flows', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');
@@ -35,7 +35,7 @@ test('datacenter list supports edit and delete flows', async ({ page }) => {
   await expect(updatedRow).toHaveCount(0);
 });
 
-test('network list supports edit and delete flows', async ({ page }) => {
+test('@inventory network list supports edit and delete flows', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');
@@ -73,7 +73,7 @@ test('network list supports edit and delete flows', async ({ page }) => {
   await expect(updatedRow).toHaveCount(0);
 });
 
-test('device list supports edit and delete flows', async ({ page }) => {
+test('@inventory device list supports edit and delete flows', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');

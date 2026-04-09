@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createDatacenter, createDevice, createNetwork, uniqueName } from './inventory-helpers';
 
-test('can create a datacenter and network, then open network detail', async ({ page }) => {
+test('@inventory can create a datacenter and network, then open network detail', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');
@@ -28,7 +28,7 @@ test('can create a datacenter and network, then open network detail', async ({ p
   await expect(page.getByText('10.77.0.0/24')).toBeVisible();
 });
 
-test('can create a device with an address and open its detail view', async ({ page }) => {
+test('@inventory can create a device with an address and open its detail view', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');

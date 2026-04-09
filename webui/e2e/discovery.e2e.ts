@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createNetwork, uniqueName } from './inventory-helpers';
 
-test('discovery scan modal validates and can start a scan', async ({ page }) => {
+test('@discovery discovery scan modal validates and can start a scan', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-discovery-network');

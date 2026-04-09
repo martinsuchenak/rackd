@@ -4,7 +4,7 @@ import { login } from './auth';
 import { createDNSProvider, createDNSZone } from './dns-helpers';
 import { createDevice, createNetwork, uniqueName } from './inventory-helpers';
 
-test('dns records support linked-record navigation plus edit and delete flows', async ({ page }) => {
+test('@dns dns records support linked-record navigation plus edit and delete flows', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-dns-records-network');

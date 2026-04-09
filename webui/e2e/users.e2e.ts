@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createUser } from './users-helpers';
 
-test('create user modal closes with escape', async ({ page }) => {
+test('@users create user modal closes with escape', async ({ page }) => {
   await login(page);
   await page.goto('/users');
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
@@ -16,7 +16,7 @@ test('create user modal closes with escape', async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
-test('creates a user from the users page modal', async ({ page }) => {
+test('@users creates a user from the users page modal', async ({ page }) => {
   await login(page);
 
   const username = `e2e-user-${Date.now()}`;

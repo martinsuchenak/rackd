@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { login } from './auth';
 
-test('dashboard overview cards navigate to the main inventory pages', async ({ page }) => {
+test('@inventory @smoke dashboard overview cards navigate to the main inventory pages', async ({ page }) => {
   await login(page);
 
   const overview = page.getByRole('list', { name: 'Statistics overview' });

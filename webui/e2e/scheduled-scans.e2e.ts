@@ -4,7 +4,7 @@ import { login } from './auth';
 import { createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
 import { createScanProfile } from './scan-profile-helpers';
 
-test('scheduled scans support create, edit, toggle, and delete flows', async ({ page }) => {
+test('@discovery scheduled scans support create, edit, toggle, and delete flows', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-schedule-network');

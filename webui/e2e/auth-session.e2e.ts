@@ -4,7 +4,7 @@ import { login, logout, openUserMenu } from './auth';
 import { uniqueName } from './inventory-helpers';
 import { createUser } from './users-helpers';
 
-test('shows an error for invalid credentials', async ({ page }) => {
+test('@auth @smoke shows an error for invalid credentials', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Username').fill('admin');
   await page.getByLabel('Password').fill('wrong-password');
@@ -14,13 +14,13 @@ test('shows an error for invalid credentials', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText(/invalid|failed/i);
 });
 
-test('can sign out from the user menu', async ({ page }) => {
+test('@auth can sign out from the user menu', async ({ page }) => {
   await login(page);
   await logout(page);
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
 });
 
-test('user can change their password and sign in with the new password', async ({ page }) => {
+test('@auth @users user can change their password and sign in with the new password', async ({ page }) => {
   await login(page);
 
   const username = uniqueName('e2e-password-user');

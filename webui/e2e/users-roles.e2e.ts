@@ -5,7 +5,7 @@ import { uniqueName } from './inventory-helpers';
 import { createRole } from './roles-helpers';
 import { createUser, grantUserRole } from './users-helpers';
 
-test('user menu supports profile edit flow', async ({ page }) => {
+test('@users user menu supports profile edit flow', async ({ page }) => {
   await login(page);
 
   await openUserMenu(page);
@@ -25,7 +25,7 @@ test('user menu supports profile edit flow', async ({ page }) => {
   await expect(reopenedDialog.getByLabel('Full Name')).toHaveValue(updatedFullName);
 });
 
-test('admin can reset another users password', async ({ page }) => {
+test('@users admin can reset another users password', async ({ page }) => {
   await login(page);
 
   const username = uniqueName('e2e-reset-user');
@@ -53,7 +53,7 @@ test('admin can reset another users password', async ({ page }) => {
   await login(page, username, resetPassword);
 });
 
-test('custom role permissions take effect after assignment', async ({ page }) => {
+test('@rbac custom role permissions take effect after assignment', async ({ page }) => {
   await login(page);
 
   const roleName = uniqueName('e2e-devices-reader');

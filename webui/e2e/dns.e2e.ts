@@ -4,7 +4,7 @@ import { login } from './auth';
 import { createDNSProvider, createDNSZone } from './dns-helpers';
 import { createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
 
-test('dns providers support create, edit, and delete flows', async ({ page }) => {
+test('@dns dns providers support create, edit, and delete flows', async ({ page }) => {
   await login(page);
 
   const providerName = uniqueName('e2e-dns-provider');
@@ -39,7 +39,7 @@ test('dns providers support create, edit, and delete flows', async ({ page }) =>
   await expect(updatedRow).toHaveCount(0);
 });
 
-test('dns zones support create, records navigation, edit, and delete flows', async ({ page }) => {
+test('@dns dns zones support create, records navigation, edit, and delete flows', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-dns-network');

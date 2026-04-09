@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createDatacenter, createDevice, createNetwork, uniqueName } from './inventory-helpers';
 
-test('datacenter detail supports edit flow', async ({ page }) => {
+test('@inventory datacenter detail supports edit flow', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-detail-dc');
@@ -31,7 +31,7 @@ test('datacenter detail supports edit flow', async ({ page }) => {
   await expect(page.getByText('Melbourne', { exact: true })).toBeVisible();
 });
 
-test('network detail supports pool create and delete flows', async ({ page }) => {
+test('@inventory network detail supports pool create and delete flows', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-detail-net');
@@ -66,7 +66,7 @@ test('network detail supports pool create and delete flows', async ({ page }) =>
   await expect(poolRow).toHaveCount(0);
 });
 
-test('device detail supports edit flow', async ({ page }) => {
+test('@inventory device detail supports edit flow', async ({ page }) => {
   await login(page);
 
   const networkName = uniqueName('e2e-detail-device-net');

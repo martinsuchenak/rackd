@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createDatacenter, createDevice, createNetwork, uniqueName } from './inventory-helpers';
 
-test('global search supports keyboard navigation to a device detail page', async ({ page }) => {
+test('@search @smoke global search supports keyboard navigation to a device detail page', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-search-dc');

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { login } from './auth';
 import { createDatacenter, createDevice, createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
 
-test('device list search filters to the created device', async ({ page }) => {
+test('@inventory device list search filters to the created device', async ({ page }) => {
   await login(page);
 
   const datacenterName = uniqueName('e2e-dc');

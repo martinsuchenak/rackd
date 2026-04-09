@@ -5,7 +5,7 @@ import { createDNSProvider, createDNSZone } from './dns-helpers';
 import { createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
 import { createUser, grantUserRole } from './users-helpers';
 
-test('viewer role can access readable pages but write controls stay hidden', async ({ page }) => {
+test('@rbac viewer role can access readable pages but write controls stay hidden', async ({ page }) => {
   await login(page);
 
   const providerName = uniqueName('e2e-viewer-provider');
