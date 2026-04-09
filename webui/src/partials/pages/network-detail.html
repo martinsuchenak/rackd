@@ -166,7 +166,8 @@
   <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
     aria-modal="true" aria-labelledby="edit-network-modal-title" @keydown.escape.window="closeEditModal()">
     <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
-    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+      x-trap.inert.noscroll="showEditModal">
       <button @click="closeEditModal()"
         class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 cursor-pointer transition-colors"
         aria-label="Close dialog">
@@ -226,11 +227,21 @@
   <include src="partials/modals/pool-form.html"></include>
 
   <!-- Delete Pool Modal -->
-  <div x-show="showDeletePoolModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-black/50" @click="cancelDeletePool()"></div>
-    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Pool</h3>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong
+  <div x-show="showDeletePoolModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="alertdialog" aria-modal="true" aria-labelledby="delete-pool-title" aria-describedby="delete-pool-desc"
+    @keydown.escape.window="cancelDeletePool()">
+    <div class="fixed inset-0 bg-black/50" @click="cancelDeletePool()" aria-hidden="true"></div>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6"
+      x-trap.inert.noscroll="showDeletePoolModal">
+      <button @click="cancelDeletePool()"
+        class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Close dialog">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <h3 id="delete-pool-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Pool</h3>
+      <p id="delete-pool-desc" class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete <strong
           x-text="getDeletePoolTargetName()"></strong>?</p>
       <div class="flex justify-end gap-3">
         <button @click="cancelDeletePool()"

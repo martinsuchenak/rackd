@@ -112,7 +112,8 @@
                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-200"
                   x-text="record.type"></span>
               </td>
-              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 font-mono truncate max-w-xs" x-text="record.value" :title="record.value">
+              <td class="px-6 py-4 text-gray-800 dark:text-gray-200 max-w-xs" :title="record.value">
+                <div class="font-mono truncate" x-text="record.value"></div>
                 <p x-show="record.error_message" class="text-xs text-red-600 dark:text-red-400 mt-1"
                   x-text="record.error_message"></p>
               </td>

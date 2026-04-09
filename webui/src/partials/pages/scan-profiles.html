@@ -71,10 +71,19 @@
     </div>
 
     <!-- Create Modal -->
-    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50" @click="closeCreateModal()"></div>
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Scan Profile</h3>
+    <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+      aria-modal="true" aria-labelledby="scan-profile-create-title" @keydown.escape.window="closeCreateModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeCreateModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+        x-trap.inert.noscroll="showCreateModal">
+        <button @click="closeCreateModal()"
+          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <h3 id="scan-profile-create-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Scan Profile</h3>
         <form @submit.prevent="createProfile()">
           <div class="space-y-4">
             <div>
@@ -144,10 +153,19 @@
     </div>
 
     <!-- Edit Modal -->
-    <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50" @click="closeEditModal()"></div>
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Scan Profile</h3>
+    <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog"
+      aria-modal="true" aria-labelledby="scan-profile-edit-title" @keydown.escape.window="closeEditModal()">
+      <div class="fixed inset-0 bg-black/50" @click="closeEditModal()" aria-hidden="true"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+        x-trap.inert.noscroll="showEditModal">
+        <button @click="closeEditModal()"
+          class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 focus:outline-none focus:ring-[3px] focus:ring-blue-500 rounded-full p-2 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <h3 id="scan-profile-edit-title" class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Scan Profile</h3>
         <form @submit.prevent="updateProfile()">
           <div class="space-y-4">
             <div>
