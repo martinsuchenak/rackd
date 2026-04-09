@@ -131,6 +131,41 @@ Consistent modal interface for:
 - Confirmation dialogs for destructive actions
 - Scan configuration and promotion workflows
 
+## Testing
+
+The web UI now has two automated frontend test layers:
+
+- `cd webui && bun test`
+  Runs fast unit-style regression tests for:
+  - route and permission helpers
+  - API client edge cases
+  - shared component state behavior
+- `cd webui && bun run test:e2e`
+  Runs Playwright smoke tests against a live Rackd server started in `--dev-mode`
+
+### E2E Workflow
+
+Playwright uses [`webui/playwright.config.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/playwright.config.ts) and starts Rackd through [`webui/scripts/run-e2e-server.sh`](/Users/martinsuchenak/Devel/projects/rackd/webui/scripts/run-e2e-server.sh). The launcher:
+
+- wipes a disposable `.tmp/e2e-data` database
+- bootstraps an initial admin user through `INITIAL_ADMIN_*`
+- keeps Go build/cache writes inside the repo with dedicated `GOCACHE` and `GOTMPDIR`
+- listens on `127.0.0.1:18080` by default
+
+Install the browser runtime once with:
+
+```bash
+cd webui
+bun run test:e2e:install
+```
+
+Current smoke coverage includes:
+
+- unauthenticated redirect to `/login`
+- admin login with the bootstrapped user
+- modal close on `Escape`
+- create-user happy path
+
 ## Alpine.js Components
 
 ### Core Components

@@ -79,9 +79,17 @@ The project uses a Makefile with several build targets:
 
 #### Testing Targets
 - `make test` - Run all tests
+- `make test-e2e` - Run web UI Playwright end-to-end tests
 - `make test-short` - Run short tests only
 - `make test-race` - Run tests with race detector
 - `make test-coverage` - Show test coverage
+
+Before the first E2E run, install the Playwright browser runtime once:
+
+```bash
+cd webui
+bun run test:e2e:install
+```
 
 #### Cross-Platform Builds
 - `make build-linux` - Build for Linux (amd64, arm64)

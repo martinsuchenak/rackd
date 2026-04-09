@@ -17,7 +17,7 @@ LDFLAGS := -ldflags="-s -w \
 	-X main.commit=$(GIT_COMMIT) \
 	-X main.date=$(BUILD_TIME)"
 
-.PHONY: all build binary ui-build test clean run-server dev lint fmt help validate
+.PHONY: all build binary ui-build test test-e2e clean run-server dev lint fmt help validate
 
 ## Default target
 all: build
@@ -50,6 +50,10 @@ ui-build:
 ## test: Run all tests
 test: ui-build
 	$(GO) test -v -coverprofile=coverage.out ./...
+
+## test-e2e: Run web UI Playwright end-to-end tests
+test-e2e:
+	cd $(WEBUI_DIR) && bun run test:e2e
 
 ## test-short: Run short tests only
 test-short:

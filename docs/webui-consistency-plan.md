@@ -10,6 +10,7 @@ This document tracks the web UI audit follow-up work as a sequence of PR-sized c
 - Standardize modal behavior and CRUD/list component structure
 - Reduce drift between frontend shared types and the OpenAPI contract
 - Add regression coverage for the fragile UI paths
+- Add browser-level smoke coverage for live UI flows
 
 ## Validation For Every PR
 
@@ -505,3 +506,65 @@ bun run build:html
 - PR 2 has the highest immediate user-facing value because permission drift can hide or expose the wrong actions
 - PR 5 and PR 6 should be incremental to avoid broad regressions
 - PR 7 should not block the earlier refactors unless code generation is chosen immediately
+
+## Post-Plan Follow-Up: Playwright E2E Foundation
+
+### Status
+
+- Completed on 2026-04-09
+
+### Goal
+
+Add browser-level smoke tests that exercise the live app against a disposable local server.
+
+### Files
+
+- [`webui/playwright.config.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/playwright.config.ts)
+- [`webui/scripts/run-e2e-server.sh`](/Users/martinsuchenak/Devel/projects/rackd/webui/scripts/run-e2e-server.sh)
+- [`webui/e2e/auth.e2e.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e/auth.e2e.ts)
+- [`webui/e2e/users.e2e.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e/users.e2e.ts)
+- [`webui/e2e/helpers.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e/helpers.ts)
+- [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json)
+
+### Tasks
+
+- Add Playwright test runner and scripts
+- Start Rackd in `--dev-mode` with:
+  - disposable data directory
+  - bootstrapped initial admin credentials
+  - deterministic local listen address
+- Cover the first smoke paths:
+  - unauthenticated redirect to `/login`
+  - successful login
+  - modal close via `Escape`
+  - create-user happy path
+
+### Acceptance Criteria
+
+- `cd webui && bun run test:e2e` runs against a local ephemeral Rackd server
+- Tests do not depend on manually prepared data
+- The first smoke suite covers auth, routing, and one CRUD/modal flow
+
+### Progress Notes
+
+- Added Playwright config and a disposable server launcher that bootstraps an admin user from environment variables
+- Added initial smoke tests for:
+  - auth redirect
+  - admin login
+  - users modal `Escape` close
+  - user creation
+- Scoped dialog interactions to named modal roots so the E2E assertions do not collide with background UI controls
+- Serialized the smoke suite to keep it deterministic against a single disposable Rackd instance
+- Registered `test:e2e`, `test:e2e:headed`, and `test:e2e:install` in [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json)
+- Documented the workflow in [`docs/webui.md`](/Users/martinsuchenak/Devel/projects/rackd/docs/webui.md)
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun test
+bun run typecheck
+bun run test:e2e
+```

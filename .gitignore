@@ -51,6 +51,8 @@ Thumbs.db
 # UI Assets
 webui/dist/
 internal/ui/assets/
+webui/playwright-report/
+webui/test-results/
 
 
 # Cache

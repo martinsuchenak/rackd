@@ -10,6 +10,9 @@
     "build:html": "bun run ./scripts/build-html.ts",
     "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
     "test": "bun test",
+    "test:e2e": "bun run build && playwright test",
+    "test:e2e:headed": "bun run build && playwright test --headed",
+    "test:e2e:install": "playwright install chromium",
     "typecheck": "bunx tsc --noEmit",
     "validate:types": "bun run ./scripts/validate-openapi-types.ts"
   },
@@ -22,6 +25,7 @@
     "cytoscape-panzoom": "^2.5.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@tailwindcss/cli": "^4.2.2",
     "@types/alpinejs": "^3.13.11",
     "posthtml": "^0.16.7",
