@@ -355,12 +355,19 @@ function initPermissionsStore() {
 async function init(): Promise<void> {
   window.rackdAPI = api;
 
+  const publishConfigUpdate = (config: UIConfig): void => {
+    window.rackdConfig = config;
+    window.dispatchEvent(new CustomEvent<UIConfig>('rackd:config-updated', {
+      detail: config,
+    }));
+  };
+
   // Fetch config (session cookie is sent automatically)
   try {
-    window.rackdConfig = await api.getConfig();
+    publishConfigUpdate(await api.getConfig());
   } catch (error) {
     console.error('Failed to load config:', error);
-    window.rackdConfig = { edition: 'oss', features: [], nav_items: [] };
+    publishConfigUpdate({ edition: 'oss', features: [], nav_items: [] });
     // Show error toast if loading config fails
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('toast:error', {
@@ -422,7 +429,7 @@ async function init(): Promise<void> {
     window.addEventListener('permissions:refresh', async () => {
       try {
         const config = await api.getConfig();
-        window.rackdConfig = config;
+        publishConfigUpdate(config);
         // Reinitialize permissions store with updated data
         const permissionsStore = getPermissionsStore();
         if (permissionsStore) {

@@ -213,6 +213,26 @@ Fetch UI config once and reuse it everywhere.
 - Config is fetched through one code path
 - Nav does not maintain a separate fetch/bootstrap implementation
 
+### Status
+
+Completed on 2026-04-09.
+
+### Progress Notes
+
+- Removed the remaining direct config fetch path from [`webui/src/components/nav.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/components/nav.ts)
+- Updated [`webui/src/app.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/app.ts) to publish shared `rackd:config-updated` events whenever bootstrap or permission refresh updates the config
+- Kept nav state tied to `window.rackdConfig` so there is a single bootstrap source for config and permission-driven feature visibility
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun run typecheck
+bun run build:js
+```
+
 ## PR 5: Modal Shell Standardization
 
 ### Goal

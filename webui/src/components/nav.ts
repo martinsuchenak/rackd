@@ -31,16 +31,13 @@ export function nav(): NavData {
     },
 
     async init(): Promise<void> {
-      try {
-        const response = await fetch('/api/config');
-        if (response.ok) {
-          this.config = await response.json();
-        }
-      } catch {
-        this.config = null;
-      } finally {
-        this.loading = false;
-      }
+      this.config = window.rackdConfig;
+      this.loading = false;
+
+      window.addEventListener('rackd:config-updated', ((event: Event) => {
+        const customEvent = event as CustomEvent<UIConfig>;
+        this.config = customEvent.detail;
+      }) as EventListener);
     },
   };
 }
