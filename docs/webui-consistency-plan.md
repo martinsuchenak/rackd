@@ -453,6 +453,42 @@ Lock in the consistency work with automated coverage.
 
 - Permission and modal regressions are covered by automated tests
 
+### Status
+
+Completed on 2026-04-09.
+
+### Progress Notes
+
+- Added a lightweight frontend regression suite using `bun test`
+- Registered the test command in [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json)
+- Added route and permission coverage in [`webui/tests/features.test.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/tests/features.test.ts):
+  - route access checks
+  - nav filtering
+  - feature title resolution
+  - dynamic nav merging
+- Added API-client regression coverage in [`webui/tests/api.test.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/tests/api.test.ts):
+  - OAuth disabled path returning HTML
+  - OAuth client JSON success path
+  - permission-denied behavior on JSON error responses
+- Added component state regression coverage in [`webui/tests/component-state.test.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/tests/component-state.test.ts):
+  - scan profile delete modal flow
+  - modalType-driven save dispatch
+  - shared delete confirmation dispatch
+  - modal state reset behavior
+- Fixed a title-resolution bug in [`webui/src/core/features.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/features.ts) that the new tests exposed for exact detail routes being shadowed by broader route prefixes
+
+### Validation
+
+Validated with:
+
+```bash
+cd webui
+bun test
+bun run typecheck
+bun run build:js
+bun run build:html
+```
+
 ## Recommended Order
 
 1. PR 1: Central Feature Registry

@@ -81,13 +81,15 @@ export function getFeatureNavItems(): FeatureNavItem[] {
 
 export function getPageTitle(route: string): string {
   const routePath = normalizePath(route);
-  const feature = featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
+  const feature = featureDefinitions.find((item) => item.path === routePath)
+    ?? featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
   return feature?.title || 'Page';
 }
 
 export function canAccessRoute(route: string, permissions: Permission[]): boolean {
   const routePath = normalizePath(route);
-  const feature = featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
+  const feature = featureDefinitions.find((item) => item.path === routePath)
+    ?? featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
   if (!feature?.permission) {
     return true;
   }
