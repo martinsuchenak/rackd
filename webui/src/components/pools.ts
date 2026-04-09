@@ -336,11 +336,11 @@ export function poolDetail(): PoolDetailData {
     },
 
     getPoolGateway(): string {
-      return (this.pool as any)?.gateway || '-';
+      return this.pool?.gateway || '-';
     },
 
     getPoolDNSServers(): string {
-      return (this.pool as any)?.dns_servers || '-';
+      return this.pool?.dns_servers?.join(', ') || '-';
     },
 
     hasPoolDescription(): boolean {

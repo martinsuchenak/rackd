@@ -78,6 +78,8 @@ export interface NetworkPool {
   name: string;
   start_ip: string;
   end_ip: string;
+  gateway?: string;
+  dns_servers?: string[];
   description: string;
   tags: string[];
   created_at: string;
@@ -233,6 +235,69 @@ export interface ScanProfile {
   updated_at: string;
 }
 
+export type CredentialType = 'snmp_v2c' | 'snmp_v3' | 'ssh_key' | 'ssh_password';
+
+export interface Credential {
+  id: string;
+  name: string;
+  type: CredentialType;
+  ssh_username?: string;
+  datacenter_id?: string;
+  description?: string;
+  has_community?: boolean;
+  has_auth?: boolean;
+  has_username?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CredentialInput {
+  name: string;
+  type: CredentialType;
+  snmp_community?: string;
+  snmp_v3_user?: string;
+  snmp_v3_auth?: string;
+  snmp_v3_priv?: string;
+  ssh_username?: string;
+  ssh_key_id?: string;
+  datacenter_id?: string;
+  description?: string;
+}
+
+export interface ScheduledScan {
+  id: string;
+  network_id: string;
+  profile_id: string;
+  name: string;
+  cron_expression: string;
+  enabled: boolean;
+  description?: string;
+  last_run_at?: string;
+  next_run_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduledScanInput {
+  network_id: string;
+  profile_id: string;
+  name: string;
+  cron_expression: string;
+  enabled?: boolean;
+  description?: string;
+}
+
+export interface OAuthClient {
+  client_id: string;
+  client_name: string;
+  redirect_uris: string[];
+  grant_types: string[];
+  token_endpoint_auth_method?: string;
+  client_uri?: string;
+  is_confidential?: boolean;
+  created_at: string;
+}
+
 export interface DeviceRelationship {
   parent_id: string;
   child_id: string;
@@ -254,8 +319,8 @@ export interface UserInfo {
   username: string;
   email: string;
   full_name?: string;
-  roles: string[];
-  permissions?: Permission[];
+  roles: Role[];
+  permissions: Permission[];
   is_admin?: boolean;
 }
 

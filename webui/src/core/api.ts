@@ -76,6 +76,11 @@ import type {
   ImportResult,
   APIKey,
   CreateAPIKeyRequest,
+  Credential,
+  CredentialInput,
+  ScheduledScan,
+  ScheduledScanInput,
+  OAuthClient,
 } from './types';
 
 export type {
@@ -100,6 +105,9 @@ export type {
   ServiceInfo,
   UIConfig,
   UserInfo,
+  Credential,
+  ScheduledScan,
+  OAuthClient,
 } from './types';
 
 export class RackdAPIError extends Error {
@@ -191,6 +199,46 @@ export class RackdAPI {
     }
 
     return requestPromise;
+  }
+
+  private async requestOptionalJSON<T>(method: string, path: string): Promise<T | null> {
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
+    }
+
+    if (!response.ok) {
+      let error: APIError = { code: 'UNKNOWN_ERROR', message: response.statusText };
+      try {
+        error = await response.json();
+      } catch {
+        // Use default error
+      }
+
+      if (response.status === 403) {
+        const message = "You don't have permission to perform this action";
+        window.dispatchEvent(new CustomEvent('toast:permission-denied', { detail: { message } }));
+        throw new RackdAPIError('FORBIDDEN', message, error.details);
+      }
+
+      if (response.status === 401 && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+
+      throw new RackdAPIError(error.code, error.message, error.details);
+    }
+
+    const text = await response.text();
+    return text ? JSON.parse(text) as T : null;
   }
 
   // Config
@@ -419,6 +467,52 @@ export class RackdAPI {
 
   async deleteScanProfile(id: string): Promise<void> {
     return this.request<void>('DELETE', `/api/scan-profiles/${id}`);
+  }
+
+  // Credentials
+  async listCredentials(datacenterId?: string): Promise<Credential[]> {
+    const query = datacenterId ? `?datacenter_id=${encodeURIComponent(datacenterId)}` : '';
+    return this.request<Credential[]>('GET', `/api/credentials${query}`);
+  }
+
+  async createCredential(input: CredentialInput): Promise<Credential> {
+    return this.request<Credential>('POST', '/api/credentials', input);
+  }
+
+  async updateCredential(id: string, input: CredentialInput): Promise<Credential> {
+    return this.request<Credential>('PUT', `/api/credentials/${id}`, input);
+  }
+
+  async deleteCredential(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/credentials/${id}`);
+  }
+
+  // Scheduled scans
+  async listScheduledScans(networkId?: string): Promise<ScheduledScan[]> {
+    const query = networkId ? `?network_id=${encodeURIComponent(networkId)}` : '';
+    return this.request<ScheduledScan[]>('GET', `/api/scheduled-scans${query}`);
+  }
+
+  async createScheduledScan(input: ScheduledScanInput): Promise<ScheduledScan> {
+    return this.request<ScheduledScan>('POST', '/api/scheduled-scans', input);
+  }
+
+  async updateScheduledScan(id: string, input: ScheduledScanInput): Promise<ScheduledScan> {
+    return this.request<ScheduledScan>('PUT', `/api/scheduled-scans/${id}`, input);
+  }
+
+  async deleteScheduledScan(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/scheduled-scans/${id}`);
+  }
+
+  // OAuth clients
+  async listOAuthClients(): Promise<OAuthClient[]> {
+    const clients = await this.requestOptionalJSON<OAuthClient[]>('GET', '/api/oauth/clients');
+    return clients ?? [];
+  }
+
+  async deleteOAuthClient(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/oauth/clients/${id}`);
   }
 
   // Auth

@@ -1,81 +1,65 @@
-interface OAuthClient {
-  client_id: string;
-  client_name: string;
-  redirect_uris: string[];
-  grant_types: string[];
-  token_endpoint_auth_method: string;
-  client_uri: string;
-  is_confidential: boolean;
-  created_at: string;
-}
+import type { OAuthClient } from '../core/types';
+import { api, RackdAPIError } from '../core/api';
+
+type ModalType = '' | 'delete';
 
 export function oauthClients() {
   return {
     clients: [] as OAuthClient[],
     loading: true,
     error: '',
-    deleteTarget: null as OAuthClient | null,
-    showDeleteModal: false,
+    modalType: '' as ModalType,
+    selectedClient: null as OAuthClient | null,
 
-    async init() {
+    get showDeleteModal(): boolean {
+      return this.modalType === 'delete';
+    },
+
+    async init(): Promise<void> {
       await this.loadClients();
     },
 
-    async loadClients() {
+    async loadClients(): Promise<void> {
       this.loading = true;
       this.error = '';
       try {
-        const response = await fetch('/api/oauth/clients', {
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        // If OAuth isn't configured, the route doesn't exist and the SPA
-        // catch-all returns index.html with 200 + text/html content-type.
-        const ct = response.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-          this.clients = [];
-          return;
-        }
-        if (!response.ok) throw new Error('Failed to load clients');
-        this.clients = await response.json() || [];
-      } catch (e: any) {
-        this.error = e.message || 'Failed to load OAuth clients';
+        this.clients = await api.listOAuthClients();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load OAuth clients';
       } finally {
         this.loading = false;
       }
     },
 
-    confirmDelete(client: OAuthClient) {
-      this.deleteTarget = client;
-      this.showDeleteModal = true;
+    openDeleteModal(client: OAuthClient): void {
+      this.modalType = '';
+      this.selectedClient = client;
+      this.modalType = 'delete';
     },
 
-    cancelDelete() {
-      this.deleteTarget = null;
-      this.showDeleteModal = false;
+    closeModal(): void {
+      this.modalType = '';
+      this.selectedClient = null;
     },
 
-    async doDelete() {
-      if (!this.deleteTarget) return;
+    async doDelete(): Promise<void> {
+      if (!this.selectedClient) return;
       try {
-        const response = await fetch(`/api/oauth/clients/${this.deleteTarget.client_id}`, {
-          method: 'DELETE',
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (!response.ok) throw new Error('Failed to delete client');
-        this.showDeleteModal = false;
-        this.deleteTarget = null;
+        await api.deleteOAuthClient(this.selectedClient.client_id);
+        this.closeModal();
         await this.loadClients();
-      } catch (e: any) {
-        this.error = e.message || 'Failed to delete client';
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete OAuth client';
       }
     },
 
     formatDate(dateStr: string): string {
       return new Date(dateStr).toLocaleDateString(undefined, {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     },
 
@@ -89,8 +73,8 @@ export function oauthClients() {
         : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     },
 
-    getDeleteTargetName(): string {
-      return this.deleteTarget?.client_name || '';
+    getSelectedClientName(): string {
+      return this.selectedClient?.client_name || '';
     },
   };
 }

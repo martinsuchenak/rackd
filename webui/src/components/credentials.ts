@@ -1,22 +1,12 @@
-// Credentials Management Components
+import type { Credential, CredentialInput, CredentialType } from '../core/types';
+import { api, RackdAPIError } from '../core/api';
 
-export interface Credential {
-  id: string;
-  name: string;
-  type: string;
-  description?: string;
-  datacenter_id?: string;
-  has_community?: boolean;
-  has_auth?: boolean;
-  has_username?: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type ModalType = '' | 'form' | 'delete';
 
 interface CredentialFormData {
   id: string;
   name: string;
-  type: string;
+  type: CredentialType;
   description: string;
   datacenter_id: string;
   snmp_community: string;
@@ -32,41 +22,43 @@ export function credentialsList() {
     credentials: [] as Credential[],
     loading: true,
     error: '',
-    showModal: false,
-    showDeleteModal: false,
+    modalType: '' as ModalType,
     deleteTarget: null as Credential | null,
     form: resetForm(),
 
-    async init() {
+    get showFormModal(): boolean {
+      return this.modalType === 'form';
+    },
+
+    get showDeleteModal(): boolean {
+      return this.modalType === 'delete';
+    },
+
+    async init(): Promise<void> {
       await this.load();
     },
 
-    async load() {
+    async load(): Promise<void> {
       this.loading = true;
       this.error = '';
       try {
-        const response = await fetch('/api/credentials', {
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (response.ok) {
-          this.credentials = (await response.json()) || [];
-        } else {
-          this.error = 'Failed to load credentials';
-        }
-      } catch {
-        this.error = 'Network error';
+        this.credentials = await api.listCredentials();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load credentials';
       } finally {
         this.loading = false;
       }
     },
 
-    openAddModal() {
+    openAddModal(): void {
+      this.modalType = '';
       this.form = resetForm();
-      this.showModal = true;
+      this.error = '';
+      this.modalType = 'form';
     },
 
-    openEditModal(cred: Credential) {
+    openEditModal(cred: Credential): void {
+      this.modalType = '';
       this.form = {
         id: cred.id,
         name: cred.name,
@@ -77,70 +69,63 @@ export function credentialsList() {
         snmp_v3_user: '',
         snmp_v3_auth: '',
         snmp_v3_priv: '',
-        ssh_username: '',
+        ssh_username: cred.ssh_username || '',
         ssh_key_id: '',
       };
-      this.showModal = true;
+      this.error = '';
+      this.modalType = 'form';
     },
 
-    closeModal() {
-      this.showModal = false;
+    closeModal(): void {
+      this.modalType = '';
+      this.deleteTarget = null;
       this.form = resetForm();
       this.error = '';
     },
 
-    async save() {
+    async save(): Promise<void> {
       this.error = '';
-      try {
-        const isEdit = !!this.form.id;
-        const url = isEdit ? `/api/credentials/${this.form.id}` : '/api/credentials';
-        const response = await fetch(url, {
-          method: isEdit ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          credentials: 'same-origin',
-          body: JSON.stringify(this.form),
-        });
+      const payload: CredentialInput = {
+        name: this.form.name,
+        type: this.form.type,
+        description: this.form.description || undefined,
+        datacenter_id: this.form.datacenter_id || undefined,
+        snmp_community: this.form.snmp_community || undefined,
+        snmp_v3_user: this.form.snmp_v3_user || undefined,
+        snmp_v3_auth: this.form.snmp_v3_auth || undefined,
+        snmp_v3_priv: this.form.snmp_v3_priv || undefined,
+        ssh_username: this.form.ssh_username || undefined,
+        ssh_key_id: this.form.ssh_key_id || undefined,
+      };
 
-        if (response.ok) {
-          this.closeModal();
-          await this.load();
+      try {
+        if (this.form.id) {
+          await api.updateCredential(this.form.id, payload);
         } else {
-          const data = await response.json();
-          this.error = data.error || 'Failed to save credential';
+          await api.createCredential(payload);
         }
-      } catch {
-        this.error = 'Network error';
+        this.closeModal();
+        await this.load();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to save credential';
       }
     },
 
-    confirmDelete(cred: Credential) {
+    openDeleteModal(cred: Credential): void {
+      this.modalType = '';
       this.deleteTarget = cred;
-      this.showDeleteModal = true;
+      this.modalType = 'delete';
     },
 
-    async deleteConfirmed() {
+    async deleteConfirmed(): Promise<void> {
       if (!this.deleteTarget) return;
       try {
-        const response = await fetch(`/api/credentials/${this.deleteTarget.id}`, {
-          method: 'DELETE',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-          credentials: 'same-origin',
-        });
-        if (response.ok) {
-          this.showDeleteModal = false;
-          this.deleteTarget = null;
-          await this.load();
-        } else {
-          this.error = 'Failed to delete credential';
-        }
-      } catch {
-        this.error = 'Network error';
+        await api.deleteCredential(this.deleteTarget.id);
+        this.closeModal();
+        await this.load();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete credential';
       }
-    },
-
-    cancelDelete() {
-      this.showDeleteModal = false;
-      this.deleteTarget = null;
     },
 
     hasCredentials(): boolean {
@@ -166,8 +151,8 @@ export function credentialsList() {
     },
 
     getDeleteTargetName(): string {
-      return this.deleteTarget ? this.deleteTarget.name : '';
-    }
+      return this.deleteTarget?.name || '';
+    },
   };
 }
 

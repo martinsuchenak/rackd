@@ -43,7 +43,7 @@ export function userMenu() {
     },
 
     get userRoles(): Role[] {
-      return (window.rackdConfig?.user?.roles || []) as any;
+      return window.rackdConfig?.user?.roles || [];
     },
 
     get roleNames(): string {
@@ -51,7 +51,7 @@ export function userMenu() {
     },
 
     get userPermissions(): Permission[] {
-      return (window.rackdConfig?.user?.permissions || []) as any;
+      return window.rackdConfig?.user?.permissions || [];
     },
 
     get groupedPermissions(): Record<string, Permission[]> {

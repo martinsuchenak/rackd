@@ -1,29 +1,7 @@
-// Scheduled Scans Management Components
+import type { Network, ScanProfile, ScheduledScan, ScheduledScanInput } from '../core/types';
+import { api, RackdAPIError } from '../core/api';
 
-export interface ScheduledScan {
-  id: string;
-  network_id: string;
-  profile_id: string;
-  name: string;
-  enabled: boolean;
-  cron_expression: string;
-  description?: string;
-  last_run_at?: string;
-  next_run_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Network {
-  id: string;
-  name: string;
-  subnet: string;
-}
-
-interface Profile {
-  id: string;
-  name: string;
-}
+type ModalType = '' | 'form' | 'delete';
 
 interface ScheduledScanFormData {
   id: string;
@@ -39,44 +17,53 @@ export function scheduledScansList() {
   return {
     scans: [] as ScheduledScan[],
     networks: [] as Network[],
-    profiles: [] as Profile[],
+    profiles: [] as ScanProfile[],
     loading: true,
     error: '',
-    showModal: false,
-    showDeleteModal: false,
+    modalType: '' as ModalType,
     deleteTarget: null as ScheduledScan | null,
     form: resetForm(),
 
-    async init() {
+    get showFormModal(): boolean {
+      return this.modalType === 'form';
+    },
+
+    get showDeleteModal(): boolean {
+      return this.modalType === 'delete';
+    },
+
+    async init(): Promise<void> {
       await this.load();
     },
 
-    async load() {
+    async load(): Promise<void> {
       this.loading = true;
       this.error = '';
       try {
-        const [scansRes, networksRes, profilesRes] = await Promise.all([
-          fetch('/api/scheduled-scans', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
-          fetch('/api/networks', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
-          fetch('/api/scan-profiles', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }),
+        const [scans, networks, profiles] = await Promise.all([
+          api.listScheduledScans(),
+          api.listNetworks(),
+          api.listScanProfiles(),
         ]);
-
-        if (scansRes.ok) this.scans = (await scansRes.json()) || [];
-        if (networksRes.ok) this.networks = (await networksRes.json()) || [];
-        if (profilesRes.ok) this.profiles = (await profilesRes.json()) || [];
-      } catch {
-        this.error = 'Network error';
+        this.scans = scans;
+        this.networks = networks;
+        this.profiles = profiles;
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to load scheduled scans';
       } finally {
         this.loading = false;
       }
     },
 
-    openAddModal() {
+    openAddModal(): void {
+      this.modalType = '';
       this.form = resetForm();
-      this.showModal = true;
+      this.error = '';
+      this.modalType = 'form';
     },
 
-    openEditModal(scan: ScheduledScan) {
+    openEditModal(scan: ScheduledScan): void {
+      this.modalType = '';
       this.form = {
         id: scan.id,
         network_id: scan.network_id,
@@ -86,106 +73,90 @@ export function scheduledScansList() {
         cron_expression: scan.cron_expression,
         description: scan.description || '',
       };
-      this.showModal = true;
+      this.error = '';
+      this.modalType = 'form';
     },
 
-    closeModal() {
-      this.showModal = false;
+    closeModal(): void {
+      this.modalType = '';
       this.form = resetForm();
+      this.deleteTarget = null;
       this.error = '';
     },
 
-    async save() {
+    async save(): Promise<void> {
       this.error = '';
-      try {
-        const isEdit = !!this.form.id;
-        const url = isEdit ? `/api/scheduled-scans/${this.form.id}` : '/api/scheduled-scans';
-        const response = await fetch(url, {
-          method: isEdit ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          credentials: 'same-origin',
-          body: JSON.stringify(this.form),
-        });
+      const payload: ScheduledScanInput = {
+        network_id: this.form.network_id,
+        profile_id: this.form.profile_id,
+        name: this.form.name,
+        enabled: this.form.enabled,
+        cron_expression: this.form.cron_expression,
+        description: this.form.description || undefined,
+      };
 
-        if (response.ok) {
-          this.closeModal();
-          await this.load();
+      try {
+        if (this.form.id) {
+          await api.updateScheduledScan(this.form.id, payload);
         } else {
-          const data = await response.json();
-          this.error = data.error || 'Failed to save scheduled scan';
+          await api.createScheduledScan(payload);
         }
-      } catch {
-        this.error = 'Network error';
+        this.closeModal();
+        await this.load();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to save scheduled scan';
       }
     },
 
-    async toggleEnabled(scan: ScheduledScan) {
+    async toggleEnabled(scan: ScheduledScan): Promise<void> {
       try {
-        const updated = { ...scan, enabled: !scan.enabled };
-        const response = await fetch(`/api/scheduled-scans/${scan.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          credentials: 'same-origin',
-          body: JSON.stringify(updated),
+        await api.updateScheduledScan(scan.id, {
+          network_id: scan.network_id,
+          profile_id: scan.profile_id,
+          name: scan.name,
+          enabled: !scan.enabled,
+          cron_expression: scan.cron_expression,
+          description: scan.description,
         });
-
-        if (response.ok) {
-          scan.enabled = !scan.enabled;
-        } else {
-          this.error = 'Failed to update scan';
-        }
-      } catch {
-        this.error = 'Network error';
+        scan.enabled = !scan.enabled;
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to update scan';
       }
     },
 
-    confirmDelete(scan: ScheduledScan) {
+    openDeleteModal(scan: ScheduledScan): void {
+      this.modalType = '';
       this.deleteTarget = scan;
-      this.showDeleteModal = true;
+      this.modalType = 'delete';
     },
 
-    async deleteConfirmed() {
+    async deleteConfirmed(): Promise<void> {
       if (!this.deleteTarget) return;
       try {
-        const response = await fetch(`/api/scheduled-scans/${this.deleteTarget.id}`, {
-          method: 'DELETE',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-          credentials: 'same-origin',
-        });
-        if (response.ok) {
-          this.showDeleteModal = false;
-          this.deleteTarget = null;
-          await this.load();
-        } else {
-          this.error = 'Failed to delete scheduled scan';
-        }
-      } catch {
-        this.error = 'Network error';
+        await api.deleteScheduledScan(this.deleteTarget.id);
+        this.closeModal();
+        await this.load();
+      } catch (e) {
+        this.error = e instanceof RackdAPIError ? e.message : 'Failed to delete scheduled scan';
       }
-    },
-
-    cancelDelete() {
-      this.showDeleteModal = false;
-      this.deleteTarget = null;
     },
 
     getNetworkName(id: string): string {
-      const net = this.networks.find((n: Network) => n.id === id);
-      return net ? `${net.name} (${net.subnet})` : id;
+      const network = this.networks.find((item) => item.id === id);
+      return network ? `${network.name} (${network.subnet})` : id;
     },
 
     getProfileName(id: string): string {
-      const profile = this.profiles.find((p: Profile) => p.id === id);
+      const profile = this.profiles.find((item) => item.id === id);
       return profile ? profile.name : id;
     },
 
     formatDate(dateStr: string | undefined): string {
-      if (!dateStr) return '-';
-      return new Date(dateStr).toLocaleString();
+      return dateStr ? new Date(dateStr).toLocaleString() : '-';
     },
 
     getDeleteTargetName(): string {
-      return this.deleteTarget ? this.deleteTarget.name : '';
+      return this.deleteTarget?.name || '';
     },
   };
 }

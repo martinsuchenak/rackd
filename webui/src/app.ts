@@ -235,11 +235,11 @@ const routePermissions: { prefix: string; resource: string; action: string }[] =
 
 function checkRoutePermission(path: string): boolean {
   const cleanPath = path.split('?')[0];
-  const userPermissions = (window.rackdConfig?.user?.permissions ?? []) as any[];
+  const userPermissions = window.rackdConfig?.user?.permissions ?? [];
   for (const rule of routePermissions) {
     if (cleanPath === rule.prefix || cleanPath.startsWith(rule.prefix + '/') || cleanPath.startsWith(rule.prefix + '?')) {
       return userPermissions.some(
-        (p: any) => p.resource === rule.resource && p.action === rule.action
+        (p) => p.resource === rule.resource && p.action === rule.action
       );
     }
   }
@@ -402,8 +402,8 @@ interface ToastStore {
 
 // Permissions store for checking user permissions (accessible as $store.permissions in all components)
 function initPermissionsStore() {
-  const userPermissions: Permission[] = (window.rackdConfig?.user?.permissions ?? []) as any;
-  const userRoles: Role[] = (window.rackdConfig?.user?.roles ?? []) as any;
+  const userPermissions: Permission[] = window.rackdConfig?.user?.permissions ?? [];
+  const userRoles: Role[] = window.rackdConfig?.user?.roles ?? [];
 
   const store = {
     permissions: userPermissions,
