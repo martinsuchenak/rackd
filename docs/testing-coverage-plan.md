@@ -434,6 +434,41 @@ Goal:
 
 - raise confidence in components that fail outside the request path
 
+Status:
+
+- Completed
+
+Current progress:
+
+- Added deterministic DNS provider tests in [`internal/dns/technitium_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/dns/technitium_test.go) covering:
+  - malformed JSON responses
+  - non-2xx HTTP responses
+  - provider-declared API errors
+  - zone listing and existence checks
+  - health checks
+  - record get/list/create/update flows, including the create-then-delete update pattern
+- Added worker orchestration tests in [`internal/worker/additional_workers_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/worker/additional_workers_test.go) covering:
+  - DNS worker start/stop and one-shot sync
+  - snapshot worker one-shot capture and lifecycle
+  - scheduled-scan worker startup scheduling, execution, timestamp updates, and schedule removal
+  - scheduler cleanup path when no rules are present
+- Added webhook delivery and background-worker tests in [`internal/webhook/delivery_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/webhook/delivery_test.go) covering:
+  - successful delivery persistence
+  - retrying failure behavior
+  - pending-retry processing, including inactive-webhook abandonment
+  - cleanup calls
+  - worker-driven event delivery
+- Added MCP auth/header edge-case tests in [`internal/mcp/server_auth_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/mcp/server_auth_test.go) covering:
+  - OPTIONS auth bypass
+  - OAuth vs non-OAuth `WWW-Authenticate` headers
+  - malformed bearer-token rejection
+- Package-local coverage improved to:
+  - `internal/worker`: `21.1%` -> `77.2%`
+  - `internal/webhook`: `10.1%` -> `71.6%`
+  - `internal/mcp`: `25.5%` -> `26.0%`
+  - `internal/dns`: `0.0%` -> `80.4%`
+- This phase meets its stated success criterion: each target package now has smoke-level automated coverage for its critical paths, with the biggest movement in `worker`, `webhook`, and `dns`
+
 Priority:
 
 1. `internal/worker`
@@ -451,6 +486,12 @@ Focus:
 Success criteria:
 
 - each package has at least smoke-level automated coverage for its critical paths
+
+Follow-up items that can wait until later:
+
+- broader MCP tool-handler coverage beyond server/auth routing, since the package already had a baseline test harness and the highest-value edge cases are now covered
+- deeper webhook concurrency and event-bus fanout assertions beyond the current delivery/worker smoke coverage
+- provider-specific DNS coverage for additional backends if or when non-Technitium providers gain more implementation depth
 
 ## Phase 6: Maintain Web UI Balance
 
