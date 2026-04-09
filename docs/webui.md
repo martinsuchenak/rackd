@@ -191,6 +191,48 @@ Current smoke coverage includes:
 - modal close on `Escape`
 - discovery modal close on overlay click
 
+### E2E Tag Policy
+
+The Playwright suite is intentionally tag-driven so it stays runnable in small slices instead of forcing a full browser pass for every change.
+
+Core tags currently in use:
+
+- `@smoke`: fastest confidence layer for login, shell/navigation, and one or two core workflows
+- `@auth`: login, logout, password, and session behavior
+- `@inventory`: devices, networks, datacenters, relationships, and detail-page inventory actions
+- `@rbac`: permission-gated navigation, routes, and action visibility
+- `@dns`: provider, zone, record, link, and promote flows
+- `@discovery`: scans, promotion, scan profiles, and scheduled-scan flows
+- `@users`: user profile and user-management flows
+- `@modal`: cross-page modal behavior
+- `@errors`: user-visible validation and failure-path coverage
+- `@mobile`: responsive navigation shell coverage
+- `@search`: global search behavior
+- `@oauth`: OAuth client UI behavior
+- `@credentials`: credential-management flows
+- `@relationships`: relationship-specific detail-page workflows
+
+Recommended execution flow:
+
+- `cd webui && bun test`
+  Run pure frontend regression tests first
+- `cd webui && bun run test:e2e:smoke`
+  Run before most UI PRs
+- `cd webui && bun run test:e2e:core`
+  Run for broader admin-surface changes
+- `cd webui && bun run test:e2e:<area>`
+  Run focused suites for the feature you changed, for example `dns`, `rbac`, `inventory`, `users`, or `discovery`
+- `cd webui && bun run test:e2e`
+  Run the whole browser suite before larger merges or when shared UI infrastructure changed
+
+Maintenance rules:
+
+- New critical UI features should ship with either `bun test` coverage or a tagged Playwright test
+- Add new E2E coverage only for high-use, security-sensitive, fragile, or multi-step workflows
+- Reuse existing area tags instead of inventing one-off tags unless a genuinely new feature area appears
+- Keep `@smoke` intentionally small; it should remain the quickest browser confidence check
+- Prefer helper modules by domain under [`webui/e2e`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e) instead of growing a single shared helper file
+
 ## Alpine.js Components
 
 ### Core Components

@@ -499,6 +499,39 @@ Goal:
 
 - keep browser coverage broad enough to catch regressions without turning it into a maintenance burden
 
+Status:
+
+- Completed
+
+Current progress:
+
+- Confirmed the Playwright suite already follows a stable area-tag model across the main high-value UI surfaces:
+  - `@smoke`
+  - `@auth`
+  - `@inventory`
+  - `@rbac`
+  - `@dns`
+  - `@discovery`
+  - `@users`
+  - plus focused support tags like `@modal`, `@errors`, `@mobile`, `@search`, `@oauth`, `@credentials`, and `@relationships`
+- Expanded the scripted entry points in [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json) so the tagged suite can be run intentionally by feature area instead of overusing the full browser pass:
+  - `test:e2e:core`
+  - `test:e2e:inventory`
+  - `test:e2e:users`
+  - `test:e2e:errors`
+  - `test:e2e:mobile`
+  - `test:e2e:oauth`
+  - `test:e2e:search`
+  - `test:e2e:credentials`
+  - `test:e2e:relationships`
+- Documented the maintenance workflow and tag policy in [`docs/webui.md`](/Users/martinsuchenak/Devel/projects/rackd/docs/webui.md), including:
+  - when to use `bun test`
+  - when to run `@smoke`
+  - when to use `test:e2e:core`
+  - when full `test:e2e` is justified
+  - rules for keeping the suite small and feature-focused
+- This phase meets its stated success criterion by making the current UI test strategy explicit and runnable in practical slices without expanding the suite blindly
+
 Keep:
 
 - `@smoke` as the fastest confidence layer
@@ -515,6 +548,11 @@ Success criteria:
 
 - E2E runtime stays practical
 - new critical UI features ship with either E2E or targeted unit regression coverage
+
+Follow-up items that can wait until later:
+
+- optional CI wiring to run `test:e2e:smoke` or `test:e2e:core` automatically on selected frontend-heavy changes
+- eventual pruning or re-tagging if any future E2E files stop matching the documented area boundaries
 
 ## Suggested Execution Order
 
