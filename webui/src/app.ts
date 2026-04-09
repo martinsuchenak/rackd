@@ -5,6 +5,7 @@ import focus from '@alpinejs/focus';
 import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
+import { canAccessRoute, getPageTitle, mergeNavItems } from './core/features';
 
 // Components
 import { nav } from './components/nav';
@@ -176,35 +177,7 @@ function registerCspSafeModelDirective(): void {
 
 // Update page title based on route
 function updatePageTitle(route: string) {
-  const titles: Record<string, string> = {
-    '/': 'Dashboard',
-    '/devices': 'Devices',
-    '/devices/detail': 'Device Details',
-    '/devices/graph': 'Device Relationships Graph',
-    '/networks': 'Networks',
-    '/networks/detail': 'Network Details',
-    '/pools/detail': 'Pool Details',
-    '/datacenters': 'Datacenters',
-    '/datacenters/detail': 'Datacenter Details',
-    '/discovery': 'Discovery',
-    '/credentials': 'Credentials',
-    '/scan-profiles': 'Scan Profiles',
-    '/scheduled-scans': 'Scheduled Scans',
-    '/conflicts': 'IP Conflicts',
-    '/webhooks': 'Webhooks',
-    '/custom-fields': 'Custom Fields',
-    '/circuits': 'Circuits',
-    '/nat': 'NAT Mappings',
-    '/dns/providers': 'DNS Providers',
-    '/dns/zones': 'DNS Zones',
-    '/dns/records': 'DNS Records',
-    '/users': 'User Management',
-    '/roles': 'Role Management',
-    '/oauth-clients': 'OAuth Clients',
-    '/api-keys': 'API Keys',
-  };
-  const path = route.split('?')[0];
-  document.title = `${titles[path] || 'Page'} - Rackd`;
+  document.title = `${getPageTitle(route)} - Rackd`;
 }
 
 declare global {
@@ -215,36 +188,9 @@ declare global {
   }
 }
 
-// Route permission requirements - maps route prefixes to required permissions
-const routePermissions: { prefix: string; resource: string; action: string }[] = [
-  { prefix: '/users', resource: 'users', action: 'list' },
-  { prefix: '/roles', resource: 'roles', action: 'list' },
-  { prefix: '/devices', resource: 'devices', action: 'list' },
-  { prefix: '/networks', resource: 'networks', action: 'list' },
-  { prefix: '/pools', resource: 'networks', action: 'list' },
-  { prefix: '/datacenters', resource: 'datacenters', action: 'list' },
-  { prefix: '/discovery', resource: 'discovery', action: 'list' },
-  { prefix: '/credentials', resource: 'credentials', action: 'list' },
-  { prefix: '/scan-profiles', resource: 'discovery', action: 'list' },
-  { prefix: '/scheduled-scans', resource: 'discovery', action: 'list' },
-  { prefix: '/webhooks', resource: 'webhooks', action: 'list' },
-  { prefix: '/custom-fields', resource: 'custom-fields', action: 'list' },
-  { prefix: '/dns', resource: 'dns', action: 'list' },
-  { prefix: '/conflicts', resource: 'conflicts', action: 'list' },
-];
-
 function checkRoutePermission(path: string): boolean {
-  const cleanPath = path.split('?')[0];
   const userPermissions = window.rackdConfig?.user?.permissions ?? [];
-  for (const rule of routePermissions) {
-    if (cleanPath === rule.prefix || cleanPath.startsWith(rule.prefix + '/') || cleanPath.startsWith(rule.prefix + '?')) {
-      return userPermissions.some(
-        (p) => p.resource === rule.resource && p.action === rule.action
-      );
-    }
-  }
-  // No permission rule = allow (dashboard, login, etc.)
-  return true;
+  return canAccessRoute(path, userPermissions);
 }
 
 // Router component for SPA navigation
@@ -257,44 +203,20 @@ function router() {
 
     // Nav items from config, filtered by user permissions
     get navItems() {
-      const base = [
-        { label: 'Dashboard', path: '/', order: 0 },
-        { label: 'Devices', path: '/devices', order: 10 },
-        { label: 'Networks', path: '/networks', order: 20 },
-        { label: 'Datacenters', path: '/datacenters', order: 30 },
-        { label: 'Discovery', path: '/discovery', order: 40 },
-        { label: 'Credentials', path: '/credentials', order: 42, required_permissions: [{ resource: 'credentials', action: 'list' }] },
-        { label: 'Scan Profiles', path: '/scan-profiles', order: 44, required_permissions: [{ resource: 'discovery', action: 'list' }] },
-        { label: 'Scheduled Scans', path: '/scheduled-scans', order: 46, required_permissions: [{ resource: 'discovery', action: 'list' }] },
-        { label: 'Conflicts', path: '/conflicts', order: 50, badge: () => this.activeConflictCount },
-        { label: 'Webhooks', path: '/webhooks', order: 51, required_permissions: [{ resource: 'webhooks', action: 'list' }] },
-        { label: 'Custom Fields', path: '/custom-fields', order: 52, required_permissions: [{ resource: 'custom-fields', action: 'list' }] },
-        { label: 'Circuits', path: '/circuits', order: 55 },
-        { label: 'NAT', path: '/nat', order: 56 },
-        { label: 'DNS Providers', path: '/dns/providers', order: 57, required_permissions: [{ resource: 'dns', action: 'list' }] },
-        { label: 'DNS Zones', path: '/dns/zones', order: 58, required_permissions: [{ resource: 'dns', action: 'list' }] },
-        { label: 'Users', path: '/users', order: 90, required_permissions: [{ resource: 'users', action: 'list' }] },
-        { label: 'Roles', path: '/roles', order: 91, required_permissions: [{ resource: 'roles', action: 'list' }] },
-        { label: 'OAuth Clients', path: '/oauth-clients', order: 93, required_permissions: [{ resource: 'users', action: 'list' }] },
-        { label: 'API Keys', path: '/api-keys', order: 94, required_permissions: [{ resource: 'apikeys', action: 'list' }] },
-      ];
-      const dynamic = (window.rackdConfig?.nav_items ?? []).filter(
-        (item: any) => !base.some((b) => (b.path === item.path || (b.path === '/' && item.path === '')) || b.label === item.label)
-      );
-      const allItems = [...base, ...dynamic].sort((a, b) => a.order - b.order);
+      const allItems = mergeNavItems(window.rackdConfig?.nav_items ?? []);
       const userPermissions = window.rackdConfig?.user?.permissions ?? [];
-      return allItems.filter((item: any) => {
+      return allItems.filter((item) => {
         if (!item.required_permissions || item.required_permissions.length === 0) {
           return true;
         }
-        return item.required_permissions.every((req: any) =>
-          userPermissions.some((perm: any) =>
+        return item.required_permissions.every((req) =>
+          userPermissions.some((perm) =>
             perm.resource === req.resource && perm.action === req.action
           )
         );
-      }).map((item: any) => ({
+      }).map((item) => ({
         ...item,
-        badgeValue: typeof item.badge === 'function' ? item.badge() : (item.badge || 0)
+        badgeValue: item.badgeKey === 'conflicts' ? this.activeConflictCount : 0,
       }));
     },
 
