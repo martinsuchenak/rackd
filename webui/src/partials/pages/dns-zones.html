@@ -114,7 +114,7 @@
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(zone.last_sync_at)"></td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button @click="window.location.href = getRecordsUrl(zone.id)"
+                  <button @click="navigateToRecords(zone.id)"
                     class="px-3 py-2 text-sm text-purple-800 dark:text-purple-200 hover:text-purple-900 dark:hover:text-purple-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
                     :aria-label="getZoneAriaLabel(zone.name, 'View records for')">Records</button>
                   <button x-show="$store.permissions.canUpdate('dns-zone')" @click="openSyncModal(zone)"
@@ -406,8 +406,8 @@
           <p class="text-gray-800 dark:text-gray-200 mb-4">Import existing DNS records from <strong
               x-text="getSelectedZoneName()"></strong> into rackd?</p>
           <div x-show="syncResult" class="mb-4 p-3 rounded-md" :class="getSyncResultClass()" role="alert">
-            <p x-text="syncResult && syncResult.message"></p>
-            <p x-show="syncResult && syncResult.details" class="mt-1 text-sm" x-text="syncResult && syncResult.details">
+            <p x-text="getSyncResultMessage()"></p>
+            <p x-show="getSyncResultDetails()" class="mt-1 text-sm" x-text="getSyncResultDetails()">
             </p>
           </div>
           <div class="flex justify-end gap-3">

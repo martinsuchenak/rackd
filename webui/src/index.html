@@ -79,7 +79,7 @@
         </aside>
 
         <!-- Mobile sidebar overlay -->
-        <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak
+        <div x-show="sidebarOpen" @click="closeSidebar()" class="fixed inset-0 bg-black/50 z-30 md:hidden" x-cloak
           aria-hidden="true"></div>
 
         <!-- Main content area -->
@@ -87,7 +87,7 @@
           <!-- Top bar -->
           <header
             class="sticky top-0 z-20 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center px-4 gap-4">
-            <button @click="sidebarOpen = !sidebarOpen"
+            <button @click="toggleSidebar()"
               class="md:hidden p-2 text-gray-800 dark:text-gray-200 hover:bg-[var(--muted)] rounded-md focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Toggle sidebar" :aria-expanded="sidebarOpen">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -113,7 +113,7 @@
                   aria-live="polite">Searching...</div>
                 <template x-for="(result, index) in results" :key="getResultKey(result)">
                   <a :id="'search-result-' + index" :href="getResultUrl(result)" @click.prevent="selectResult(result)"
-                    @mouseenter="selectedIndex = index"
+                    @mouseenter="setSelectedIndex(index)"
                     class="block px-4 py-3 text-sm text-gray-900 dark:text-gray-50 hover:bg-[var(--muted)] cursor-pointer focus:outline-none focus:bg-[var(--muted)] focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                     :class="{ 'bg-[var(--muted)]': index === selectedIndex }" role="option"
                     :aria-selected="index === selectedIndex">

@@ -27,6 +27,7 @@ interface SearchData {
   shouldShowResults(): boolean;
   getActiveDescendant(): string | undefined;
   hasResults(): boolean;
+  setSelectedIndex(index: number): void;
 }
 
 export function globalSearch(): SearchData {
@@ -158,6 +159,9 @@ export function globalSearch(): SearchData {
     },
     hasResults(): boolean {
       return this.results.length > 0;
+    },
+    setSelectedIndex(index: number): void {
+      this.selectedIndex = index;
     },
   };
 }

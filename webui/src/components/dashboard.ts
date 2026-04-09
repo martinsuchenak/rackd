@@ -11,6 +11,7 @@ export function dashboardComponent() {
     refreshInterval: 60, // 60 seconds default
     autoRefresh: true,
     refreshTimer: null as number | null,
+    showStaleList: false,
 
     async init(): Promise<void> {
       await this.loadStats();
@@ -53,6 +54,10 @@ export function dashboardComponent() {
       } else {
         this.startAutoRefresh();
       }
+    },
+
+    toggleStaleList(): void {
+      this.showStaleList = !this.showStaleList;
     },
 
     formatUtilization(value: number): string {

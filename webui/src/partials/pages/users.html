@@ -437,7 +437,7 @@
                 </template>
               </div>
             </div>
-            <div x-show="(selectedUser && selectedUser.roles || []).length === 0"
+            <div x-show="!hasSelectedUserRoles()"
               class="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
               <p class="text-sm text-gray-600 dark:text-gray-400">This user has no assigned roles. Grant them roles to
                 define their permissions.</p>

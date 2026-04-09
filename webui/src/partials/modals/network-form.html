@@ -46,7 +46,7 @@
           <label for="network-vlan" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
             VLAN ID
             <button type="button" 
-                    @click="showVlanHelp = !showVlanHelp"
+                    @click="toggleVlanHelp()"
                     class="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs text-gray-600 dark:text-gray-400 border border-gray-400 dark:border-gray-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500"
                     :aria-expanded="showVlanHelp"
                     aria-label="Help for VLAN ID field">?</button>

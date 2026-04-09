@@ -119,6 +119,10 @@ export function discoveryList() {
       }, 50);
     },
 
+    closeScanModal(): void {
+      this.showScanModal = false;
+    },
+
     openPromoteModal(device: DiscoveredDevice): void {
       this.promoteDevice = device;
       this.promoteName = device.hostname || device.ip;
@@ -128,6 +132,10 @@ export function discoveryList() {
       setTimeout(() => {
         (document.querySelector('[x-show="showPromoteModal"] input[type="text"]') as HTMLInputElement)?.focus();
       }, 50);
+    },
+
+    closePromoteModal(): void {
+      this.showPromoteModal = false;
     },
 
     async init(): Promise<void> {

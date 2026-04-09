@@ -78,6 +78,7 @@ interface UsersListData {
   canDeleteUser(user: User): boolean;
   hasUserRoles(user: User): boolean;
   getUserRoles(user: User): Role[];
+  hasSelectedUserRoles(): boolean;
 }
 
 export function usersList() {
@@ -637,6 +638,10 @@ export function usersList() {
 
     getUserRoles(user: User | null): Role[] {
       return user?.roles || [];
+    },
+
+    hasSelectedUserRoles(): boolean {
+      return (this.selectedUser?.roles || []).length > 0;
     },
 
     canUpdateRoles(): boolean {

@@ -72,7 +72,7 @@
 
     <!-- Create Modal -->
     <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50" @click="showCreateModal = false"></div>
+      <div class="fixed inset-0 bg-black/50" @click="closeCreateModal()"></div>
       <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Scan Profile</h3>
         <form @submit.prevent="createProfile()">
@@ -133,7 +133,7 @@
             </div>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
+            <button type="button" @click="closeCreateModal()" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
             <button type="submit" :disabled="loading" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
               <span x-show="!loading">Create Profile</span>
               <span x-show="loading">Creating...</span>
@@ -145,7 +145,7 @@
 
     <!-- Edit Modal -->
     <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50" @click="showEditModal = false"></div>
+      <div class="fixed inset-0 bg-black/50" @click="closeEditModal()"></div>
       <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Scan Profile</h3>
         <form @submit.prevent="updateProfile()">

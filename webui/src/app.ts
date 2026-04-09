@@ -324,6 +324,14 @@ function router() {
       }
     },
 
+    closeSidebar() {
+      this.sidebarOpen = false;
+    },
+
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
+
     hasBadge(item: any): boolean {
       return item.badgeValue > 0;
     },

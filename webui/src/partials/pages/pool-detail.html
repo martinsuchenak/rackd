@@ -8,9 +8,9 @@
         <button @click="$dispatch('nav', network ? '/networks/detail?id=' + network.id : '/networks')"
           class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mr-2">&larr;</button>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="pool && pool.name"></h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="getPoolName()"></h1>
           <p class="text-sm text-gray-500 dark:text-gray-400" x-show="network">Network: <span
-              x-text="network && network.name"></span></p>
+              x-text="getNetworkName()"></span></p>
         </div>
       </div>
       <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()"
@@ -24,19 +24,19 @@
         <dl class="grid grid-cols-2 gap-4">
           <div>
             <dt class="text-sm text-gray-500 dark:text-gray-400">Start IP</dt>
-            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.start_ip"></dd>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="getPoolStartIP()"></dd>
           </div>
           <div>
             <dt class="text-sm text-gray-500 dark:text-gray-400">End IP</dt>
-            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.end_ip"></dd>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="getPoolEndIP()"></dd>
           </div>
           <div>
             <dt class="text-sm text-gray-500 dark:text-gray-400">Gateway</dt>
-            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.gateway || '-'"></dd>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="getPoolGateway()"></dd>
           </div>
           <div>
             <dt class="text-sm text-gray-500 dark:text-gray-400">DNS Servers</dt>
-            <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.dns_servers || '-'"></dd>
+            <dd class="font-medium text-gray-900 dark:text-white" x-text="getPoolDNSServers()"></dd>
           </div>
         </dl>
         <div x-show="hasTags()" class="mt-4">
@@ -48,9 +48,9 @@
             </template>
           </div>
         </div>
-        <div x-show="pool && pool.description" class="mt-4">
+        <div x-show="hasPoolDescription()" class="mt-4">
           <dt class="text-sm text-gray-500 dark:text-gray-400">Description</dt>
-          <dd class="font-medium text-gray-900 dark:text-white" x-text="pool && pool.description"></dd>
+          <dd class="font-medium text-gray-900 dark:text-white" x-text="getPoolDescription()"></dd>
         </div>
 
         <!-- Next IP & Reserve -->
@@ -298,7 +298,7 @@
         Reservation</h2>
       <p id="delete-reservation-desc" class="text-gray-800 dark:text-gray-200 mb-6">
         Are you sure you want to delete the reservation for <strong
-          x-text="deleteReservationItem && deleteReservationItem.ip_address || ''"></strong>? This action cannot be
+          x-text="getDeleteReservationAddress()"></strong>? This action cannot be
         undone.
       </p>
       <div class="flex justify-end gap-3">

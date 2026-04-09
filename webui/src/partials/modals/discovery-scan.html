@@ -1,5 +1,5 @@
 <div x-show="showScanModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="fixed inset-0 bg-black/50" @click="showScanModal = false"></div>
+  <div class="fixed inset-0 bg-black/50" @click="closeScanModal()"></div>
   <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">New Discovery Scan</h3>
     <form @submit.prevent="startScan()">
@@ -25,7 +25,7 @@
         </div>
       </div>
       <div class="flex justify-end gap-3 mt-6">
-        <button type="button" @click="showScanModal = false"
+        <button type="button" @click="closeScanModal()"
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" :disabled="scanning"
           class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">

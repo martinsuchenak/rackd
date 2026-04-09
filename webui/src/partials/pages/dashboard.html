@@ -129,10 +129,10 @@
           </div>
 
           <!-- Health Alerts -->
-          <div class="bg-[var(--card)] rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6" x-data="{ showStaleList: false }">
+          <div class="bg-[var(--card)] rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-6">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Health Alerts</h2>
             <div x-show="stats.stale_devices > 0" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30" @click="showStaleList = !showStaleList">
+              <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30" @click="toggleStaleList()">
                 <div class="flex items-center gap-3">
                   <div class="text-yellow-600 dark:text-yellow-400">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

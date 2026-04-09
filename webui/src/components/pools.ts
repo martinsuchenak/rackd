@@ -50,6 +50,15 @@ interface PoolDetailData {
   hasHeatmap(): boolean;
   hasReservations(): boolean;
   hasPoolDevices(): boolean;
+  getPoolName(): string;
+  getNetworkName(): string;
+  getPoolStartIP(): string;
+  getPoolEndIP(): string;
+  getPoolGateway(): string;
+  getPoolDNSServers(): string;
+  hasPoolDescription(): boolean;
+  getPoolDescription(): string;
+  getDeleteReservationAddress(): string;
 }
 
 export function poolDetail(): PoolDetailData {
@@ -308,6 +317,42 @@ export function poolDetail(): PoolDetailData {
 
     hasPoolDevices(): boolean {
       return this.poolDevices.length > 0;
+    },
+
+    getPoolName(): string {
+      return this.pool?.name || '';
+    },
+
+    getNetworkName(): string {
+      return this.network?.name || '';
+    },
+
+    getPoolStartIP(): string {
+      return this.pool?.start_ip || '';
+    },
+
+    getPoolEndIP(): string {
+      return this.pool?.end_ip || '';
+    },
+
+    getPoolGateway(): string {
+      return (this.pool as any)?.gateway || '-';
+    },
+
+    getPoolDNSServers(): string {
+      return (this.pool as any)?.dns_servers || '-';
+    },
+
+    hasPoolDescription(): boolean {
+      return !!this.pool?.description;
+    },
+
+    getPoolDescription(): string {
+      return this.pool?.description || '';
+    },
+
+    getDeleteReservationAddress(): string {
+      return this.deleteReservationItem?.ip_address || '';
     }
   };
 }

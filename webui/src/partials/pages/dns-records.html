@@ -323,7 +323,7 @@
                 <input id="link-device-search" type="text" x-model="linkDeviceSearch" placeholder="Search devices..."
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px] mb-2">
                 <select id="link-device-select" x-model="linkSelectedDeviceId" required aria-required="true"
-                  aria-label="Select a device" @change="linkSelectedAddressId = ''"
+                  aria-label="Select a device" @change="resetLinkSelectedAddress()"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]"
                   size="6">
                   <template x-for="device in filteredDevices" :key="device.id">

@@ -36,6 +36,7 @@ interface NetworkListData {
   openAddModal(): void;
   openEditModal(network: Network): void;
   closeModal(): void;
+  toggleVlanHelp(): void;
   saveNetwork(): Promise<void>;
   getNetworkDetailLink(network: Network): string;
   getDevicesLink(network: Network): string;
@@ -214,6 +215,10 @@ export function networkList() {
       this.focusTrapCleanup?.();
       this.focusTrapCleanup = null;
       this.showModal = false;
+    },
+
+    toggleVlanHelp(): void {
+      this.showVlanHelp = !this.showVlanHelp;
     },
 
     validateNetwork(): boolean {

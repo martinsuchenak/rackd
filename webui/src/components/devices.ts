@@ -463,6 +463,14 @@ export function deviceList() {
       this.showDeviceModal = false;
     },
 
+    setModalTab(tab: 'general' | 'addresses' | 'tags' | 'customfields'): void {
+      this.modalTab = tab;
+    },
+
+    toggleHostnameHelp(): void {
+      this.showHostnameHelp = !this.showHostnameHelp;
+    },
+
     addTag(): void {
       const tag = this.tagInput.trim();
       if (tag && !this.editDevice.tags?.includes(tag)) {
@@ -957,6 +965,32 @@ export function deviceDetail() {
       this.showEditModal = false;
     },
 
+    setModalTab(tab: 'general' | 'addresses' | 'tags' | 'customfields'): void {
+      this.modalTab = tab;
+    },
+
+    getEditDeviceAddressesCount(): number {
+      return this.editDevice.addresses?.length || 0;
+    },
+
+    hasEditDeviceAddresses(): boolean {
+      return this.getEditDeviceAddressesCount() > 0;
+    },
+
+    getEditDeviceTagsAndDomainsCount(): number {
+      const tagCount = this.editDevice.tags?.length || 0;
+      const domainCount = this.editDevice.domains?.length || 0;
+      return tagCount + domainCount;
+    },
+
+    hasEditDeviceTagsOrDomains(): boolean {
+      return this.getEditDeviceTagsAndDomainsCount() > 0;
+    },
+
+    hasCustomFieldDefinitions(): boolean {
+      return this.customFieldDefinitions.length > 0;
+    },
+
     addTag(): void {
       const tag = this.tagInput.trim();
       if (tag && !this.editDevice.tags?.includes(tag)) {
@@ -1046,6 +1080,14 @@ export function deviceDetail() {
 
     closeRelationshipModal(): void {
       this.showRelationshipModal = false;
+    },
+
+    openRelationshipDropdown(): void {
+      this.showRelationshipDropdown = true;
+    },
+
+    closeRelationshipDropdown(): void {
+      this.showRelationshipDropdown = false;
     },
 
     clearRelationshipDevice(): void {

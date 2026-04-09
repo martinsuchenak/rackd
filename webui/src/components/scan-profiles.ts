@@ -75,6 +75,10 @@ export function scanProfilesList() {
       this.showCreateModal = true;
     },
 
+    closeCreateModal(): void {
+      this.showCreateModal = false;
+    },
+
     openEditModal(profile: ScanProfile): void {
       this.editingProfile = profile;
       this.formName = profile.name;

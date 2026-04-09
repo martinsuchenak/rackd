@@ -201,6 +201,9 @@ interface DatacenterDetailData {
   openEditModal(): void;
   closeEditModal(): void;
   saveEdit(): Promise<void>;
+  getDatacenterName(): string;
+  getDatacenterLocation(): string;
+  getDatacenterDescription(): string;
 }
 
 export function datacenterDetail(): DatacenterDetailData {
@@ -324,6 +327,18 @@ export function datacenterDetail(): DatacenterDetailData {
       } finally {
         this.saving = false;
       }
+    },
+
+    getDatacenterName(): string {
+      return this.datacenter?.name || '';
+    },
+
+    getDatacenterLocation(): string {
+      return this.datacenter?.location || '-';
+    },
+
+    getDatacenterDescription(): string {
+      return this.datacenter?.description || '-';
     },
 
     hasDevices(): boolean {

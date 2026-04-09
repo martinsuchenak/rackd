@@ -39,7 +39,8 @@ interface GraphData {
   get filteredDevices(): Device[];
   get filteredRelationships(): DeviceRelationship[];
   renderGraph(): void;
-  applyLayout(): void;
+    applyLayout(): void;
+    toggleFilters(): void;
   resetFilters(): void;
   zoomIn(): void;
   zoomOut(): void;
@@ -357,6 +358,10 @@ export function deviceGraph(): GraphData {
       };
 
       this.cy.layout(layoutOptions[this.selectedLayout] as any || layoutOptions.cose as any).run();
+    },
+
+    toggleFilters(): void {
+      this.showFilters = !this.showFilters;
     },
 
     resetFilters(): void {

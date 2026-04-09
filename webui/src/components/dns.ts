@@ -438,6 +438,7 @@ interface DNSZonesData {
   getAutoSyncClass(autoSync: boolean): string;
   getSyncStatusClass(status?: SyncStatus): string;
   getRecordsUrl(zoneId: string): string;
+  navigateToRecords(zoneId: string): void;
   getZoneAriaLabel(zoneName: string, action: string): string;
   getEditInputId(id: string, prefix: string): string;
   getSelectedZoneName(): string;
@@ -800,6 +801,10 @@ export function dnsZonesComponent(): DNSZonesData {
       return '/dns/records/' + zoneId;
     },
 
+    navigateToRecords(zoneId: string): void {
+      window.location.href = this.getRecordsUrl(zoneId);
+    },
+
     getZoneAriaLabel(zoneName: string, action: string): string {
       return action + ' ' + zoneName;
     },
@@ -941,6 +946,7 @@ interface DNSRecordsData {
   validateForm(): boolean;
   getInputClass(hasError: boolean, additionalClasses?: string): string;
   getAriaDescribedBy(errorId: string, hasError: boolean): string | undefined;
+  resetLinkSelectedAddress(): void;
 
   // Utilities
   formatDate(dateStr: string): string;
@@ -1138,6 +1144,10 @@ export function dnsRecordsComponent(): DNSRecordsData {
       this.promoteDeviceName = '';
       this.promoteDatacenterId = '';
       this.promoteTags = '';
+    },
+
+    resetLinkSelectedAddress(): void {
+      this.linkSelectedAddressId = '';
     },
 
     hasRecords(): boolean {
