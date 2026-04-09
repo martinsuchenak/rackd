@@ -120,7 +120,7 @@ func (s *NetworkService) GetUtilization(ctx context.Context, networkID string) (
 }
 
 func (s *NetworkService) Search(ctx context.Context, query string) ([]model.Network, error) {
-	if err := requirePermission(ctx, s.store, "networks", "search"); err != nil {
+	if err := requirePermission(ctx, s.store, "networks", "list"); err != nil {
 		return nil, err
 	}
 

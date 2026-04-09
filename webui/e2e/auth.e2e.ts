@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { login } from './helpers';
+import { login } from './auth';
 
 test('redirects unauthenticated users to login', async ({ page }) => {
   await page.goto('/users');

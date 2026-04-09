@@ -97,7 +97,7 @@ func (s *DatacenterService) GetDevices(ctx context.Context, datacenterID string)
 }
 
 func (s *DatacenterService) Search(ctx context.Context, query string) ([]model.Datacenter, error) {
-	if err := requirePermission(ctx, s.store, "datacenters", "search"); err != nil {
+	if err := requirePermission(ctx, s.store, "datacenters", "list"); err != nil {
 		return nil, err
 	}
 

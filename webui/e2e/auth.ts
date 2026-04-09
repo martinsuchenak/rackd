@@ -8,3 +8,15 @@ export async function login(page: Page, username = 'admin', password = 'securepa
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 }
+
+export async function openUserMenu(page: Page): Promise<void> {
+  const trigger = page.locator('header [aria-haspopup="true"]').first();
+  await trigger.click();
+  await expect(page.getByRole('menuitem', { name: 'Sign Out' })).toBeVisible();
+}
+
+export async function logout(page: Page): Promise<void> {
+  await openUserMenu(page);
+  await page.getByRole('menuitem', { name: 'Sign Out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+}

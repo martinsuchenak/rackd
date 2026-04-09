@@ -163,8 +163,33 @@ Current smoke coverage includes:
 
 - unauthenticated redirect to `/login`
 - admin login with the bootstrapped user
-- modal close on `Escape`
+- invalid login feedback
+- sign out flow
+- self-service password change and re-login
+- dashboard navigation to the main inventory pages
+- datacenter and network creation flow
+- device creation with an address and device-detail verification
+- device-list search filtering
+- datacenter detail edit flow
+- network detail pool create and delete flow
+- device detail edit flow
+- datacenter edit and delete flows
+- network edit and delete flows
+- device edit and delete flows
+- discovery scan validation and start flow
+- scan profile creation for scheduled scans
+- scheduled scan create, edit, enable/disable, and delete flows
+- global search keyboard navigation to a device detail page
+- profile edit verification through the user menu
+- admin-driven password reset flow
 - create-user happy path
+- custom-role permission checks on readable and restricted pages
+- viewer-role permission-gated UI checks on readable pages
+- DNS provider create, edit, and delete flows
+- DNS zone create, records navigation, edit, and delete flows
+- DNS records linked-device navigation, edit, and delete flows
+- modal close on `Escape`
+- discovery modal close on overlay click
 
 ## Alpine.js Components
 

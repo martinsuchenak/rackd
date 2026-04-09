@@ -319,7 +319,7 @@ func (s *DeviceService) Delete(ctx context.Context, id string) error {
 }
 
 func (s *DeviceService) Search(ctx context.Context, query string) ([]model.Device, error) {
-	if err := requirePermission(ctx, s.store, "devices", "search"); err != nil {
+	if err := requirePermission(ctx, s.store, "devices", "list"); err != nil {
 		return nil, err
 	}
 

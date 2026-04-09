@@ -551,8 +551,18 @@ Add browser-level smoke tests that exercise the live app against a disposable lo
 - Added initial smoke tests for:
   - auth redirect
   - admin login
+  - dashboard navigation
+  - datacenter and network creation
+  - device creation and detail navigation
+  - device-list search filtering
+  - datacenter edit/delete
+  - network edit/delete
+  - device edit/delete
   - users modal `Escape` close
   - user creation
+- Split the original helper file into focused modules:
+  - [`webui/e2e/auth.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e/auth.ts)
+  - [`webui/e2e/inventory-helpers.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e/inventory-helpers.ts)
 - Scoped dialog interactions to named modal roots so the E2E assertions do not collide with background UI controls
 - Serialized the smoke suite to keep it deterministic against a single disposable Rackd instance
 - Registered `test:e2e`, `test:e2e:headed`, and `test:e2e:install` in [`webui/package.json`](/Users/martinsuchenak/Devel/projects/rackd/webui/package.json)
