@@ -13,7 +13,7 @@
               x-text="getNetworkName()"></span></p>
         </div>
       </div>
-      <button x-show="$store.permissions.canDelete('networks')" @click="confirmDelete()"
+      <button x-show="$store.permissions.canDelete('pools')" @click="confirmDelete()"
         class="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
     </div>
 
@@ -63,7 +63,7 @@
               <span x-show="fetchingNextIP">Fetching...</span>
             </button>
             <span x-show="nextIP" class="font-mono text-lg text-gray-900 dark:text-white" x-text="nextIP"></span>
-            <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()"
+            <button x-show="$store.permissions.canCreate('reservations')" @click="openReserveModal()"
               class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
               + Reserve IP
             </button>
@@ -103,7 +103,7 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Reservations</h2>
-        <button x-show="$store.permissions.canCreate('reservation')" @click="openReserveModal()"
+        <button x-show="$store.permissions.canCreate('reservations')" @click="openReserveModal()"
           class="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700">+ New Reservation</button>
       </div>
       <div
@@ -147,7 +147,7 @@
                   x-text="formatReservationExpires(reservation.expires_at)">
                 </td>
                 <td class="px-6 py-4">
-                  <button x-show="$store.permissions.canDelete('reservation')"
+                  <button x-show="$store.permissions.canDelete('reservations')"
                     @click="confirmDeleteReservation(reservation)"
                     class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 rounded transition-colors">Delete</button>
                 </td>

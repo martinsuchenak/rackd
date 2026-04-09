@@ -74,6 +74,10 @@ Create one source of truth for route prefixes, titles, nav entries, and required
 
 ## PR 2: RBAC Name Audit And Fixes
 
+### Status
+
+- Completed on 2026-04-09
+
 ### Goal
 
 Make all frontend permission checks use backend RBAC resource names consistently.
@@ -109,6 +113,24 @@ Make all frontend permission checks use backend RBAC resource names consistently
 
 - Every frontend permission string matches a backend permission resource
 - No feature is gated by one resource in routes and another in templates
+
+### Progress Notes
+
+- Updated [`webui/src/core/features.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/core/features.ts) so route and nav gating now matches backend RBAC for:
+  - `scan-profiles`
+  - `scheduled-scans`
+  - `pools`
+  - `dns-provider`
+  - `dns-zone`
+- Updated [`webui/src/partials/pages/webhooks.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/webhooks.html) from `webhook` to `webhooks`
+- Updated [`webui/src/partials/pages/pool-detail.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/pool-detail.html) from `reservation` to `reservations` and from `networks` to `pools` for pool deletion
+- Updated [`webui/src/partials/pages/network-detail.html`](/Users/martinsuchenak/Devel/projects/rackd/webui/src/partials/pages/network-detail.html) so pool create/edit/delete actions use `pools` instead of `networks`
+- Re-checked remaining `networks` and `dns` permission uses; those are valid for network actions and DNS record actions respectively
+
+### Validation
+
+- `cd webui && bun run typecheck`
+- `cd webui && bun run build:js`
 
 ## PR 3: Typed Alpine Helper Layer
 

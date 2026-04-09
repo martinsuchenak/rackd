@@ -52,7 +52,7 @@
     <div class="mt-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">IP Pools</h2>
-        <button x-show="$store.permissions.canCreate('networks')" @click="openAddPoolModal()"
+        <button x-show="$store.permissions.canCreate('pools')" @click="openAddPoolModal()"
           class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors">Add
           Pool</button>
       </div>
@@ -96,10 +96,10 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <button x-show="$store.permissions.canUpdate('networks')" @click="openEditPoolModal(pool)"
+                  <button x-show="$store.permissions.canUpdate('pools')" @click="openEditPoolModal(pool)"
                     class="text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:underline mr-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                     :aria-label="getEditPoolAriaLabel(pool)">Edit</button>
-                  <button x-show="$store.permissions.canDelete('networks')" @click="confirmDeletePool(pool)"
+                  <button x-show="$store.permissions.canDelete('pools')" @click="confirmDeletePool(pool)"
                     class="text-sm text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                     :aria-label="getDeletePoolAriaLabel(pool)">Delete</button>
                 </td>

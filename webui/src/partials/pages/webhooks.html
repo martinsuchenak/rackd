@@ -3,7 +3,7 @@
   <div x-data="webhookComponent()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">Webhooks</h1>
-      <button x-show="$store.permissions.canCreate('webhook')" @click="openCreateModal()"
+      <button x-show="$store.permissions.canCreate('webhooks')" @click="openCreateModal()"
         class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">
         Add Webhook
       </button>
@@ -41,7 +41,7 @@
           </tr>
           <tr x-show="!loading && !hasWebhooks()">
             <td colspan="5" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No webhooks configured.
-              <button x-show="$store.permissions.canCreate('webhook')" @click="openCreateModal()"
+              <button x-show="$store.permissions.canCreate('webhooks')" @click="openCreateModal()"
                 class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Create your first
                 webhook</button>
             </td>
@@ -49,10 +49,10 @@
           <template x-for="webhook in webhooks" :key="webhook.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-6 py-4">
-                <button x-show="$store.permissions.canUpdate('webhook')" @click="openEditModal(webhook)"
+                <button x-show="$store.permissions.canUpdate('webhooks')" @click="openEditModal(webhook)"
                   class="font-medium text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
                   x-text="webhook.name"></button>
-                <span x-show="!$store.permissions.canUpdate('webhook')"
+                <span x-show="!$store.permissions.canUpdate('webhooks')"
                   class="font-medium text-gray-900 dark:text-gray-100" x-text="webhook.name"></span>
                 <div x-show="webhook.description" class="text-xs text-gray-500 dark:text-gray-400"
                   x-text="webhook.description"></div>
@@ -84,10 +84,10 @@
                   <button @click="pingWebhook(webhook.id)"
                     class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
                     :aria-label="'Test ' + webhook.name">Test</button>
-                  <button x-show="$store.permissions.canUpdate('webhook')" @click="openEditModal(webhook)"
+                  <button x-show="$store.permissions.canUpdate('webhooks')" @click="openEditModal(webhook)"
                     class="px-3 py-2 text-sm text-blue-800 dark:text-blue-200 hover:text-blue-900 dark:hover:text-blue-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
                     :aria-label="'Edit ' + webhook.name">Edit</button>
-                  <button x-show="$store.permissions.canDelete('webhook')" @click="openDeleteModal(webhook)"
+                  <button x-show="$store.permissions.canDelete('webhooks')" @click="openDeleteModal(webhook)"
                     class="px-3 py-2 text-sm text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
                     :aria-label="'Delete ' + webhook.name">Delete</button>
                 </div>
