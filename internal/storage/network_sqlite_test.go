@@ -248,6 +248,43 @@ func TestNetworkOperations_DeleteWithAddresses(t *testing.T) {
 	}
 }
 
+func TestNetworkOperations_Search(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+	ctx := context.Background()
+
+	dc := &model.Datacenter{Name: "Search DC", Location: "Perth"}
+	if err := storage.CreateDatacenter(ctx, dc); err != nil {
+		t.Fatalf("CreateDatacenter failed: %v", err)
+	}
+
+	network := &model.Network{
+		Name:         "Edge Search Network",
+		Subnet:       "10.55.0.0/24",
+		DatacenterID: dc.ID,
+		Description:  "search target",
+	}
+	if err := storage.CreateNetwork(ctx, network); err != nil {
+		t.Fatalf("CreateNetwork failed: %v", err)
+	}
+
+	results, err := storage.SearchNetworks(ctx, "Edge")
+	if err != nil {
+		t.Fatalf("SearchNetworks failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected search results")
+	}
+
+	all, err := storage.SearchNetworks(ctx, "")
+	if err != nil {
+		t.Fatalf("SearchNetworks empty query failed: %v", err)
+	}
+	if len(all) == 0 {
+		t.Fatal("expected empty-query search to fall back to ListNetworks")
+	}
+}
+
 func TestNetworkOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()

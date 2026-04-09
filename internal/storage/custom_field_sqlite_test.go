@@ -270,6 +270,75 @@ func TestCustomFieldDefinition_List(t *testing.T) {
 	}
 }
 
+func TestCustomFieldValuesWithDefinitionsAndValidation(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+	ctx := context.Background()
+
+	device := &model.Device{Name: "CustomFieldDevice"}
+	if err := storage.CreateDevice(ctx, device); err != nil {
+		t.Fatalf("CreateDevice failed: %v", err)
+	}
+
+	selectDef := &model.CustomFieldDefinition{
+		Name:    "Environment",
+		Key:     "environment",
+		Type:    model.CustomFieldTypeSelect,
+		Options: []string{"prod", "dev"},
+	}
+	textDef := &model.CustomFieldDefinition{
+		Name: "Asset Tag",
+		Key:  "asset_tag_2",
+		Type: model.CustomFieldTypeText,
+	}
+	for _, def := range []*model.CustomFieldDefinition{selectDef, textDef} {
+		if err := storage.CreateCustomFieldDefinition(ctx, def); err != nil {
+			t.Fatalf("CreateCustomFieldDefinition failed: %v", err)
+		}
+	}
+
+	if err := storage.SetCustomFieldValue(ctx, &model.CustomFieldValue{
+		DeviceID:    device.ID,
+		FieldID:     selectDef.ID,
+		StringValue: "prod",
+	}); err != nil {
+		t.Fatalf("SetCustomFieldValue select failed: %v", err)
+	}
+	if err := storage.SetCustomFieldValue(ctx, &model.CustomFieldValue{
+		DeviceID:    device.ID,
+		FieldID:     textDef.ID,
+		StringValue: "asset-123",
+	}); err != nil {
+		t.Fatalf("SetCustomFieldValue text failed: %v", err)
+	}
+
+	values, err := storage.GetCustomFieldValuesWithDefinitions(ctx, device.ID)
+	if err != nil {
+		t.Fatalf("GetCustomFieldValuesWithDefinitions failed: %v", err)
+	}
+	if len(values) != 2 {
+		t.Fatalf("expected 2 custom field values with definitions, got %d", len(values))
+	}
+
+	if err := storage.ValidateCustomFieldValue(ctx, selectDef.ID, "prod"); err != nil {
+		t.Fatalf("ValidateCustomFieldValue valid select failed: %v", err)
+	}
+	if err := storage.ValidateCustomFieldValue(ctx, selectDef.ID, "invalid"); err == nil {
+		t.Fatal("expected invalid select value to fail validation")
+	}
+
+	if err := storage.DeleteCustomFieldValuesForDefinition(ctx, selectDef.ID); err != nil {
+		t.Fatalf("DeleteCustomFieldValuesForDefinition failed: %v", err)
+	}
+	values, err = storage.GetCustomFieldValuesWithDefinitions(ctx, device.ID)
+	if err != nil {
+		t.Fatalf("GetCustomFieldValuesWithDefinitions after delete failed: %v", err)
+	}
+	if len(values) != 1 {
+		t.Fatalf("expected 1 remaining custom field value, got %d", len(values))
+	}
+}
+
 func TestCustomFieldDefinition_SelectTypeWithOptions(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()

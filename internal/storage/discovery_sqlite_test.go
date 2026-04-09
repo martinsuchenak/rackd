@@ -756,3 +756,82 @@ func TestListDiscoveryRulesMultiple(t *testing.T) {
 		t.Errorf("expected 3 rules, got %d", len(rules))
 	}
 }
+
+func TestDeleteDiscoveryScanAndDiscoveredDevicesByNetwork(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+	ctx := context.Background()
+
+	network1 := &model.Network{Name: "DeleteNet1", Subnet: "192.168.10.0/24"}
+	network2 := &model.Network{Name: "DeleteNet2", Subnet: "192.168.20.0/24"}
+	if err := storage.CreateNetwork(ctx, network1); err != nil {
+		t.Fatalf("CreateNetwork 1 failed: %v", err)
+	}
+	if err := storage.CreateNetwork(ctx, network2); err != nil {
+		t.Fatalf("CreateNetwork 2 failed: %v", err)
+	}
+
+	scan := &model.DiscoveryScan{
+		NetworkID: network1.ID,
+		Status:    model.ScanStatusCompleted,
+		ScanType:  model.ScanTypeQuick,
+	}
+	if err := storage.CreateDiscoveryScan(ctx, scan); err != nil {
+		t.Fatalf("CreateDiscoveryScan failed: %v", err)
+	}
+	if err := storage.DeleteDiscoveryScan(ctx, scan.ID); err != nil {
+		t.Fatalf("DeleteDiscoveryScan failed: %v", err)
+	}
+	if _, err := storage.GetDiscoveryScan(ctx, scan.ID); err != ErrScanNotFound {
+		t.Fatalf("expected ErrScanNotFound, got %v", err)
+	}
+	if err := storage.DeleteDiscoveryScan(ctx, "missing"); err != ErrScanNotFound {
+		t.Fatalf("expected ErrScanNotFound for missing scan, got %v", err)
+	}
+
+	for _, tc := range []struct {
+		ip        string
+		networkID string
+	}{
+		{"192.168.10.10", network1.ID},
+		{"192.168.10.11", network1.ID},
+		{"192.168.20.10", network2.ID},
+	} {
+		if err := storage.CreateDiscoveredDevice(ctx, &model.DiscoveredDevice{
+			IP:        tc.ip,
+			NetworkID: tc.networkID,
+			Status:    "online",
+		}); err != nil {
+			t.Fatalf("CreateDiscoveredDevice failed: %v", err)
+		}
+	}
+
+	if err := storage.DeleteDiscoveredDevicesByNetwork(ctx, network1.ID); err != nil {
+		t.Fatalf("DeleteDiscoveredDevicesByNetwork failed: %v", err)
+	}
+	devices1, err := storage.ListDiscoveredDevices(ctx, network1.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveredDevices network1 failed: %v", err)
+	}
+	if len(devices1) != 0 {
+		t.Fatalf("expected network1 devices to be deleted, got %d", len(devices1))
+	}
+	devices2, err := storage.ListDiscoveredDevices(ctx, network2.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveredDevices network2 failed: %v", err)
+	}
+	if len(devices2) != 1 {
+		t.Fatalf("expected network2 devices to remain, got %d", len(devices2))
+	}
+
+	if err := storage.DeleteDiscoveredDevicesByNetwork(ctx, ""); err != nil {
+		t.Fatalf("DeleteDiscoveredDevicesByNetwork all failed: %v", err)
+	}
+	devices2, err = storage.ListDiscoveredDevices(ctx, network2.ID)
+	if err != nil {
+		t.Fatalf("ListDiscoveredDevices network2 after delete all failed: %v", err)
+	}
+	if len(devices2) != 0 {
+		t.Fatalf("expected all discovered devices to be deleted, got %d", len(devices2))
+	}
+}

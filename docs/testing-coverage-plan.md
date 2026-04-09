@@ -371,6 +371,37 @@ Goal:
 - move `internal/storage` from `64.3%` toward `75%+`
 - move `internal/discovery` from `47.9%` toward `60%+`
 
+Status:
+
+- Completed
+
+Current progress:
+
+- Added dedicated storage regression tests for previously uncovered or lightly covered persistence modules:
+  - [`internal/storage/profiles_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/profiles_test.go)
+  - [`internal/storage/scheduled_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/scheduled_test.go)
+  - [`internal/storage/rbac_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/rbac_sqlite_test.go)
+  - [`internal/storage/session_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/session_sqlite_test.go)
+  - [`internal/storage/circuit_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/circuit_sqlite_test.go)
+- Expanded existing storage suites to cover Phase 4 focus areas:
+  - relationship note updates and global relationship listing in [`internal/storage/relationship_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/relationship_sqlite_test.go)
+  - discovery scan deletion and bulk discovered-device cleanup by network in [`internal/storage/discovery_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/discovery_sqlite_test.go)
+  - network and datacenter search persistence paths in [`internal/storage/network_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/network_sqlite_test.go) and [`internal/storage/datacenter_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/datacenter_sqlite_test.go)
+  - custom-field value joins, deletion-by-definition, and value validation in [`internal/storage/custom_field_sqlite_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/storage/custom_field_sqlite_test.go)
+- Added focused discovery-package control-flow tests in:
+  - [`internal/discovery/adaptive_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/discovery/adaptive_test.go)
+  - [`internal/discovery/unified_scanner_control_test.go`](/Users/martinsuchenak/Devel/projects/rackd/internal/discovery/unified_scanner_control_test.go)
+- Covered in the new discovery tests:
+  - adaptive timeout/worker defaults
+  - latency metrics and result-cache behavior
+  - `GetNetwork`, `ScanAdvanced`, and `CancelScan` branches
+  - quick-scan broadcast-skip behavior
+  - deterministic localhost port-scanning and host discovery
+  - persisted scan completion and discovered-device creation in `runScanWithOptions`
+- Package-local coverage improved to:
+  - `internal/storage`: `64.3%` -> `75.3%`
+  - `internal/discovery`: `47.9%` -> `60.2%`
+
 Focus for storage:
 
 - update paths
@@ -390,6 +421,12 @@ Success criteria:
 
 - every recent bugfix in storage/discovery has a regression test
 - key create/update/delete flows have failure-path coverage
+
+Follow-up items that can wait until later:
+
+- deeper provider- or protocol-specific discovery integrations such as SNMP and SSH, which remain intentionally shallow because deterministic tests there are more expensive
+- additional storage coverage for lower-priority modules like sessions backed by Valkey, migration down-paths, and specialized profile/scheduled helpers
+- broader discovery broadcast-parser coverage where current tests already protect the main scanner orchestration and persistence paths
 
 ## Phase 5: Target Background And Integration Components
 

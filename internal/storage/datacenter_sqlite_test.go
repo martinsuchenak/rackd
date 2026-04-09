@@ -230,6 +230,37 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 	}
 }
 
+func TestDatacenterOperations_Search(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+	ctx := context.Background()
+
+	dc := &model.Datacenter{
+		Name:        "Perth Search DC",
+		Location:    "Perth",
+		Description: "search target datacenter",
+	}
+	if err := storage.CreateDatacenter(ctx, dc); err != nil {
+		t.Fatalf("CreateDatacenter failed: %v", err)
+	}
+
+	results, err := storage.SearchDatacenters(ctx, "Perth")
+	if err != nil {
+		t.Fatalf("SearchDatacenters failed: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected datacenter search results")
+	}
+
+	all, err := storage.SearchDatacenters(ctx, "")
+	if err != nil {
+		t.Fatalf("SearchDatacenters empty query failed: %v", err)
+	}
+	if len(all) == 0 {
+		t.Fatal("expected empty-query search to fall back to ListDatacenters")
+	}
+}
+
 func TestDatacenterOperations_ListWithFilter(t *testing.T) {
 	storage := newTestStorage(t)
 	defer storage.Close()

@@ -220,3 +220,36 @@ func TestDeleteDeviceWithRelationships(t *testing.T) {
 		t.Errorf("expected 0 relationships after parent deletion, got %d", len(rels))
 	}
 }
+
+func TestRelationshipNotesAndListAll(t *testing.T) {
+	storage := newTestStorage(t)
+	defer storage.Close()
+	ctx := context.Background()
+
+	parent := &model.Device{Name: "ParentWithNotes"}
+	child := &model.Device{Name: "ChildWithNotes"}
+	if err := storage.CreateDevice(ctx, parent); err != nil {
+		t.Fatalf("CreateDevice parent failed: %v", err)
+	}
+	if err := storage.CreateDevice(ctx, child); err != nil {
+		t.Fatalf("CreateDevice child failed: %v", err)
+	}
+
+	if err := storage.AddRelationship(ctx, parent.ID, child.ID, model.RelationshipConnectedTo, "initial"); err != nil {
+		t.Fatalf("AddRelationship failed: %v", err)
+	}
+	if err := storage.UpdateRelationshipNotes(ctx, parent.ID, child.ID, model.RelationshipConnectedTo, "updated notes"); err != nil {
+		t.Fatalf("UpdateRelationshipNotes failed: %v", err)
+	}
+
+	all, err := storage.ListAllRelationships(ctx)
+	if err != nil {
+		t.Fatalf("ListAllRelationships failed: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("expected 1 relationship, got %d", len(all))
+	}
+	if all[0].Notes != "updated notes" {
+		t.Fatalf("expected updated notes, got %+v", all[0])
+	}
+}
