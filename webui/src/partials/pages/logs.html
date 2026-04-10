@@ -1,0 +1,100 @@
+<template x-if="route.startsWith('/logs')">
+  <div x-data="logsPage()">
+    <div class="flex items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Application Logs</h1>
+      </div>
+      <div class="flex items-center gap-2" x-show="$store.permissions.can('logs', 'export')">
+        <a :href="getExportURL('json')" class="inline-flex items-center px-3 py-2 text-sm bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors min-h-[44px]">Export JSON</a>
+        <a :href="getExportURL('csv')" class="inline-flex items-center px-3 py-2 text-sm bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors min-h-[44px]">Export CSV</a>
+      </div>
+    </div>
+
+    <div x-show="error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md border border-red-300 dark:border-red-800" x-text="error"></div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
+      <form class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3" @submit.prevent="applyFilters()">
+        <select x-model="filters.level" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <option value="">All levels</option>
+          <option value="trace">trace</option>
+          <option value="debug">debug</option>
+          <option value="info">info</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+          <option value="fatal">fatal</option>
+        </select>
+        <input type="text" x-model="filters.source" placeholder="Source" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <input type="text" x-model="filters.query" placeholder="Search message or fields" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <select x-model.number="filters.limit" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+          <option :value="50">50 rows</option>
+          <option :value="100">100 rows</option>
+          <option :value="250">250 rows</option>
+        </select>
+        <input type="datetime-local" x-model="filters.start_time" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <input type="datetime-local" x-model="filters.end_time" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 min-h-[44px]">Apply</button>
+        <button type="button" @click="clearFilters()" class="px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded cursor-pointer transition-colors min-h-[44px]">Clear filters</button>
+      </form>
+      <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Time</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Level</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Source</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Message</th>
+            <th class="px-4 py-3"><span class="sr-only">Details</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
+          <tr x-show="loading"><td colspan="5" class="px-4 py-8 text-center text-gray-600 dark:text-gray-400">Loading logs...</td></tr>
+          <tr x-show="!loading && !hasEntries()"><td colspan="5" class="px-4 py-8 text-center text-gray-600 dark:text-gray-400">No recent logs found</td></tr>
+          <template x-for="entry in entries" :key="entry.id">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200" x-text="formatDate(entry.timestamp)"></td>
+              <td class="px-4 py-3 text-sm"><span class="px-2 py-1 text-xs font-medium rounded-full" :class="getLevelClass(entry.level)" x-text="entry.level"></span></td>
+              <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200" x-text="entry.source || '-'"></td>
+              <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200 font-mono break-all" x-text="entry.message"></td>
+              <td class="px-4 py-3 text-right">
+                <button x-show="$store.permissions.can('logs', 'read')" @click="openDetail(entry)" class="px-3 py-1 text-sm text-blue-800 dark:text-blue-200 hover:underline rounded focus:outline-none focus:ring-[3px] focus:ring-blue-500">Details</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <nav class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between"
+        aria-label="Application log pagination">
+        <span class="text-sm text-gray-800 dark:text-gray-200"
+          x-text="hasEntries() ? ('Page ' + currentPage + ' • Showing ' + getPageStart() + ' to ' + getPageEnd()) : 'No results'"></span>
+        <div class="flex gap-2">
+          <button type="button" @click="previousPage()" :disabled="filters.offset === 0 || loading"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]">
+            Previous
+          </button>
+          <button type="button" @click="nextPage()" :disabled="!hasNextPage || loading"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors min-h-[44px]">
+            Next
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <div x-show="showDetailModal" x-cloak :class="$store.ui.modalViewport()" role="dialog" aria-modal="true" aria-labelledby="log-detail-title" @keydown.escape.window="closeModal()">
+      <div :class="$store.ui.modalBackdrop()" @click="closeModal()" aria-hidden="true"></div>
+      <div :class="$store.ui.modalPanel('lg')" x-trap.inert.noscroll="showDetailModal">
+        <button @click="closeModal()" :class="$store.ui.modalCloseButton()" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <h2 id="log-detail-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Log Entry</h2>
+        <div class="space-y-4 text-sm text-gray-800 dark:text-gray-200">
+          <div class="grid grid-cols-2 gap-4">
+            <div><div class="text-xs uppercase text-gray-500 dark:text-gray-400">Timestamp</div><div x-text="getSelectedEntryTimestamp()"></div></div>
+            <div><div class="text-xs uppercase text-gray-500 dark:text-gray-400">Level</div><div x-text="getSelectedEntryValue('level')"></div></div>
+            <div class="col-span-2"><div class="text-xs uppercase text-gray-500 dark:text-gray-400">Source</div><div x-text="getSelectedEntryValue('source')"></div></div>
+            <div class="col-span-2"><div class="text-xs uppercase text-gray-500 dark:text-gray-400">Message</div><pre class="p-3 rounded-md bg-gray-50 dark:bg-gray-900 text-xs overflow-auto" x-text="getSelectedEntryMessage()"></pre></div>
+            <div class="col-span-2"><div class="text-xs uppercase text-gray-500 dark:text-gray-400">Fields</div><pre class="p-3 rounded-md bg-gray-50 dark:bg-gray-900 text-xs overflow-auto max-h-96" x-text="formatFields(selectedEntry)"></pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

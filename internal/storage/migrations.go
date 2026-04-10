@@ -234,6 +234,12 @@ var migrations = []*Migration{
 		Up:      migrateAddSSHHostKeysUp,
 		Down:    migrateAddSSHHostKeysDown,
 	},
+	{
+		Version: "20260409100000",
+		Name:    "add_audit_and_logs_permissions",
+		Up:      migrateAddAuditAndLogsPermissionsUp,
+		Down:    migrateAddAuditAndLogsPermissionsDown,
+	},
 }
 
 // calculateChecksum generates a checksum for a migration
@@ -2837,6 +2843,77 @@ func migrateAddSessionsDown(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS sessions`); err != nil {
 		return fmt.Errorf("failed to drop sessions table: %w", err)
 	}
+	return nil
+}
+
+func migrateAddAuditAndLogsPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
+
+	permissions := [][3]string{
+		{"audit:read", "audit", "read"},
+		{"audit:export", "audit", "export"},
+		{"logs:list", "logs", "list"},
+		{"logs:read", "logs", "read"},
+		{"logs:export", "logs", "export"},
+	}
+
+	for _, perm := range permissions {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, newUUID(), perm[0], perm[1], perm[2], now); err != nil {
+			return fmt.Errorf("failed to insert %s permission: %w", perm[0], err)
+		}
+	}
+
+	rolePerms := map[string][]string{
+		"admin": {
+			"audit:list", "audit:read", "audit:export",
+			"logs:list", "logs:read", "logs:export",
+		},
+		"operator": {
+			"audit:list", "audit:read",
+			"logs:list", "logs:read",
+		},
+	}
+
+	for roleName, permNames := range rolePerms {
+		for _, permName := range permNames {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+				SELECT r.id, p.id, ?
+				FROM roles r, permissions p
+				WHERE r.name = ? AND p.name = ?
+			`, now, roleName, permName); err != nil {
+				return fmt.Errorf("failed to assign %s to %s role: %w", permName, roleName, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func migrateAddAuditAndLogsPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+	permNames := []string{
+		"audit:read",
+		"audit:export",
+		"logs:list",
+		"logs:read",
+		"logs:export",
+	}
+
+	for _, permName := range permNames {
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM role_permissions
+			WHERE permission_id IN (SELECT id FROM permissions WHERE name = ?)
+		`, permName); err != nil {
+			return fmt.Errorf("failed to remove %s from roles: %w", permName, err)
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, permName); err != nil {
+			return fmt.Errorf("failed to delete %s permission: %w", permName, err)
+		}
+	}
+
 	return nil
 }
 

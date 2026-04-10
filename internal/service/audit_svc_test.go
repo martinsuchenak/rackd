@@ -10,6 +10,8 @@ import (
 func TestAuditService_GetMapsNotFoundAndExportDefaultsToJSON(t *testing.T) {
 	store := newServiceTestStorage()
 	store.setPermission("user-1", "audit", "list", true)
+	store.setPermission("user-1", "audit", "read", true)
+	store.setPermission("user-1", "audit", "export", true)
 	store.auditLogs = []model.AuditLog{{ID: "log-1", Action: "create"}}
 	svc := NewAuditService(store)
 

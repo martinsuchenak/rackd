@@ -50,6 +50,8 @@ const featureDefinitions: FeatureDefinition[] = [
   { path: '/roles', title: 'Role Management', nav: { label: 'Roles', icon: 'shield', order: 91 }, permission: { resource: 'roles', action: 'list' } },
   { path: '/oauth-clients', title: 'OAuth Clients', nav: { label: 'OAuth Clients', icon: 'shield', order: 93 }, permission: { resource: 'users', action: 'list' } },
   { path: '/api-keys', title: 'API Keys', nav: { label: 'API Keys', icon: 'key', order: 94 }, permission: { resource: 'apikeys', action: 'list' } },
+  { path: '/audit', title: 'Audit Logs', nav: { label: 'Audit', icon: 'shield', order: 95 }, permission: { resource: 'audit', action: 'list' } },
+  { path: '/logs', title: 'Application Logs', nav: { label: 'Logs', icon: 'terminal', order: 96 }, permission: { resource: 'logs', action: 'list' } },
 ];
 
 function normalizePath(route: string): string {

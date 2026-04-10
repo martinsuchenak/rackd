@@ -36,6 +36,8 @@ import { circuitComponent } from './components/circuits';
 import { natComponent } from './components/nat';
 import { dnsProvidersComponent, dnsZonesComponent, dnsRecordsComponent } from './components/dns';
 import { apiKeysList } from './components/api-keys';
+import { auditLogsPage } from './components/audit';
+import { logsPage } from './components/logs';
 
 function parseModelPath(expression: string): string[] | null {
   const trimmed = expression.trim();
@@ -478,6 +480,8 @@ async function init(): Promise<void> {
   Alpine.data('dnsZonesComponent', dnsZonesComponent);
   Alpine.data('dnsRecordsComponent', dnsRecordsComponent);
   Alpine.data('apiKeysList', apiKeysList);
+  Alpine.data('auditLogsPage', auditLogsPage);
+  Alpine.data('logsPage', logsPage);
 
   // Expose Alpine globally
   window.Alpine = Alpine;

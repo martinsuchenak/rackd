@@ -224,6 +224,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/audit/export", wrapAuth(h.exportAuditLogs))
 	mux.HandleFunc("GET /api/audit/{id}", wrapAuth(h.getAuditLog))
 
+	// Recent logs routes (RBAC enforced in service layer)
+	mux.HandleFunc("GET /api/logs", wrapAuth(h.listLogs))
+	mux.HandleFunc("GET /api/logs/export", wrapAuth(h.exportLogs))
+	mux.HandleFunc("GET /api/logs/{id}", wrapAuth(h.getLogEntry))
+
 	// Auth routes (no auth required for login)
 	loginHandler := LimitBody(h.login)
 	if h.loginRateLimiter != nil {
@@ -472,4 +477,3 @@ func (h *Handler) badRequest(w http.ResponseWriter, message string) {
 func (h *Handler) invalidJSON(w http.ResponseWriter) {
 	h.writeError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON")
 }
-

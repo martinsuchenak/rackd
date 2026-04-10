@@ -266,6 +266,16 @@ Read-only access to view resources:
 | Permission | Resource | Action | Description |
 |------------|----------|--------|-------------|
 | `audit:list` | audit | list | View audit logs |
+| `audit:read` | audit | read | View individual audit log entries |
+| `audit:export` | audit | export | Export audit logs |
+
+### Application Logs
+
+| Permission | Resource | Action | Description |
+|------------|----------|--------|-------------|
+| `logs:list` | logs | list | View recent application logs |
+| `logs:read` | logs | read | View individual application log entries |
+| `logs:export` | logs | export | Export recent application logs |
 
 ### Search
 

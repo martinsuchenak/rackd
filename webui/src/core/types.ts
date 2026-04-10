@@ -428,6 +428,52 @@ export interface APIError {
   details?: Record<string, unknown>;
 }
 
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  resource: string;
+  resource_id: string;
+  user_id: string;
+  username: string;
+  ip_address: string;
+  changes: string;
+  status: 'success' | 'failure';
+  error?: string;
+  source?: string;
+}
+
+export interface AuditFilter {
+  resource?: string;
+  resource_id?: string;
+  user_id?: string;
+  action?: string;
+  source?: string;
+  start_time?: string;
+  end_time?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  level: string;
+  message: string;
+  source?: string;
+  fields?: Record<string, string>;
+}
+
+export interface LogFilter {
+  level?: string;
+  source?: string;
+  query?: string;
+  start_time?: string;
+  end_time?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export interface SearchResult {
   type: 'device' | 'network' | 'datacenter';
   device?: Device;

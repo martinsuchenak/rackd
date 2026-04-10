@@ -3,6 +3,8 @@
 import type {
   Address,
   APIError,
+  AuditFilter,
+  AuditLog,
   ChangePasswordRequest,
   CreateUserRequest,
   CreateReservationRequest,
@@ -26,6 +28,8 @@ import type {
   IPStatus,
   LoginRequest,
   LoginResponse,
+  LogEntry,
+  LogFilter,
   NavItem,
   Network,
   NetworkPool,
@@ -86,6 +90,7 @@ import type {
 export type {
   Address,
   APIError,
+  AuditLog,
   Datacenter,
   Device,
   DeviceFilter,
@@ -95,6 +100,7 @@ export type {
   DiscoveryRule,
   DiscoveryScan,
   IPStatus,
+  LogEntry,
   NavItem,
   Network,
   NetworkPool,
@@ -241,9 +247,44 @@ export class RackdAPI {
     return text ? JSON.parse(text) as T : null;
   }
 
+  private buildQuery(params: Record<string, string | number | boolean | undefined>): string {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') {
+        search.set(key, String(value));
+      }
+    }
+    const query = search.toString();
+    return query ? `?${query}` : '';
+  }
+
   // Config
   async getConfig(): Promise<UIConfig> {
     return this.request<UIConfig>('GET', '/api/config');
+  }
+
+  async listAuditLogs(filter: AuditFilter = {}): Promise<AuditLog[]> {
+    return this.request<AuditLog[]>('GET', `/api/audit${this.buildQuery(filter as Record<string, string | number | boolean | undefined>)}`);
+  }
+
+  async getAuditLog(id: string): Promise<AuditLog> {
+    return this.request<AuditLog>('GET', `/api/audit/${id}`);
+  }
+
+  getAuditExportURL(filter: AuditFilter = {}, format: 'json' | 'csv' = 'json'): string {
+    return `${this.baseURL}/api/audit/export${this.buildQuery({ ...filter, format } as Record<string, string | number | boolean | undefined>)}`;
+  }
+
+  async listLogs(filter: LogFilter = {}): Promise<LogEntry[]> {
+    return this.request<LogEntry[]>('GET', `/api/logs${this.buildQuery(filter as Record<string, string | number | boolean | undefined>)}`);
+  }
+
+  async getLogEntry(id: string): Promise<LogEntry> {
+    return this.request<LogEntry>('GET', `/api/logs/${id}`);
+  }
+
+  getLogsExportURL(filter: LogFilter = {}, format: 'json' | 'csv' = 'json'): string {
+    return `${this.baseURL}/api/logs/export${this.buildQuery({ ...filter, format } as Record<string, string | number | boolean | undefined>)}`;
   }
 
   // Devices

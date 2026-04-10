@@ -30,6 +30,7 @@ tags:
   - name: Bulk Operations
   - name: Search
   - name: Audit
+  - name: Logs
   - name: Auth
   - name: Users
   - name: Roles
@@ -515,6 +516,20 @@ components:
         changes: { type: string }
         status: { type: string, enum: [success, failure] }
         error: { type: string }
+        source: { type: string }
+      additionalProperties: true
+
+    LogEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        timestamp: { type: string, format: date-time }
+        level: { type: string }
+        message: { type: string }
+        source: { type: string }
+        fields:
+          type: object
+          additionalProperties: { type: string }
       additionalProperties: true
 
     BulkResult:
@@ -2463,13 +2478,19 @@ paths:
         - name: resource
           in: query
           schema: { type: string }
+        - name: resource_id
+          in: query
+          schema: { type: string }
         - name: user_id
           in: query
           schema: { type: string }
-        - name: from
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: start_time
           in: query
           schema: { type: string, format: date-time }
-        - name: to
+        - name: end_time
           in: query
           schema: { type: string, format: date-time }
       responses:
@@ -2493,10 +2514,25 @@ paths:
         - name: format
           in: query
           schema: { type: string, enum: [csv, json] }
-        - name: from
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: resource
+          in: query
+          schema: { type: string }
+        - name: resource_id
+          in: query
+          schema: { type: string }
+        - name: user_id
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: start_time
           in: query
           schema: { type: string, format: date-time }
-        - name: to
+        - name: end_time
           in: query
           schema: { type: string, format: date-time }
       responses:
@@ -2528,6 +2564,99 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditLog'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ── Logs ──
+  /api/logs:
+    get:
+      operationId: listLogs
+      tags: [Logs]
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+        - name: level
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: query
+          in: query
+          schema: { type: string }
+        - name: start_time
+          in: query
+          schema: { type: string, format: date-time }
+        - name: end_time
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Recent application logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/logs/export:
+    get:
+      operationId: exportLogs
+      tags: [Logs]
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv, json] }
+        - name: level
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: query
+          in: query
+          schema: { type: string }
+        - name: start_time
+          in: query
+          schema: { type: string, format: date-time }
+        - name: end_time
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Exported recent application logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+            text/csv:
+              schema:
+                type: string
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/logs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/idPath'
+    get:
+      operationId: getLogEntry
+      tags: [Logs]
+      responses:
+        '200':
+          description: Recent application log entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogEntry'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }

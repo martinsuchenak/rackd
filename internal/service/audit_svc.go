@@ -25,7 +25,7 @@ func (s *AuditService) List(ctx context.Context, filter *model.AuditFilter) ([]m
 }
 
 func (s *AuditService) Get(ctx context.Context, id string) (*model.AuditLog, error) {
-	if err := requirePermission(ctx, s.store, "audit", "list"); err != nil {
+	if err := requirePermission(ctx, s.store, "audit", "read"); err != nil {
 		return nil, err
 	}
 
@@ -41,7 +41,7 @@ func (s *AuditService) Get(ctx context.Context, id string) (*model.AuditLog, err
 }
 
 func (s *AuditService) Export(ctx context.Context, filter *model.AuditFilter, format string) ([]byte, error) {
-	if err := requirePermission(ctx, s.store, "audit", "list"); err != nil {
+	if err := requirePermission(ctx, s.store, "audit", "export"); err != nil {
 		return nil, err
 	}
 

@@ -140,3 +140,41 @@ export function insertDiscoveryScan(values: {
 
   return id;
 }
+
+export function insertAuditLog(values: {
+  action: string;
+  resource: string;
+  resourceID?: string | null;
+  userID?: string | null;
+  username?: string | null;
+  ipAddress?: string | null;
+  changes?: string;
+  status?: 'success' | 'failure';
+  error?: string | null;
+  source?: string | null;
+  timestamp?: string;
+}): string {
+  const id = randomUUID();
+  const timestamp = values.timestamp || new Date().toISOString();
+
+  runSQL(`
+    INSERT INTO audit_logs (
+      id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source
+    ) VALUES (
+      ${quote(id)},
+      ${quote(timestamp)},
+      ${quote(values.action)},
+      ${quote(values.resource)},
+      ${nullable(values.resourceID)},
+      ${nullable(values.userID)},
+      ${nullable(values.username)},
+      ${nullable(values.ipAddress)},
+      ${quote(values.changes ?? '{}')},
+      ${quote(values.status ?? 'success')},
+      ${quote(values.error ?? '')},
+      ${nullable(values.source)}
+    );
+  `);
+
+  return id;
+}

@@ -18,6 +18,7 @@ type Services struct {
 	Roles          *RoleService
 	Auth           *AuthService
 	Audit          *AuditService
+	Logs           *LogService
 	APIKeys        *APIKeyService
 	Bulk           *BulkService
 	Credentials    *CredentialService
@@ -46,6 +47,7 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		Roles:         NewRoleService(store),
 		Auth:          NewAuthService(store, sessionManager),
 		Audit:         NewAuditService(store),
+		Logs:          NewLogService(store),
 		APIKeys:       NewAPIKeyService(store),
 		Bulk:          NewBulkService(store),
 		Conflicts:     NewConflictService(store),

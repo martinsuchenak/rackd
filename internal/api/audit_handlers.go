@@ -16,6 +16,7 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 		ResourceID: r.URL.Query().Get("resource_id"),
 		UserID:     r.URL.Query().Get("user_id"),
 		Action:     r.URL.Query().Get("action"),
+		Source:     r.URL.Query().Get("source"),
 	}
 
 	if start := r.URL.Query().Get("start_time"); start != "" {
@@ -62,6 +63,7 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 		ResourceID: r.URL.Query().Get("resource_id"),
 		UserID:     r.URL.Query().Get("user_id"),
 		Action:     r.URL.Query().Get("action"),
+		Source:     r.URL.Query().Get("source"),
 	}
 
 	if start := r.URL.Query().Get("start_time"); start != "" {
