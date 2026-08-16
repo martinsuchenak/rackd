@@ -8,7 +8,7 @@
     "build:css": "bunx @tailwindcss/cli -c ./tailwind.config.js -i ./src/styles.css -o ./dist/output.css --minify",
     "build:js": "bun build ./src/app.ts --outdir ./dist --minify",
     "build:html": "bun run ./scripts/build-html.ts",
-    "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && rm -rf ../internal/ui/assets/* && cp -r ./dist/* ../internal/ui/assets/",
+    "build:assets": "cp -r ./assets/* ./dist/ 2>/dev/null || true && rm -rf ../internal/ui/assets && mkdir -p ../internal/ui/assets && cp -r ./dist/* ../internal/ui/assets/",
     "test": "bun test",
     "test:e2e": "bun run build && playwright test",
     "test:e2e:auth": "bun run build && playwright test --grep @auth",
@@ -35,20 +35,20 @@
     "validate:types": "bun run ./scripts/validate-openapi-types.ts"
   },
   "dependencies": {
-    "@alpinejs/collapse": "^3.15.11",
-    "@alpinejs/csp": "^3.15.11",
-    "@alpinejs/focus": "^3.15.11",
-    "alpinejs": "^3.15.11",
-    "cytoscape": "^3.33.2",
+    "@alpinejs/collapse": "^3.16.1",
+    "@alpinejs/csp": "^3.16.1",
+    "@alpinejs/focus": "^3.16.1",
+    "alpinejs": "^3.16.1",
+    "cytoscape": "^3.34.1",
     "cytoscape-panzoom": "^2.5.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2",
-    "@tailwindcss/cli": "^4.2.2",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/cli": "^4.3.3",
     "@types/alpinejs": "^3.13.11",
     "posthtml": "^0.16.7",
     "posthtml-include": "^2.0.1",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
   }
 }
