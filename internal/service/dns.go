@@ -27,6 +27,10 @@ var (
 	ErrDNSProviderNotFound = fmt.Errorf("dns provider not found")
 	// ErrDNSZoneNotFound is returned when a zone is not found
 	ErrDNSZoneNotFound = fmt.Errorf("dns zone not found")
+	// ErrDNSProviderTestFailed wraps upstream connectivity failures so the
+	// API layer can distinguish "provider unreachable/refused/blocked" from
+	// internal server errors and surface the cause to the operator.
+	ErrDNSProviderTestFailed = fmt.Errorf("dns provider test failed")
 	// ErrDNSRecordNotFound is returned when a record is not found
 	ErrDNSRecordNotFound = fmt.Errorf("dns record not found")
 )
@@ -287,7 +291,12 @@ func (s *DNSService) TestProvider(ctx context.Context, id string) error {
 		return err
 	}
 
-	return provider.HealthCheck(ctx)
+	if err := provider.HealthCheck(ctx); err != nil {
+		// Wrap so the handler can answer 502 with the actual cause (SSRF
+		// block, timeout, refused, bad credentials) instead of a generic 500.
+		return fmt.Errorf("%w: %w", ErrDNSProviderTestFailed, err)
+	}
+	return nil
 }
 
 // Zone CRUD Operations

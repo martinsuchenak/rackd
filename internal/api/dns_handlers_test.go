@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
@@ -239,6 +241,40 @@ func TestDNSHandlers(t *testing.T) {
 		w = performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("ProviderTestSurfacesUpstreamFailure", func(t *testing.T) {
+		// A provider whose endpoint is unreachable (here: loopback, always
+		// blocked by the SSRF guard) must answer 502 PROVIDER_UNREACHABLE
+		// with the actual cause — not a generic 500 INTERNAL_ERROR.
+		encryptor, err := credentials.NewEncryptor([]byte("0123456789abcdef0123456789abcdef"))
+		if err != nil {
+			t.Fatalf("failed to create encryptor: %v", err)
+		}
+		token, err := encryptor.Encrypt("provider-token")
+		if err != nil {
+			t.Fatalf("failed to encrypt token: %v", err)
+		}
+		provider := &model.DNSProviderConfig{
+			Name:     "test-loopback-provider",
+			Type:     model.DNSProviderTypeTechnitium,
+			Endpoint: "http://127.0.0.1:9",
+			Token:    token,
+		}
+		if err := env.store.CreateDNSProvider(context.Background(), provider); err != nil {
+			t.Fatalf("failed to create provider: %v", err)
+		}
+
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/dns/providers/"+provider.ID+"/test", nil)))
+		if w.Code != http.StatusBadGateway {
+			t.Fatalf("expected 502, got %d: %s", w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), "PROVIDER_UNREACHABLE") {
+			t.Errorf("expected PROVIDER_UNREACHABLE code, got: %s", w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), "SSRF") {
+			t.Errorf("expected the SSRF block cause to be surfaced, got: %s", w.Body.String())
 		}
 	})
 }

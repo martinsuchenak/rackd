@@ -408,6 +408,10 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "CANNOT_DELETE_SELF", err.Error())
 	case errors.Is(err, service.ErrSystemRole):
 		h.writeError(w, http.StatusBadRequest, "SYSTEM_ROLE", err.Error())
+	case errors.Is(err, service.ErrDNSProviderTestFailed):
+		// Upstream connectivity failure (SSRF block, timeout, refused, bad
+		// credentials) — not a server bug. Surface the cause to the operator.
+		h.writeError(w, http.StatusBadGateway, "PROVIDER_UNREACHABLE", err.Error())
 	default:
 		h.internalError(w, err)
 	}

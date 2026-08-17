@@ -4080,17 +4080,18 @@ paths:
       operationId: testDNSProvider
       tags: [DNS]
       responses:
-        '200':
-          description: Connection test result
+        '204':
+          description: Connection test succeeded
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502':
+          description: >
+            Provider unreachable (SSRF policy block, timeout, connection
+            refused, or provider API error); the error field carries the cause
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  message: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+                $ref: '#/components/schemas/Error'
         '500': { $ref: '#/components/responses/InternalError' }
 
   /api/dns/providers/{id}/zones:

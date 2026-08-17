@@ -176,7 +176,7 @@
             <div>
               <label for="create-fullname" class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full
                 Name</label>
-              <input id="create-fullname" type="text" x-model="createFullName" />
+              <input id="create-fullname" type="text" x-model="createFullName"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
             <div>
@@ -253,8 +253,10 @@
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Active Status</label>
                 <select :id="'edit-active-' + selectedUser.id" x-model="editIsActive"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-                  <option :value="true">Active</option>
-                  <option :value="false">Inactive</option>
+                  <!-- String values: select options always exchange strings; the
+                       component coerces back to a boolean before sending. -->
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
                 </select>
               </div>
             </div>

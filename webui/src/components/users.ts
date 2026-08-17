@@ -36,7 +36,7 @@ interface UsersListData extends ListPageState<User, Exclude<ModalType, ''>> {
   editUsername: string;
   editEmail: string;
   editFullName: string;
-  editIsActive: boolean;
+  editIsActive: 'true' | 'false';
   // Password form - flat properties for CSP compatibility
   passwordOldPassword: string;
   passwordNewPassword: string;
@@ -110,7 +110,7 @@ export function usersList() {
     editUsername: '',
     editEmail: '',
     editFullName: '',
-    editIsActive: true,
+    editIsActive: 'true' as 'true' | 'false',
     // Password form - flat properties for CSP compatibility
     passwordOldPassword: '',
     passwordNewPassword: '',
@@ -254,7 +254,7 @@ export function usersList() {
       this.editUsername = user.username || '';
       this.editEmail = user.email || '';
       this.editFullName = user.full_name || '';
-      this.editIsActive = user.is_active !== false;
+      this.editIsActive = user.is_active !== false ? 'true' : 'false';
       this.modalType = 'edit';
     },
 
@@ -479,7 +479,7 @@ export function usersList() {
         updates.full_name = this.editFullName;
       }
 
-      updates.is_active = this.editIsActive;
+      updates.is_active = this.editIsActive === 'true';
 
       if (Object.keys(this.validationErrors).length > 0) {
         return;
