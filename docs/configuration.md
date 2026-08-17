@@ -21,7 +21,8 @@ Rackd can be configured through environment variables. All configuration options
 | `SESSION_TTL` | `24h` | Duration for which a user session is valid |
 | `SESSION_STORE_TYPE` | `sqlite` | The backend storage for sessions (`sqlite`, `valkey`, `redis`) |
 | `VALKEY_URL` | `redis://localhost:6379/0` | The URL for Valkey/Redis if `SESSION_STORE_TYPE` is `valkey` or `redis` |
-| `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` and `X-Real-IP` headers from reverse proxies |
+| `TRUST_PROXY` | `false` | Trust `X-Forwarded-For` and `X-Real-IP` headers from reverse proxies (requires `TRUSTED_PROXIES` to name the proxy IPs/CIDRs) |
+| `TRUSTED_PROXIES` | *(empty)* | Comma-separated IPs/CIDRs of trusted reverse proxies; forwarded headers from other peers are ignored |
 
 ### Rate Limiting Options
 

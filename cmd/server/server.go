@@ -12,6 +12,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/server"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/paularlott/cli"
 )
 
@@ -56,6 +57,10 @@ func Command() *cli.Command {
 			if err := cfg.Validate(); err != nil {
 				return err
 			}
+
+			// Configure the shared SSRF guard before any outbound
+			// integration request can be issued.
+			webhook.SetPrivateRangePolicy(cfg.SSRFAllowPrivateTargets)
 
 			if !devMode {
 				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)

@@ -18,7 +18,7 @@ test('@dns dns records support linked-record navigation plus edit and delete flo
   });
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'http://127.0.0.1:9',
+    endpoint: 'https://203.0.113.12',
     token: 'records-provider-token',
   });
   await createDNSZone(page, {

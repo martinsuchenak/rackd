@@ -12,8 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/dns"
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	wh "github.com/martinsuchenak/rackd/internal/webhook"
 )
 
 var (
@@ -54,8 +56,9 @@ func NewDNSService(store storage.ExtendedStorage, encryptor *credentials.Encrypt
 // Provider CRUD Operations
 
 // validateDNSProviderEndpoint ensures a provider endpoint is a well-formed
-// http(s) URL. The server issues authenticated API requests to this endpoint,
-// so unchecked values are an SSRF surface (mirrors webhook URL validation).
+// http(s) URL pointing at a reachable, non-private host. The server issues
+// authenticated API requests (carrying the stored provider token) to this
+// endpoint, so unchecked values are an SSRF surface.
 func validateDNSProviderEndpoint(rawURL string) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -72,6 +75,13 @@ func validateDNSProviderEndpoint(rawURL string) error {
 	}
 	if len(rawURL) > 2048 {
 		return ValidationErrors{{Field: "endpoint", Message: "Endpoint too long (max 2048 characters)"}}
+	}
+	// Reject loopback, link-local (cloud metadata), unspecified, multicast
+	// and — unless private targets are explicitly allowed by configuration —
+	// RFC1918/CGNAT/ULA destinations. Hostnames are resolved so names that
+	// point at internal infrastructure are rejected too.
+	if err := wh.ValidateOutboundHost(u.Hostname()); err != nil {
+		return ValidationErrors{{Field: "endpoint", Message: "Loopback, link-local, multicast and private network addresses are not allowed"}}
 	}
 	return nil
 }
@@ -532,15 +542,13 @@ func (s *DNSService) CreateRecord(ctx context.Context, req *model.CreateDNSRecor
 		return nil, err
 	}
 
-	// Auto-sync if zone is configured for it
+	// Auto-sync if zone is configured for it. Run in the background: the
+	// provider call can block for the full HTTP timeout (~30s), which must
+	// not hold the API request open (the global request timeout would abort
+	// it). The record is created as "pending" and its sync status is updated
+	// when the sync completes.
 	if zone.AutoSync {
-		if err := s.SyncRecord(ctx, record); err != nil {
-			// Update record with error
-			errMsg := err.Error()
-			record.ErrorMessage = &errMsg
-			record.SyncStatus = model.RecordSyncStatusFailed
-			s.store.UpdateDNSRecord(ctx, record)
-		}
+		s.syncRecordAsync(ctx, record)
 	}
 
 	return record, nil
@@ -637,18 +645,32 @@ func (s *DNSService) UpdateRecord(ctx context.Context, id string, req *model.Upd
 		return nil, err
 	}
 
-	// Auto-sync if zone is configured for it
+	// Auto-sync if zone is configured for it. Background for the same reason
+	// as in CreateRecord: provider latency must not hold the request open.
 	if zone, err := s.store.GetDNSZone(ctx, record.ZoneID); err == nil && zone.AutoSync && updated {
-		if err := s.SyncRecord(ctx, record); err != nil {
-			// Update record with error
-			errMsg := err.Error()
-			record.ErrorMessage = &errMsg
-			record.SyncStatus = model.RecordSyncStatusFailed
-			s.store.UpdateDNSRecord(ctx, record)
-		}
+		s.syncRecordAsync(ctx, record)
 	}
 
 	return record, nil
+}
+
+// syncRecordAsync syncs a DNS record to its provider in the background and
+// persists the outcome on the record. The record stays "pending" until the
+// sync completes, then flips to "synced" or "failed" with an error message.
+func (s *DNSService) syncRecordAsync(ctx context.Context, record *model.DNSRecord) {
+	snapshot := *record
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+		defer cancel()
+		if err := s.SyncRecord(bgCtx, &snapshot); err != nil {
+			errMsg := err.Error()
+			snapshot.ErrorMessage = &errMsg
+			snapshot.SyncStatus = model.RecordSyncStatusFailed
+			if updateErr := s.store.UpdateDNSRecord(bgCtx, &snapshot); updateErr != nil {
+				log.Error("Failed to persist DNS record sync failure", "record_id", snapshot.ID, "error", updateErr)
+			}
+		}
+	}()
 }
 
 // DeleteRecord deletes a DNS record

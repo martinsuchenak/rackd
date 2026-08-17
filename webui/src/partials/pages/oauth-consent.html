@@ -47,6 +47,11 @@
         <div class="mb-6">
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Requested permissions:</h4>
           <ul class="space-y-1">
+            <template x-if="noScopesRequested">
+              <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                <span>No permissions requested (this application will not be able to access any data)</span>
+              </li>
+            </template>
             <template x-for="label in scopeLabels" :key="label">
               <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                 <svg class="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

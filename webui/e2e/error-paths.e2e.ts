@@ -59,12 +59,15 @@ test('@errors invalid cron expressions are rejected for scheduled scans', async 
 });
 
 test('@errors dns provider connection failures are surfaced in the test modal', async ({ page }) => {
+  // The provider HTTP client times out after 30s against the unreachable
+  // TEST-NET-3 endpoint, so the failure alert needs a longer budget.
+  test.setTimeout(90_000);
   await login(page);
 
   const providerName = uniqueName('e2e-test-failure-provider');
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'http://127.0.0.1:9',
+    endpoint: 'https://203.0.113.99',
     token: 'test-provider-token',
   });
 
@@ -72,5 +75,5 @@ test('@errors dns provider connection failures are surfaced in the test modal', 
   const dialog = page.getByRole('dialog', { name: 'Test Connection' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Test Connection' }).click();
-  await expect(dialog.locator('[role="alert"]')).toBeVisible();
+  await expect(dialog.locator('[role="alert"]')).toBeVisible({ timeout: 60_000 });
 });

@@ -292,6 +292,6 @@ func (s *SQLiteStorage) RevokeOAuthTokensByUser(ctx context.Context, userID stri
 }
 
 func (s *SQLiteStorage) CleanupExpiredTokens(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ? AND revoked_at IS NOT NULL`, nowUTC())
+	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ?`, nowUTC())
 	return err
 }

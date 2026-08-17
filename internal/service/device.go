@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -29,6 +30,25 @@ func (s *DeviceService) setDNSService(dns *DNSService) {
 // boolPtr returns a pointer to the given bool value
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+// syncDeviceDNSAsync runs syncDeviceDNS in a background goroutine so a slow
+// or unresponsive DNS provider cannot block device create/update (or run
+// into the global request timeout). The local DNS record is still created
+// within milliseconds; provider-side failures land on the record's sync
+// status and in the server log.
+func (s *DeviceService) syncDeviceDNSAsync(ctx context.Context, device *model.Device) {
+	if s.dns == nil {
+		return
+	}
+	snapshot := *device
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+		defer cancel()
+		if err := s.syncDeviceDNS(bgCtx, &snapshot); err != nil {
+			log.Warn("DNS sync failed after device change", "device_id", snapshot.ID, "error", err)
+		}
+	}()
 }
 
 // syncDeviceDNS creates/updates DNS records for a device when it has a hostname
@@ -242,11 +262,13 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	// Check for IP conflicts after creation
 	s.checkForIPConflicts(ctx, device)
 
-	// Sync DNS records if device has a hostname. DNS sync failures shouldn't
-	// block device creation, but they must be visible to operators.
-	if err := s.syncDeviceDNS(ctx, device); err != nil {
-		log.Warn("DNS sync failed after device create", "device_id", device.ID, "error", err)
-	}
+	// Sync DNS records if device has a hostname. Run in the background:
+	// provider sync can block for the full HTTP timeout (~30s) against an
+	// unresponsive DNS provider, which would otherwise hold the request open
+	// until the global request timeout aborts it. Local record creation
+	// happens within milliseconds; provider failures are recorded on the
+	// record's sync status.
+	s.syncDeviceDNSAsync(ctx, device)
 
 	return nil
 }
@@ -295,9 +317,7 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 	// Check for IP conflicts after update
 	s.checkForIPConflicts(ctx, device)
 
-	if err := s.syncDeviceDNS(ctx, device); err != nil {
-		log.Warn("DNS sync failed after device update", "device_id", device.ID, "error", err)
-	}
+	s.syncDeviceDNSAsync(ctx, device)
 
 	return nil
 }

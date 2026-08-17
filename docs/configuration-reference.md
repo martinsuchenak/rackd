@@ -13,7 +13,8 @@ Use `--dev-mode` flag on `rackd server` to automatically disable `COOKIE_SECURE`
 | `REQUEST_TIMEOUT` | duration | `30s` | HTTP request timeout |
 | `LOG_FORMAT` | string | `text` | Log format: `text` or `json` |
 | `LOG_LEVEL` | string | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
-| `TRUST_PROXY` | bool | `false` | Trust `X-Forwarded-For` and `X-Real-IP` headers for client IP detection |
+| `TRUST_PROXY` | bool | `false` | Trust `X-Forwarded-For` and `X-Real-IP` headers for client IP detection (requires `TRUSTED_PROXIES`) |
+| `TRUSTED_PROXIES` | string | *(empty)* | Comma-separated IPs/CIDRs of reverse proxies whose forwarded headers may be trusted |
 
 ## Security
 

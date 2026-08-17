@@ -29,6 +29,18 @@ export function oauthConsent() {
       }
     },
 
+    // Only http(s) redirect targets may be navigated to; the value comes
+    // from client registration and must never become a javascript:/data:
+    // navigation, even if a hostile client was somehow registered.
+    safeRedirectTarget(uri: string): string {
+      try {
+        const u = new URL(uri);
+        return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : '';
+      } catch {
+        return '';
+      }
+    },
+
     async init() {
       try {
         // Fetch consent data from the authorize endpoint using current URL params
@@ -69,6 +81,12 @@ export function oauthConsent() {
       });
     },
 
+    // An empty scope list must never render as a blank permission list that
+    // implies unrestricted access; state explicitly that nothing is granted.
+    get noScopesRequested(): boolean {
+      return !!this.consentData && (this.consentData.scopes?.length ?? 0) === 0;
+    },
+
     async approve() {
       if (!this.consentData) return;
       this.loading = true;
@@ -99,7 +117,8 @@ export function oauthConsent() {
 
         const data = await response.json();
         if (data.redirect_uri) {
-          window.location.href = data.redirect_uri;
+          const target = this.safeRedirectTarget(data.redirect_uri);
+          if (target) window.location.href = target;
         }
       } catch (e) {
         this.error = 'Failed to process authorization';
@@ -135,7 +154,8 @@ export function oauthConsent() {
 
         const data = await response.json();
         if (data.redirect_uri) {
-          window.location.href = data.redirect_uri;
+          const target = this.safeRedirectTarget(data.redirect_uri);
+          if (target) window.location.href = target;
         }
       } catch (e) {
         this.error = 'Failed to process denial';

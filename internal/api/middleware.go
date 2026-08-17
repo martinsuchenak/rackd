@@ -154,7 +154,7 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
-		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, false), "api")
+		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, nil), "api")
 		if err != nil {
 			code := "UNAUTHORIZED"
 			if err == ErrAuthExpiredKey {
@@ -201,7 +201,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 						Type:      service.CallerTypeUser,
 						UserID:    session.UserID,
 						Username:  session.Username,
-						IPAddress: getClientIP(r, false),
+						IPAddress: getClientIP(r, nil),
 						Source:    "api",
 					}
 					r = r.WithContext(service.WithCaller(r.Context(), caller))
@@ -219,7 +219,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
-		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, false), "api")
+		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, nil), "api")
 		if err != nil {
 			code := "UNAUTHORIZED"
 			if err == ErrAuthExpiredKey {
@@ -268,9 +268,9 @@ func LimitBody(next http.HandlerFunc) http.HandlerFunc {
 
 // LoginRateLimitMiddleware wraps a handler with a strict per-IP rate limiter
 // for the login endpoint. Unlike the global rate limiter, this does NOT bypass localhost.
-func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.HandlerFunc) http.HandlerFunc {
+func LoginRateLimitMiddleware(limiter *RateLimiter, proxyResolver *TrustedProxyResolver, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientID := getClientIP(r, trustProxy)
+		clientID := getClientIP(r, proxyResolver)
 
 		if !limiter.Allow(clientID) {
 			resetTime := limiter.GetResetTime(clientID)
@@ -294,4 +294,3 @@ func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.H
 		next(w, r)
 	}
 }
-

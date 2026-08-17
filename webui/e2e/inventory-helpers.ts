@@ -70,6 +70,8 @@ export async function createDevice(
     username?: string;
     ip: string;
     networkName: string;
+    /** Timeout for post-submit assertions (device create can wait on DNS provider sync). */
+    expectTimeout?: number;
   },
 ): Promise<void> {
   await page.goto('/devices');
@@ -103,8 +105,9 @@ export async function createDevice(
 
   await dialog.getByRole('button', { name: 'Create Device' }).click();
 
-  await expect(dialog).toBeHidden();
+  const timeout = values.expectTimeout;
+  await expect(dialog).toBeHidden(timeout ? { timeout } : undefined);
   const row = rowByExactText(page, values.name);
-  await expect(row).toBeVisible();
+  await expect(row).toBeVisible(timeout ? { timeout } : undefined);
   await expect(row).toContainText(values.ip);
 }

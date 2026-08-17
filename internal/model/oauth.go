@@ -85,6 +85,7 @@ type OAuthTokenRequest struct {
 	CodeVerifier string `json:"code_verifier,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 	Scope        string `json:"scope,omitempty"`
+	Token        string `json:"token,omitempty"`
 }
 
 // OAuthTokenResponse represents the token endpoint response.

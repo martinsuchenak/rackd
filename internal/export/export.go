@@ -19,6 +19,21 @@ const (
 	FormatCSV  Format = "csv"
 )
 
+// sanitizeCell neutralizes CSV formula injection: spreadsheet applications
+// (Excel, LibreOffice, Google Sheets) interpret a cell as a formula when it
+// starts with =, +, -, @, a tab, or a carriage return. Prefixing a single
+// quote forces the value to be treated as text.
+func sanitizeCell(value string) string {
+	if value == "" {
+		return value
+	}
+	switch value[0] {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + value
+	}
+	return value
+}
+
 // ExportDevices exports devices to the specified format
 func ExportDevices(devices []model.Device, format Format, w io.Writer) error {
 	switch format {
@@ -51,17 +66,17 @@ func exportDevicesCSV(devices []model.Device, w io.Writer) error {
 	for _, device := range devices {
 		row := []string{
 			device.ID,
-			device.Name,
-			device.Hostname,
-			device.Description,
-			device.MakeModel,
-			device.OS,
+			sanitizeCell(device.Name),
+			sanitizeCell(device.Hostname),
+			sanitizeCell(device.Description),
+			sanitizeCell(device.MakeModel),
+			sanitizeCell(device.OS),
 			device.DatacenterID,
-			device.Username,
-			device.Location,
-			joinAddresses(device.Addresses),
-			strings.Join(device.Tags, ";"),
-			strings.Join(device.Domains, ";"),
+			sanitizeCell(device.Username),
+			sanitizeCell(device.Location),
+			sanitizeCell(joinAddresses(device.Addresses)),
+			sanitizeCell(strings.Join(device.Tags, ";")),
+			sanitizeCell(strings.Join(device.Domains, ";")),
 			device.CreatedAt.Format(time.RFC3339),
 			device.UpdatedAt.Format(time.RFC3339),
 		}
@@ -113,10 +128,10 @@ func exportNetworksCSV(networks []model.Network, w io.Writer) error {
 	for _, network := range networks {
 		row := []string{
 			network.ID,
-			network.Name,
-			network.Subnet,
+			sanitizeCell(network.Name),
+			sanitizeCell(network.Subnet),
 			fmt.Sprintf("%d", network.VLANID),
-			network.Description,
+			sanitizeCell(network.Description),
 			network.DatacenterID,
 			network.CreatedAt.Format(time.RFC3339),
 			network.UpdatedAt.Format(time.RFC3339),
@@ -161,9 +176,9 @@ func exportDatacentersCSV(datacenters []model.Datacenter, w io.Writer) error {
 	for _, dc := range datacenters {
 		row := []string{
 			dc.ID,
-			dc.Name,
-			dc.Location,
-			dc.Description,
+			sanitizeCell(dc.Name),
+			sanitizeCell(dc.Location),
+			sanitizeCell(dc.Description),
 			dc.CreatedAt.Format(time.RFC3339),
 			dc.UpdatedAt.Format(time.RFC3339),
 		}

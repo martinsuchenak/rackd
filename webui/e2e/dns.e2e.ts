@@ -12,7 +12,7 @@ test('@dns dns providers support create, edit, and delete flows', async ({ page 
 
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'https://dns-provider.test.local',
+    endpoint: 'https://203.0.113.10',
     token: 'provider-token',
     description: 'Initial provider description',
   });
@@ -21,14 +21,14 @@ test('@dns dns providers support create, edit, and delete flows', async ({ page 
   const editDialog = page.getByRole('dialog', { name: 'Edit DNS Provider' });
   await expect(editDialog).toBeVisible();
   await editDialog.getByLabel(/^Name/).fill(updatedName);
-  await editDialog.getByLabel(/^Endpoint/).fill('https://updated-dns-provider.test.local');
+  await editDialog.getByLabel(/^Endpoint/).fill('https://203.0.113.14');
   await editDialog.getByLabel('Description').fill('Updated provider description');
   await editDialog.getByRole('button', { name: 'Save Changes' }).click();
 
   await expect(editDialog).toBeHidden();
   const updatedRow = rowByExactText(page, updatedName);
   await expect(updatedRow).toBeVisible();
-  await expect(updatedRow).toContainText('https://updated-dns-provider.test.local');
+  await expect(updatedRow).toContainText('https://203.0.113.14');
   await expect(updatedRow).toContainText('Updated provider description');
 
   await page.getByRole('button', { name: `Delete ${updatedName}` }).click();
@@ -54,7 +54,7 @@ test('@dns dns zones support create, records navigation, edit, and delete flows'
 
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'https://zone-provider.test.local',
+    endpoint: 'https://203.0.113.11',
     token: 'zone-provider-token',
   });
 

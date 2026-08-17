@@ -30,6 +30,10 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_client_metadata", "client_name is required")
 		case errors.Is(err, service.ErrOAuthRedirectURIRequired):
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_redirect_uri", "at least one redirect_uri is required")
+		case errors.Is(err, service.ErrOAuthRedirectURINotHTTPS):
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_redirect_uri", "redirect_uri must be an absolute https URI (http is only allowed for loopback hosts)")
+		case errors.Is(err, service.ErrOAuthScopeNotAllowed):
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", "scope must not contain '*'; register explicit scopes")
 		default:
 			log.Error("OAuth client registration failed", "error", err)
 			h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Registration failed")
@@ -248,15 +252,32 @@ func (h *Handler) oauthRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := r.FormValue("token")
-	tokenTypeHint := r.FormValue("token_type_hint")
+	clientID := r.FormValue("client_id")
+	clientSecret := r.FormValue("client_secret")
+	if headerClientID, headerClientSecret, ok := r.BasicAuth(); ok {
+		clientID = headerClientID
+		clientSecret = headerClientSecret
+	}
 
 	if token == "" {
 		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "token is required")
 		return
 	}
+	if clientID == "" {
+		h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "client authentication is required")
+		return
+	}
 
-	if err := h.svc.OAuth.RevokeToken(r.Context(), token, tokenTypeHint); err != nil {
+	if err := h.svc.OAuth.RevokeToken(r.Context(), &model.OAuthTokenRequest{
+		Token:        token,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	}); err != nil {
 		log.Error("OAuth token revocation failed", "error", err)
+		if errors.Is(err, service.ErrOAuthInvalidClient) || errors.Is(err, service.ErrOAuthInvalidClientSecret) {
+			h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "invalid client credentials")
+			return
+		}
 		h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Revocation failed")
 		return
 	}

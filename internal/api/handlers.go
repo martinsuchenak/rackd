@@ -26,7 +26,7 @@ type Handler struct {
 	loginRateLimiter *RateLimiter
 	cookieSecure     bool
 	sessionTTL       time.Duration
-	trustProxy       bool
+	proxyResolver    *TrustedProxyResolver
 	svc              *service.Services
 }
 
@@ -66,9 +66,10 @@ func WithCookieConfig(secure bool, sessionTTL time.Duration) HandlerOption {
 	}
 }
 
-// WithTrustProxy enables trusting X-Forwarded-For headers.
-func WithTrustProxy(trustProxy bool) HandlerOption {
-	return func(h *Handler) { h.trustProxy = trustProxy }
+// WithProxyResolver sets the trusted-proxy resolver used for client-IP
+// detection behind reverse proxies.
+func WithProxyResolver(resolver *TrustedProxyResolver) HandlerOption {
+	return func(h *Handler) { h.proxyResolver = resolver }
 }
 
 // WithServices sets the service registry.
@@ -97,7 +98,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	wrapSensitiveAuth := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = wrapAuth(handler)
 		if h.loginRateLimiter != nil {
-			return LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, handler)
+			return LoginRateLimitMiddleware(h.loginRateLimiter, h.proxyResolver, handler)
 		}
 		return handler
 	}
@@ -105,7 +106,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	wrapSensitiveNoAuth := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = LimitBody(handler)
 		if h.loginRateLimiter != nil {
-			return LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, handler)
+			return LoginRateLimitMiddleware(h.loginRateLimiter, h.proxyResolver, handler)
 		}
 		return handler
 	}
@@ -233,7 +234,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Auth routes (no auth required for login)
 	loginHandler := LimitBody(h.login)
 	if h.loginRateLimiter != nil {
-		loginHandler = LoginRateLimitMiddleware(h.loginRateLimiter, h.trustProxy, loginHandler)
+		loginHandler = LoginRateLimitMiddleware(h.loginRateLimiter, h.proxyResolver, loginHandler)
 	}
 	mux.HandleFunc("POST /api/auth/login", loginHandler)
 	mux.HandleFunc("POST /api/auth/logout", wrapAuth(h.logout))

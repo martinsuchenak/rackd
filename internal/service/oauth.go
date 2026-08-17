@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"net"
+	"net/url"
 	"slices"
 	"time"
 
@@ -24,6 +26,10 @@ var (
 	ErrOAuthInvalidClientSecret  = errors.New("invalid client_secret")
 	ErrOAuthClientNameRequired   = errors.New("client_name is required")
 	ErrOAuthRedirectURIRequired  = errors.New("at least one redirect_uri is required")
+	ErrOAuthRedirectURINotHTTPS  = errors.New("redirect_uri must be an absolute https URI (http is only allowed for loopback hosts)")
+	ErrOAuthScopeRequired        = errors.New("scope is required (an empty scope would grant no access)")
+	ErrOAuthScopeNotAllowed      = errors.New("scope must not contain '*'; register explicit scopes")
+	ErrOAuthInvalidScope         = errors.New("requested scope exceeds the client's registered scope")
 )
 
 type OAuthService struct {
@@ -57,6 +63,30 @@ func (s *OAuthService) IssuerURL() string {
 	return s.issuerURL
 }
 
+// isValidRedirectURI enforces the redirect URI policy required for every
+// registered and requested redirect URI: it must be an absolute URI using
+// the https scheme (http is accepted only for loopback hosts per RFC 8252),
+// with no userinfo or fragment component. Scheme-relative, javascript:,
+// data: and other custom-scheme URIs are rejected.
+func isValidRedirectURI(uri string) bool {
+	parsed, err := url.Parse(uri)
+	if err != nil || !parsed.IsAbs() || parsed.Host == "" {
+		return false
+	}
+	if parsed.User != nil || parsed.Fragment != "" || parsed.RawFragment != "" {
+		return false
+	}
+	switch parsed.Scheme {
+	case "https":
+		return true
+	case "http":
+		host := parsed.Hostname()
+		return net.ParseIP(host).IsLoopback() || host == "localhost"
+	default:
+		return false
+	}
+}
+
 // RegisterClient handles RFC 7591 dynamic client registration.
 func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClientRegistrationRequest) (*model.OAuthClientRegistrationResponse, error) {
 	if req.ClientName == "" {
@@ -64,6 +94,19 @@ func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClien
 	}
 	if len(req.RedirectURIs) == 0 {
 		return nil, ErrOAuthRedirectURIRequired
+	}
+	for _, uri := range req.RedirectURIs {
+		if !isValidRedirectURI(uri) {
+			return nil, ErrOAuthRedirectURINotHTTPS
+		}
+	}
+	// A wildcard scope must never be self-registered: '*' resolves to an
+	// unrestricted caller downstream, so allowing clients to register it via
+	// dynamic registration would let anyone mint full-permission tokens.
+	for _, s := range auth.ParseScopes(req.Scope) {
+		if s == "*" {
+			return nil, ErrOAuthScopeNotAllowed
+		}
 	}
 
 	// Default grant types and response types
@@ -132,6 +175,9 @@ func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, 
 	if !auth.ValidateRedirectURI(redirectURI, client.RedirectURIs) {
 		return nil, nil, ErrOAuthInvalidRedirectURI
 	}
+	if !isValidRedirectURI(redirectURI) {
+		return nil, nil, ErrOAuthInvalidRedirectURI
+	}
 
 	if responseType != "code" {
 		return nil, nil, ErrOAuthInvalidResponseType
@@ -146,8 +192,26 @@ func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, 
 	}
 
 	requestedScopes := auth.ParseScopes(scope)
+	registeredScopes := auth.ParseScopes(client.Scope)
 	if len(requestedScopes) == 0 {
-		requestedScopes = auth.ParseScopes(client.Scope)
+		requestedScopes = registeredScopes
+	}
+	// An authorization request with no effective scope must be rejected
+	// instead of issuing a token with an empty scope. An empty scope cannot
+	// be displayed on the consent screen and previously resolved to an
+	// unrestricted caller, silently granting the user's full RBAC set.
+	if len(requestedScopes) == 0 {
+		return nil, nil, ErrOAuthScopeRequired
+	}
+	// The granted scope must be a subset of the client's registered scope:
+	// intersect instead of echoing the request verbatim. (Legacy clients
+	// that registered "*" before wildcards were rejected keep working; no
+	// new client can register "*".)
+	if !slices.Contains(registeredScopes, "*") {
+		requestedScopes = auth.IntersectScopes(requestedScopes, registeredScopes)
+	}
+	if len(requestedScopes) == 0 {
+		return nil, nil, ErrOAuthInvalidScope
 	}
 
 	return client, requestedScopes, nil
@@ -155,6 +219,26 @@ func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, 
 
 // CreateAuthorizationCode creates an authorization code after user consent.
 func (s *OAuthService) CreateAuthorizationCode(ctx context.Context, clientID, userID, redirectURI, scope, codeChallenge, codeChallengeMethod string) (string, error) {
+	client, err := s.store.GetOAuthClient(ctx, clientID)
+	if err != nil {
+		return "", err
+	}
+	effectiveScopes := auth.ParseScopes(scope)
+	if len(effectiveScopes) == 0 {
+		// Fail closed: fall back to the client's registered default scope;
+		// if the client has none either, refuse to issue a code rather than
+		// mint a token with an empty (historically unrestricted) scope.
+		effectiveScopes = auth.ParseScopes(client.Scope)
+	}
+	registeredScopes := auth.ParseScopes(client.Scope)
+	if !slices.Contains(registeredScopes, "*") {
+		effectiveScopes = auth.IntersectScopes(effectiveScopes, registeredScopes)
+	}
+	if len(effectiveScopes) == 0 {
+		return "", ErrOAuthScopeRequired
+	}
+	scope = auth.JoinScopes(effectiveScopes)
+
 	plaintext, hash, err := auth.GenerateAuthorizationCode()
 	if err != nil {
 		return "", err
@@ -300,6 +384,20 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 
 	if refreshToken.TokenType != "refresh" {
 		return nil, storage.ErrOAuthTokenNotFound
+	}
+
+	// Reject expired refresh tokens. The lookup above intentionally includes
+	// revoked tokens (for replay detection), so the expiry check must happen
+	// here: without it an expired refresh token would mint a fresh token pair
+	// with a full new TTL, making any leaked refresh token valid forever.
+	if time.Now().UTC().After(refreshToken.ExpiresAt) {
+		log.Warn("OAuth refresh token expired - refusing refresh",
+			"token_id", refreshToken.ID,
+			"client_id", refreshToken.ClientID,
+			"user_id", refreshToken.UserID,
+			"expired_at", refreshToken.ExpiresAt,
+		)
+		return nil, storage.ErrOAuthTokenExpired
 	}
 
 	// Detect replay attack: if the refresh token was already revoked, someone else used it
@@ -471,8 +569,10 @@ func (s *OAuthService) ResolveCallerFromOAuthToken(token *model.OAuthToken, remo
 	}
 
 	scopes := auth.ParseScopes(token.Scope)
-	// If scope is "*" or empty, don't restrict (nil scopes = no scope restriction)
-	if len(scopes) == 0 || slices.Contains(scopes, "*") {
+	// "*" grants unrestricted access; any other scope list (including an
+	// empty one) is enforced as-is. An empty scope must resolve to zero
+	// granted scopes, never to the user's full RBAC permission set.
+	if slices.Contains(scopes, "*") {
 		scopes = nil
 	}
 
@@ -487,7 +587,8 @@ func (s *OAuthService) ResolveCallerFromOAuthToken(token *model.OAuthToken, remo
 }
 
 // RevokeToken revokes a token by its plaintext value.
-func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint string) error {
+func (s *OAuthService) RevokeToken(ctx context.Context, req *model.OAuthTokenRequest) error {
+	token := req.Token
 	tokenHash := auth.HashToken(token)
 
 	// Try to find the token (ignore expiry/revocation errors for revocation endpoint)
@@ -496,6 +597,16 @@ func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint str
 		// Per RFC 7009, revocation of an invalid token should succeed silently
 		log.Debug("OAuth token revocation: token not found", "error", err)
 		return nil
+	}
+
+	// A confidential client may only revoke its own tokens. The token lookup
+	// ignores expiry, so re-authenticate the caller here: without this check
+	// any party could revoke another client's live tokens.
+	if err := s.verifyClientSecret(ctx, req); err != nil {
+		return err
+	}
+	if oauthToken.ClientID != req.ClientID {
+		return ErrOAuthInvalidClient
 	}
 
 	// Revoke the token

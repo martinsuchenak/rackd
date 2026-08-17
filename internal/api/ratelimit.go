@@ -11,6 +11,72 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 )
 
+// TrustedProxyResolver decides whether proxy-supplied client-IP headers may
+// be trusted for a given request, based on the immediate peer address
+// (RemoteAddr) matching a configured trusted-proxy CIDR/network.
+type TrustedProxyResolver struct {
+	trustProxy  bool
+	trustedNets []*net.IPNet
+}
+
+// NewTrustedProxyResolver parses a comma-separated list of IPs and CIDR
+// ranges. When trustProxy is false or no ranges are configured, the resolver
+// never trusts proxy headers (fail-closed).
+func NewTrustedProxyResolver(trustProxy bool, trustedProxies string) *TrustedProxyResolver {
+	resolver := &TrustedProxyResolver{trustProxy: trustProxy}
+	if !trustProxy {
+		return resolver
+	}
+	for _, entry := range strings.Split(trustedProxies, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if !strings.Contains(entry, "/") {
+			if ip := net.ParseIP(entry); ip != nil {
+				if ip.To4() != nil {
+					entry += "/32"
+				} else {
+					entry += "/128"
+				}
+			} else {
+				log.Warn("Ignoring invalid TRUSTED_PROXIES entry", "entry", entry)
+				continue
+			}
+		}
+		_, network, err := net.ParseCIDR(entry)
+		if err != nil {
+			log.Warn("Ignoring invalid TRUSTED_PROXIES entry", "entry", entry)
+			continue
+		}
+		resolver.trustedNets = append(resolver.trustedNets, network)
+	}
+	if len(resolver.trustedNets) == 0 {
+		log.Warn("TRUST_PROXY=true but no valid TRUSTED_PROXIES configured; proxy headers will be ignored")
+	}
+	return resolver
+}
+
+// Trusted reports whether the request's immediate peer is a configured
+// trusted proxy. Proxy headers from any other source are attacker-controlled
+// and must not influence rate-limit bucket selection.
+func (t *TrustedProxyResolver) Trusted(r *http.Request) bool {
+	if t == nil || !t.trustProxy || len(t.trustedNets) == 0 {
+		return false
+	}
+	peer := remoteIP(r)
+	ip := net.ParseIP(peer)
+	if ip == nil {
+		return false
+	}
+	for _, network := range t.trustedNets {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 // RateLimiter tracks request rates per client
 type RateLimiter struct {
 	mu       sync.RWMutex
@@ -126,13 +192,13 @@ func (rl *RateLimiter) cleanupLoop() {
 }
 
 // RateLimitMiddleware applies rate limiting to requests
-func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handler) http.Handler {
+func RateLimitMiddleware(limiter *RateLimiter, proxyResolver *TrustedProxyResolver) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Key by client IP only. Keying on the raw Authorization header
 			// let anonymous clients rotate fake Bearer tokens to get fresh
 			// buckets (bypass) and grow the bucket map without bound.
-			clientID := getClientIP(r, trustProxy)
+			clientID := getClientIP(r, proxyResolver)
 
 			if !limiter.Allow(clientID) {
 				resetTime := limiter.GetResetTime(clientID)
@@ -158,12 +224,13 @@ func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handle
 	}
 }
 
-func getClientIP(r *http.Request, trustProxy bool) string {
-	if trustProxy {
-		// Only trust proxy headers when explicitly configured. Use the
-		// RIGHTMOST XFF entry: it is the address added by our own trusted
-		// reverse proxy. The leftmost entries are client-supplied and can be
-		// rotated to obtain fresh rate-limit buckets.
+func getClientIP(r *http.Request, proxyResolver *TrustedProxyResolver) string {
+	if proxyResolver.Trusted(r) {
+		// Only honor proxy headers when the immediate peer is a configured
+		// trusted proxy. Use the RIGHTMOST XFF entry: it is the address
+		// appended by our own trusted reverse proxy. The leftmost entries are
+		// client-supplied and can be rotated to obtain fresh rate-limit
+		// buckets.
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			ips := strings.Split(xff, ",")
 			return strings.TrimSpace(ips[len(ips)-1])
@@ -178,6 +245,14 @@ func getClientIP(r *http.Request, trustProxy bool) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		// If splitting fails, return as-is (may not have port)
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func remoteIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
 		return r.RemoteAddr
 	}
 	return host

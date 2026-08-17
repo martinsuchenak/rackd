@@ -20,7 +20,7 @@ test('@dns dns records support linking unlinked CNAME records to an existing dev
   });
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'http://127.0.0.1:9',
+    endpoint: 'https://203.0.113.12',
     token: 'dns-link-provider-token',
   });
   await createDNSZone(page, {
@@ -78,7 +78,7 @@ test('@dns dns records support promoting an unlinked A record to a new device', 
   });
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'http://127.0.0.1:9',
+    endpoint: 'https://203.0.113.12',
     token: 'dns-promote-provider-token',
   });
   await createDNSZone(page, {

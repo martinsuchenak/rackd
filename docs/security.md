@@ -155,7 +155,7 @@ server {
 }
 ```
 
-Set `TRUST_PROXY=true` when behind a reverse proxy so Rackd reads the real client IP from forwarded headers.
+Set `TRUST_PROXY=true` when behind a reverse proxy so Rackd reads the real client IP from forwarded headers. You must also set `TRUSTED_PROXIES` to the reverse proxy's IP or CIDR (e.g. `TRUSTED_PROXIES=10.0.0.5`): forwarded headers are honored only when the direct peer matches a configured network. Without `TRUSTED_PROXIES`, forwarded headers are ignored and the socket address is used, so a directly reachable instance cannot have its per-IP login throttling bypassed by spoofed `X-Forwarded-For` / `X-Real-IP` values.
 
 ### File Permissions
 

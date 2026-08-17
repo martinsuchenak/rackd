@@ -33,6 +33,7 @@ type Config struct {
 	LoginRateLimitWindow    time.Duration
 	CookieSecure            bool
 	TrustProxy              bool
+	TrustedProxies          string
 	InitialAdminUsername    string
 	InitialAdminPassword    string
 	InitialAdminEmail       string
@@ -50,6 +51,12 @@ type Config struct {
 
 	// DNS sync
 	DNSSyncInterval time.Duration
+
+	// SSRF policy for outbound integrations (webhooks, DNS providers).
+	// When false (default), loopback, link-local, multicast and private
+	// ranges (RFC1918/CGNAT/ULA) are rejected. Intentionally internal
+	// integrations can be enabled explicitly.
+	SSRFAllowPrivateTargets bool
 }
 
 var cfg Config
@@ -81,6 +88,7 @@ func Load() *Config {
 		LoginRateLimitWindow:    getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
 		CookieSecure:            getBoolEnv("COOKIE_SECURE", true),
 		TrustProxy:              getBoolEnv("TRUST_PROXY", false),
+		TrustedProxies:          getEnv("TRUSTED_PROXIES", ""),
 		InitialAdminUsername:    getEnv("INITIAL_ADMIN_USERNAME", ""),
 		InitialAdminPassword:    getEnv("INITIAL_ADMIN_PASSWORD", ""),
 		InitialAdminEmail:       getEnv("INITIAL_ADMIN_EMAIL", "admin@localhost"),
@@ -95,6 +103,8 @@ func Load() *Config {
 		SnapshotRetentionDays: getIntEnv("SNAPSHOT_RETENTION_DAYS", 90),
 
 		DNSSyncInterval: getDurationEnv("DNS_SYNC_INTERVAL", 1*time.Hour),
+
+		SSRFAllowPrivateTargets: getBoolEnv("SSRF_ALLOW_PRIVATE_TARGETS", false),
 	}
 
 	return &cfg

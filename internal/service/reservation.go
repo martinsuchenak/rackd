@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -158,6 +159,11 @@ func (s *ReservationService) Update(ctx context.Context, id string, req *model.U
 		return nil, err
 	}
 
+	// Verify caller owns the reservation or is an admin
+	if err := s.requireOwnership(ctx, reservation); err != nil {
+		return nil, err
+	}
+
 	// Check if reservation is still active
 	if reservation.Status != model.ReservationStatusActive {
 		return nil, ValidationErrors{{Field: "status", Message: "Cannot update a non-active reservation"}}
@@ -195,11 +201,16 @@ func (s *ReservationService) Delete(ctx context.Context, id string) error {
 	}
 
 	// Check if reservation exists
-	_, err := s.store.GetReservation(ctx, id)
+	reservation, err := s.store.GetReservation(ctx, id)
 	if err != nil {
 		if err == storage.ErrReservationNotFound {
 			return ErrNotFound
 		}
+		return err
+	}
+
+	// Non-admin users can only delete their own reservations
+	if err := s.requireOwnership(ctx, reservation); err != nil {
 		return err
 	}
 
@@ -225,10 +236,39 @@ func (s *ReservationService) Release(ctx context.Context, id string) error {
 		return err
 	}
 
+	// Verify caller owns the reservation or is an admin
+	if err := s.requireOwnership(ctx, reservation); err != nil {
+		return err
+	}
+
 	// Update status to released
 	reservation.Status = model.ReservationStatusReleased
 
 	return s.store.UpdateReservation(enrichAuditCtx(ctx), reservation)
+}
+
+// requireOwnership verifies the caller owns the reservation or is an admin.
+func (s *ReservationService) requireOwnership(ctx context.Context, reservation *model.Reservation) error {
+	caller := CallerFrom(ctx)
+	if caller == nil {
+		return ErrUnauthenticated
+	}
+	if caller.IsSystem() {
+		return nil
+	}
+
+	// Owner can always modify their own reservation
+	if reservation.ReservedBy != "" && reservation.ReservedBy == caller.UserID {
+		return nil
+	}
+
+	// Admin can modify any reservation
+	isAdmin, _ := auth.IsAdmin(ctx, s.store, caller.UserID)
+	if isAdmin {
+		return nil
+	}
+
+	return ErrForbidden
 }
 
 // Claim marks a reservation as claimed (used when a device is assigned the IP)

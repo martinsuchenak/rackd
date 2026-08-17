@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	securl "github.com/martinsuchenak/rackd/internal/webhook"
 )
 
 // TechnitiumClient implements the Provider interface for Technitium DNS Server
@@ -20,12 +22,22 @@ type TechnitiumClient struct {
 
 // NewTechnitiumClient creates a new Technitium DNS client
 func NewTechnitiumClient(endpoint, token string) *TechnitiumClient {
+	// The client carries the provider API token, so it must not be
+	// redirectable to arbitrary hosts and must not dial loopback,
+	// link-local (cloud metadata) or private ranges. The secure client
+	// enforces this at dial time and re-validates every redirect hop.
+	return NewTechnitiumClientWithHTTPClient(endpoint, token, securl.NewSecureHTTPClient(30*time.Second))
+}
+
+// NewTechnitiumClientWithHTTPClient creates a Technitium DNS client that
+// uses the supplied HTTP client. It exists so tests can inject a transport
+// bound to a local test server; production code must use NewTechnitiumClient,
+// whose client enforces the SSRF protections.
+func NewTechnitiumClientWithHTTPClient(endpoint, token string, client *http.Client) *TechnitiumClient {
 	return &TechnitiumClient{
 		endpoint: strings.TrimSuffix(endpoint, "/"),
 		token:    token,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		client:   client,
 	}
 }
 

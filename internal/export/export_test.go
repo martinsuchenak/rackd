@@ -76,6 +76,67 @@ func TestExportDevicesCSV(t *testing.T) {
 	}
 }
 
+func TestExportDevicesCSVNeutralizesFormulaInjection(t *testing.T) {
+	devices := []model.Device{
+		{
+			ID:          "dev-1",
+			Name:        "=HYPERLINK(\"http://127.0.0.1:9494/leak\",\"click-me\")",
+			Hostname:    "server1.example.com",
+			Description: "=cmd|' /C calc'!A1",
+			MakeModel:   "+sum(1+1)",
+			OS:          "@SUM(1+1)",
+			Username:    "-2+3",
+			Location:    "=HYPERLINK(\"http://evil.example\",\"x\")",
+			CreatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			UpdatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := ExportDevices(devices, FormatCSV, &buf); err != nil {
+		t.Fatalf("ExportDevices failed: %v", err)
+	}
+
+	output := buf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("Expected 2 lines, got %d", len(lines))
+	}
+
+	for _, prefix := range []string{"\"=", "\"+", "\"-", "\"@", "\"+sum", "\"-2", "\"@"} {
+		if strings.Contains(output, prefix+"HYPERLINK") || strings.HasPrefix(lines[1], prefix) {
+			t.Errorf("Expected formula injection to be neutralized, found raw formula in: %s", lines[1])
+		}
+	}
+	if !strings.Contains(lines[1], "'=HYPERLINK") {
+		t.Error("Expected sanitized name to start with an apostrophe before =HYPERLINK")
+	}
+	if !strings.Contains(lines[1], "'=cmd|") {
+		t.Error("Expected sanitized description to start with an apostrophe before =cmd|")
+	}
+	if !strings.Contains(lines[1], "'+sum(1+1)") {
+		t.Error("Expected sanitized make_model to start with an apostrophe before +sum")
+	}
+	if !strings.Contains(lines[1], "'@SUM(1+1)") {
+		t.Error("Expected sanitized os to start with an apostrophe before @SUM")
+	}
+	if !strings.Contains(lines[1], "'-2+3") {
+		t.Error("Expected sanitized username to start with an apostrophe before -2+3")
+	}
+	// The CSV writer quotes cells containing commas; ensure no cell value
+	// itself begins with a formula character after the opening quote.
+	for _, cell := range strings.Split(lines[1], "\",\"") {
+		trimmed := strings.Trim(cell, "\"")
+		if trimmed == "" {
+			continue
+		}
+		switch trimmed[0] {
+		case '=', '+', '-', '@', '\t', '\r':
+			t.Errorf("Cell %q starts with a formula character", cell)
+		}
+	}
+}
+
 func TestExportNetworksJSON(t *testing.T) {
 	networks := []model.Network{
 		{

@@ -53,7 +53,7 @@ func TestRateLimiterGetRemaining(t *testing.T) {
 
 func TestRateLimitMiddleware(t *testing.T) {
 	limiter := NewRateLimiter(2, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter, false)
+	middleware := RateLimitMiddleware(limiter, NewTrustedProxyResolver(false, ""))
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -97,7 +97,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 
 func TestRateLimitMiddlewareNoLocalhostBypass(t *testing.T) {
 	limiter := NewRateLimiter(1, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter, false)
+	middleware := RateLimitMiddleware(limiter, NewTrustedProxyResolver(false, ""))
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -126,7 +126,7 @@ func TestRateLimitMiddlewareNoLocalhostBypass(t *testing.T) {
 
 func TestRateLimitMiddlewareAPIKey(t *testing.T) {
 	limiter := NewRateLimiter(2, 1*time.Second)
-	middleware := RateLimitMiddleware(limiter, false)
+	middleware := RateLimitMiddleware(limiter, NewTrustedProxyResolver(false, ""))
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -183,6 +183,9 @@ func TestRateLimitMiddlewareAPIKey(t *testing.T) {
 }
 
 func TestGetClientIP_TrustProxy(t *testing.T) {
+	// The immediate peer (RemoteAddr) is a configured trusted proxy, so its
+	// XFF/X-Real-IP headers may be honored.
+	resolver := NewTrustedProxyResolver(true, "10.0.0.2")
 	tests := []struct {
 		name       string
 		remoteAddr string
@@ -190,12 +193,15 @@ func TestGetClientIP_TrustProxy(t *testing.T) {
 		xri        string
 		expected   string
 	}{
-		{"RemoteAddr", "192.168.1.1:1234", "", "", "192.168.1.1"},
+		// Peers other than the trusted proxy keep their RemoteAddr key.
+		{"RemoteAddr untrusted", "192.168.1.1:1234", "", "", "192.168.1.1"},
+		{"IPv6", "[::1]:1234", "", "", "::1"},
+		// Requests arriving from the trusted proxy itself.
+		{"RemoteAddr trusted no headers", "10.0.0.2:1234", "", "", "10.0.0.2"},
 		// The RIGHTMOST XFF entry is the one appended by our own trusted proxy;
 		// leftmost entries are client-controlled and spoofable.
-		{"X-Forwarded-For", "192.168.1.1:1234", "10.0.0.1, 10.0.0.2", "", "10.0.0.2"},
-		{"X-Real-IP", "192.168.1.1:1234", "", "10.0.0.1", "10.0.0.1"},
-		{"IPv6", "[::1]:1234", "", "", "::1"},
+		{"X-Forwarded-For", "10.0.0.2:1234", "10.0.0.1, 10.0.0.2", "", "10.0.0.2"},
+		{"X-Real-IP", "10.0.0.2:1234", "", "10.0.0.1", "10.0.0.1"},
 	}
 
 	for _, tt := range tests {
@@ -209,7 +215,7 @@ func TestGetClientIP_TrustProxy(t *testing.T) {
 				req.Header.Set("X-Real-IP", tt.xri)
 			}
 
-			ip := getClientIP(req, true)
+			ip := getClientIP(req, resolver)
 			if ip != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, ip)
 			}
@@ -219,13 +225,73 @@ func TestGetClientIP_TrustProxy(t *testing.T) {
 
 func TestGetClientIP_NoTrustProxy(t *testing.T) {
 	// When trustProxy is false, X-Forwarded-For and X-Real-IP should be ignored
+	resolver := NewTrustedProxyResolver(false, "10.0.0.0/8")
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "192.168.1.1:1234"
 	req.Header.Set("X-Forwarded-For", "10.0.0.1")
 	req.Header.Set("X-Real-IP", "10.0.0.2")
 
-	ip := getClientIP(req, false)
+	ip := getClientIP(req, resolver)
 	if ip != "192.168.1.1" {
 		t.Errorf("Expected 192.168.1.1 (RemoteAddr), got %s (proxy headers should be ignored)", ip)
+	}
+}
+
+func TestGetClientIP_UntrustedPeerIgnoresProxyHeaders(t *testing.T) {
+	// TRUST_PROXY=true with a trusted proxy configured, but the immediate
+	// peer is NOT in the trusted list: spoofed headers must be ignored and
+	// the key must fall back to RemoteAddr. This is the regression test for
+	// the rate-limit bucket rotation bypass via X-Forwarded-For / X-Real-IP.
+	resolver := NewTrustedProxyResolver(true, "10.9.9.0/24")
+
+	for _, header := range []struct {
+		name   string
+		key    string
+		values []string
+	}{
+		{"X-Real-IP", "X-Real-IP", []string{"1.2.3.4", "5.6.7.8"}},
+		{"XFF single", "X-Forwarded-For", []string{"1.2.3.4", "5.6.7.8"}},
+		{"XFF rightmost", "X-Forwarded-For", []string{"198.51.100.1, 203.0.113.1", "198.51.100.2, 203.0.113.2"}},
+	} {
+		t.Run(header.name, func(t *testing.T) {
+			for _, value := range header.values {
+				req := httptest.NewRequest("GET", "/test", nil)
+				req.RemoteAddr = "203.0.113.99:4444" // untrusted peer
+				req.Header.Set(header.key, value)
+				if ip := getClientIP(req, resolver); ip != "203.0.113.99" {
+					t.Errorf("spoofed %s=%q from untrusted peer changed key to %q; want RemoteAddr", header.key, value, ip)
+				}
+			}
+		})
+	}
+}
+
+func TestGetClientIP_TrustedProxyNoRangesFailClosed(t *testing.T) {
+	// TRUST_PROXY=true but TRUSTED_PROXIES unset: fail closed — proxy
+	// headers from any peer are ignored (they cannot be authenticated).
+	resolver := NewTrustedProxyResolver(true, "")
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.1.1:1234"
+	req.Header.Set("X-Real-IP", "1.2.3.4")
+	req.Header.Set("X-Forwarded-For", "5.6.7.8")
+	if ip := getClientIP(req, resolver); ip != "192.168.1.1" {
+		t.Errorf("Expected RemoteAddr fallback, got %s", ip)
+	}
+}
+
+func TestGetClientIP_TrustedProxyHonorsForwardedFor(t *testing.T) {
+	// Peer is the configured proxy: rightmost XFF (appended by the proxy)
+	// is used, so distinct real clients get distinct buckets.
+	resolver := NewTrustedProxyResolver(true, "10.0.0.2")
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "10.0.0.2:5555"
+	req.Header.Set("X-Forwarded-For", "203.0.113.10, 203.0.113.20")
+	if ip := getClientIP(req, resolver); ip != "203.0.113.20" {
+		t.Errorf("Expected rightmost XFF 203.0.113.20, got %s", ip)
+	}
+	req.Header.Del("X-Forwarded-For")
+	req.Header.Set("X-Real-IP", "203.0.113.30")
+	if ip := getClientIP(req, resolver); ip != "203.0.113.30" {
+		t.Errorf("Expected X-Real-IP 203.0.113.30, got %s", ip)
 	}
 }

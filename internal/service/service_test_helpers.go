@@ -328,6 +328,11 @@ func (s *serviceTestStorage) UpdateReservation(_ context.Context, reservation *m
 	return nil
 }
 
+func (s *serviceTestStorage) DeleteReservation(_ context.Context, id string) error {
+	delete(s.reservations, id)
+	return nil
+}
+
 func (s *serviceTestStorage) GetNetworkPool(_ context.Context, id string) (*model.NetworkPool, error) {
 	if !s.pools[id] {
 		return nil, storage.ErrPoolNotFound

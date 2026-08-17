@@ -126,6 +126,7 @@ func RunWithAdvancedFeatures(
 
 	// API routes
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
+	proxyResolver := api.NewTrustedProxyResolver(cfg.TrustProxy, cfg.TrustedProxies)
 	handler := api.NewHandler(store, scanner,
 		api.WithSessionManager(sessionManager),
 		api.WithCredentialsStorage(credStore),
@@ -133,7 +134,7 @@ func RunWithAdvancedFeatures(
 		api.WithScheduledScanStorage(scheduledStore),
 		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
 		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
-		api.WithTrustProxy(cfg.TrustProxy),
+		api.WithProxyResolver(proxyResolver),
 		api.WithServices(services),
 	)
 	handler.RegisterRoutes(mux)
@@ -163,7 +164,7 @@ func RunWithAdvancedFeatures(
 	if cfg.RateLimitEnabled {
 		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
 		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
+		httpHandler = api.RateLimitMiddleware(limiter, proxyResolver)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 	if cfg.AuditEnabled {
@@ -267,11 +268,12 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	}
 
 	// API routes
+	proxyResolver := api.NewTrustedProxyResolver(cfg.TrustProxy, cfg.TrustedProxies)
 	handler := api.NewHandler(store, scanner,
 		api.WithSessionManager(sessionManager),
 		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
 		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
-		api.WithTrustProxy(cfg.TrustProxy),
+		api.WithProxyResolver(proxyResolver),
 		api.WithServices(services),
 	)
 	handler.RegisterRoutes(mux)
@@ -301,7 +303,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	if cfg.RateLimitEnabled {
 		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
 		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter, cfg.TrustProxy)(httpHandler)
+		httpHandler = api.RateLimitMiddleware(limiter, proxyResolver)(httpHandler)
 	}
 	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
 	if cfg.AuditEnabled {

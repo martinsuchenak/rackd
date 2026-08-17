@@ -20,7 +20,7 @@ func TestTechnitiumClientDoAPIHandlesMalformedAndErrorResponses(t *testing.T) {
 		})
 		defer server.Close()
 
-		client := NewTechnitiumClient(server.URL, "token")
+		client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
 		if err := client.HealthCheck(context.Background()); err == nil {
 			t.Fatal("expected HTTP status failure")
 		}
@@ -33,7 +33,7 @@ func TestTechnitiumClientDoAPIHandlesMalformedAndErrorResponses(t *testing.T) {
 		})
 		defer server.Close()
 
-		client := NewTechnitiumClient(server.URL, "token")
+		client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
 		if err := client.HealthCheck(context.Background()); err == nil {
 			t.Fatal("expected JSON decode failure")
 		}
@@ -46,7 +46,7 @@ func TestTechnitiumClientDoAPIHandlesMalformedAndErrorResponses(t *testing.T) {
 		})
 		defer server.Close()
 
-		client := NewTechnitiumClient(server.URL, "token")
+		client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
 		if err := client.HealthCheck(context.Background()); err == nil {
 			t.Fatal("expected API error")
 		}
@@ -66,7 +66,7 @@ func TestTechnitiumClientListZonesHealthAndZoneExists(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewTechnitiumClient(server.URL, "token")
+	client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
 
 	zones, err := client.ListZones(context.Background())
 	if err != nil {
@@ -117,7 +117,7 @@ func TestTechnitiumClientRecordOperations(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewTechnitiumClient(server.URL, "token")
+	client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
 
 	record, err := client.GetRecord(context.Background(), "example.test", "www", "A")
 	if err != nil {

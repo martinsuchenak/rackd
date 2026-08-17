@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -322,12 +321,13 @@ func validateWebhookURL(rawURL string) error {
 		return ValidationErrors{{Field: "url", Message: "URL must include a host"}}
 	}
 
-	// Block well-known metadata endpoints and loopback
-	hostname := u.Hostname()
-	if ip := net.ParseIP(hostname); ip != nil {
-		if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
-			return ValidationErrors{{Field: "url", Message: "Loopback, unspecified, link-local and multicast addresses are not allowed"}}
-		}
+	// Block loopback, link-local (cloud metadata), unspecified, multicast
+	// and private-range (RFC1918/CGNAT/ULA) destinations, including
+	// hostnames that resolve into those ranges. Without this, an
+	// authenticated webhook creator can make the server deliver signed
+	// requests to internal services (SSRF).
+	if err := wh.ValidateOutboundHost(u.Hostname()); err != nil {
+		return ValidationErrors{{Field: "url", Message: "Loopback, link-local, multicast and private network addresses are not allowed"}}
 	}
 
 	return nil

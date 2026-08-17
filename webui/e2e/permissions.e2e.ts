@@ -21,7 +21,7 @@ test('@rbac viewer role can access readable pages but write controls stay hidden
 
   await createDNSProvider(page, {
     name: providerName,
-    endpoint: 'https://viewer-dns-provider.test.local',
+    endpoint: 'https://203.0.113.13',
     token: 'viewer-provider-token',
   });
 
