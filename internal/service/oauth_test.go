@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,21 +22,30 @@ func init() {
 // It embeds storage.ExtendedStorage to satisfy the interface; unused methods will panic.
 type mockOAuthStorage struct {
 	storage.ExtendedStorage
-	tokens   map[string]*model.OAuthToken   // by ID
-	byHash   map[string]*model.OAuthToken   // by token hash
-	clients  map[string]*model.OAuthClient  // by ID
-	codes    map[string]*model.OAuthAuthorizationCode // by code hash
-	users    map[string]*model.User         // by ID
+	tokens    map[string]*model.OAuthToken             // by ID
+	byHash    map[string]*model.OAuthToken             // by token hash
+	clients   map[string]*model.OAuthClient            // by ID
+	codes     map[string]*model.OAuthAuthorizationCode // by code hash
+	users     map[string]*model.User                   // by ID
+	perms     map[string]model.Permission              // by "resource:action"
+	userPerms map[string][]string                      // userID -> []"resource:action"
 }
 
 func newMockOAuthStorage() *mockOAuthStorage {
-	return &mockOAuthStorage{
-		tokens:  make(map[string]*model.OAuthToken),
-		byHash:  make(map[string]*model.OAuthToken),
-		clients: make(map[string]*model.OAuthClient),
-		codes:   make(map[string]*model.OAuthAuthorizationCode),
-		users:   make(map[string]*model.User),
+	m := &mockOAuthStorage{
+		tokens:    make(map[string]*model.OAuthToken),
+		byHash:    make(map[string]*model.OAuthToken),
+		clients:   make(map[string]*model.OAuthClient),
+		codes:     make(map[string]*model.OAuthAuthorizationCode),
+		users:     make(map[string]*model.User),
+		perms:     make(map[string]model.Permission),
+		userPerms: make(map[string][]string),
 	}
+	// Seed a small permission catalog used as scopes_supported.
+	for _, s := range []string{"devices:read", "devices:list", "networks:read", "users:delete"} {
+		m.perms[s] = model.Permission{Name: s, Resource: s[:strings.Index(s, ":")], Action: s[strings.Index(s, ":")+1:]}
+	}
+	return m
 }
 
 func (m *mockOAuthStorage) CreateOAuthToken(_ context.Context, token *model.OAuthToken) error {
@@ -103,6 +113,30 @@ func (m *mockOAuthStorage) GetOAuthClient(_ context.Context, clientID string) (*
 	return client, nil
 }
 
+// ListPermissions returns the test permission catalog (the scopes_supported).
+func (m *mockOAuthStorage) ListPermissions(_ context.Context, _ *model.PermissionFilter) ([]model.Permission, error) {
+	perms := make([]model.Permission, 0, len(m.perms))
+	for _, p := range m.perms {
+		perms = append(perms, p)
+	}
+	return perms, nil
+}
+
+// GetUserPermissions returns the permissions held by a user.
+func (m *mockOAuthStorage) GetUserPermissions(_ context.Context, userID string) ([]model.Permission, error) {
+	perms, ok := m.userPerms[userID]
+	if !ok {
+		return []model.Permission{}, nil
+	}
+	result := make([]model.Permission, 0, len(perms))
+	for _, name := range perms {
+		if p, ok := m.perms[name]; ok {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
 func (m *mockOAuthStorage) GetUser(_ context.Context, userID string) (*model.User, error) {
 	user, ok := m.users[userID]
 	if !ok {
@@ -162,6 +196,7 @@ func TestRefreshTokenRotation(t *testing.T) {
 
 	// Setup test data
 	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
 	store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
@@ -247,6 +282,7 @@ func TestRefreshTokenReplayDetection(t *testing.T) {
 
 	// Setup test data
 	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
 	store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
@@ -329,6 +365,7 @@ func TestRefreshTokenInvalidClient(t *testing.T) {
 
 	// Setup test data
 	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
 	store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
@@ -383,6 +420,8 @@ func TestConfidentialClientSecretRequired(t *testing.T) {
 		IsConfidential: true,
 		SecretHash:     secretHash,
 	})
+	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
 
 	oauthSvc := NewOAuthService(store, nil, "http://localhost")
 

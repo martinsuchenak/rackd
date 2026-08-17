@@ -80,3 +80,14 @@ func IntersectScopes(requested, allowed []string) []string {
 	}
 	return result
 }
+
+// SubtractScopes returns the scopes in a that are not present in b.
+func SubtractScopes(a, b []string) []string {
+	var result []string
+	for _, s := range a {
+		if !slices.Contains(b, s) {
+			result = append(result, s)
+		}
+	}
+	return result
+}

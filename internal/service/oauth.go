@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -103,10 +104,24 @@ func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClien
 	// A wildcard scope must never be self-registered: '*' resolves to an
 	// unrestricted caller downstream, so allowing clients to register it via
 	// dynamic registration would let anyone mint full-permission tokens.
-	for _, s := range auth.ParseScopes(req.Scope) {
+	requestedScopes := auth.ParseScopes(req.Scope)
+	if len(requestedScopes) == 0 {
+		return nil, ErrOAuthScopeRequired
+	}
+	for _, s := range requestedScopes {
 		if s == "*" {
 			return nil, ErrOAuthScopeNotAllowed
 		}
+	}
+	// Registration scopes must lie inside the advertised scopes_supported
+	// catalog; arbitrary strings would otherwise be echoed by the consent
+	// screen and stored on the client.
+	catalog, err := s.scopeCatalog(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if unknown := auth.SubtractScopes(requestedScopes, catalog); len(unknown) > 0 {
+		return nil, ErrOAuthScopeNotAllowed
 	}
 
 	// Default grant types and response types
@@ -213,6 +228,17 @@ func (s *OAuthService) ValidateAuthRequest(clientID, redirectURI, responseType, 
 	if len(requestedScopes) == 0 {
 		return nil, nil, ErrOAuthInvalidScope
 	}
+	// Consent-screen scopes are additionally clamped to the advertised
+	// scopes_supported catalog, so stale or rogue registered strings are
+	// never displayed or echoed back to the client.
+	catalog, err := s.scopeCatalog(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+	requestedScopes = auth.IntersectScopes(requestedScopes, catalog)
+	if len(requestedScopes) == 0 {
+		return nil, nil, ErrOAuthInvalidScope
+	}
 
 	return client, requestedScopes, nil
 }
@@ -234,6 +260,22 @@ func (s *OAuthService) CreateAuthorizationCode(ctx context.Context, clientID, us
 	if !slices.Contains(registeredScopes, "*") {
 		effectiveScopes = auth.IntersectScopes(effectiveScopes, registeredScopes)
 	}
+	// Clamp to the advertised catalog...
+	catalog, err := s.scopeCatalog(ctx)
+	if err != nil {
+		return "", err
+	}
+	effectiveScopes = auth.IntersectScopes(effectiveScopes, catalog)
+	// ...and to the consenting user's own permissions: a user must never be
+	// able to delegate (or be tricked into granting) more than they hold,
+	// regardless of what the client registered or the authorize request
+	// carried. A legacy "*" registration collapses to the user's permission
+	// set by this same intersection.
+	userScopes, err := s.userScopeSet(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	effectiveScopes = auth.IntersectScopes(effectiveScopes, userScopes)
 	if len(effectiveScopes) == 0 {
 		return "", ErrOAuthScopeRequired
 	}
@@ -436,6 +478,30 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 		effectiveScopes := auth.IntersectScopes(requestedScopes, allowedScopes)
 		scope = auth.JoinScopes(effectiveScopes)
 	}
+	// Re-clamp the effective scope on every refresh: to the advertised
+	// catalog and to the user's CURRENT permissions. Tokens minted before a
+	// permission revocation (or carrying rogue scope strings from a legacy
+	// client) lose the excess scopes at the next refresh.
+	{
+		effectiveScopes := auth.ParseScopes(scope)
+		if slices.Contains(effectiveScopes, "*") {
+			effectiveScopes = nil
+		}
+		catalog, err := s.scopeCatalog(ctx)
+		if err != nil {
+			return nil, err
+		}
+		effectiveScopes = auth.IntersectScopes(effectiveScopes, catalog)
+		userScopes, err := s.userScopeSet(ctx, refreshToken.UserID)
+		if err != nil {
+			return nil, err
+		}
+		effectiveScopes = auth.IntersectScopes(effectiveScopes, userScopes)
+		if len(effectiveScopes) == 0 {
+			return nil, ErrOAuthInvalidScope
+		}
+		scope = auth.JoinScopes(effectiveScopes)
+	}
 
 	// Create new access token
 	accessPlain, accessHash, err := auth.GenerateOAuthToken()
@@ -517,6 +583,28 @@ func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTo
 		requestedScopes := auth.ParseScopes(req.Scope)
 		allowedScopes := auth.ParseScopes(client.Scope)
 		effectiveScopes := auth.IntersectScopes(requestedScopes, allowedScopes)
+		scope = auth.JoinScopes(effectiveScopes)
+	}
+	// Clamp client-credentials grants to the catalog and the associated
+	// user's permissions — the client acts on that user's behalf.
+	{
+		effectiveScopes := auth.ParseScopes(scope)
+		if slices.Contains(effectiveScopes, "*") {
+			effectiveScopes = nil
+		}
+		catalog, err := s.scopeCatalog(ctx)
+		if err != nil {
+			return nil, err
+		}
+		effectiveScopes = auth.IntersectScopes(effectiveScopes, catalog)
+		userScopes, err := s.userScopeSet(ctx, client.CreatedByUserID)
+		if err != nil {
+			return nil, err
+		}
+		effectiveScopes = auth.IntersectScopes(effectiveScopes, userScopes)
+		if len(effectiveScopes) == 0 {
+			return nil, ErrOAuthInvalidScope
+		}
 		scope = auth.JoinScopes(effectiveScopes)
 	}
 
@@ -642,30 +730,47 @@ func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error 
 	return s.store.DeleteOAuthClient(ctx, clientID)
 }
 
-// GetAllScopes returns all available permission scopes.
+// scopeCatalog returns every scope this authorization server may issue,
+// derived from the RBAC permission catalog (resource:action). This is the
+// single source of truth advertised as scopes_supported and the upper bound
+// for any client registration or token grant.
+func (s *OAuthService) scopeCatalog(ctx context.Context) ([]string, error) {
+	perms, err := s.store.ListPermissions(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	catalog := make([]string, 0, len(perms))
+	for _, p := range perms {
+		catalog = append(catalog, p.Resource+":"+p.Action)
+	}
+	sort.Strings(catalog)
+	return catalog, nil
+}
+
+// userScopeSet returns the explicit scopes the user may delegate: one
+// resource:action entry per permission the user holds.
+func (s *OAuthService) userScopeSet(ctx context.Context, userID string) ([]string, error) {
+	perms, err := s.store.GetUserPermissions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	scopes := make([]string, 0, len(perms))
+	for _, p := range perms {
+		scopes = append(scopes, p.Resource+":"+p.Action)
+	}
+	return scopes, nil
+}
+
+// GetAllScopes returns all available permission scopes (the advertised
+// scopes_supported), derived from the permission catalog.
 func (s *OAuthService) GetAllScopes() []string {
 	ctx := SystemContext(context.Background(), "oauth")
-	// Use RBAC storage to get all permissions
-	checker, ok := s.store.(interface {
-		GetUserPermissions(ctx context.Context, userID string) ([]model.Permission, error)
-	})
-	if !ok {
-		return []string{"*"}
+	catalog, err := s.scopeCatalog(ctx)
+	if err != nil {
+		log.Error("Failed to list permission catalog for scopes_supported", "error", err)
+		return []string{}
 	}
-
-	// Get a superset of permissions by querying with admin
-	// Just return a static list of known scopes
-	_ = checker
-	_ = ctx
-	return []string{
-		"*",
-		"devices:list", "devices:create", "devices:read", "devices:update", "devices:delete",
-		"networks:list", "networks:create", "networks:read", "networks:update", "networks:delete",
-		"datacenters:list", "datacenters:create", "datacenters:read", "datacenters:update", "datacenters:delete",
-		"discovery:list", "discovery:create", "discovery:read", "discovery:delete",
-		"pools:list", "pools:create", "pools:read", "pools:update", "pools:delete",
-		"relationships:list", "relationships:create", "relationships:read", "relationships:update", "relationships:delete",
-	}
+	return catalog
 }
 
 // StartCleanup starts a background goroutine to clean up expired codes and tokens.
