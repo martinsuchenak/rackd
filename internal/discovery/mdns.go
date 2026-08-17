@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -58,6 +59,11 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				n, addr, err := conn.ReadFrom(buf)
 				if err != nil {
+					// Discover() closes the conn when it returns; exit
+					// instead of busy-looping on closed-connection errors.
+					if errors.Is(err, net.ErrClosed) {
+						return
+					}
 					continue
 				}
 
@@ -92,6 +98,11 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 	}
 
 cleanup:
+	// Closing the conn makes the listener's ReadFrom fail immediately; wait
+	// for it to exit before closing resultChan so a late packet cannot
+	// panic on send-to-closed-channel.
+	conn.Close()
+	<-doneChan
 	close(resultChan)
 
 	uniqueResults := make(map[string]mDNSResult)

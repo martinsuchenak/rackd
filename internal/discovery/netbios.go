@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"net"
 	"strings"
 	"time"
@@ -99,6 +100,11 @@ func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast net.IP) ([]N
 				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				n, addr, err := conn.ReadFrom(buf)
 				if err != nil {
+					// Discover() closes the conn when it returns; exit
+					// instead of busy-looping on closed-connection errors.
+					if errors.Is(err, net.ErrClosed) {
+						return
+					}
 					continue
 				}
 
@@ -130,6 +136,11 @@ func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast net.IP) ([]N
 	}
 
 cleanup:
+	// Closing the conn makes the listener's ReadFrom fail immediately; wait
+	// for it to exit before closing resultChan so a late packet cannot
+	// panic on send-to-closed-channel.
+	conn.Close()
+	<-doneChan
 	close(resultChan)
 
 	var results []NetBIOSResult
@@ -155,7 +166,7 @@ func (s *NetBIOSScanner) buildNBNSQuery() []byte {
 	buf.WriteByte(byte(len(encodedName))) // Name length
 	buf.Write(encodedName)
 
-	buf.WriteByte(0x00)                                  // Name terminator
+	buf.WriteByte(0x00)                                 // Name terminator
 	binary.Write(buf, binary.BigEndian, uint16(0x0021)) // Type: NBSTAT
 	binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Class: IN
 

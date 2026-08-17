@@ -247,6 +247,13 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 		log.Printf("discovery: failed to update scan status: %v", err)
 	}
 
+	// Bind a cancellable context to this scan so the broadcast listeners
+	// (mDNS/NetBIOS/LLDP) and any in-flight host probes terminate when the
+	// scan finishes or fails — previously they kept running (and parsing
+	// LAN multicast traffic) forever after completion.
+	scanCtx, finishScan := context.WithCancel(ctx)
+	defer finishScan()
+
 	ips := expandCIDR(ipNet)
 	scan.TotalHosts = len(ips)
 
@@ -256,15 +263,37 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	var foundCount int
 	var scanMu sync.Mutex
 
-	// Refresh ARP table before scanning to get recent MAC addresses
+	// Refresh ARP table before scanning to get recent MAC addresses.
 	s.arpScanner.Refresh()
+	// Keep re-reading the ARP table during the scan: probing hosts populates
+	// the host's ARP cache as a side effect, and a single pre-scan snapshot
+	// misses every device the host had not talked to yet.
+	arpStop := make(chan struct{})
+	var arpWG sync.WaitGroup
+	arpWG.Add(1)
+	go func() {
+		defer arpWG.Done()
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-arpStop:
+				return
+			case <-scanCtx.Done():
+				return
+			case <-ticker.C:
+				s.arpScanner.Refresh()
+			}
+		}
+	}()
 
-	// Run per-network broadcast scans once (NetBIOS, mDNS, LLDP)
-	netResults := s.runNetworkScans(ctx, network.Subnet, opts.ScanType)
+	// Run per-network broadcast scans once (NetBIOS, mDNS, LLDP). They honor
+	// scanCtx and stop when the scan ends.
+	netResults := s.runNetworkScans(scanCtx, network.Subnet, opts.ScanType)
 
 	for i, ip := range ips {
 		select {
-		case <-ctx.Done():
+		case <-scanCtx.Done():
 			scan.Status = model.ScanStatusFailed
 			scan.ErrorMessage = "scan cancelled"
 			if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
@@ -288,7 +317,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 				}
 			}()
 
-			device := s.discoverHostWithOptions(ctx, ip, network.ID, opts, params.Timeout, netResults)
+			device := s.discoverHostWithOptions(scanCtx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
 				existing, _ := s.storage.GetDiscoveredDeviceByIP(ctx, network.ID, ip)
 				if existing != nil {
@@ -309,7 +338,10 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 			}
 
 			scanMu.Lock()
-			scan.ScannedHosts = index + 1
+			// Increment: workers finish out of order, so assigning an
+			// absolute index let late finishers overwrite progress backwards
+			// (scans showed e.g. 97% at completion).
+			scan.ScannedHosts++
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
 			// Copy scan state under lock to avoid race with concurrent reads
@@ -328,6 +360,11 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Printf("discovery: failed to update completed scan: %v", err)
 	}
+
+	// Stop the ARP refresher and broadcast listeners.
+	finishScan()
+	close(arpStop)
+	arpWG.Wait()
 
 	s.cleanupCompletedScans()
 }
