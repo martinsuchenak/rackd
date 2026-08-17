@@ -25,6 +25,15 @@ test('@discovery scheduled scans support create, edit, toggle, and delete flows'
   await page.goto('/scheduled-scans');
   await expect(page.getByRole('heading', { name: 'Scheduled Scans' })).toBeVisible();
 
+  // The table follows the app-wide empty-state pattern: inline row with an
+  // action link (only rendered when the list is actually empty).
+  // This instance may have schedules from other tests, so only assert the
+  // pattern when empty.
+  const emptyRow = page.getByRole('cell', { name: /No scheduled scans configured/ });
+  if (await emptyRow.isVisible().catch(() => false)) {
+    await expect(page.getByRole('button', { name: 'Add your first scheduled scan' })).toBeVisible();
+  }
+
   await page.getByRole('button', { name: 'Add new scheduled scan' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add Schedule' });
   await expect(dialog).toBeVisible();

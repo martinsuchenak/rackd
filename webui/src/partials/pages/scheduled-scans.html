@@ -43,11 +43,17 @@
                 </thead>
                 <tbody class="divide-y divide-gray-300 dark:divide-gray-700">
                     <tr x-show="loading">
-                        <td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">Loading...</td>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200"
+                            role="status">Loading...</td>
                     </tr>
                     <tr x-show="showEmptyState">
-                        <td colspan="7" class="px-6 py-8 text-center text-gray-600 dark:text-gray-400">No scheduled
-                            scans found</td>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No scheduled
+                            scans configured.
+                            <button x-show="$store.permissions.canCreate('scheduled-scans')"
+                                @click="openAddModal()"
+                                class="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors"
+                                :aria-label="'Add your first scheduled scan'">Schedule your first scan</button>
+                        </td>
                     </tr>
                     <template x-for="scan in scans" :key="scan.id">
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
