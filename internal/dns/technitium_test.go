@@ -145,3 +145,48 @@ func TestTechnitiumClientRecordOperations(t *testing.T) {
 		t.Fatal("expected update path to delete old record after create")
 	}
 }
+
+// TestTechnitiumClientLegacyTokenFallback covers servers that reject the
+// Authorization header (404/401/403) but accept the legacy token query
+// parameter: the client must retry once with the parameter and succeed.
+func TestTechnitiumClientLegacyTokenFallback(t *testing.T) {
+	var sawQueryParamToken bool
+	server := newTechnitiumTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/status" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("Authorization") == "Bearer secret-token" && r.URL.Query().Get("token") == "" {
+			// Header-only request rejected (observed in the field even on
+			// v15.x deployments behind certain configurations).
+			http.Error(w, `{"status":"error","errorMessage":"token required"}`, http.StatusNotFound)
+			return
+		}
+		if r.URL.Query().Get("token") == "secret-token" {
+			sawQueryParamToken = true
+			_, _ = w.Write([]byte(`{"status":"ok","response":{"version":"15.2"}}`))
+			return
+		}
+		http.Error(w, `{"status":"error"}`, http.StatusUnauthorized)
+	})
+	defer server.Close()
+
+	client := NewTechnitiumClientWithHTTPClient(server.URL, "secret-token", server.Client())
+	if err := client.HealthCheck(context.Background()); err != nil {
+		t.Fatalf("HealthCheck with legacy fallback failed: %v", err)
+	}
+	if !sawQueryParamToken {
+		t.Fatal("expected fallback retry with token query parameter")
+	}
+}
+
+// TestTechnitiumClientEndpointNormalization verifies trailing slashes and a
+// trailing /api are stripped so paths like /api/api/status are never built.
+func TestTechnitiumClientEndpointNormalization(t *testing.T) {
+	for _, endpoint := range []string{"http://host:5380", "http://host:5380/", "http://host:5380/api", "http://host:5380/api/"} {
+		c := NewTechnitiumClientWithHTTPClient(endpoint, "tok", nil)
+		if c.endpoint != "http://host:5380" {
+			t.Errorf("endpoint %q normalized to %q, want http://host:5380", endpoint, c.endpoint)
+		}
+	}
+}

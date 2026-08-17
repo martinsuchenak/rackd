@@ -672,6 +672,7 @@ func (s *DNSService) syncRecordAsync(ctx context.Context, record *model.DNSRecor
 		bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
 		defer cancel()
 		if err := s.SyncRecord(bgCtx, &snapshot); err != nil {
+			log.Error("DNS record provider sync failed", "record_id", snapshot.ID, "zone_id", snapshot.ZoneID, "error", err)
 			errMsg := err.Error()
 			snapshot.ErrorMessage = &errMsg
 			snapshot.SyncStatus = model.RecordSyncStatusFailed

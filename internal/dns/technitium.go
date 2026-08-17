@@ -124,6 +124,34 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	}
 	defer resp.Body.Close()
 
+	// Technitium < v15 only authenticates via the token query parameter and
+	// ignores the Authorization header; depending on version an
+	// unauthenticated call 401s or 404s. Retry once with the legacy
+	// parameter so older servers keep working (header-only for v15+).
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
+		resp.Body.Close()
+		params.Set("token", c.token)
+		fullURL := c.endpoint + path + "?" + params.Encode()
+		if method == "POST" {
+			req, err = http.NewRequestWithContext(ctx, "POST", fullURL, nil)
+		} else {
+			req, err = http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		resp, err = c.client.Do(req)
+		if err != nil {
+			var ue *url.Error
+			if errors.As(err, &ue) {
+				ue.URL = ""
+				return fmt.Errorf("request failed: %w", ue)
+			}
+			return fmt.Errorf("request failed: %w", err)
+		}
+		defer resp.Body.Close()
+	}
+
 	// Check for non-2xx HTTP status before attempting JSON decode. Include a
 	// body excerpt so operators can tell a reverse-proxy 404 (HTML) from a
 	// Technitium error (JSON) and see the server's own message.
