@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,8 +35,14 @@ func NewTechnitiumClient(endpoint, token string) *TechnitiumClient {
 // bound to a local test server; production code must use NewTechnitiumClient,
 // whose client enforces the SSRF protections.
 func NewTechnitiumClientWithHTTPClient(endpoint, token string, client *http.Client) *TechnitiumClient {
+	// Normalize: the endpoint is the web console root (e.g. http://host:5380);
+	// a trailing slash or a trailing "/api" is a common copy-paste mistake and
+	// would make every request hit a non-existent path (404).
+	endpoint = strings.TrimSuffix(endpoint, "/")
+	endpoint = strings.TrimSuffix(endpoint, "/api")
+	endpoint = strings.TrimSuffix(endpoint, "/")
 	return &TechnitiumClient{
-		endpoint: strings.TrimSuffix(endpoint, "/"),
+		endpoint: endpoint,
 		token:    token,
 		client:   client,
 	}
@@ -117,9 +124,15 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	}
 	defer resp.Body.Close()
 
-	// Check for non-2xx HTTP status before attempting JSON decode
+	// Check for non-2xx HTTP status before attempting JSON decode. Include a
+	// body excerpt so operators can tell a reverse-proxy 404 (HTML) from a
+	// Technitium error (JSON) and see the server's own message.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("HTTP error: status %d %s", resp.StatusCode, resp.Status)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if len(body) > 0 {
+			return fmt.Errorf("HTTP error: status %d %s (path %s, response: %s)", resp.StatusCode, resp.Status, path, strings.TrimSpace(string(body)))
+		}
+		return fmt.Errorf("HTTP error: status %d %s (path %s, empty response body)", resp.StatusCode, resp.Status, path)
 	}
 
 	var apiResp apiResponse
