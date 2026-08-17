@@ -184,13 +184,37 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	return nil
 }
 
+// recordValueParam maps a record type to the Technitium API parameter that
+// carries the record value. The API has no generic "value" parameter — each
+// type names it differently (per APIDOCS "Add Record").
+func recordValueParam(rtype string) string {
+	switch rtype {
+	case "A", "AAAA":
+		return "ipAddress"
+	case "CNAME":
+		return "cname"
+	case "TXT":
+		return "text"
+	case "PTR":
+		return "ptrName"
+	case "NS":
+		return "nameServer"
+	case "MX":
+		return "exchange"
+	case "SRV":
+		return "target"
+	default:
+		return "value"
+	}
+}
+
 // CreateRecord creates a new DNS record in the zone
 func (c *TechnitiumClient) CreateRecord(ctx context.Context, zone string, record *Record) error {
 	params := url.Values{}
 	params.Set("zone", zone)
 	params.Set("domain", record.Name)
 	params.Set("type", record.Type)
-	params.Set("value", record.Value)
+	params.Set(recordValueParam(record.Type), record.Value)
 	if record.TTL > 0 {
 		params.Set("ttl", fmt.Sprintf("%d", record.TTL))
 	}
@@ -198,7 +222,7 @@ func (c *TechnitiumClient) CreateRecord(ctx context.Context, zone string, record
 		params.Set("priority", fmt.Sprintf("%d", *record.Priority))
 	}
 
-	return c.doAPI(ctx, "POST", "/api/records/add", params, nil)
+	return c.doAPI(ctx, "POST", "/api/zones/records/add", params, nil)
 }
 
 // UpdateRecord updates an existing DNS record in the zone
@@ -223,7 +247,7 @@ func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record
 	}
 
 	// Now delete the old record; if this fails, we have a duplicate but no data loss
-	if err := c.DeleteRecord(ctx, zone, record.Name, record.Type); err != nil {
+	if err := c.DeleteRecord(ctx, zone, record.Name, record.Type, existing.Value); err != nil {
 		// Log-worthy but not fatal — the new record is already in place
 		// The old value may linger as a duplicate until next sync
 	}
@@ -231,14 +255,19 @@ func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record
 	return nil
 }
 
-// DeleteRecord deletes a DNS record from the zone
-func (c *TechnitiumClient) DeleteRecord(ctx context.Context, zone string, name string, rtype string) error {
+// DeleteRecord deletes a DNS record from the zone.
+// The value parameter is required when a domain has multiple records of the
+// same type (e.g. several A records) — without it the delete is ambiguous.
+func (c *TechnitiumClient) DeleteRecord(ctx context.Context, zone string, name string, rtype string, value string) error {
 	params := url.Values{}
 	params.Set("zone", zone)
 	params.Set("domain", name)
 	params.Set("type", rtype)
+	if value != "" {
+		params.Set(recordValueParam(rtype), value)
+	}
 
-	return c.doAPI(ctx, "POST", "/api/records/delete", params, nil)
+	return c.doAPI(ctx, "POST", "/api/zones/records/delete", params, nil)
 }
 
 // GetRecord retrieves a specific record from the zone
@@ -336,12 +365,13 @@ func (c *TechnitiumClient) ZoneExists(ctx context.Context, zone string) (bool, e
 	return false, nil
 }
 
-// HealthCheck verifies connectivity to the Technitium DNS server
+// HealthCheck verifies connectivity AND authentication against the
+// Technitium DNS server. /api/user/session/get exists across versions
+// (v15.0+ incl. v15.2 and v15.4) and validates the token, unlike
+// /api/status which only exists from v15.3 onward.
 func (c *TechnitiumClient) HealthCheck(ctx context.Context) error {
-	// The /api/status endpoint returns server info; we just need to verify the API responds
-	// doAPI already checks that the outer status is "ok"
 	var resp map[string]interface{}
-	if err := c.doAPI(ctx, "GET", "/api/status", nil, &resp); err != nil {
+	if err := c.doAPI(ctx, "GET", "/api/user/session/get", nil, &resp); err != nil {
 		return err
 	}
 

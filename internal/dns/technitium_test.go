@@ -58,7 +58,7 @@ func TestTechnitiumClientListZonesHealthAndZoneExists(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/zones/list":
 			_, _ = w.Write([]byte(`{"status":"ok","response":{"zones":[{"name":"example.test","type":"Primary"},{"name":"other.test","type":"Primary"}]}}`))
-		case "/api/status":
+		case "/api/user/session/get":
 			_, _ = w.Write([]byte(`{"status":"ok","response":{"version":"1.0"}}`))
 		default:
 			http.NotFound(w, r)
@@ -93,9 +93,9 @@ func TestTechnitiumClientRecordOperations(t *testing.T) {
 	var deleted bool
 	server := newTechnitiumTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/records/add":
+		case "/api/zones/records/add":
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		case "/api/records/delete":
+		case "/api/zones/records/delete":
 			deleted = true
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		case "/api/zones/records/get":
@@ -152,7 +152,7 @@ func TestTechnitiumClientRecordOperations(t *testing.T) {
 func TestTechnitiumClientLegacyTokenFallback(t *testing.T) {
 	var sawQueryParamToken bool
 	server := newTechnitiumTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/status" {
+		if r.URL.Path != "/api/user/session/get" {
 			http.NotFound(w, r)
 			return
 		}

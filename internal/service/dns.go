@@ -706,8 +706,9 @@ func (s *DNSService) DeleteRecord(ctx context.Context, id string) error {
 	// Try to delete from DNS provider if synced
 	if record.SyncStatus == model.RecordSyncStatusSynced {
 		if provider, err := s.getProvider(ctx, zone.ProviderID); err == nil {
-			if err := provider.DeleteRecord(ctx, zone.Name, record.Name, record.Type); err != nil {
+			if err := provider.DeleteRecord(ctx, zone.Name, record.Name, record.Type, record.Value); err != nil {
 				// Log but don't fail - the record may not exist on the provider
+				log.Warn("Failed to delete record from DNS provider", "record_id", record.ID, "zone", zone.Name, "error", err)
 			}
 		}
 	}

@@ -13,8 +13,9 @@ type Provider interface {
 	// UpdateRecord updates an existing DNS record
 	UpdateRecord(ctx context.Context, zone string, record *Record) error
 
-	// DeleteRecord deletes a DNS record
-	DeleteRecord(ctx context.Context, zone string, name string, rtype string) error
+	// DeleteRecord deletes a DNS record; value is required when a domain
+	// has multiple records of the same type
+	DeleteRecord(ctx context.Context, zone string, name string, rtype string, value string) error
 
 	// GetRecord retrieves a specific record
 	GetRecord(ctx context.Context, zone string, name string, rtype string) (*Record, error)
