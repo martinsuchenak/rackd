@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -244,6 +245,15 @@ func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
+	// Same field validation as the single-device path, so bulk cannot be used
+	// to bypass name/hostname/length/address checks.
+	for i, device := range devices {
+		if errs := ValidateDevice(device); len(errs) > 0 {
+			errs[0].Field = fmt.Sprintf("devices[%d].%s", i, errs[0].Field)
+			h.writeValidationErrors(w, errs)
+			return
+		}
+	}
 
 	result, err := h.svc.Bulk.CreateDevices(r.Context(), devices)
 	if err != nil {
@@ -262,6 +272,13 @@ func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
 	if len(devices) > 100 {
 		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
+	}
+	for i, device := range devices {
+		if errs := ValidateDevice(device); len(errs) > 0 {
+			errs[0].Field = fmt.Sprintf("devices[%d].%s", i, errs[0].Field)
+			h.writeValidationErrors(w, errs)
+			return
+		}
 	}
 
 	result, err := h.svc.Bulk.UpdateDevices(r.Context(), devices)

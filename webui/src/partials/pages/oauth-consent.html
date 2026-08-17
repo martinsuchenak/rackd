@@ -36,7 +36,7 @@
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
           <h3 class="font-semibold text-gray-900 dark:text-white text-lg" x-text="consentData.client_name"></h3>
           <template x-if="consentData.client_uri">
-            <a :href="consentData.client_uri" target="_blank" class="text-sm text-blue-600 dark:text-blue-400 hover:underline" x-text="consentData.client_uri"></a>
+            <a :href="safeClientUri" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 dark:text-blue-400 hover:underline" x-text="consentData.client_uri"></a>
           </template>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
             This application is requesting access to your Rackd account.

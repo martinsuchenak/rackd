@@ -205,6 +205,11 @@ function router() {
     accessDenied: false,
     activeConflictCount: 0,
 
+    // Server version from the UI config (shown in the sidebar footer)
+    get serverVersion() {
+      return window.rackdConfig?.version ?? '';
+    },
+
     // Nav items from config, filtered by user permissions
     get navItems() {
       const allItems = mergeNavItems(window.rackdConfig?.nav_items ?? []);
@@ -370,7 +375,7 @@ async function init(): Promise<void> {
     publishConfigUpdate(await api.getConfig());
   } catch (error) {
     console.error('Failed to load config:', error);
-    publishConfigUpdate({ edition: 'oss', features: [], nav_items: [] });
+    publishConfigUpdate({ edition: 'oss', version: '', features: [], nav_items: [] });
     // Show error toast if loading config fails
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('toast:error', {

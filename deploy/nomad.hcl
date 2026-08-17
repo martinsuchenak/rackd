@@ -40,8 +40,7 @@ job "rackd" {
       template {
         data = <<-EOF
           {{ with nomadVar "nomad/jobs/rackd" }}
-          API_AUTH_TOKEN={{ .api_auth_token }}
-          MCP_AUTH_TOKEN={{ .mcp_auth_token }}
+          ENCRYPTION_KEY={{ .encryption_key }}
           {{ end }}
         EOF
         destination = "secrets/env"

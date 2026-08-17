@@ -8,11 +8,13 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/version"
 )
 
 // UIConfig represents frontend configuration
 type UIConfig struct {
 	Edition  string    `json:"edition"`
+	Version  string    `json:"version"`
 	Features []string  `json:"features"`
 	NavItems []NavItem `json:"nav_items"`
 	UserInfo *UserInfo `json:"user,omitempty"`
@@ -49,6 +51,7 @@ func NewUIConfigBuilder() *UIConfigBuilder {
 	return &UIConfigBuilder{
 		config: UIConfig{
 			Edition:  "oss",
+			Version:  version.Version,
 			Features: []string{},
 			NavItems: []NavItem{},
 		},

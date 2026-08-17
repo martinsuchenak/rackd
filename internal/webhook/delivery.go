@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -130,9 +131,9 @@ func (s *DeliveryService) sendHTTPRequest(ctx context.Context, webhook *model.We
 	}
 	defer resp.Body.Close()
 
-	// Read response body (for logging)
-	body, _ := io.ReadAll(resp.Body)
-	_ = body // We don't use it but read it to drain the connection
+	// Drain the body without loading it fully into memory: a hostile target
+	// could otherwise return an arbitrarily large response (× concurrency × retries).
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
 
 	// Consider 2xx responses as success
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -168,7 +169,9 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 		if err != nil {
 			// Webhook was deleted, abandon the delivery
 			delivery.Status = model.DeliveryStatusAbandoned
-			_ = s.store.UpdateDelivery(ctx, &delivery)
+			if err := s.store.UpdateDelivery(ctx, &delivery); err != nil {
+				log.Error("Failed to persist abandoned delivery status", "delivery_id", delivery.ID, "error", err)
+			}
 			failCount++
 			continue
 		}
@@ -176,7 +179,9 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 		// Only deliver to active webhooks
 		if !webhook.Active {
 			delivery.Status = model.DeliveryStatusAbandoned
-			_ = s.store.UpdateDelivery(ctx, &delivery)
+			if err := s.store.UpdateDelivery(ctx, &delivery); err != nil {
+				log.Error("Failed to persist abandoned delivery status", "delivery_id", delivery.ID, "error", err)
+			}
 			failCount++
 			continue
 		}

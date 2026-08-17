@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/service"
 )
 
 func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
@@ -54,6 +56,11 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.svc.Auth.Login(r.Context(), req.Username, req.Password)
 	if err != nil {
+		if errors.Is(err, service.ErrUnauthenticated) {
+			// Deliberately vague: never reveal whether the username exists.
+			h.writeError(w, http.StatusUnauthorized, "INVALID_CREDENTIALS", "Invalid username or password")
+			return
+		}
 		h.handleServiceError(w, err)
 		return
 	}

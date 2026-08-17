@@ -179,7 +179,24 @@ func (s *OAuthService) CreateAuthorizationCode(ctx context.Context, clientID, us
 	return plaintext, nil
 }
 
-// ExchangeCode exchanges an authorization code for access and refresh tokens.
+// verifyClientSecret authenticates a confidential client per RFC 6749 §4.1.3/§6.
+// Public clients are exempt (they must use PKCE instead).
+func (s *OAuthService) verifyClientSecret(ctx context.Context, req *model.OAuthTokenRequest) error {
+	client, err := s.store.GetOAuthClient(ctx, req.ClientID)
+	if err != nil {
+		return ErrOAuthInvalidClient
+	}
+	if !client.IsConfidential {
+		return nil
+	}
+	secretHash := auth.HashToken(req.ClientSecret)
+	if subtle.ConstantTimeCompare([]byte(secretHash), []byte(client.SecretHash)) != 1 {
+		return ErrOAuthInvalidClientSecret
+	}
+	return nil
+}
+
+// ExchangeCode exchanges an authorization code for tokens (authorization_code grant).
 func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
 	if req.Code == "" {
 		return nil, errors.New("code is required")
@@ -194,6 +211,11 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 	// Verify client
 	if code.ClientID != req.ClientID {
 		return nil, ErrOAuthInvalidClient
+	}
+
+	// Authenticate confidential clients (public clients use PKCE instead)
+	if err := s.verifyClientSecret(ctx, req); err != nil {
+		return nil, err
 	}
 
 	// Verify redirect URI
@@ -292,9 +314,19 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 		return nil, storage.ErrOAuthTokenRevoked
 	}
 
-	// Verify client
-	if req.ClientID != "" && refreshToken.ClientID != req.ClientID {
+	// Verify client. If client_id was supplied it must match; if omitted,
+	// default it to the token's client so confidential clients are still
+	// authenticated below (RFC 6749 §6).
+	if req.ClientID == "" {
+		req.ClientID = refreshToken.ClientID
+	}
+	if refreshToken.ClientID != req.ClientID {
 		return nil, ErrOAuthInvalidClient
+	}
+
+	// Authenticate confidential clients (public clients use PKCE instead)
+	if err := s.verifyClientSecret(ctx, req); err != nil {
+		return nil, err
 	}
 
 	// Determine scope (use refresh token's scope if not specified)
@@ -481,11 +513,19 @@ func (s *OAuthService) RevokeToken(ctx context.Context, token, tokenTypeHint str
 
 // ListClients lists all registered OAuth clients.
 func (s *OAuthService) ListClients(ctx context.Context) ([]model.OAuthClient, error) {
+	// OAuth client management is admin-only; gated on users:list to match the UI.
+	if err := requirePermission(ctx, s.store, "users", "list"); err != nil {
+		return nil, err
+	}
 	return s.store.ListOAuthClients(ctx, "")
 }
 
 // DeleteClient deletes an OAuth client and revokes its tokens.
 func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error {
+	// OAuth client management is admin-only; gated on users:delete to match the UI.
+	if err := requirePermission(ctx, s.store, "users", "delete"); err != nil {
+		return err
+	}
 	// Revoke all tokens for this client first
 	s.store.RevokeOAuthTokensByClient(ctx, clientID)
 	return s.store.DeleteOAuthClient(ctx, clientID)

@@ -325,12 +325,8 @@ func validateWebhookURL(rawURL string) error {
 	// Block well-known metadata endpoints and loopback
 	hostname := u.Hostname()
 	if ip := net.ParseIP(hostname); ip != nil {
-		if ip.IsLoopback() || ip.IsUnspecified() {
-			return ValidationErrors{{Field: "url", Message: "Loopback and unspecified addresses are not allowed"}}
-		}
-		// Block link-local / cloud metadata range 169.254.x.x
-		if ip.To4() != nil && ip.To4()[0] == 169 && ip.To4()[1] == 254 {
-			return ValidationErrors{{Field: "url", Message: "Link-local addresses are not allowed"}}
+		if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+			return ValidationErrors{{Field: "url", Message: "Loopback, unspecified, link-local and multicast addresses are not allowed"}}
 		}
 	}
 

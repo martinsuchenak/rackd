@@ -32,6 +32,9 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	user, err := s.store.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
+			// Burn the same bcrypt work as the password-verify path so login
+			// timing does not reveal whether the username exists.
+			auth.VerifyDummyPassword(password)
 			return nil, ErrUnauthenticated
 		}
 		log.Error("Failed to get user for login", "error", err, "username", username)
@@ -39,6 +42,8 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	}
 
 	if !user.IsActive {
+		// Equalize timing for deactivated accounts too.
+		auth.VerifyDummyPassword(password)
 		return nil, ErrUnauthenticated
 	}
 

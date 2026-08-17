@@ -129,11 +129,10 @@ func (rl *RateLimiter) cleanupLoop() {
 func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Use API key as client ID if present, otherwise use IP
+			// Key by client IP only. Keying on the raw Authorization header
+			// let anonymous clients rotate fake Bearer tokens to get fresh
+			// buckets (bypass) and grow the bucket map without bound.
 			clientID := getClientIP(r, trustProxy)
-			if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-				clientID = strings.TrimPrefix(auth, "Bearer ")
-			}
 
 			if !limiter.Allow(clientID) {
 				resetTime := limiter.GetResetTime(clientID)
@@ -143,8 +142,7 @@ func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handle
 				w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
 
 				log.Debug("Rate limit exceeded", "client", clientID, "path", r.URL.Path)
-				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"Rate limit exceeded","code":"RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
+				writeAuthError(w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "Rate limit exceeded")
 				return
 			}
 
@@ -162,10 +160,13 @@ func RateLimitMiddleware(limiter *RateLimiter, trustProxy bool) func(http.Handle
 
 func getClientIP(r *http.Request, trustProxy bool) string {
 	if trustProxy {
-		// Only trust proxy headers when explicitly configured
+		// Only trust proxy headers when explicitly configured. Use the
+		// RIGHTMOST XFF entry: it is the address added by our own trusted
+		// reverse proxy. The leftmost entries are client-supplied and can be
+		// rotated to obtain fresh rate-limit buckets.
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			ips := strings.Split(xff, ",")
-			return strings.TrimSpace(ips[0])
+			return strings.TrimSpace(ips[len(ips)-1])
 		}
 
 		if xri := r.Header.Get("X-Real-IP"); xri != "" {

@@ -52,7 +52,7 @@ func RunWithAdvancedFeatures(
 			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
 		}
 		sessionStore = storage.NewValkeySessionStore(valkeyClient)
-		log.Info("Using Valkey/Redis session store", "url", cfg.ValkeyURL)
+		log.Info("Using Valkey/Redis session store", "addr", opt.Addr, "db", opt.DB)
 
 	case "sqlite":
 		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
@@ -99,6 +99,11 @@ func RunWithAdvancedFeatures(
 			return fmt.Errorf("failed to create encryptor for DNS service: %w", err)
 		}
 		services.SetDNSService(store, encryptor)
+
+		// Encrypt webhook signing secrets at rest with the same key
+		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
+			sqliteStore.SetWebhookEncryptor(encryptor)
+		}
 
 		// Initialize and start DNS sync worker if interval is configured
 		if cfg.DNSSyncInterval > 0 {
@@ -223,7 +228,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
 		}
 		sessionStore = storage.NewValkeySessionStore(valkeyClient)
-		log.Info("Using Valkey/Redis session store", "url", cfg.ValkeyURL)
+		log.Info("Using Valkey/Redis session store", "addr", opt.Addr, "db", opt.DB)
 
 	case "sqlite":
 		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {

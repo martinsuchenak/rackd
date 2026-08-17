@@ -88,8 +88,76 @@ func RotateKeyCommand() *cli.Command {
 				fmt.Printf("[%d/%d] Rotated %s\n", i+1, len(creds), cred.Name)
 			}
 
+			oldEncryptor, err := credentials.NewEncryptor(oldKey)
+			if err != nil {
+				return fmt.Errorf("failed to create old-key encryptor: %w", err)
+			}
+			newEncryptor, err := credentials.NewEncryptor(newKey)
+			if err != nil {
+				return fmt.Errorf("failed to create new-key encryptor: %w", err)
+			}
+
+			// Re-encrypt DNS provider tokens (encrypted with the same master key)
+			if err := rotateColumn(store, oldEncryptor, newEncryptor,
+				"Re-encrypting DNS provider tokens...",
+				"SELECT id, token FROM dns_provider_configs WHERE token != ''",
+				"UPDATE dns_provider_configs SET token = ? WHERE id = ?"); err != nil {
+				return err
+			}
+
+			// Re-encrypt webhook signing secrets
+			if err := rotateColumn(store, oldEncryptor, newEncryptor,
+				"Re-encrypting webhook secrets...",
+				"SELECT id, secret FROM webhooks WHERE secret != ''",
+				"UPDATE webhooks SET secret = ? WHERE id = ?"); err != nil {
+				return err
+			}
+
 			fmt.Println("Successfully rotated encryption key! Please update your ENCRYPTION_KEY environment variable with the new key.")
 			return nil
 		},
 	}
+}
+
+// rotateColumn decrypts a column with the old key and re-encrypts it with the
+// new key. Rows that fail decryption (legacy plaintext or empty) are skipped.
+func rotateColumn(store storage.ExtendedStorage, oldEnc, newEnc *credentials.Encryptor, header, selectSQL, updateSQL string) error {
+	rows, err := store.DB().Query(selectSQL)
+	if err != nil {
+		return fmt.Errorf("failed to read rows for rotation: %w", err)
+	}
+	defer rows.Close()
+
+	type pending struct {
+		id    string
+		reEnc string
+	}
+	var updates []pending
+	for rows.Next() {
+		var id, value string
+		if err := rows.Scan(&id, &value); err != nil {
+			return fmt.Errorf("failed to scan row for rotation: %w", err)
+		}
+		plaintext, err := oldEnc.Decrypt(value)
+		if err != nil {
+			// Not encrypted with the old key (legacy plaintext) — skip.
+			continue
+		}
+		reEncrypted, err := newEnc.Encrypt(plaintext)
+		if err != nil {
+			return fmt.Errorf("failed to re-encrypt row %s: %w", id, err)
+		}
+		updates = append(updates, pending{id: id, reEnc: reEncrypted})
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed iterating rows for rotation: %w", err)
+	}
+
+	fmt.Printf("%s (%d rows)\n", header, len(updates))
+	for _, u := range updates {
+		if _, err := store.DB().Exec(updateSQL, u.reEnc, u.id); err != nil {
+			return fmt.Errorf("failed to persist re-encrypted row %s: %w", u.id, err)
+		}
+	}
+	return nil
 }

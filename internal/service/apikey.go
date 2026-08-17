@@ -56,7 +56,12 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	}
 
 	key.ID = uuid.Must(uuid.NewV7()).String()
-	plaintextKey := uuid.Must(uuid.NewV7()).String()
+	// API keys are long-lived bearer credentials: use 32 bytes of crypto/rand
+	// (256 bits), not a UUIDv7 (74 random bits + timestamp structure).
+	plaintextKey, err := auth.GenerateKey()
+	if err != nil {
+		return "", err
+	}
 	key.Key = auth.HashToken(plaintextKey)
 	key.CreatedAt = time.Now()
 

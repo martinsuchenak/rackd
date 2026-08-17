@@ -366,3 +366,96 @@ func TestRefreshTokenInvalidClient(t *testing.T) {
 		t.Errorf("expected ErrOAuthInvalidClient, got %v", err)
 	}
 }
+
+// TestConfidentialClientSecretRequired verifies that confidential clients must
+// authenticate with their client_secret at the token endpoint (RFC 6749 §4.1.3/§6),
+// for both the authorization_code and refresh_token grants.
+func TestConfidentialClientSecretRequired(t *testing.T) {
+	store := newMockOAuthStorage()
+	ctx := context.Background()
+
+	secret := "super-secret-client-credential"
+	secretHash := auth.HashToken(secret)
+	store.CreateOAuthClient(ctx, &model.OAuthClient{
+		ID:             "confidential-client",
+		Name:           "Confidential Client",
+		RedirectURIs:   []string{"http://localhost/cb"},
+		IsConfidential: true,
+		SecretHash:     secretHash,
+	})
+
+	oauthSvc := NewOAuthService(store, nil, "http://localhost")
+
+	// Create an authorization code issued to the confidential client
+	codePlain, codeHash, err := auth.GenerateOAuthToken()
+	if err != nil {
+		t.Fatalf("GenerateOAuthToken failed: %v", err)
+	}
+	if err := store.CreateAuthorizationCode(ctx, &model.OAuthAuthorizationCode{
+		CodeHash:    codeHash,
+		ClientID:    "confidential-client",
+		UserID:      "user1",
+		RedirectURI: "http://localhost/cb",
+		Scope:       "devices:read",
+		ExpiresAt:   time.Now().Add(10 * time.Minute),
+	}); err != nil {
+		t.Fatalf("CreateAuthorizationCode failed: %v", err)
+	}
+
+	baseReq := model.OAuthTokenRequest{
+		GrantType:    "authorization_code",
+		Code:         codePlain,
+		RedirectURI:  "http://localhost/cb",
+		ClientID:     "confidential-client",
+	}
+
+	// 1. Missing secret must fail
+	req := baseReq
+	if _, err := oauthSvc.ExchangeCode(ctx, &req); err != ErrOAuthInvalidClientSecret {
+		t.Errorf("exchange without secret: expected ErrOAuthInvalidClientSecret, got %v", err)
+	}
+	if store.codes[codeHash].Used {
+		t.Error("failed client auth must not burn the authorization code")
+	}
+
+	// 2. Wrong secret must fail
+	req = baseReq
+	req.ClientSecret = "wrong-secret"
+	if _, err := oauthSvc.ExchangeCode(ctx, &req); err != ErrOAuthInvalidClientSecret {
+		t.Errorf("exchange with wrong secret: expected ErrOAuthInvalidClientSecret, got %v", err)
+	}
+	if store.codes[codeHash].Used {
+		t.Error("failed client auth must not burn the authorization code")
+	}
+
+	// 3. Correct secret must succeed
+	req = baseReq
+	req.ClientSecret = secret
+	resp, err := oauthSvc.ExchangeCode(ctx, &req)
+	if err != nil {
+		t.Fatalf("exchange with correct secret failed: %v", err)
+	}
+	if resp.RefreshToken == "" {
+		t.Fatal("expected refresh token in response")
+	}
+
+	// 4. Refresh grant also requires the secret
+	_, err = oauthSvc.RefreshAccessToken(ctx, &model.OAuthTokenRequest{
+		GrantType:    "refresh_token",
+		RefreshToken: resp.RefreshToken,
+		ClientID:     "confidential-client",
+	})
+	if err != ErrOAuthInvalidClientSecret {
+		t.Errorf("refresh without secret: expected ErrOAuthInvalidClientSecret, got %v", err)
+	}
+
+	_, err = oauthSvc.RefreshAccessToken(ctx, &model.OAuthTokenRequest{
+		GrantType:    "refresh_token",
+		RefreshToken: resp.RefreshToken,
+		ClientID:     "confidential-client",
+		ClientSecret: secret,
+	})
+	if err != nil {
+		t.Fatalf("refresh with correct secret failed: %v", err)
+	}
+}

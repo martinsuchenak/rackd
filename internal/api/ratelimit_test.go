@@ -158,15 +158,27 @@ func TestRateLimitMiddlewareAPIKey(t *testing.T) {
 		t.Errorf("Expected 429, got %d", w.Code)
 	}
 
-	// Different key should not be affected
+	// Rotating a different fake Bearer token must NOT bypass the limit
+	// (the limiter keys by client IP, not the raw Authorization header).
 	req = httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "192.168.1.1:1234"
 	req.Header.Set("Authorization", "Bearer different-key")
 	w = httptest.NewRecorder()
 	wrappedHandler.ServeHTTP(w, req)
 
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("Bearer rotation should not bypass rate limit, got %d", w.Code)
+	}
+
+	// A different source IP is a different bucket
+	req = httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.1.2:1234"
+	req.Header.Set("Authorization", "Bearer different-key")
+	w = httptest.NewRecorder()
+	wrappedHandler.ServeHTTP(w, req)
+
 	if w.Code != http.StatusOK {
-		t.Errorf("Different key should be allowed, got %d", w.Code)
+		t.Errorf("Different IP should be allowed, got %d", w.Code)
 	}
 }
 
@@ -179,7 +191,9 @@ func TestGetClientIP_TrustProxy(t *testing.T) {
 		expected   string
 	}{
 		{"RemoteAddr", "192.168.1.1:1234", "", "", "192.168.1.1"},
-		{"X-Forwarded-For", "192.168.1.1:1234", "10.0.0.1, 10.0.0.2", "", "10.0.0.1"},
+		// The RIGHTMOST XFF entry is the one appended by our own trusted proxy;
+		// leftmost entries are client-controlled and spoofable.
+		{"X-Forwarded-For", "192.168.1.1:1234", "10.0.0.1, 10.0.0.2", "", "10.0.0.2"},
 		{"X-Real-IP", "192.168.1.1:1234", "", "10.0.0.1", "10.0.0.1"},
 		{"IPv6", "[::1]:1234", "", "", "::1"},
 	}

@@ -533,6 +533,37 @@ func TestSearchFullStack(t *testing.T) {
 	}
 }
 
+// TestDeviceSearchEndpoint tests the device-scoped search used by the webui
+// device list and relationship picker (regression: the route was previously
+// unrouted, making every UI device search 404).
+func TestDeviceSearchEndpoint(t *testing.T) {
+	ts := newTestServer(t)
+	userID := ts.createAdminUser(t, "admin", "securepassword123")
+	token := ts.createAPIKeyForUser(t, userID)
+
+	ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+		"name": "searchable-server",
+		"os":   "CentOS 9",
+	}, token)
+
+	// Search returns a bare device array
+	w := ts.doRequest(t, http.MethodGet, "/api/devices/search?q=searchable", nil, token)
+	if w.Code != http.StatusOK {
+		t.Fatalf("device search: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var devices []model.Device
+	parseJSON(t, w, &devices)
+	if len(devices) != 1 || devices[0].Name != "searchable-server" {
+		t.Errorf("expected 1 matching device, got %+v", devices)
+	}
+
+	// Missing query is a 400
+	w = ts.doRequest(t, http.MethodGet, "/api/devices/search", nil, token)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing q: expected 400, got %d", w.Code)
+	}
+}
+
 // TestPaginationFullStack tests that pagination works through the full stack.
 func TestPaginationFullStack(t *testing.T) {
 	ts := newTestServer(t)

@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"slices"
 	"strings"
@@ -43,7 +44,7 @@ func ValidatePKCE(codeVerifier, codeChallenge, method string) bool {
 	}
 	h := sha256.Sum256([]byte(codeVerifier))
 	computed := base64.RawURLEncoding.EncodeToString(h[:])
-	return computed == codeChallenge
+	return subtle.ConstantTimeCompare([]byte(computed), []byte(codeChallenge)) == 1
 }
 
 // ValidateRedirectURI checks if the request redirect URI exactly matches one of the registered URIs.

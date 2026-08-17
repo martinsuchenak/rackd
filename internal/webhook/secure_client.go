@@ -29,9 +29,11 @@ func SafeDialContext(ctx context.Context, network, addr string) (net.Conn, error
 	var lastErr error
 	for _, ip := range ips {
 		// Block loopback (e.g., 127.0.0.1, ::1)
-		// Block unspecified (0.0.0.0)
-		// Block link-local metadata (169.254.x.x)
-		if ip.IsLoopback() || ip.IsUnspecified() || (ip.To4() != nil && ip.To4()[0] == 169 && ip.To4()[1] == 254) {
+		// Block unspecified (0.0.0.0, ::)
+		// Block link-local unicast/multicast — covers the cloud metadata range
+		// 169.254.0.0/16 AND the IPv6 fe80::/10 range (previously missed).
+		// Block multicast globally.
+		if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
 			return nil, fmt.Errorf("SSRF prevention: connection to %s blocked (restricted IP %s)", host, ip.String())
 		}
 
@@ -50,10 +52,37 @@ func SafeDialContext(ctx context.Context, network, addr string) (net.Conn, error
 	return nil, fmt.Errorf("failed to connect to %s", addr)
 }
 
+// CheckRedirect policy that re-validates redirect targets: a public webhook
+// URL must not be able to 302 into loopback/metadata addresses, which would
+// otherwise bypass SafeDialContext's original-URL checks via a redirect chain.
+func safeCheckRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	host := req.URL.Hostname()
+	if host == "" {
+		return fmt.Errorf("SSRF prevention: redirect with empty host blocked")
+	}
+	// Resolve and validate every redirect target with the same rules as
+	// SafeDialContext (the dialer re-checks at connect time too, but rejecting
+	// here avoids leaking the request to DNS-rebinding race windows).
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return err
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+			return fmt.Errorf("SSRF prevention: redirect to %s blocked (restricted IP %s)", host, ip.String())
+		}
+	}
+	return nil
+}
+
 // NewSecureHTTPClient returns an http.Client that enforces SSRF protections
 func NewSecureHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
-		Timeout: timeout,
+		Timeout:       timeout,
+		CheckRedirect: safeCheckRedirect,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			DialContext:           SafeDialContext,

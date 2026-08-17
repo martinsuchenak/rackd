@@ -28,6 +28,10 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
+	if errs := ValidateNetwork(&network); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
 
 	if err := h.svc.Networks.Create(r.Context(), &network); err != nil {
 		h.handleServiceError(w, err)
@@ -84,6 +88,11 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 	if description, ok := updates["description"].(string); ok {
 		network.Description = description
+	}
+
+	if errs := ValidateNetwork(network); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	if err := h.svc.Networks.Update(r.Context(), network); err != nil {
@@ -165,6 +174,10 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool.NetworkID = networkID
+	if errs := ValidateNetworkPool(&pool); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
 
 	if err := h.svc.Pools.Create(r.Context(), &pool); err != nil {
 		h.handleServiceError(w, err)
@@ -228,6 +241,11 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if errs := ValidateNetworkPool(pool); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
+
 	if err := h.svc.Pools.Update(r.Context(), pool); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -277,21 +295,6 @@ func (h *Handler) getPoolHeatmap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeJSON(w, http.StatusOK, heatmap)
-}
-
-func (h *Handler) searchNetworks(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	if query == "" {
-		h.badRequest(w, "query parameter 'q' is required")
-		return
-	}
-
-	networks, err := h.svc.Networks.Search(r.Context(), query)
-	if err != nil {
-		h.handleServiceError(w, err)
-		return
-	}
-	h.writeJSON(w, http.StatusOK, networks)
 }
 
 func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {

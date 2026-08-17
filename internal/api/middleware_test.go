@@ -237,12 +237,6 @@ func TestSecurityHeaders_HTTPS(t *testing.T) {
 	}
 }
 
-func TestLogAuthWarning(t *testing.T) {
-	// Just ensure it doesn't panic
-	LogAuthWarning("")
-	LogAuthWarning("some-token")
-}
-
 func TestLimitBody(t *testing.T) {
 	handler := LimitBody(func(w http.ResponseWriter, r *http.Request) {
 		_, err := io.ReadAll(r.Body)

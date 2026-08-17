@@ -140,6 +140,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/devices", wrapAuth(h.listDevices))
 	mux.HandleFunc("POST /api/devices", wrapAuth(h.createDevice))
 	mux.HandleFunc("GET /api/devices/status-counts", wrapAuth(h.getDeviceStatusCounts))
+	mux.HandleFunc("GET /api/devices/search", wrapAuth(h.searchDevices))
 	mux.HandleFunc("GET /api/devices/{id}", wrapAuth(h.getDevice))
 	mux.HandleFunc("PUT /api/devices/{id}", wrapAuth(h.updateDevice))
 	mux.HandleFunc("DELETE /api/devices/{id}", wrapAuth(h.deleteDevice))
@@ -267,7 +268,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /.well-known/oauth-authorization-server", LimitBody(h.oauthAuthorizationServerMetadata))
 
 		// OAuth flow endpoints (no auth required per OAuth/MCP spec)
-		mux.HandleFunc("POST /mcp-oauth/register", LimitBody(h.oauthRegister))
+		mux.HandleFunc("POST /mcp-oauth/register", wrapSensitiveNoAuth(h.oauthRegister))
 		mux.HandleFunc("GET /mcp-oauth/authorize", LimitBody(h.oauthAuthorize))
 		mux.HandleFunc("POST /mcp-oauth/authorize", wrapSensitiveNoAuth(h.oauthAuthorizeSubmit))
 		mux.HandleFunc("POST /mcp-oauth/token", wrapSensitiveNoAuth(h.oauthToken))

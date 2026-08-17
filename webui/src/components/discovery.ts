@@ -244,6 +244,11 @@ export function discoveryList() {
     startPolling(): void {
       if (this.pollInterval) return;
       this.pollInterval = setInterval(async () => {
+        // Stop polling once the user has navigated away from the page.
+        if (!window.location.pathname.startsWith('/discovery')) {
+          this.stopPolling();
+          return;
+        }
         await this.loadScans();
         await this.loadDiscoveredDevices();
         if (!this.hasActiveScan()) this.stopPolling();
@@ -664,6 +669,11 @@ export function scanDetail(): ScanDetailData {
     startPolling(): void {
       if (this.pollInterval) return;
       this.pollInterval = setInterval(async () => {
+        // Stop polling once the user has navigated away from the page.
+        if (!window.location.pathname.startsWith('/discovery')) {
+          this.stopPolling();
+          return;
+        }
         await this.loadScan();
         if (this.scan && this.scan.status !== 'pending' && this.scan.status !== 'running') {
           this.stopPolling();

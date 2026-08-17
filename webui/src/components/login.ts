@@ -36,11 +36,6 @@ export function login() {
         return;
       }
 
-      if (this.password.length < 8) {
-        this.showError('Password must be at least 8 characters');
-        return;
-      }
-
       this.loading = true;
       this.error = '';
 
@@ -50,31 +45,28 @@ export function login() {
           password: this.password,
         };
 
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify(request),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          this.showError(data.message || 'Login failed');
-          return;
-        }
+        await api.login(request.username, request.password);
 
         // Cookie is set by the server (httpOnly) — just redirect
         const params = new URLSearchParams(window.location.search);
         const redirect = params.get('redirect');
-        // Security: Only allow relative paths starting with '/' to prevent open redirect attacks
-        if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
-          window.location.href = redirect;
-        } else {
-          window.location.href = '/';
+        // Security: only navigate to same-origin paths. Resolving via URL and
+        // comparing origins defeats encoded-host tricks like /\evil.com and
+        // //evil.com (browsers normalize backslashes to slashes).
+        if (redirect) {
+          try {
+            const url = new URL(redirect, window.location.origin);
+            if (url.origin === window.location.origin) {
+              window.location.href = url.pathname + url.search + url.hash;
+              return;
+            }
+          } catch {
+            // fall through to default
+          }
         }
+        window.location.href = '/';
       } catch (err) {
-        this.showError('Network error. Please try again.');
+        this.showError(err instanceof Error && err.message ? err.message : 'Login failed');
       } finally {
         this.loading = false;
       }

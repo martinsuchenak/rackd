@@ -12,8 +12,7 @@ services:
       - LISTEN_ADDR=:8080
       - LOG_LEVEL=info
       - LOG_FORMAT=json
-      - API_AUTH_TOKEN=${API_AUTH_TOKEN:-}
-      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - DISCOVERY_INTERVAL=24h
     restart: unless-stopped
     healthcheck:

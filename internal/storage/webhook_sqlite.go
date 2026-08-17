@@ -23,10 +23,15 @@ func (s *SQLiteStorage) CreateWebhook(ctx context.Context, webhook *model.Webhoo
 		return err
 	}
 
+	secret, err := s.encryptWebhookSecret(webhook.Secret)
+	if err != nil {
+		return err
+	}
+
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO webhooks (id, name, url, secret, events, active, description, created_at, updated_at, created_by)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, webhook.ID, webhook.Name, webhook.URL, webhook.Secret, string(eventsJSON),
+	`, webhook.ID, webhook.Name, webhook.URL, secret, string(eventsJSON),
 		webhook.Active, webhook.Description, webhook.CreatedAt, webhook.UpdatedAt, webhook.CreatedBy)
 
 	return err
@@ -53,6 +58,7 @@ func (s *SQLiteStorage) GetWebhook(ctx context.Context, id string) (*model.Webho
 	if err := json.Unmarshal([]byte(eventsJSON), &webhook.Events); err != nil {
 		return nil, err
 	}
+	webhook.Secret = s.decryptWebhookSecret(webhook.Secret)
 
 	return webhook, nil
 }
@@ -89,7 +95,7 @@ func (s *SQLiteStorage) ListWebhooks(ctx context.Context, filter *model.WebhookF
 	}
 	defer rows.Close()
 
-	return scanWebhooks(rows)
+	return s.scanWebhooks(rows)
 }
 
 // UpdateWebhook updates an existing webhook
@@ -101,10 +107,15 @@ func (s *SQLiteStorage) UpdateWebhook(ctx context.Context, webhook *model.Webhoo
 		return err
 	}
 
+	secret, err := s.encryptWebhookSecret(webhook.Secret)
+	if err != nil {
+		return err
+	}
+
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE webhooks SET name = ?, url = ?, secret = ?, events = ?, active = ?, description = ?, updated_at = ?
 		WHERE id = ?
-	`, webhook.Name, webhook.URL, webhook.Secret, string(eventsJSON), webhook.Active, webhook.Description,
+	`, webhook.Name, webhook.URL, secret, string(eventsJSON), webhook.Active, webhook.Description,
 		webhook.UpdatedAt, webhook.ID)
 
 	if err != nil {
@@ -155,7 +166,7 @@ func (s *SQLiteStorage) GetWebhooksForEvent(ctx context.Context, eventType model
 	}
 	defer rows.Close()
 
-	webhooks, err := scanWebhooks(rows)
+	webhooks, err := s.scanWebhooks(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +310,7 @@ func (s *SQLiteStorage) GetPendingDeliveries(ctx context.Context, limit int) ([]
 }
 
 // scanWebhooks helper function
-func scanWebhooks(rows *sql.Rows) ([]model.Webhook, error) {
+func (s *SQLiteStorage) scanWebhooks(rows *sql.Rows) ([]model.Webhook, error) {
 	var webhooks []model.Webhook
 	for rows.Next() {
 		var w model.Webhook
@@ -312,7 +323,7 @@ func scanWebhooks(rows *sql.Rows) ([]model.Webhook, error) {
 			return nil, err
 		}
 
-		w.Secret = secret.String
+		w.Secret = s.decryptWebhookSecret(secret.String)
 		w.Description = description.String
 		w.CreatedBy = createdBy.String
 
@@ -323,6 +334,28 @@ func scanWebhooks(rows *sql.Rows) ([]model.Webhook, error) {
 		webhooks = append(webhooks, w)
 	}
 	return webhooks, rows.Err()
+}
+
+// encryptWebhookSecret encrypts a secret for at-rest storage. When no
+// encryptor is configured the plaintext is stored unchanged (feature disabled).
+func (s *SQLiteStorage) encryptWebhookSecret(secret string) (string, error) {
+	if s.webhookEncryptor == nil || secret == "" {
+		return secret, nil
+	}
+	return s.webhookEncryptor.Encrypt(secret)
+}
+
+// decryptWebhookSecret reverses encryptWebhookSecret. Decryption failures are
+// treated as legacy plaintext values so pre-encryption rows keep working.
+func (s *SQLiteStorage) decryptWebhookSecret(secret string) string {
+	if s.webhookEncryptor == nil || secret == "" {
+		return secret
+	}
+	plaintext, err := s.webhookEncryptor.Decrypt(secret)
+	if err != nil {
+		return secret
+	}
+	return plaintext
 }
 
 // scanDeliveries helper function

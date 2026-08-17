@@ -39,8 +39,7 @@
     "@alpinejs/csp": "^3.16.1",
     "@alpinejs/focus": "^3.16.1",
     "alpinejs": "^3.16.1",
-    "cytoscape": "^3.34.1",
-    "cytoscape-panzoom": "^2.5.3"
+    "cytoscape": "^3.34.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

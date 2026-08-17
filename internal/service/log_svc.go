@@ -75,6 +75,12 @@ func exportLogEntriesCSV(entries []model.LogEntry) []byte {
 }
 
 func writeCSVCell(b *strings.Builder, value string) {
+	// Neutralize CSV formula injection (=, +, -, @, tab, CR prefixes).
+	switch {
+	case value == "":
+	case value[0] == '=', value[0] == '+', value[0] == '-', value[0] == '@', value[0] == '\t', value[0] == '\r':
+		value = "'" + value
+	}
 	escaped := strings.ReplaceAll(value, "\"", "\"\"")
 	fmt.Fprintf(b, "\"%s\"", escaped)
 }

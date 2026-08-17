@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
@@ -20,9 +21,6 @@ func NewDeviceService(store storage.ExtendedStorage) *DeviceService {
 	return &DeviceService{store: store}
 }
 
-func (s *DeviceService) setConflictService(cs *ConflictService) {
-	s.conflictService = cs
-}
 
 func (s *DeviceService) setDNSService(dns *DNSService) {
 	s.dns = dns
@@ -244,9 +242,10 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	// Check for IP conflicts after creation
 	s.checkForIPConflicts(ctx, device)
 
-	// Sync DNS records if device has a hostname
+	// Sync DNS records if device has a hostname. DNS sync failures shouldn't
+	// block device creation, but they must be visible to operators.
 	if err := s.syncDeviceDNS(ctx, device); err != nil {
-		// Log but don't fail - DNS sync failures shouldn't block device creation
+		log.Warn("DNS sync failed after device create", "device_id", device.ID, "error", err)
 	}
 
 	return nil
@@ -296,9 +295,8 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 	// Check for IP conflicts after update
 	s.checkForIPConflicts(ctx, device)
 
-	// Sync DNS records if device has a hostname
 	if err := s.syncDeviceDNS(ctx, device); err != nil {
-		// Log but don't fail - DNS sync failures shouldn't block device update
+		log.Warn("DNS sync failed after device update", "device_id", device.ID, "error", err)
 	}
 
 	return nil

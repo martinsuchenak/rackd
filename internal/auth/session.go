@@ -105,7 +105,7 @@ func (sm *SessionManager) CreateSession(userID, username string, isAdmin bool) (
 	}
 
 	if sm.store != nil {
-		if err := sm.store.Save(context.Background(), session); err != nil {
+		if err := sm.store.Save(context.Background(), hashSession(session)); err != nil {
 			return nil, err
 		}
 	}
@@ -119,7 +119,14 @@ func (sm *SessionManager) GetSession(token string) (*Session, error) {
 	}
 
 	if sm.store != nil {
-		return sm.store.Get(context.Background(), token)
+		// Sessions are persisted with only the token hash, so a database or
+		// Valkey dump cannot resurrect live sessions.
+		session, err := sm.store.Get(context.Background(), HashToken(token))
+		if err != nil {
+			return nil, err
+		}
+		session.Token = token
+		return session, nil
 	}
 
 	return nil, ErrSessionNotFound
@@ -134,7 +141,7 @@ func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
 	session.ExpiresAt = time.Now().UTC().Add(sm.sessionTTL)
 
 	if sm.store != nil {
-		if err := sm.store.Save(context.Background(), session); err != nil {
+		if err := sm.store.Save(context.Background(), hashSession(session)); err != nil {
 			return nil, err
 		}
 	}
@@ -148,7 +155,7 @@ func (sm *SessionManager) InvalidateSession(token string) error {
 	}
 
 	if sm.store != nil {
-		return sm.store.Delete(context.Background(), token)
+		return sm.store.Delete(context.Background(), HashToken(token))
 	}
 
 	return nil
@@ -162,4 +169,12 @@ func (sm *SessionManager) InvalidateUserSessions(userID string) {
 	if sm.store != nil {
 		_ = sm.store.DeleteByUser(context.Background(), userID)
 	}
+}
+
+// hashSession returns a copy of the session with the token replaced by its
+// SHA-256 hash for at-rest persistence.
+func hashSession(session *Session) *Session {
+	stored := *session
+	stored.Token = HashToken(session.Token)
+	return &stored
 }

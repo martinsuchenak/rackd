@@ -1,13 +1,8 @@
 // Device Relationship Graph Visualization
 
 import cytoscape from 'cytoscape';
-// @ts-ignore - no types available
-import panzoom from 'cytoscape-panzoom';
 import type { Device, DeviceRelationship, Datacenter, DeviceStatus } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
-
-// Register panzoom extension
-panzoom(cytoscape);
 
 interface LayoutOption {
   value: string;
@@ -28,6 +23,7 @@ interface GraphData {
   loading: boolean;
   error: string;
   cy: cytoscape.Core | null;
+  detachWatcher: ReturnType<typeof setInterval> | null;
   filters: GraphFilters;
   layouts: LayoutOption[];
   selectedLayout: string;
@@ -47,7 +43,6 @@ interface GraphData {
   fitGraph(): void;
   resetView(): void;
   exportPNG(): void;
-  exportSVG(): void;
   exportJSON(): void;
   downloadDataUrl(dataUrl: string, filename: string): void;
   getStatusColor(status: DeviceStatus): string;
@@ -72,6 +67,7 @@ export function deviceGraph(): GraphData {
     loading: true,
     error: '',
     cy: null,
+    detachWatcher: null,
     filters: {
       status: [],
       relationshipTypes: [],
@@ -93,6 +89,15 @@ export function deviceGraph(): GraphData {
       await this.loadData();
       // Wait for DOM to be ready
       setTimeout(() => this.renderGraph(), 100);
+      // Alpine (CSP build) has no destroy hook: watch for the container being
+      // removed from the DOM (SPA navigation) and tear down the cytoscape
+      // instance, which otherwise leaks canvases and window listeners.
+      this.detachWatcher = setInterval(() => {
+        const container = document.getElementById('graph-container');
+        if (!container) {
+          this.destroy();
+        }
+      }, 500);
     },
 
     async loadData(): Promise<void> {
@@ -405,13 +410,6 @@ export function deviceGraph(): GraphData {
       this.downloadDataUrl(png, 'topology.png');
     },
 
-    exportSVG(): void {
-      if (!this.cy) return;
-      // Cytoscape doesn't have built-in SVG export, use PNG instead
-      const png = this.cy.png({ full: true, scale: 2, bg: '#ffffff' });
-      this.downloadDataUrl(png, 'topology.png');
-    },
-
     exportJSON(): void {
       if (!this.cy) return;
       const data = {
@@ -462,6 +460,10 @@ export function deviceGraph(): GraphData {
 
     // Cleanup on component destroy
     destroy(): void {
+      if (this.detachWatcher) {
+        clearInterval(this.detachWatcher);
+        this.detachWatcher = null;
+      }
       if (this.cy) {
         this.cy.destroy();
         this.cy = null;

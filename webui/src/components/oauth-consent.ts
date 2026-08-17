@@ -17,6 +17,18 @@ export function oauthConsent() {
     error: '',
     consentData: null as ConsentData | null,
 
+    // Only http(s) client URIs may be linked; the value comes from client
+    // registration and must never become a javascript:/data: navigation.
+    get safeClientUri(): string {
+      const uri = this.consentData?.client_uri ?? '';
+      try {
+        const u = new URL(uri);
+        return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : '#';
+      } catch {
+        return '#';
+      }
+    },
+
     async init() {
       try {
         // Fetch consent data from the authorize endpoint using current URL params
@@ -65,7 +77,7 @@ export function oauthConsent() {
       try {
         const response = await fetch('/mcp-oauth/authorize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           credentials: 'same-origin',
           body: JSON.stringify({
             client_id: this.consentData.client_id,
@@ -102,7 +114,7 @@ export function oauthConsent() {
       try {
         const response = await fetch('/mcp-oauth/authorize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           credentials: 'same-origin',
           body: JSON.stringify({
             client_id: this.consentData.client_id,

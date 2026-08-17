@@ -28,6 +28,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/martinsuchenak/rackd/cmd/user"
 	"github.com/martinsuchenak/rackd/cmd/webhook"
+	buildversion "github.com/martinsuchenak/rackd/internal/version"
 	"github.com/paularlott/cli"
 )
 
@@ -36,6 +37,14 @@ var (
 	commit  = "unknown"
 	date    = "unknown"
 )
+
+func init() {
+	// Publish ldflags-injected build info for the internal packages
+	// (e.g. the /api/config UI endpoint).
+	buildversion.Version = version
+	buildversion.Commit = commit
+	buildversion.Date = date
+}
 
 func main() {
 	app := &cli.Command{

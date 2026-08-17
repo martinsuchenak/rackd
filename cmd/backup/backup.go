@@ -43,7 +43,7 @@ func Command() *cli.Command {
 			}
 			defer src.Close()
 
-			dst, err := os.Create(dstPath)
+			dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 			if err != nil {
 				return fmt.Errorf("failed to create backup file: %w", err)
 			}

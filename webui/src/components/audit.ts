@@ -97,7 +97,8 @@ export function auditLogsPage() {
       this.error = '';
       this.normalizePagination();
       try {
-        this.logs = await api.listAuditLogs(this.buildFilter());
+        // Guard against a null body when the server has no entries yet.
+        this.logs = (await api.listAuditLogs(this.buildFilter())) ?? [];
         this.hasNextPage = this.logs.length === this.filters.limit;
         this.syncQuery();
       } catch (e) {

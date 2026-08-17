@@ -163,7 +163,14 @@ export class RackdAPI {
       if (!response.ok) {
         let error: APIError = { code: 'UNKNOWN_ERROR', message: response.statusText };
         try {
-          error = await response.json();
+          const parsed = await response.json();
+          // Backend error envelope is {"error": "...", "code": "..."}; some
+          // endpoints use "message". Normalize so callers always get a message.
+          error = {
+            code: parsed?.code ?? 'UNKNOWN_ERROR',
+            message: parsed?.error ?? parsed?.message ?? response.statusText,
+            details: parsed?.details,
+          };
         } catch {
           // Use default error
         }
@@ -382,7 +389,7 @@ export class RackdAPI {
 
   // Networks
   async listNetworks(datacenterId?: string): Promise<Network[]> {
-    const query = datacenterId ? `?datacenter_id=${datacenterId}` : '';
+    const query = datacenterId ? `?datacenter_id=${encodeURIComponent(datacenterId)}` : '';
     return this.request<Network[]>('GET', `/api/networks${query}`);
   }
 
@@ -445,7 +452,7 @@ export class RackdAPI {
   }
 
   async listScans(networkId?: string): Promise<DiscoveryScan[]> {
-    const query = networkId ? `?network_id=${networkId}` : '';
+    const query = networkId ? `?network_id=${encodeURIComponent(networkId)}` : '';
     return this.request<DiscoveryScan[]>('GET', `/api/discovery/scans${query}`);
   }
 
@@ -462,7 +469,7 @@ export class RackdAPI {
   }
 
   async listDiscoveredDevices(networkId?: string): Promise<DiscoveredDevice[]> {
-    const query = networkId ? `?network_id=${networkId}` : '';
+    const query = networkId ? `?network_id=${encodeURIComponent(networkId)}` : '';
     return this.request<DiscoveredDevice[]>('GET', `/api/discovery/devices${query}`);
   }
 
@@ -478,15 +485,15 @@ export class RackdAPI {
   }
 
   async deleteDiscoveredDevicesByNetwork(networkId: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/discovery/devices?network_id=${networkId}`);
+    return this.request<void>('DELETE', `/api/discovery/devices?network_id=${encodeURIComponent(networkId ?? '')}`);
   }
 
-  async getDiscoveryRules(networkId: string): Promise<DiscoveryRule[]> {
-    return this.request<DiscoveryRule[]>('GET', `/api/discovery/networks/${networkId}/rules`);
+  async getDiscoveryRules(): Promise<DiscoveryRule[]> {
+    return this.request<DiscoveryRule[]>('GET', '/api/discovery/rules');
   }
 
-  async saveDiscoveryRule(networkId: string, rule: Partial<DiscoveryRule>): Promise<DiscoveryRule> {
-    return this.request<DiscoveryRule>('POST', `/api/discovery/networks/${networkId}/rules`, rule);
+  async saveDiscoveryRule(rule: Partial<DiscoveryRule> & { network_id: string }): Promise<DiscoveryRule> {
+    return this.request<DiscoveryRule>('POST', '/api/discovery/rules', rule);
   }
 
   // Scan Profiles
@@ -671,8 +678,8 @@ export class RackdAPI {
     return this.request<Conflict>('GET', `/api/conflicts/${id}`);
   }
 
-  async resolveConflict(resolution: ConflictResolution): Promise<void> {
-    return this.request<void>('POST', '/api/conflicts/resolve', resolution);
+  async resolveConflict(id: string, resolution: ConflictResolution): Promise<void> {
+    return this.request<void>('POST', `/api/conflicts/${id}/resolve`, resolution);
   }
 
   async deleteConflict(id: string): Promise<void> {
@@ -920,22 +927,17 @@ export class RackdAPI {
 
   // DNS Records
   async listDNSRecords(filter?: DNSRecordFilter): Promise<DNSRecord[]> {
-    if (filter?.zone_id) {
-      // Use zone-specific endpoint when zone_id is provided
-      const params = new URLSearchParams();
-      if (filter?.type) params.set('type', filter.type);
-      if (filter?.sync_status) params.set('sync_status', filter.sync_status);
-      if (filter?.link_status) params.set('link_status', filter.link_status);
-      const query = params.toString();
-      return this.request<DNSRecord[]>('GET', `/api/dns/zones/${filter.zone_id}/records${query ? `?${query}` : ''}`);
+    // There is no zone-less list route on the server; a call without zone_id
+    // would silently 404.
+    if (!filter?.zone_id) {
+      throw new Error('listDNSRecords requires a zone_id filter');
     }
     const params = new URLSearchParams();
-    if (filter?.device_id) params.set('device_id', filter.device_id);
     if (filter?.type) params.set('type', filter.type);
     if (filter?.sync_status) params.set('sync_status', filter.sync_status);
     if (filter?.link_status) params.set('link_status', filter.link_status);
     const query = params.toString();
-    return this.request<DNSRecord[]>('GET', `/api/dns/records${query ? `?${query}` : ''}`);
+    return this.request<DNSRecord[]>('GET', `/api/dns/zones/${encodeURIComponent(filter.zone_id)}/records${query ? `?${query}` : ''}`);
   }
 
   async getDNSRecord(id: string): Promise<DNSRecord> {

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -303,14 +304,22 @@ func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.Netw
 	return pools, nil
 }
 
-// GetNextAvailableIP finds the first unused IP address in a pool's range
+// GetNextAvailableIP finds the first unused IP address in a pool's range.
+// The pool read and used-IP scan run in one transaction so two concurrent
+// callers cannot be handed the same "free" IP.
 func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (string, error) {
 	if poolID == "" {
 		return "", ErrInvalidID
 	}
 
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	// Get the pool
-	pool, err := s.GetNetworkPool(ctx, poolID)
+	pool, err := s.getNetworkPoolTx(ctx, tx, poolID)
 	if err != nil {
 		return "", err
 	}
@@ -334,7 +343,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 
 	// Get all used IPs in this pool
 	usedIPs := make(map[string]bool)
-	rows, err := s.db.QueryContext(ctx, `SELECT ip FROM addresses WHERE pool_id = ?`, poolID)
+	rows, err := tx.QueryContext(ctx, `SELECT ip FROM addresses WHERE pool_id = ?`, poolID)
 	if err != nil {
 		return "", fmt.Errorf("failed to query used IPs: %w", err)
 	}
@@ -358,6 +367,9 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 	for {
 		ipStr := current.String()
 		if !usedIPs[ipStr] {
+			if err := tx.Commit(); err != nil {
+				return "", fmt.Errorf("failed to commit transaction: %w", err)
+			}
 			return ipStr, nil
 		}
 
@@ -368,6 +380,23 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 	}
 
 	return "", ErrIPNotAvailable
+}
+
+// getNetworkPoolTx reads a network pool on an open transaction.
+func (s *SQLiteStorage) getNetworkPoolTx(ctx context.Context, tx *sql.Tx, poolID string) (*model.NetworkPool, error) {
+	pool := &model.NetworkPool{}
+	err := tx.QueryRowContext(ctx, `
+		SELECT id, network_id, name, start_ip, end_ip, description, created_at, updated_at
+		FROM network_pools WHERE id = ?
+	`, poolID).Scan(&pool.ID, &pool.NetworkID, &pool.Name, &pool.StartIP, &pool.EndIP,
+		&pool.Description, &pool.CreatedAt, &pool.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrPoolNotFound
+		}
+		return nil, err
+	}
+	return pool, nil
 }
 
 // incrementIP increments an IP address by 1, returns false if it exceeds endIP

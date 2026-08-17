@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -70,11 +71,9 @@ type recordsGetResponse struct {
 
 // doAPI executes an API call to the Technitium DNS server
 func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, params url.Values, result interface{}) error {
-	// Build URL with token
 	if params == nil {
 		params = url.Values{}
 	}
-	params.Set("token", c.token)
 
 	fullURL := c.endpoint + path + "?" + params.Encode()
 
@@ -88,9 +87,20 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+	// Authenticate via Authorization header rather than a token query
+	// parameter: query strings leak into proxy/access logs and into
+	// url.Error messages on transport failures.
+	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		// Strip the URL from wrapped transport errors; it can embed query
+		// parameters (kept above for any future sensitive params).
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			ue.URL = ""
+			return fmt.Errorf("request failed: %w", ue)
+		}
 		return fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -285,11 +295,3 @@ func (c *TechnitiumClient) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// priorityPtr returns a pointer to the priority value, or nil if zero
-func priorityPtr(p uint16) *int {
-	if p == 0 {
-		return nil
-	}
-	i := int(p)
-	return &i
-}

@@ -50,6 +50,8 @@ func (h *Handler) readyz(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Set headers before WriteHeader — afterwards they are ignored.
+	w.Header().Set("Content-Type", "application/json")
 	if allHealthy {
 		status.Status = "healthy"
 		w.WriteHeader(http.StatusOK)
@@ -58,7 +60,6 @@ func (h *Handler) readyz(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
 }
 

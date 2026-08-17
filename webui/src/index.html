@@ -38,7 +38,7 @@
       <div>
         <!-- Sidebar -->
         <aside
-          class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0"
+          class="fixed inset-y-0 left-0 w-64 bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] z-40 transform transition-transform md:translate-x-0 flex flex-col"
           :class="{ '-translate-x-full': !sidebarOpen }" role="navigation" aria-label="Main navigation">
           <div class="flex items-center h-16 px-6 border-b border-[var(--sidebar-border)]">
             <a href="/" @click.prevent="navigate('/')"
@@ -62,7 +62,7 @@
               </span>
             </a>
           </div>
-          <nav class="p-4 space-y-1" aria-label="Primary">
+          <nav class="p-4 space-y-1 flex-1 overflow-y-auto" aria-label="Primary">
             <!-- Sidebar items from router -->
             <template x-for="item in navItems" :key="item.path">
               <a :href="item.path" @click.prevent="navigate(item.path)"
@@ -76,6 +76,11 @@
               </a>
             </template>
           </nav>
+          <!-- Version footer -->
+          <div class="mt-auto px-6 py-3 border-t border-[var(--sidebar-border)]" x-show="serverVersion" x-cloak>
+            <span class="text-xs font-mono text-[var(--sidebar-foreground)] opacity-60"
+              x-text="serverVersion" :title="serverVersion"></span>
+          </div>
         </aside>
 
         <!-- Mobile sidebar overlay -->
@@ -377,8 +382,7 @@
                           x-text="resource"></h4>
                         <div class="flex flex-wrap gap-2">
                           <template x-for="perm in perms" :key="perm.id">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono"
-                              class="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                               x-text="perm.action"></span>
                           </template>
                         </div>

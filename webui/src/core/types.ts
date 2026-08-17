@@ -417,6 +417,7 @@ export interface UpdateRoleRequest {
 
 export interface UIConfig {
   edition: 'oss';
+  version: string;
   features: string[];
   nav_items: NavItem[];
   user?: UserInfo;

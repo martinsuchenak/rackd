@@ -280,6 +280,13 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 		go func(ip string, index int) {
 			defer wg.Done()
 			defer func() { <-semaphore }()
+			// Defense in depth: a panic while parsing hostile device responses
+			// must not take down the whole server.
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("discovery: recovered from panic while scanning %s: %v", ip, r)
+				}
+			}()
 
 			device := s.discoverHostWithOptions(ctx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {

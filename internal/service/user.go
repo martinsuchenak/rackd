@@ -104,7 +104,11 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 	}
 
 	if req.RoleID != "" {
-		_ = s.store.AssignRoleToUser(ctx, user.ID, req.RoleID)
+		if err := s.store.AssignRoleToUser(ctx, user.ID, req.RoleID); err != nil {
+			// The user exists but has no role; surface this rather than
+			// silently creating an unprivileged orphan.
+			log.Error("Failed to assign role to new user", "user_id", user.ID, "role_id", req.RoleID, "error", err)
+		}
 	}
 
 	resp := user.ToResponse()
@@ -174,6 +178,11 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 	// Privileged fields require users:update permission
 	if req.IsActive != nil && !isSelf {
 		user.IsActive = *req.IsActive
+		// Deactivating a user must terminate their live sessions immediately;
+		// otherwise a suspended account keeps access until cookie expiry.
+		if !*req.IsActive && s.sessions != nil {
+			s.sessions.InvalidateUserSessions(id)
+		}
 	}
 	// Only admins can elevate others to admin or remove admin status
 	if req.IsAdmin != nil && !isSelf {

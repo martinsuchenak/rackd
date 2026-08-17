@@ -117,7 +117,9 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.sessionManager.InvalidateUserSessions(id)
+	if h.sessionManager != nil {
+		h.sessionManager.InvalidateUserSessions(id)
+	}
 	log.Info("Password changed", "user_id", id)
 
 	w.WriteHeader(http.StatusNoContent)
@@ -143,7 +145,9 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Invalidate all sessions for this user
-	h.sessionManager.InvalidateUserSessions(id)
+	if h.sessionManager != nil {
+		h.sessionManager.InvalidateUserSessions(id)
+	}
 	log.Info("Password reset by admin", "user_id", id)
 
 	w.WriteHeader(http.StatusNoContent)

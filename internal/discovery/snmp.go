@@ -106,16 +106,28 @@ func (s *SNMPScanner) getSysInfo(client *gosnmp.GoSNMP, result *SNMPResult) {
 	if err != nil {
 		return
 	}
-	for _, v := range resp.Variables {
+	applySysInfo(resp.Variables, result)
+}
+
+// applySysInfo extracts sysDescr/sysName/sysLocation/sysContact from SNMP PDUs.
+// gosnmp returns Value = nil for NoSuchObject/NoSuchInstance/EndOfMibView and
+// non-[]byte types for unexpected ASN.1 encodings, so only octet strings are
+// used — unchecked assertions here let a hostile device crash the server.
+func applySysInfo(variables []gosnmp.SnmpPDU, result *SNMPResult) {
+	for _, v := range variables {
+		if v.Type != gosnmp.OctetString {
+			continue
+		}
+		value, _ := v.Value.([]byte)
 		switch v.Name {
 		case ".1.3.6.1.2.1.1.1.0":
-			result.SysDescr = string(v.Value.([]byte))
+			result.SysDescr = string(value)
 		case ".1.3.6.1.2.1.1.5.0":
-			result.SysName = string(v.Value.([]byte))
+			result.SysName = string(value)
 		case ".1.3.6.1.2.1.1.6.0":
-			result.SysLocation = string(v.Value.([]byte))
+			result.SysLocation = string(value)
 		case ".1.3.6.1.2.1.1.4.0":
-			result.SysContact = string(v.Value.([]byte))
+			result.SysContact = string(value)
 		}
 	}
 }

@@ -71,7 +71,9 @@ func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFi
 	}
 	defer rows.Close()
 
-	var logs []model.AuditLog
+	// Initialize to an empty slice so an empty result marshals as [] rather
+	// than null (the UI iterates .length on this).
+	logs := []model.AuditLog{}
 	for rows.Next() {
 		var log model.AuditLog
 		var source sql.NullString

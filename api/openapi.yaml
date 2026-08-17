@@ -80,7 +80,12 @@ components:
       properties:
         code:
           type: string
-          description: "One of: INVALID_JSON, INVALID_INPUT, NOT_FOUND, FORBIDDEN, UNAUTHORIZED, INTERNAL_ERROR"
+          description: >
+            One of: INVALID_JSON, INVALID_INPUT, VALIDATION_ERROR, NOT_FOUND,
+            FORBIDDEN, UNAUTHORIZED, INVALID_CREDENTIALS, ALREADY_EXISTS,
+            IP_NOT_AVAILABLE, CANNOT_DELETE_SELF, SYSTEM_ROLE,
+            RATE_LIMIT_EXCEEDED, LOGIN_RATE_LIMIT_EXCEEDED, CSRF_FAILED,
+            EXPIRED_KEY, LEGACY_API_KEY_UNSUPPORTED, INTERNAL_ERROR
         error:
           type: string
         details:
@@ -188,11 +193,13 @@ components:
       type: object
       required: [name, subnet]
       properties:
-        name: { type: string }
-        subnet: { type: string }
-        vlan_id: { type: integer }
+        name: { type: string, maxLength: 255 }
+        subnet:
+          type: string
+          description: CIDR notation (e.g. 10.0.0.0/24); validated on create and update
+        vlan_id: { type: integer, minimum: 0, maximum: 4094 }
         datacenter_id: { type: string, format: uuid }
-        description: { type: string }
+        description: { type: string, maxLength: 4096 }
 
     NetworkPool:
       type: object
@@ -576,6 +583,60 @@ components:
         user:
           $ref: '#/components/schemas/User'
 
+    UIConfig:
+      type: object
+      required: [edition, version, features, nav_items]
+      properties:
+        edition:
+          type: string
+          enum: [oss]
+        version:
+          type: string
+          description: Server build version (e.g. v0.0.15); "dev" when built without ldflags
+        features:
+          type: array
+          items: { type: string }
+        nav_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavItem'
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    NavItem:
+      type: object
+      properties:
+        label: { type: string }
+        path: { type: string }
+        icon: { type: string }
+        order: { type: integer }
+        required_permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionCheck'
+
+    PermissionCheck:
+      type: object
+      properties:
+        resource: { type: string }
+        action: { type: string }
+
+    UserInfo:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        email: { type: string }
+        full_name: { type: string }
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+
     User:
       type: object
       required: [id, username, is_active, is_admin, created_at, updated_at]
@@ -699,7 +760,12 @@ components:
         code: { type: string }
         redirect_uri: { type: string }
         client_id: { type: string }
-        client_secret: { type: string }
+        client_secret:
+          type: string
+          description: >
+            Required for confidential clients (token_endpoint_auth =
+            client_secret_post) on the authorization_code and refresh_token
+            grants. Public clients must use PKCE (S256) instead.
         code_verifier: { type: string }
 
     OAuthTokenResponse:
@@ -969,8 +1035,10 @@ components:
       properties:
         name: { type: string }
         type: { type: string, enum: [technitium, powerdns, bind] }
-        endpoint: { type: string }
-        token: { type: string }
+        endpoint:
+          type: string
+          description: Provider API base URL; must be a well-formed http(s) URL with a host and no userinfo
+        token: { type: string, writeOnly: true }
         description: { type: string }
 
     DNSZone:
@@ -1536,6 +1604,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeviceStatusCounts'
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/devices/search:
+    get:
+      operationId: searchDevices
+      tags: [Devices]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 256
+          description: Search query matched against device names and hostnames
+      responses:
+        '200':
+          description: Matching devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /api/devices/{id}:
@@ -2663,6 +2757,23 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Auth ──
+  /api/config:
+    get:
+      operationId: getUIConfig
+      tags: [Auth]
+      security: []
+      responses:
+        '200':
+          description: >
+            UI configuration for the SPA. When the request carries a valid
+            session (cookie or Bearer token) the response additionally
+            includes the authenticated user with their roles and permissions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UIConfig'
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /api/auth/login:
     post:
       operationId: login
@@ -3085,6 +3196,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/OAuthClient'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { description: Rate limit exceeded (IP-based limiter applies) }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /mcp-oauth/authorize:
@@ -3142,6 +3254,9 @@ paths:
       responses:
         '302': { description: Redirect to client }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Not authenticated (no session) }
+        '403': { description: "CSRF validation failed (missing X-Requested-With header)" }
+        '429': { description: Rate limit exceeded }
 
   /mcp-oauth/token:
     post:

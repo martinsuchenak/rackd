@@ -65,10 +65,9 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(req.Permissions) > 0 {
-		for _, permID := range req.Permissions {
-			if err := h.svc.Roles.GrantPermission(r.Context(), role.ID, permID); err != nil {
-				// Log warning but continue
-			}
+		if err := h.svc.Roles.SetPermissions(r.Context(), role.ID, req.Permissions); err != nil {
+			h.handleServiceError(w, err)
+			return
 		}
 	}
 
@@ -96,11 +95,12 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Atomically replace the permission set so revocations take effect
+	// (the old grant-only loop silently kept removed permissions).
 	if req.Permissions != nil {
-		for _, permID := range req.Permissions {
-			if err := h.svc.Roles.GrantPermission(r.Context(), id, permID); err != nil {
-				// Log warning but continue
-			}
+		if err := h.svc.Roles.SetPermissions(r.Context(), id, req.Permissions); err != nil {
+			h.handleServiceError(w, err)
+			return
 		}
 	}
 

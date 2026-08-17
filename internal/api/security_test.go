@@ -353,6 +353,57 @@ func TestLegacyAPIKeyWithoutUserRejected(t *testing.T) {
 
 // --- Authorization Boundary (User A can't access User B's resources) ---
 
+func TestOAuthClientManagementRequiresAdmin(t *testing.T) {
+	ts := newTestServer(t)
+
+	// OAuth client routes are only registered when the OAuth service is
+	// configured (as when MCP_OAUTH_ENABLED=true) — wire it up like server.go.
+	ts.svc.OAuth = service.NewOAuthService(ts.store, ts.sessionManager, "http://localhost")
+	oauthMux := http.NewServeMux()
+	ts.handler.RegisterRoutes(oauthMux)
+	ts.mux = oauthMux
+
+	// Admin user (gets users:list + users:delete via admin role)
+	adminID := ts.createAdminUser(t, "admin", "securepassword123")
+	adminToken := ts.createAPIKeyForUser(t, adminID)
+
+	// Create an OAuth client directly in the store so there is something to list/delete
+	client := &model.OAuthClient{
+		ID:                "test-oauth-client-1",
+		Name:              "Test Client",
+		RedirectURIs:      []string{"http://127.0.0.1:8080/cb"},
+		TokenEndpointAuth: "none",
+	}
+	if err := ts.store.CreateOAuthClient(context.Background(), client); err != nil {
+		t.Fatalf("failed to create OAuth client: %v", err)
+	}
+
+	// Viewer (read-only) user must NOT list or delete OAuth clients
+	viewerID := ts.createReadOnlyUser(t, "viewer", "securepassword123")
+	viewerToken := ts.createAPIKeyForUser(t, viewerID)
+
+	w := ts.doRequest(t, http.MethodGet, "/api/oauth/clients", nil, viewerToken)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("viewer listing OAuth clients: expected 403, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w = ts.doRequest(t, http.MethodDelete, "/api/oauth/clients/"+client.ID, nil, viewerToken)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("viewer deleting OAuth client: expected 403, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Admin can list and delete
+	w = ts.doRequest(t, http.MethodGet, "/api/oauth/clients", nil, adminToken)
+	if w.Code != http.StatusOK {
+		t.Errorf("admin listing OAuth clients: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w = ts.doRequest(t, http.MethodDelete, "/api/oauth/clients/"+client.ID, nil, adminToken)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("admin deleting OAuth client: expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestUserCannotDeleteOtherUsersAPIKey(t *testing.T) {
 	ts := newTestServer(t)
 

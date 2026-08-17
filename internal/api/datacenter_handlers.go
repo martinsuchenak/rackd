@@ -123,18 +123,3 @@ func (h *Handler) getDatacenterDevices(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeJSON(w, http.StatusOK, devices)
 }
-
-func (h *Handler) searchDatacenters(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	if query == "" {
-		h.badRequest(w, "query parameter 'q' is required")
-		return
-	}
-
-	dcs, err := h.svc.Datacenters.Search(r.Context(), query)
-	if err != nil {
-		h.handleServiceError(w, err)
-		return
-	}
-	h.writeJSON(w, http.StatusOK, dcs)
-}

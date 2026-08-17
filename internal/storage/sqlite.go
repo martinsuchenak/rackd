@@ -20,6 +20,23 @@ import (
 type SQLiteStorage struct {
 	db        *sql.DB
 	auditChan chan *model.AuditLog
+
+	// webhookEncryptor, when set, transparently encrypts webhook signing
+	// secrets at rest (write) and decrypts them on read. Legacy plaintext
+	// values are returned as-is when decryption fails.
+	webhookEncryptor WebhookEncryptor
+}
+
+// WebhookEncryptor is the subset of the credentials encryptor used by the
+// storage layer for webhook secret encryption at rest.
+type WebhookEncryptor interface {
+	Encrypt(plaintext string) (string, error)
+	Decrypt(ciphertext string) (string, error)
+}
+
+// SetWebhookEncryptor enables webhook secret encryption at rest.
+func (s *SQLiteStorage) SetWebhookEncryptor(e WebhookEncryptor) {
+	s.webhookEncryptor = e
 }
 
 // NewSQLiteStorage creates a new SQLite storage instance

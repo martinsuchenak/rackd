@@ -116,6 +116,14 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Session-authenticated state change: require the same CSRF marker header
+	// as every other session endpoint (SameSite=Strict is the primary defense;
+	// this is defense in depth).
+	if r.Header.Get("X-Requested-With") != "XMLHttpRequest" {
+		h.writeOAuthError(w, http.StatusForbidden, "access_denied", "Missing X-Requested-With header")
+		return
+	}
+
 	var body struct {
 		ClientID            string `json:"client_id"`
 		RedirectURI         string `json:"redirect_uri"`

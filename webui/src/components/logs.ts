@@ -94,7 +94,7 @@ export function logsPage() {
       this.error = '';
       this.normalizePagination();
       try {
-        this.entries = await api.listLogs(this.buildFilter());
+        this.entries = (await api.listLogs(this.buildFilter())) ?? [];
         this.hasNextPage = this.entries.length === this.filters.limit;
         this.syncQuery();
       } catch (e) {

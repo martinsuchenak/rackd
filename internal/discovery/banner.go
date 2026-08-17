@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -36,7 +37,9 @@ func (b *BannerGrabber) GrabBanner(ip string, port int) *ServiceBanner {
 
 	conn.SetReadDeadline(time.Now().Add(b.timeout))
 
-	reader := bufio.NewReader(conn)
+	// Cap the read: a hostile host could stream an endless header-less line
+	// and balloon memory per scanned host.
+	reader := bufio.NewReader(io.LimitReader(conn, 8<<10))
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		response, err = reader.ReadString('\n')

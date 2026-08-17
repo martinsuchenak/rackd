@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +53,29 @@ func NewDNSService(store storage.ExtendedStorage, encryptor *credentials.Encrypt
 
 // Provider CRUD Operations
 
+// validateDNSProviderEndpoint ensures a provider endpoint is a well-formed
+// http(s) URL. The server issues authenticated API requests to this endpoint,
+// so unchecked values are an SSRF surface (mirrors webhook URL validation).
+func validateDNSProviderEndpoint(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ValidationErrors{{Field: "endpoint", Message: "Invalid endpoint URL"}}
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ValidationErrors{{Field: "endpoint", Message: "Endpoint must use http or https scheme"}}
+	}
+	if u.Host == "" {
+		return ValidationErrors{{Field: "endpoint", Message: "Endpoint must include a host"}}
+	}
+	if u.User != nil {
+		return ValidationErrors{{Field: "endpoint", Message: "Endpoint must not contain userinfo"}}
+	}
+	if len(rawURL) > 2048 {
+		return ValidationErrors{{Field: "endpoint", Message: "Endpoint too long (max 2048 characters)"}}
+	}
+	return nil
+}
+
 // CreateProvider creates a new DNS provider configuration
 func (s *DNSService) CreateProvider(ctx context.Context, req *model.CreateDNSProviderRequest) (*model.DNSProviderConfig, error) {
 	if err := requirePermission(ctx, s.store, "dns-provider", "create"); err != nil {
@@ -67,6 +91,9 @@ func (s *DNSService) CreateProvider(ctx context.Context, req *model.CreateDNSPro
 	}
 	if req.Endpoint == "" {
 		return nil, ValidationErrors{{Field: "endpoint", Message: "Endpoint is required"}}
+	}
+	if err := validateDNSProviderEndpoint(req.Endpoint); err != nil {
+		return nil, err
 	}
 	if req.Token == "" {
 		return nil, ValidationErrors{{Field: "token", Message: "Token is required"}}
@@ -172,6 +199,9 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 	if req.Endpoint != nil {
 		if *req.Endpoint == "" {
 			return nil, ValidationErrors{{Field: "endpoint", Message: "Endpoint cannot be empty"}}
+		}
+		if err := validateDNSProviderEndpoint(*req.Endpoint); err != nil {
+			return nil, err
 		}
 		provider.Endpoint = *req.Endpoint
 		// Invalidate cached provider since endpoint changed
@@ -966,109 +996,6 @@ func (s *DNSService) SyncRecord(ctx context.Context, record *model.DNSRecord) er
 	return s.store.UpdateDNSRecord(ctx, record)
 }
 
-// generatePTRZone generates a PTR zone name from a CIDR subnet
-func (s *DNSService) generatePTRZone(subnet string) (string, error) {
-	ip, ipnet, err := net.ParseCIDR(subnet)
-	if err != nil {
-		return "", fmt.Errorf("invalid CIDR: %w", err)
-	}
-
-	// For IPv4
-	if ip.To4() != nil {
-		ones, _ := ipnet.Mask.Size()
-		if ones < 24 {
-			return "", fmt.Errorf("CIDR must be at least /24 for PTR zone generation")
-		}
-
-		// Convert to in-addr.arpa format
-		reversed := reverseIP(ip.String())
-		parts := strings.Split(reversed, ".")
-
-		// Determine how many octets to include based on mask size
-		var octets int
-		switch {
-		case ones >= 24:
-			octets = 3
-		case ones >= 16:
-			octets = 2
-		default:
-			octets = 1
-		}
-
-		return strings.Join(parts[0:octets], ".") + ".in-addr.arpa.", nil
-	}
-
-	// For IPv6
-	if ip.To16() != nil {
-		// Convert to ip6.arpa format (nibble reversal)
-		reversed := reverseIPv6(ip.String())
-		maskSize, _ := ipnet.Mask.Size()
-
-		// Determine how many nibbles to include
-		nibbles := maskSize / 4
-		if nibbles > len(reversed) {
-			nibbles = len(reversed)
-		}
-
-		return reversed[:nibbles] + ".ip6.arpa.", nil
-	}
-
-	return "", fmt.Errorf("unsupported IP address format")
-}
-
-// extractPTRName extracts a PTR record name from an IP address
-func (s *DNSService) extractPTRName(ipStr string) string {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return ""
-	}
-
-	// For IPv4
-	if ip.To4() != nil {
-		return reverseIP(ip.String()) + ".in-addr.arpa."
-	}
-
-	// For IPv6
-	if ip.To16() != nil {
-		return reverseIPv6(ip.String()) + ".ip6.arpa."
-	}
-
-	return ""
-}
-
-// reverseIP reverses an IPv4 address (e.g., "192.168.1.1" -> "1.1.168.192")
-func reverseIP(ip string) string {
-	parts := strings.Split(ip, ".")
-	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
-		parts[i], parts[j] = parts[j], parts[i]
-	}
-	return strings.Join(parts, ".")
-}
-
-// reverseIPv6 reverses an IPv6 address into nibble notation
-func reverseIPv6(ip string) string {
-	// Parse and expand IPv6 address
-	parsed := net.ParseIP(ip)
-	if parsed == nil {
-		return ""
-	}
-
-	// Get 16-byte representation
-	bytes := parsed.To16()
-	if bytes == nil {
-		return ""
-	}
-
-	// Convert to hex nibbles (reversed order)
-	var nibbles []string
-	for i := 15; i >= 0; i-- {
-		b := bytes[i]
-		nibbles = append(nibbles, fmt.Sprintf("%x", b&0x0f))
-		nibbles = append(nibbles, fmt.Sprintf("%x", (b>>4)&0x0f))
-	}
-
-	return strings.Join(nibbles, ".")
-}
 
 // MatchZoneForDomain returns the best matching zone and the record prefix.
 // It selects the zone with the longest name (most specific match).

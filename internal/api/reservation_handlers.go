@@ -45,21 +45,6 @@ func (h *Handler) getReservation(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, reservation)
 }
 
-func (h *Handler) createReservation(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateReservationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.invalidJSON(w)
-		return
-	}
-
-	reservation, err := h.svc.Reservations.Create(r.Context(), &req)
-	if err != nil {
-		h.handleServiceError(w, err)
-		return
-	}
-	h.writeJSON(w, http.StatusCreated, reservation)
-}
-
 func (h *Handler) updateReservation(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
@@ -108,18 +93,6 @@ func (h *Handler) listPoolReservations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeJSON(w, http.StatusOK, reservations)
-}
-
-func (h *Handler) getReservationByIP(w http.ResponseWriter, r *http.Request) {
-	poolID := r.PathValue("poolId")
-	ip := r.PathValue("ip")
-
-	reservation, err := h.svc.Reservations.GetByIP(r.Context(), poolID, ip)
-	if err != nil {
-		h.handleServiceError(w, err)
-		return
-	}
-	h.writeJSON(w, http.StatusOK, reservation)
 }
 
 // createReservationRequestWithDefaults is used for parsing requests with optional expires_in_days field

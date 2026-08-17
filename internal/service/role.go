@@ -153,6 +153,43 @@ func (s *RoleService) RevokePermission(ctx context.Context, roleID, permissionID
 	return s.store.RemoveRolePermission(ctx, roleID, permissionID)
 }
 
+// SetPermissions atomically replaces a role's permission set. Permission IDs
+// are validated to exist; because role_permissions has no FK, dangling IDs
+// would otherwise grant nothing while reporting success.
+func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permissionIDs []string) error {
+	if err := requirePermission(ctx, s.store, "roles", "update"); err != nil {
+		return err
+	}
+
+	role, err := s.store.GetRole(ctx, roleID)
+	if err != nil {
+		if errors.Is(err, storage.ErrRoleNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	if role.IsSystem {
+		return ErrSystemRole
+	}
+
+	perms, err := s.store.ListPermissions(ctx, nil)
+	if err != nil {
+		return err
+	}
+	valid := make(map[string]bool, len(perms))
+	for _, p := range perms {
+		valid[p.ID] = true
+	}
+	for _, id := range permissionIDs {
+		if !valid[id] {
+			return ValidationErrors{{Field: "permissions", Message: "Unknown permission ID: " + id}}
+		}
+	}
+
+	return s.store.SetRolePermissions(ctx, roleID, permissionIDs)
+}
+
 func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) error {
 	if err := requirePermission(ctx, s.store, "roles", "update"); err != nil {
 		return err

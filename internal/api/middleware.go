@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,6 +18,18 @@ import (
 
 // MaxRequestBodySize is the maximum allowed request body size (1MB)
 const MaxRequestBodySize = 1 << 20
+
+// writeAuthError emits the standard JSON error envelope from middleware.
+// http.Error() would override Content-Type with text/plain, so headers and
+// body are written directly.
+func writeAuthError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
+		"code":  code,
+	})
+}
 
 // AuthContext key for storing authenticated API key info
 type contextKey string
@@ -136,8 +149,7 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 		authHeader := r.Header.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Debug("Auth failed: missing Bearer prefix", "path", r.URL.Path)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+			writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 			return
 		}
 
@@ -151,8 +163,7 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
 			log.Debug("Auth failed", "path", r.URL.Path, "error", err)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, fmt.Sprintf(`{"error":"Unauthorized","code":"%s"}`, code), http.StatusUnauthorized)
+			writeAuthError(w, http.StatusUnauthorized, code, "Unauthorized")
 			return
 		}
 
@@ -179,8 +190,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 						// Ensure it's a legitimate API request from the SPA
 						if r.Header.Get("X-Requested-With") != "XMLHttpRequest" {
 							log.Warn("CSRF blocked: Missing X-Requested-With header", "path", r.URL.Path, "username", session.Username)
-							w.Header().Set("Content-Type", "application/json")
-							http.Error(w, `{"error":"CSRF validation failed: missing custom header","code":"CSRF_FAILED"}`, http.StatusForbidden)
+							writeAuthError(w, http.StatusForbidden, "CSRF_FAILED", "CSRF validation failed: missing custom header")
 							return
 						}
 					}
@@ -204,8 +214,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 		authHeader := r.Header.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Debug("Auth failed: no session cookie or Bearer token", "path", r.URL.Path)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, `{"error":"Unauthorized","code":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+			writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 			return
 		}
 
@@ -219,8 +228,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
 			log.Debug("Auth failed", "path", r.URL.Path, "error", err)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, fmt.Sprintf(`{"error":"Unauthorized","code":"%s"}`, code), http.StatusUnauthorized)
+			writeAuthError(w, http.StatusUnauthorized, code, "Unauthorized")
 			return
 		}
 
@@ -272,8 +280,7 @@ func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.H
 			w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
 
 			log.Warn("Login rate limit exceeded", "client", clientID)
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, `{"error":"Too many login attempts. Please try again later.","code":"LOGIN_RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
+			writeAuthError(w, http.StatusTooManyRequests, "LOGIN_RATE_LIMIT_EXCEEDED", "Too many login attempts. Please try again later.")
 			return
 		}
 
@@ -288,9 +295,3 @@ func LoginRateLimitMiddleware(limiter *RateLimiter, trustProxy bool, next http.H
 	}
 }
 
-// LogAuthWarning logs a warning when auth token is empty (open API mode)
-func LogAuthWarning(token string) {
-	if token == "" {
-		log.Warn("API authentication is disabled - API is open to all requests")
-	}
-}
