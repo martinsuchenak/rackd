@@ -25,6 +25,7 @@ func Command() *cli.Command {
 			UpdateCommand(),
 			DeleteCommand(),
 			ChangePasswordCommand(),
+			ResetPasswordCommand(),
 		},
 	}
 }

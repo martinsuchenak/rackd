@@ -161,6 +161,21 @@ Password requirements:
 - Hashed with bcrypt (cost 14)
 - Password change invalidates all existing sessions
 
+### Recovering a lost admin password
+
+If the only admin's password is lost and no other admin or API key exists,
+reset it offline with the CLI — it writes to the database directly, so the
+server must be stopped first:
+
+```bash
+rackd user reset-password --data-dir ./data --username admin
+```
+
+For Docker deployments see the full procedure in the
+[CLI reference](cli.md#user-reset-password). The command prompts for the
+new password (hidden input), applies the same bcrypt hashing as the
+server, and invalidates all active sessions for the user.
+
 ## Security Notes
 
 - Rate limiting is enabled by default (100 req/min API, 5 req/min login)

@@ -16,7 +16,7 @@ func TestCommandStructure(t *testing.T) {
 		t.Fatalf("expected command name 'user', got %q", cmd.Name)
 	}
 
-	expectedSubcommands := []string{"list", "create", "update", "delete", "password"}
+	expectedSubcommands := []string{"list", "create", "update", "delete", "password", "reset-password"}
 	if len(cmd.Commands) != len(expectedSubcommands) {
 		t.Fatalf("expected %d subcommands, got %d", len(expectedSubcommands), len(cmd.Commands))
 	}

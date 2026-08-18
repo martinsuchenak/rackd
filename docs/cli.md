@@ -579,6 +579,47 @@ rackd user password --id <user-id>
 
 You will be prompted for the old and new passwords.
 
+#### user reset-password
+
+Reset a user's password directly in the database — the recovery path when
+the password is lost and no other admin or API key is available. Requires
+no running server and no authentication; it opens the database file
+itself.
+
+```bash
+rackd user reset-password --data-dir <dir> --username <username>
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory containing `rackd.db` (default `./data`)
+- `--username <name>` - Account to reset (e.g. `admin`)
+
+You will be prompted (hidden input) for the new password; it must be at
+least 8 characters. The password is hashed with the same bcrypt policy as
+the server and all active sessions for the user are invalidated.
+
+**Recovery procedure (Docker):**
+
+```bash
+# 1. Stop the server to avoid write contention
+docker stop rackd
+
+# 2. Run the reset against the mounted data directory
+docker run -it --rm -v /path/on/host/data:/data --entrypoint rackd \
+  ghcr.io/martinsuchenak/rackd:latest \
+  user reset-password --data-dir /data --username admin
+
+# 3. Start the server and log in with the new password
+docker start rackd
+```
+
+For binary installs, stop the server and run `rackd user reset-password`
+on the host with the correct `--data-dir`.
+
+To avoid needing this procedure, keep a second admin account or a
+break-glass API key in a password manager — either can reset passwords
+through the API/UI.
+
 ### role
 
 Manage roles and permissions.
