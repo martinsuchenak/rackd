@@ -25,7 +25,7 @@ func DeleteCommand() *cli.Command {
 			if !cmd.GetBool("force") {
 				fmt.Printf("Are you sure you want to delete conflict %s? [y/N]: ", conflictID)
 				var confirm string
-				fmt.Scanln(&confirm)
+				_, _ = fmt.Scanln(&confirm)
 				if confirm != "y" && confirm != "Y" {
 					fmt.Println("Deletion cancelled")
 					return nil
@@ -36,7 +36,7 @@ func DeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)

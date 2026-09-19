@@ -53,7 +53,7 @@ func (w *ScheduledScanWorker) Start() error {
 
 	for _, scan := range scans {
 		if scan.Enabled {
-			w.scheduleJob(&scan)
+			_ = w.scheduleJob(&scan)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (w *ScheduledScanWorker) scheduleJob(scan *model.ScheduledScan) error {
 	entry := w.cron.Entry(entryID)
 	nextRun := entry.Next
 	scanCopy.NextRunAt = &nextRun
-	w.scheduledStore.Update(&scanCopy)
+	_ = w.scheduledStore.Update(&scanCopy)
 
 	return nil
 }
@@ -137,5 +137,5 @@ func (w *ScheduledScanWorker) runScheduledScan(scan *model.ScheduledScan) {
 	}
 	w.mu.Unlock()
 
-	w.scheduledStore.Update(scan)
+	_ = w.scheduledStore.Update(scan)
 }

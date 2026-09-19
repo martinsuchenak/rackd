@@ -38,7 +38,7 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 			case <-ctx.Done():
 				return
 			default:
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				n, addr, err := conn.ReadFrom(buf)
 				if err != nil {
 					// Discover() closes the conn when it returns; exit
@@ -89,8 +89,8 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 				goto cleanup
 			default:
 				if c, err := net.DialUDP("udp4", &net.UDPAddr{IP: nil, Port: 0}, groupAddr); err == nil {
-					c.Write(query)
-					c.Close()
+					_, _ = c.Write(query)
+					_ = c.Close()
 				}
 				time.Sleep(1 * time.Second)
 			}
@@ -101,7 +101,7 @@ cleanup:
 	// Closing the conn makes the listener's ReadFrom fail immediately; wait
 	// for it to exit before closing resultChan so a late packet cannot
 	// panic on send-to-closed-channel.
-	conn.Close()
+	_ = conn.Close()
 	<-doneChan
 	close(resultChan)
 
@@ -236,10 +236,7 @@ func (s *mDNSScanner) parseName(data []byte, offset int) (string, int) {
 	currentOffset := offset
 	jumps := 0
 
-	for {
-		if jumps > 5 {
-			break
-		}
+	for jumps <= 5 {
 
 		if currentOffset >= len(data) {
 			break

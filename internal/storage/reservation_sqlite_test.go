@@ -14,7 +14,7 @@ import (
 
 func TestReservationOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool first
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
@@ -82,11 +82,11 @@ func TestReservationOperations_CreateAndGet(t *testing.T) {
 
 func TestReservationOperations_CreateWithExpiration(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -94,7 +94,7 @@ func TestReservationOperations_CreateWithExpiration(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	expiresAt := time.Now().Add(7 * 24 * time.Hour).UTC()
 	reservation := &model.Reservation{
@@ -122,7 +122,7 @@ func TestReservationOperations_CreateWithExpiration(t *testing.T) {
 
 func TestReservationOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetReservation(context.Background(), "non-existent-id")
 	if err == nil {
@@ -135,7 +135,7 @@ func TestReservationOperations_GetNotFound(t *testing.T) {
 
 func TestReservationOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetReservation(context.Background(), "")
 	if err != ErrInvalidID {
@@ -145,7 +145,7 @@ func TestReservationOperations_GetInvalidID(t *testing.T) {
 
 func TestReservationOperations_CreateInvalidPool(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	reservation := &model.Reservation{
 		PoolID:     "non-existent-pool",
@@ -165,11 +165,11 @@ func TestReservationOperations_CreateInvalidPool(t *testing.T) {
 
 func TestReservationOperations_CreateIPNotInPoolRange(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -177,7 +177,7 @@ func TestReservationOperations_CreateIPNotInPoolRange(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	reservation := &model.Reservation{
 		PoolID:     pool.ID,
@@ -194,11 +194,11 @@ func TestReservationOperations_CreateIPNotInPoolRange(t *testing.T) {
 
 func TestReservationOperations_CreateDuplicateIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -206,7 +206,7 @@ func TestReservationOperations_CreateDuplicateIP(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create first reservation
 	reservation1 := &model.Reservation{
@@ -237,11 +237,11 @@ func TestReservationOperations_CreateDuplicateIP(t *testing.T) {
 
 func TestReservationOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -249,16 +249,16 @@ func TestReservationOperations_ListAll(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create multiple reservations
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	})
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.101",
 		ReservedBy: "user1",
@@ -278,25 +278,25 @@ func TestReservationOperations_ListAll(t *testing.T) {
 
 func TestReservationOperations_ListWithPoolFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pools
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool1 := &model.NetworkPool{NetworkID: network.ID, Name: "Pool 1", StartIP: "192.168.1.100", EndIP: "192.168.1.150"}
 	pool2 := &model.NetworkPool{NetworkID: network.ID, Name: "Pool 2", StartIP: "192.168.1.151", EndIP: "192.168.1.200"}
-	storage.CreateNetworkPool(context.Background(), pool1)
-	storage.CreateNetworkPool(context.Background(), pool2)
+	_ = storage.CreateNetworkPool(context.Background(), pool1)
+	_ = storage.CreateNetworkPool(context.Background(), pool2)
 
 	// Create reservations in different pools
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool1.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	})
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool2.ID,
 		IPAddress:  "192.168.1.151",
 		ReservedBy: "user1",
@@ -319,11 +319,11 @@ func TestReservationOperations_ListWithPoolFilter(t *testing.T) {
 
 func TestReservationOperations_ListWithStatusFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -331,10 +331,10 @@ func TestReservationOperations_ListWithStatusFilter(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservations with different statuses
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
@@ -346,10 +346,10 @@ func TestReservationOperations_ListWithStatusFilter(t *testing.T) {
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	}
-	storage.CreateReservation(context.Background(), reservation2)
+	_ = storage.CreateReservation(context.Background(), reservation2)
 
 	// Expire one reservation
-	storage.UpdateReservation(context.Background(), &model.Reservation{
+	_ = storage.UpdateReservation(context.Background(), &model.Reservation{
 		ID:     reservation2.ID,
 		Status: model.ReservationStatusExpired,
 	})
@@ -370,11 +370,11 @@ func TestReservationOperations_ListWithStatusFilter(t *testing.T) {
 
 func TestReservationOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -382,7 +382,7 @@ func TestReservationOperations_Update(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservation
 	reservation := &model.Reservation{
@@ -393,7 +393,7 @@ func TestReservationOperations_Update(t *testing.T) {
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	}
-	storage.CreateReservation(context.Background(), reservation)
+	_ = storage.CreateReservation(context.Background(), reservation)
 
 	// Update reservation
 	reservation.Hostname = "new-hostname"
@@ -424,11 +424,11 @@ func TestReservationOperations_Update(t *testing.T) {
 
 func TestReservationOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -436,7 +436,7 @@ func TestReservationOperations_Delete(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservation
 	reservation := &model.Reservation{
@@ -445,7 +445,7 @@ func TestReservationOperations_Delete(t *testing.T) {
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	}
-	storage.CreateReservation(context.Background(), reservation)
+	_ = storage.CreateReservation(context.Background(), reservation)
 
 	// Delete reservation
 	err := storage.DeleteReservation(context.Background(), reservation.ID)
@@ -462,7 +462,7 @@ func TestReservationOperations_Delete(t *testing.T) {
 
 func TestReservationOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteReservation(context.Background(), "")
 	if err != ErrInvalidID {
@@ -472,11 +472,11 @@ func TestReservationOperations_DeleteInvalidID(t *testing.T) {
 
 func TestReservationOperations_GetByPool(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -484,16 +484,16 @@ func TestReservationOperations_GetByPool(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservations
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	})
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.101",
 		ReservedBy: "user1",
@@ -513,7 +513,7 @@ func TestReservationOperations_GetByPool(t *testing.T) {
 
 func TestReservationOperations_GetByPoolInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetReservationsByPool(context.Background(), "")
 	if err != ErrInvalidID {
@@ -523,11 +523,11 @@ func TestReservationOperations_GetByPoolInvalidID(t *testing.T) {
 
 func TestReservationOperations_GetByUser(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -535,22 +535,22 @@ func TestReservationOperations_GetByUser(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservations by different users
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
 		Status:     model.ReservationStatusActive,
 	})
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.101",
 		ReservedBy: "user1",
 		Status:     model.ReservationStatusActive,
 	})
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.102",
 		ReservedBy: "admin",
@@ -570,11 +570,11 @@ func TestReservationOperations_GetByUser(t *testing.T) {
 
 func TestReservationOperations_IsIPReserved(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -582,7 +582,7 @@ func TestReservationOperations_IsIPReserved(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Check IP not reserved
 	isReserved, err := storage.IsIPReserved(context.Background(), pool.ID, "192.168.1.100")
@@ -594,7 +594,7 @@ func TestReservationOperations_IsIPReserved(t *testing.T) {
 	}
 
 	// Create reservation
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
@@ -613,11 +613,11 @@ func TestReservationOperations_IsIPReserved(t *testing.T) {
 
 func TestReservationOperations_ExpireReservations(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -625,11 +625,11 @@ func TestReservationOperations_ExpireReservations(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservation that has expired
 	pastTime := time.Now().Add(-24 * time.Hour).UTC()
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		ReservedBy: "admin",
@@ -639,7 +639,7 @@ func TestReservationOperations_ExpireReservations(t *testing.T) {
 
 	// Create reservation that has not expired
 	futureTime := time.Now().Add(24 * time.Hour).UTC()
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.101",
 		ReservedBy: "admin",
@@ -666,11 +666,11 @@ func TestReservationOperations_ExpireReservations(t *testing.T) {
 
 func TestReservationOperations_GetReservationByIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -678,10 +678,10 @@ func TestReservationOperations_GetReservationByIP(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create reservation
-	storage.CreateReservation(context.Background(), &model.Reservation{
+	_ = storage.CreateReservation(context.Background(), &model.Reservation{
 		PoolID:     pool.ID,
 		IPAddress:  "192.168.1.100",
 		Hostname:   "server1",
@@ -702,11 +702,11 @@ func TestReservationOperations_GetReservationByIP(t *testing.T) {
 
 func TestReservationOperations_GetReservationByIPNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -714,7 +714,7 @@ func TestReservationOperations_GetReservationByIPNotFound(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	_, err := storage.GetReservationByIP(context.Background(), pool.ID, "192.168.1.100")
 	if err != ErrReservationNotFound {
@@ -724,7 +724,7 @@ func TestReservationOperations_GetReservationByIPNotFound(t *testing.T) {
 
 func TestReservationOperations_CreateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateReservation(context.Background(), nil)
 	if err == nil {

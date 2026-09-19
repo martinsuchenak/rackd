@@ -15,7 +15,7 @@ func init() {
 
 func TestBootstrapInitialAdmin(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	cfg := &config.Config{
 		InitialAdminUsername: "testadmin",
@@ -50,7 +50,7 @@ func TestBootstrapInitialAdmin(t *testing.T) {
 
 func TestBootstrapInitialAdminSkipsIfExists(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, _ = createTestUser(t, db, "existinguser", "existing@test.com")
 
@@ -81,7 +81,7 @@ func TestBootstrapInitialAdminSkipsIfExists(t *testing.T) {
 
 func TestBootstrapInitialAdminNoConfig(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	cfg := &config.Config{
 		InitialAdminUsername: "",
@@ -106,7 +106,7 @@ func TestBootstrapInitialAdminNoConfig(t *testing.T) {
 
 func TestCreateInitialAdmin(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "testpassword123")
 	if err != nil {
@@ -137,7 +137,7 @@ func TestCreateInitialAdmin(t *testing.T) {
 
 func TestCreateInitialAdminAlreadyExists(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "testpassword123")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestCreateInitialAdminAlreadyExists(t *testing.T) {
 
 func TestCreateInitialAdminInvalidPassword(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err := db.CreateInitialAdmin(context.Background(), "testadmin", "admin@test.com", "Test Admin", "short")
 	if err == nil {
@@ -162,7 +162,7 @@ func TestCreateInitialAdminInvalidPassword(t *testing.T) {
 
 func TestCreateInitialAdminMissingFields(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err := db.CreateInitialAdmin(context.Background(), "", "admin@test.com", "Test Admin", "testpassword123")
 	if err == nil {

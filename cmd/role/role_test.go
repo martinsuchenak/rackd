@@ -81,7 +81,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("GET", "/api/permissions?resource=devices&action=read", nil)
 	if err != nil {
@@ -90,7 +90,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("POST", "/api/roles", map[string]any{
 		"name":        "dns-operator",
@@ -102,7 +102,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("POST", "/api/users/grant-role", map[string]any{
 		"user_id": "user-1",
@@ -114,7 +114,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("POST", "/api/users/revoke-role", map[string]any{
 		"user_id": "user-1",
@@ -126,7 +126,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("DELETE", "/api/roles/role-2", nil)
 	if err != nil {
@@ -135,7 +135,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if len(bodies) < 3 {
 		t.Fatalf("expected request bodies for create/assign/revoke, got %d", len(bodies))

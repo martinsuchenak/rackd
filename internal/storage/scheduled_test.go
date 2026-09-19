@@ -9,7 +9,7 @@ import (
 
 func TestSQLiteScheduledScanStorageCRUD(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	scheduled, err := NewSQLiteScheduledScanStorage(storage.DB())
 	if err != nil {
@@ -80,7 +80,7 @@ func TestSQLiteScheduledScanStorageCRUD(t *testing.T) {
 
 func TestSQLiteScheduledScanStorageErrors(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	scheduled, err := NewSQLiteScheduledScanStorage(storage.DB())
 	if err != nil {

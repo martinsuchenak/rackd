@@ -13,7 +13,7 @@ import (
 
 func TestRelationshipHandlers(t *testing.T) {
 	h, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -22,9 +22,9 @@ func TestRelationshipHandlers(t *testing.T) {
 	device1 := &model.Device{Name: "parent-device"}
 	device2 := &model.Device{Name: "child-device"}
 	device3 := &model.Device{Name: "another-child"}
-	store.CreateDevice(context.Background(), device1)
-	store.CreateDevice(context.Background(), device2)
-	store.CreateDevice(context.Background(), device3)
+	_ = store.CreateDevice(context.Background(), device1)
+	_ = store.CreateDevice(context.Background(), device2)
+	_ = store.CreateDevice(context.Background(), device3)
 
 	t.Run("AddRelationship_Contains", func(t *testing.T) {
 		body := `{"child_id":"` + device2.ID + `","type":"contains"}`
@@ -118,7 +118,7 @@ func TestRelationshipHandlers(t *testing.T) {
 		}
 
 		var rels []model.DeviceRelationship
-		json.NewDecoder(w.Body).Decode(&rels)
+		_ = json.NewDecoder(w.Body).Decode(&rels)
 		if len(rels) < 1 {
 			t.Errorf("expected at least 1 relationship, got %d", len(rels))
 		}

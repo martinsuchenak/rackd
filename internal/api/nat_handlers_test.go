@@ -12,7 +12,7 @@ import (
 
 func TestNATHandlers(t *testing.T) {
 	h, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -53,7 +53,7 @@ func TestNATHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		if w.Code != http.StatusCreated {
-				t.Errorf("expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+			t.Errorf("expected %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 		}
 
 		var mapping model.NATMapping
@@ -414,7 +414,7 @@ func TestNATHandlers(t *testing.T) {
 		protocols := []model.NATProtocol{model.NATProtocolTCP, model.NATProtocolUDP, model.NATProtocolAny}
 
 		for i, protocol := range protocols {
-				body := `{"name": "Protocol Test ` + string(rune('A'+i)) + `", "external_ip": "203.0.113.1` + string(rune('0'+i+1)) + `", "external_port": 443, "internal_ip": "192.168.1.1` + string(rune('0'+i+1)) + `", "internal_port": 443, "protocol": "` + string(protocol) + `"}`
+			body := `{"name": "Protocol Test ` + string(rune('A'+i)) + `", "external_ip": "203.0.113.1` + string(rune('0'+i+1)) + `", "external_port": 443, "internal_ip": "192.168.1.1` + string(rune('0'+i+1)) + `", "internal_port": 443, "protocol": "` + string(protocol) + `"}`
 			req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()

@@ -25,7 +25,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a test user
 	passwordHash, _ := auth.HashPassword("test-password")
@@ -79,7 +79,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	called := false
 	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +105,7 @@ func TestAuthMiddleware_MissingBearer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	called := false
 	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +131,7 @@ func TestAuthMiddleware_NoHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	called := false
 	handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +156,7 @@ func TestAuthMiddleware_ExpiredKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create expired API key
 	expired := time.Now().Add(-1 * time.Hour)

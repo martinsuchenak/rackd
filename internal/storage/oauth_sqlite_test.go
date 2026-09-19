@@ -73,8 +73,8 @@ func TestOAuthClientCRUD(t *testing.T) {
 func createTestUserAndClient(t *testing.T, s *SQLiteStorage) {
 	t.Helper()
 	ctx := context.Background()
-	s.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
-	s.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = s.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = s.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:                "client1",
 		Name:              "Test",
 		RedirectURIs:      []string{"http://localhost/cb"},
@@ -216,7 +216,7 @@ func TestRevokeOAuthTokensByClient(t *testing.T) {
 
 	// Create two tokens
 	for _, hash := range []string{"token-1", "token-2"} {
-		s.CreateOAuthToken(ctx, &model.OAuthToken{
+		_ = s.CreateOAuthToken(ctx, &model.OAuthToken{
 			TokenType: "access",
 			TokenHash: hash,
 			ClientID:  "client1",

@@ -8,8 +8,8 @@ import (
 )
 
 func TestLoadConfig_Defaults(t *testing.T) {
-	os.Unsetenv("RACKD_SERVER_URL")
-	os.Unsetenv("RACKD_TOKEN")
+	_ = os.Unsetenv("RACKD_SERVER_URL")
+	_ = os.Unsetenv("RACKD_TOKEN")
 
 	cfg := LoadConfig()
 
@@ -25,11 +25,10 @@ func TestLoadConfig_Defaults(t *testing.T) {
 }
 
 func TestLoadConfig_EnvOverride(t *testing.T) {
-	os.Setenv("RACKD_SERVER_URL", "http://test:9090")
-	os.Setenv("RACKD_TOKEN", "test-token")
-	defer os.Unsetenv("RACKD_SERVER_URL")
-	defer os.Unsetenv("RACKD_TOKEN")
-
+	_ = os.Setenv("RACKD_SERVER_URL", "http://test:9090")
+	_ = os.Setenv("RACKD_TOKEN", "test-token")
+	defer func() { _ = os.Unsetenv("RACKD_SERVER_URL") }()
+	defer func() { _ = os.Unsetenv("RACKD_TOKEN") }()
 	cfg := LoadConfig()
 
 	if cfg.ServerURL != "http://test:9090" {
@@ -61,7 +60,7 @@ func TestClient_DoRequest(t *testing.T) {
 			t.Error("expected content-type header")
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}))
 	defer server.Close()
 
@@ -80,7 +79,7 @@ func TestClient_DoRequest(t *testing.T) {
 func TestHandleError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"bad request","code":"INVALID_INPUT"}`))
+		_, _ = w.Write([]byte(`{"error":"bad request","code":"INVALID_INPUT"}`))
 	}))
 	defer server.Close()
 

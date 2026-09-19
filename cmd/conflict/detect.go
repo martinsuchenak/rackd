@@ -39,7 +39,7 @@ func DetectCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -52,7 +52,7 @@ func DetectCommand() *cli.Command {
 
 			conflictsJSON, _ := json.Marshal(result["conflicts"])
 			var conflicts []map[string]interface{}
-			json.Unmarshal(conflictsJSON, &conflicts)
+			_ = json.Unmarshal(conflictsJSON, &conflicts)
 
 			fmt.Printf("Detection complete. Found %d conflict(s).\n", len(conflicts))
 

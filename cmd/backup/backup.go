@@ -41,17 +41,17 @@ func Command() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open database: %w", err)
 			}
-			defer src.Close()
+			defer func() { _ = src.Close() }()
 
 			dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 			if err != nil {
 				return fmt.Errorf("failed to create backup file: %w", err)
 			}
-			defer dst.Close()
+			defer func() { _ = dst.Close() }()
 
 			n, err := io.Copy(dst, src)
 			if err != nil {
-				os.Remove(dstPath)
+				_ = os.Remove(dstPath)
 				return fmt.Errorf("backup failed: %w", err)
 			}
 
@@ -77,13 +77,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	return err

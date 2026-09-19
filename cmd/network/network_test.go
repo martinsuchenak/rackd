@@ -140,11 +140,11 @@ func TestNetworkTableOutput(t *testing.T) {
 
 	client.PrintNetworkTable(networks)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "ID") || !strings.Contains(output, "NAME") || !strings.Contains(output, "SUBNET") {
@@ -169,11 +169,11 @@ func TestNetworkJSONOutput(t *testing.T) {
 
 	client.PrintJSON(networks)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	var parsed []map[string]interface{}
@@ -191,19 +191,19 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/networks" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "net1", "name": "test-network", "subnet": "10.0.0.0/24"},
 			})
 		case r.URL.Path == "/api/networks/net1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "net1", "name": "test-network", "subnet": "10.0.0.0/24",
 			})
 		case r.URL.Path == "/api/networks" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "new-net", "name": "new-network",
 			})
 		case r.URL.Path == "/api/networks/net1" && r.Method == "DELETE":
@@ -211,7 +211,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 		case strings.HasPrefix(r.URL.Path, "/api/networks/net1/pools"):
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{})
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

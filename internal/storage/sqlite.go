@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,9 @@ import (
 type SQLiteStorage struct {
 	db        *sql.DB
 	auditChan chan *model.AuditLog
+	auditDone chan struct{}
+	auditWG   sync.WaitGroup
+	closeOnce sync.Once
 
 	// webhookEncryptor, when set, transparently encrypts webhook signing
 	// secrets at rest (write) and decrypts them on read. Legacy plaintext
@@ -66,28 +70,30 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 
 	// Test connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	s := &SQLiteStorage{
 		db:        db,
 		auditChan: make(chan *model.AuditLog, 1000),
+		auditDone: make(chan struct{}),
 	}
 
 	// Start audit log worker
+	s.auditWG.Add(1)
 	go s.auditWorker()
 
 	// Run migrations
 	ctx := context.Background()
 	if err := RunMigrations(ctx, db); err != nil {
-		db.Close()
+		_ = s.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// Create default datacenter if none exists
 	if err := s.ensureDefaultDatacenter(ctx); err != nil {
-		db.Close()
+		_ = s.Close()
 		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
 	}
 
@@ -114,28 +120,30 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 
 	// Test connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	s := &SQLiteStorage{
 		db:        db,
 		auditChan: make(chan *model.AuditLog, 1000),
+		auditDone: make(chan struct{}),
 	}
 
 	// Start audit log worker
+	s.auditWG.Add(1)
 	go s.auditWorker()
 
 	// Run migrations
 	ctx := context.Background()
 	if err := RunMigrations(ctx, db); err != nil {
-		db.Close()
+		_ = s.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// Create default datacenter if none exists
 	if err := s.ensureDefaultDatacenter(ctx); err != nil {
-		db.Close()
+		_ = s.Close()
 		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
 	}
 
@@ -143,7 +151,13 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 }
 
 // Close closes the database connection
+// Close stops the audit worker (after it drains queued entries) and closes
+// the database. Safe to call more than once.
 func (s *SQLiteStorage) Close() error {
+	if s.auditDone != nil {
+		s.closeOnce.Do(func() { close(s.auditDone) })
+		s.auditWG.Wait()
+	}
 	return s.db.Close()
 }
 
@@ -161,6 +175,7 @@ func newUUID() string {
 	}
 	return id.String()
 }
+
 // nowUTC returns the current time in UTC.
 // All storage methods MUST use this instead of time.Now() directly.
 func nowUTC() time.Time {
@@ -191,12 +206,31 @@ func nullIntPtr(i *int) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(*i), Valid: true}
 }
 
-// auditWorker processes audit logs from the queue
+// auditWorker processes audit logs from the queue until Close signals
+// auditDone, then persists any entries still buffered before exiting so
+// shutdown does not lose queued audit records.
 func (s *SQLiteStorage) auditWorker() {
-	for logEntry := range s.auditChan {
-		if err := s.CreateAuditLog(context.Background(), logEntry); err != nil {
-			log.Error("Failed to create audit log", "error", err)
+	defer s.auditWG.Done()
+	for {
+		select {
+		case logEntry := <-s.auditChan:
+			s.persistAuditEntry(logEntry)
+		case <-s.auditDone:
+			for {
+				select {
+				case logEntry := <-s.auditChan:
+					s.persistAuditEntry(logEntry)
+				default:
+					return
+				}
+			}
 		}
+	}
+}
+
+func (s *SQLiteStorage) persistAuditEntry(logEntry *model.AuditLog) {
+	if err := s.CreateAuditLog(context.Background(), logEntry); err != nil {
+		log.Error("Failed to create audit log", "error", err)
 	}
 }
 

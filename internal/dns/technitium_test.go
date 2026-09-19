@@ -2,7 +2,6 @@ package dns
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -109,7 +108,7 @@ func TestTechnitiumClientRecordOperations(t *testing.T) {
 				http.Error(w, "missing query", http.StatusBadRequest)
 				return
 			}
-			body := fmt.Sprintf(`{"status":"ok","response":{"records":[{"name":"www","type":"A","ttl":300,"rData":{"ipAddress":"10.0.0.5"}},{"name":"alias","type":"CNAME","ttl":300,"rData":{"cname":"target.example.test"}}]}}`)
+			body := `{"status":"ok","response":{"records":[{"name":"www","type":"A","ttl":300,"rData":{"ipAddress":"10.0.0.5"}},{"name":"alias","type":"CNAME","ttl":300,"rData":{"cname":"target.example.test"}}]}}`
 			_, _ = w.Write([]byte(body))
 		default:
 			http.NotFound(w, r)

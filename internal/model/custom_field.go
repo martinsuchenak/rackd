@@ -120,12 +120,12 @@ type CreateCustomFieldDefinitionRequest struct {
 
 // UpdateCustomFieldDefinitionRequest for updating a definition
 type UpdateCustomFieldDefinitionRequest struct {
-	Name        *string         `json:"name,omitempty"`
-	Key         *string         `json:"key,omitempty"`
+	Name        *string          `json:"name,omitempty"`
+	Key         *string          `json:"key,omitempty"`
 	Type        *CustomFieldType `json:"type,omitempty"`
-	Required    *bool           `json:"required,omitempty"`
-	Options     *[]string       `json:"options,omitempty"`
-	Description *string         `json:"description,omitempty"`
+	Required    *bool            `json:"required,omitempty"`
+	Options     *[]string        `json:"options,omitempty"`
+	Description *string          `json:"description,omitempty"`
 }
 
 // CustomFieldWithDefinition combines a value with its definition for display

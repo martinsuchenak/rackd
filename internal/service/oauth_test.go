@@ -195,9 +195,9 @@ func TestRefreshTokenRotation(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup test data
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
 		RedirectURIs: []string{"http://localhost/cb"},
@@ -281,9 +281,9 @@ func TestRefreshTokenReplayDetection(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup test data
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
 		RedirectURIs: []string{"http://localhost/cb"},
@@ -336,7 +336,7 @@ func TestRefreshTokenReplayDetection(t *testing.T) {
 		ExpiresAt:     time.Now().Add(1 * time.Hour),
 		ParentTokenID: refreshToken.ID,
 	}
-	store.CreateOAuthToken(ctx, accessToken)
+	_ = store.CreateOAuthToken(ctx, accessToken)
 
 	// Second use of the same (now revoked) refresh token - should be detected as replay
 	_, err = oauthSvc.RefreshAccessToken(ctx, &model.OAuthTokenRequest{
@@ -364,9 +364,9 @@ func TestRefreshTokenInvalidClient(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup test data
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
 		RedirectURIs: []string{"http://localhost/cb"},
@@ -413,14 +413,14 @@ func TestConfidentialClientSecretRequired(t *testing.T) {
 
 	secret := "super-secret-client-credential"
 	secretHash := auth.HashToken(secret)
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:             "confidential-client",
 		Name:           "Confidential Client",
 		RedirectURIs:   []string{"http://localhost/cb"},
 		IsConfidential: true,
 		SecretHash:     secretHash,
 	})
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	store.userPerms["user1"] = []string{"devices:read", "devices:list", "networks:read", "users:delete"}
 
 	oauthSvc := NewOAuthService(store, nil, "http://localhost")
@@ -442,10 +442,10 @@ func TestConfidentialClientSecretRequired(t *testing.T) {
 	}
 
 	baseReq := model.OAuthTokenRequest{
-		GrantType:    "authorization_code",
-		Code:         codePlain,
-		RedirectURI:  "http://localhost/cb",
-		ClientID:     "confidential-client",
+		GrantType:   "authorization_code",
+		Code:        codePlain,
+		RedirectURI: "http://localhost/cb",
+		ClientID:    "confidential-client",
 	}
 
 	// 1. Missing secret must fail

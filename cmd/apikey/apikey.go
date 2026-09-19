@@ -41,7 +41,7 @@ func ListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -53,7 +53,7 @@ func ListCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tDESCRIPTION\tCREATED\tLAST USED\tEXPIRES")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tDESCRIPTION\tCREATED\tLAST USED\tEXPIRES")
 			for _, key := range keys {
 				lastUsed := "never"
 				if key.LastUsedAt != nil {
@@ -63,12 +63,12 @@ func ListCommand() *cli.Command {
 				if key.ExpiresAt != nil {
 					expires = key.ExpiresAt.Format("2006-01-02")
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 					key.ID, key.Name, key.Description,
 					key.CreatedAt.Format("2006-01-02 15:04"),
 					lastUsed, expires)
 			}
-			w.Flush()
+			_ = w.Flush()
 
 			return nil
 		},
@@ -115,7 +115,7 @@ func CreateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -153,7 +153,7 @@ func DeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)

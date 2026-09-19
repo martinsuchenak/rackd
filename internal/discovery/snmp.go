@@ -85,7 +85,7 @@ func (s *SNMPScanner) Scan(ctx context.Context, ip string, credentialID string) 
 	if err := client.ConnectIPv4(); err != nil {
 		return nil, fmt.Errorf("SNMP connect failed: %w", err)
 	}
-	defer client.Conn.Close()
+	defer func() { _ = client.Conn.Close() }()
 
 	result := &SNMPResult{}
 	s.getSysInfo(client, result)
@@ -289,7 +289,7 @@ func (s *SNMPScanner) IsAvailable(ip string, cred *model.Credential) bool {
 	if err := client.ConnectIPv4(); err != nil {
 		return false
 	}
-	defer client.Conn.Close()
+	defer func() { _ = client.Conn.Close() }()
 	_, err := client.Get([]string{"1.3.6.1.2.1.1.1.0"})
 	return err == nil
 }

@@ -64,7 +64,7 @@ func ResetPasswordCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open database in %s: %w", dataDir, err)
 			}
-			defer store.Close()
+			defer func() { _ = store.Close() }()
 
 			user, err := store.GetUserByUsername(ctx, username)
 			if err != nil {
@@ -84,7 +84,7 @@ func ResetPasswordCommand() *cli.Command {
 			// looked up and invalidated by token here; remove any lingering
 			// sessions for this user id directly.
 			sessionStore := storage.NewSQLiteSessionStore(store.DB())
-			sessionStore.DeleteByUser(ctx, user.ID)
+			_ = sessionStore.DeleteByUser(ctx, user.ID)
 
 			fmt.Printf("Password for %q reset successfully.\n", username)
 			fmt.Println("All active sessions for this user have been invalidated.")

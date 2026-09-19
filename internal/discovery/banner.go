@@ -33,9 +33,9 @@ func (b *BannerGrabber) GrabBanner(ip string, port int) *ServiceBanner {
 	if err != nil {
 		return nil
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
-	conn.SetReadDeadline(time.Now().Add(b.timeout))
+	_ = conn.SetReadDeadline(time.Now().Add(b.timeout))
 
 	// Cap the read: a hostile host could stream an endless header-less line
 	// and balloon memory per scanned host.

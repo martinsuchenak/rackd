@@ -13,7 +13,7 @@ import (
 
 func TestNetworkOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{
 		Name:        "Production Network",
@@ -60,7 +60,7 @@ func TestNetworkOperations_CreateAndGet(t *testing.T) {
 
 func TestNetworkOperations_CreateWithDatacenter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter first
 	dc := &model.Datacenter{Name: "DC1"}
@@ -90,7 +90,7 @@ func TestNetworkOperations_CreateWithDatacenter(t *testing.T) {
 
 func TestNetworkOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetwork(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
@@ -100,7 +100,7 @@ func TestNetworkOperations_GetNotFound(t *testing.T) {
 
 func TestNetworkOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetwork(context.Background(), "")
 	if err != ErrInvalidID {
@@ -110,7 +110,7 @@ func TestNetworkOperations_GetInvalidID(t *testing.T) {
 
 func TestNetworkOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{
@@ -159,7 +159,7 @@ func TestNetworkOperations_Update(t *testing.T) {
 
 func TestNetworkOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{
 		ID:   "non-existent-id",
@@ -174,7 +174,7 @@ func TestNetworkOperations_UpdateNotFound(t *testing.T) {
 
 func TestNetworkOperations_UpdateInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{
 		ID:   "",
@@ -189,7 +189,7 @@ func TestNetworkOperations_UpdateInvalidID(t *testing.T) {
 
 func TestNetworkOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network-to-delete", Subnet: "192.168.1.0/24"}
@@ -211,7 +211,7 @@ func TestNetworkOperations_Delete(t *testing.T) {
 
 func TestNetworkOperations_DeleteWithAddresses(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
@@ -250,7 +250,7 @@ func TestNetworkOperations_DeleteWithAddresses(t *testing.T) {
 
 func TestNetworkOperations_Search(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	dc := &model.Datacenter{Name: "Search DC", Location: "Perth"}
@@ -287,7 +287,7 @@ func TestNetworkOperations_Search(t *testing.T) {
 
 func TestNetworkOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteNetwork(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
@@ -297,7 +297,7 @@ func TestNetworkOperations_DeleteNotFound(t *testing.T) {
 
 func TestNetworkOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteNetwork(context.Background(), "")
 	if err != ErrInvalidID {
@@ -307,7 +307,7 @@ func TestNetworkOperations_DeleteInvalidID(t *testing.T) {
 
 func TestNetworkOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple networks
 	networks := []struct {
@@ -338,12 +338,12 @@ func TestNetworkOperations_ListAll(t *testing.T) {
 
 func TestNetworkOperations_ListWithNameFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Production-1", Subnet: "192.168.1.0/24"})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Production-2", Subnet: "192.168.2.0/24"})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Staging", Subnet: "10.0.0.0/16"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Production-1", Subnet: "192.168.1.0/24"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Production-2", Subnet: "192.168.2.0/24"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Staging", Subnet: "10.0.0.0/16"})
 
 	// Filter by name
 	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{Name: "Production"})
@@ -358,18 +358,18 @@ func TestNetworkOperations_ListWithNameFilter(t *testing.T) {
 
 func TestNetworkOperations_ListWithDatacenterFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenters
 	dc1 := &model.Datacenter{Name: "DC1"}
 	dc2 := &model.Datacenter{Name: "DC2"}
-	storage.CreateDatacenter(context.Background(), dc1)
-	storage.CreateDatacenter(context.Background(), dc2)
+	_ = storage.CreateDatacenter(context.Background(), dc1)
+	_ = storage.CreateDatacenter(context.Background(), dc2)
 
 	// Create networks
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "192.168.1.0/24", DatacenterID: dc1.ID})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.2.0/24", DatacenterID: dc1.ID})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", DatacenterID: dc2.ID})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "192.168.1.0/24", DatacenterID: dc1.ID})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.2.0/24", DatacenterID: dc1.ID})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", DatacenterID: dc2.ID})
 
 	// Filter by datacenter
 	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{DatacenterID: dc1.ID})
@@ -384,12 +384,12 @@ func TestNetworkOperations_ListWithDatacenterFilter(t *testing.T) {
 
 func TestNetworkOperations_ListWithVLANFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "192.168.1.0/24", VLANID: 100})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.2.0/24", VLANID: 100})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", VLANID: 200})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "192.168.1.0/24", VLANID: 100})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.2.0/24", VLANID: 100})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "10.0.0.0/16", VLANID: 200})
 
 	// Filter by VLAN
 	result, err := storage.ListNetworks(context.Background(), &model.NetworkFilter{VLANID: 100})
@@ -404,7 +404,7 @@ func TestNetworkOperations_ListWithVLANFilter(t *testing.T) {
 
 func TestNetworkOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	result, err := storage.ListNetworks(context.Background(), nil)
 	if err != nil {
@@ -421,7 +421,7 @@ func TestNetworkOperations_ListEmpty(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
@@ -443,9 +443,9 @@ func TestNetworkOperations_GetNetworkDevices(t *testing.T) {
 		Addresses: []model.Address{{IP: "10.0.0.1", Type: "ipv4"}}, // Different network
 	}
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
-	storage.CreateDevice(context.Background(), device3)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device3)
 
 	// Get devices in network
 	devices, err := storage.GetNetworkDevices(context.Background(), network.ID)
@@ -460,7 +460,7 @@ func TestNetworkOperations_GetNetworkDevices(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkDevicesNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkDevices(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
@@ -470,7 +470,7 @@ func TestNetworkOperations_GetNetworkDevicesNotFound(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkDevicesEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with no devices
 	network := &model.Network{Name: "Empty-Network", Subnet: "192.168.1.0/24"}
@@ -493,7 +493,7 @@ func TestNetworkOperations_GetNetworkDevicesEmpty(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkDevicesInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkDevices(context.Background(), "")
 	if err != ErrInvalidID {
@@ -503,7 +503,7 @@ func TestNetworkOperations_GetNetworkDevicesInvalidID(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkUtilization(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with /24 subnet (254 usable IPs)
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
@@ -550,7 +550,7 @@ func TestNetworkOperations_GetNetworkUtilization(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkUtilizationNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkUtilization(context.Background(), "non-existent-id")
 	if err != ErrNetworkNotFound {
@@ -560,7 +560,7 @@ func TestNetworkOperations_GetNetworkUtilizationNotFound(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkUtilizationInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkUtilization(context.Background(), "")
 	if err != ErrInvalidID {
@@ -570,7 +570,7 @@ func TestNetworkOperations_GetNetworkUtilizationInvalidID(t *testing.T) {
 
 func TestNetworkOperations_GetNetworkUtilizationEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with no devices
 	network := &model.Network{Name: "Empty-Network", Subnet: "10.0.0.0/16"}
@@ -628,7 +628,7 @@ func TestCalculateCIDRSize(t *testing.T) {
 
 func TestNetworkOperations_CreateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateNetwork(context.Background(), nil)
 	if err == nil {
@@ -638,7 +638,7 @@ func TestNetworkOperations_CreateNil(t *testing.T) {
 
 func TestNetworkOperations_UpdateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.UpdateNetwork(context.Background(), nil)
 	if err == nil {
@@ -648,11 +648,11 @@ func TestNetworkOperations_UpdateNil(t *testing.T) {
 
 func TestNetworkUtilizationInvalidSubnet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with invalid subnet
 	network := &model.Network{Name: "BadNet", Subnet: "invalid-cidr"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	_, err := storage.GetNetworkUtilization(context.Background(), network.ID)
 	if err == nil {
@@ -662,11 +662,11 @@ func TestNetworkUtilizationInvalidSubnet(t *testing.T) {
 
 func TestDeleteNetworkWithPools(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -674,7 +674,7 @@ func TestDeleteNetworkWithPools(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Delete network (should cascade to pools)
 	if err := storage.DeleteNetwork(context.Background(), network.ID); err != nil {
@@ -690,7 +690,7 @@ func TestDeleteNetworkWithPools(t *testing.T) {
 
 func TestNetworkWithZeroVLAN(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network with VLAN 0 (untagged)
 	network := &model.Network{
@@ -698,7 +698,7 @@ func TestNetworkWithZeroVLAN(t *testing.T) {
 		Subnet: "192.168.1.0/24",
 		VLANID: 0,
 	}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	got, _ := storage.GetNetwork(context.Background(), network.ID)
 	if got.VLANID != 0 {

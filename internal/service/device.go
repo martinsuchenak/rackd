@@ -22,7 +22,6 @@ func NewDeviceService(store storage.ExtendedStorage) *DeviceService {
 	return &DeviceService{store: store}
 }
 
-
 func (s *DeviceService) setDNSService(dns *DNSService) {
 	s.dns = dns
 }
@@ -208,7 +207,7 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 					DeviceIDs:   deviceIDs,
 					DeviceNames: deviceNames,
 				}
-				s.conflictService.store.CreateConflict(ctx, conflict)
+				_ = s.conflictService.store.CreateConflict(ctx, conflict)
 			}
 		}
 	}

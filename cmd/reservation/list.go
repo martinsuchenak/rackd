@@ -47,7 +47,7 @@ func ListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -78,7 +78,7 @@ func printReservationTable(reservations []map[string]interface{}) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tIP ADDRESS\tPOOL\tHOSTNAME\tSTATUS\tRESERVED BY\tEXPIRES")
+	_, _ = fmt.Fprintln(w, "ID\tIP ADDRESS\tPOOL\tHOSTNAME\tSTATUS\tRESERVED BY\tEXPIRES")
 	for _, r := range reservations {
 		id := getString(r, "id")
 		if len(id) > 8 {
@@ -92,7 +92,7 @@ func printReservationTable(reservations []map[string]interface{}) {
 		if expires != "" && len(expires) > 10 {
 			expires = expires[:10]
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			id,
 			getString(r, "ip_address"),
 			poolID,
@@ -101,5 +101,5 @@ func printReservationTable(reservations []map[string]interface{}) {
 			getString(r, "reserved_by"),
 			expires)
 	}
-	w.Flush()
+	_ = w.Flush()
 }

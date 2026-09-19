@@ -12,7 +12,7 @@ func TestBulkCreateDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	devices := []*model.Device{
 		{Name: "device1", Hostname: "host1.example.com"},
@@ -41,7 +41,7 @@ func TestBulkDeleteDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create devices first
 	devices := []*model.Device{
@@ -74,7 +74,7 @@ func TestBulkAddTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create devices
 	devices := []*model.Device{
@@ -111,7 +111,7 @@ func TestBulkRemoveTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create devices with tags
 	devices := []*model.Device{
@@ -148,7 +148,7 @@ func TestBulkCreateNetworks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	networks := []*model.Network{
 		{Name: "net1", Subnet: "10.0.1.0/24"},
@@ -173,7 +173,7 @@ func TestBulkDeleteNetworks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create networks first
 	networks := []*model.Network{

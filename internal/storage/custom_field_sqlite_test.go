@@ -13,7 +13,7 @@ import (
 
 func TestCustomFieldDefinition_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name:        "Asset Tag",
@@ -64,7 +64,7 @@ func TestCustomFieldDefinition_CreateAndGet(t *testing.T) {
 
 func TestCustomFieldDefinition_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetCustomFieldDefinition(context.Background(), "non-existent-id")
 	if err != ErrCustomFieldNotFound {
@@ -74,7 +74,7 @@ func TestCustomFieldDefinition_GetNotFound(t *testing.T) {
 
 func TestCustomFieldDefinition_GetByKey(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name: "Cost Center",
@@ -104,7 +104,7 @@ func TestCustomFieldDefinition_GetByKey(t *testing.T) {
 
 func TestCustomFieldDefinition_DuplicateKey(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def1 := &model.CustomFieldDefinition{
 		Name: "First",
@@ -128,7 +128,7 @@ func TestCustomFieldDefinition_DuplicateKey(t *testing.T) {
 
 func TestCustomFieldDefinition_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create definition
 	def := &model.CustomFieldDefinition{
@@ -176,7 +176,7 @@ func TestCustomFieldDefinition_Update(t *testing.T) {
 
 func TestCustomFieldDefinition_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		ID:   "non-existent-id",
@@ -193,7 +193,7 @@ func TestCustomFieldDefinition_UpdateNotFound(t *testing.T) {
 
 func TestCustomFieldDefinition_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create definition
 	def := &model.CustomFieldDefinition{
@@ -220,7 +220,7 @@ func TestCustomFieldDefinition_Delete(t *testing.T) {
 
 func TestCustomFieldDefinition_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteCustomFieldDefinition(context.Background(), "non-existent-id")
 	if err != ErrCustomFieldNotFound {
@@ -230,7 +230,7 @@ func TestCustomFieldDefinition_DeleteNotFound(t *testing.T) {
 
 func TestCustomFieldDefinition_List(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple definitions
 	definitions := []*model.CustomFieldDefinition{
@@ -272,7 +272,7 @@ func TestCustomFieldDefinition_List(t *testing.T) {
 
 func TestCustomFieldValuesWithDefinitionsAndValidation(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	device := &model.Device{Name: "CustomFieldDevice"}
@@ -341,7 +341,7 @@ func TestCustomFieldValuesWithDefinitionsAndValidation(t *testing.T) {
 
 func TestCustomFieldDefinition_SelectTypeWithOptions(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name:    "Environment",
@@ -378,7 +378,7 @@ func TestCustomFieldDefinition_SelectTypeWithOptions(t *testing.T) {
 
 func TestCustomFieldValue_SetAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create definition and device
 	def := &model.CustomFieldDefinition{
@@ -424,7 +424,7 @@ func TestCustomFieldValue_SetAndGet(t *testing.T) {
 
 func TestCustomFieldValue_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Setup
 	def := &model.CustomFieldDefinition{
@@ -470,7 +470,7 @@ func TestCustomFieldValue_Update(t *testing.T) {
 
 func TestCustomFieldValue_NumberType(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name: "Port Count",
@@ -515,7 +515,7 @@ func TestCustomFieldValue_NumberType(t *testing.T) {
 
 func TestCustomFieldValue_BoolType(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name: "Monitored",
@@ -554,7 +554,7 @@ func TestCustomFieldValue_BoolType(t *testing.T) {
 
 func TestCustomFieldValue_SelectType(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{
 		Name:    "Environment",
@@ -593,7 +593,7 @@ func TestCustomFieldValue_SelectType(t *testing.T) {
 
 func TestCustomFieldValue_GetValuesForDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create definitions
 	def1 := &model.CustomFieldDefinition{Name: "Field1", Key: "field1", Type: model.CustomFieldTypeText}
@@ -638,7 +638,7 @@ func TestCustomFieldValue_GetValuesForDevice(t *testing.T) {
 
 func TestCustomFieldValue_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{Name: "Temp", Key: "temp", Type: model.CustomFieldTypeText}
 	if err := storage.CreateCustomFieldDefinition(context.Background(), def); err != nil {
@@ -674,7 +674,7 @@ func TestCustomFieldValue_Delete(t *testing.T) {
 
 func TestCustomFieldValue_DeleteForDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def1 := &model.CustomFieldDefinition{Name: "F1", Key: "f1", Type: model.CustomFieldTypeText}
 	def2 := &model.CustomFieldDefinition{Name: "F2", Key: "f2", Type: model.CustomFieldTypeText}
@@ -717,7 +717,7 @@ func TestCustomFieldValue_DeleteForDevice(t *testing.T) {
 
 func TestCustomFieldValue_DeleteOnDefinitionDelete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	def := &model.CustomFieldDefinition{Name: "ToDelete", Key: "to_delete", Type: model.CustomFieldTypeText}
 	if err := storage.CreateCustomFieldDefinition(context.Background(), def); err != nil {
@@ -755,7 +755,7 @@ func TestCustomFieldValue_DeleteOnDefinitionDelete(t *testing.T) {
 
 func TestCustomFieldValue_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetCustomFieldValue(context.Background(), "non-existent-device", "non-existent-field")
 	if err != ErrCustomFieldNotFound {
@@ -765,7 +765,7 @@ func TestCustomFieldValue_GetNotFound(t *testing.T) {
 
 func TestCustomFieldValue_GetDevicesByCustomField(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create definition
 	def := &model.CustomFieldDefinition{

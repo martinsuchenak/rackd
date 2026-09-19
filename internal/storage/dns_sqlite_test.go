@@ -16,7 +16,7 @@ import (
 
 func TestDNSProviderOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	provider := &model.DNSProviderConfig{
 		Name:        "Cloudflare DNS",
@@ -67,7 +67,7 @@ func TestDNSProviderOperations_CreateAndGet(t *testing.T) {
 
 func TestDNSProviderOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDNSProvider(context.Background(), "non-existent-id")
 	if err != ErrDNSProviderNotFound {
@@ -77,7 +77,7 @@ func TestDNSProviderOperations_GetNotFound(t *testing.T) {
 
 func TestDNSProviderOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -137,7 +137,7 @@ func TestDNSProviderOperations_Update(t *testing.T) {
 
 func TestDNSProviderOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -171,7 +171,7 @@ func TestDNSProviderOperations_Delete(t *testing.T) {
 
 func TestDNSProviderOperations_List(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple providers
 	for _, ptype := range []model.DNSProviderType{
@@ -213,7 +213,7 @@ func TestDNSProviderOperations_List(t *testing.T) {
 
 func TestDNSProviderOperations_GetByName(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -245,7 +245,7 @@ func TestDNSProviderOperations_GetByName(t *testing.T) {
 
 func TestDNSProviderOperations_DeleteWithZones(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -280,7 +280,7 @@ func TestDNSProviderOperations_DeleteWithZones(t *testing.T) {
 
 func TestDNSProviderOperations_AllTypes(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	types := []model.DNSProviderType{
 		model.DNSProviderTypeTechnitium,
@@ -316,7 +316,7 @@ func TestDNSProviderOperations_AllTypes(t *testing.T) {
 
 func TestDNSZoneOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider first
 	provider := &model.DNSProviderConfig{
@@ -385,7 +385,7 @@ func TestDNSZoneOperations_CreateAndGet(t *testing.T) {
 
 func TestDNSZoneOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDNSZone(context.Background(), "non-existent-id")
 	if err != ErrDNSZoneNotFound {
@@ -395,7 +395,7 @@ func TestDNSZoneOperations_GetNotFound(t *testing.T) {
 
 func TestDNSZoneOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -479,7 +479,7 @@ func TestDNSZoneOperations_Update(t *testing.T) {
 
 func TestDNSZoneOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -523,7 +523,7 @@ func TestDNSZoneOperations_Delete(t *testing.T) {
 
 func TestDNSZoneOperations_List(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -584,7 +584,7 @@ func TestDNSZoneOperations_List(t *testing.T) {
 
 func TestDNSZoneOperations_GetByName(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -626,7 +626,7 @@ func TestDNSZoneOperations_GetByName(t *testing.T) {
 
 func TestDNSZoneOperations_GetByProvider(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create two providers
 	provider1 := &model.DNSProviderConfig{
@@ -692,7 +692,7 @@ func TestDNSZoneOperations_GetByProvider(t *testing.T) {
 
 func TestDNSZoneOperations_GetByNetwork(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -745,7 +745,7 @@ func TestDNSZoneOperations_GetByNetwork(t *testing.T) {
 
 func TestDNSZoneOperations_WithPTRZone(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -783,7 +783,7 @@ func TestDNSZoneOperations_WithPTRZone(t *testing.T) {
 
 func TestDNSZoneOperations_WithNetwork(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider
 	provider := &model.DNSProviderConfig{
@@ -838,7 +838,7 @@ func TestDNSZoneOperations_WithNetwork(t *testing.T) {
 
 func TestDNSRecordOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -913,7 +913,7 @@ func TestDNSRecordOperations_CreateAndGet(t *testing.T) {
 
 func TestDNSRecordOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDNSRecord(context.Background(), "non-existent-id")
 	if err != ErrDNSRecordNotFound {
@@ -923,7 +923,7 @@ func TestDNSRecordOperations_GetNotFound(t *testing.T) {
 
 func TestDNSRecordOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1011,7 +1011,7 @@ func TestDNSRecordOperations_Update(t *testing.T) {
 
 func TestDNSRecordOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1066,7 +1066,7 @@ func TestDNSRecordOperations_Delete(t *testing.T) {
 
 func TestDNSRecordOperations_List(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1149,7 +1149,7 @@ func TestDNSRecordOperations_List(t *testing.T) {
 
 func TestDNSRecordOperations_GetByName(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1202,7 +1202,7 @@ func TestDNSRecordOperations_GetByName(t *testing.T) {
 
 func TestDNSRecordOperations_GetByDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1272,7 +1272,7 @@ func TestDNSRecordOperations_GetByDevice(t *testing.T) {
 
 func TestDNSRecordOperations_DeleteByZone(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zones
 	provider := &model.DNSProviderConfig{
@@ -1362,7 +1362,7 @@ func TestDNSRecordOperations_DeleteByZone(t *testing.T) {
 
 func TestDNSRecordOperations_DeleteByDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1469,7 +1469,7 @@ func TestDNSRecordOperations_DeleteByDevice(t *testing.T) {
 
 func TestDNSRecordOperations_WithDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1531,7 +1531,7 @@ func TestDNSRecordOperations_WithDevice(t *testing.T) {
 
 func TestDNSRecordOperations_AllRecordTypes(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1590,7 +1590,7 @@ func TestDNSRecordOperations_AllRecordTypes(t *testing.T) {
 
 func TestDNSRecordOperations_ZoneDeleteCascade(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create provider and zone
 	provider := &model.DNSProviderConfig{
@@ -1650,7 +1650,7 @@ func TestDNSRecordOperations_ZoneDeleteCascade(t *testing.T) {
 // Validates: Requirements 2.2, 2.3
 func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	rapid.Check(t, func(rt *rapid.T) {
 		ctx := context.Background()
@@ -1788,7 +1788,7 @@ func TestDNSRecordAddressID_StorageRoundTrip(t *testing.T) {
 // Validates: Requirements 8.22, 8.23
 func TestDNSRecordLinkStatusFilter(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	iteration := 0
 	rapid.Check(t, func(rt *rapid.T) {

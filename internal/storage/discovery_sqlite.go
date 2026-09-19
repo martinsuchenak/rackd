@@ -88,10 +88,10 @@ func (s *SQLiteStorage) GetDiscoveredDevice(ctx context.Context, id string) (*mo
 	}
 
 	if openPorts.Valid {
-		json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
+		_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
 	}
 	if services.Valid {
-		json.Unmarshal([]byte(services.String), &d.Services)
+		_ = json.Unmarshal([]byte(services.String), &d.Services)
 	}
 	if promotedToDeviceID.Valid {
 		d.PromotedToDeviceID = promotedToDeviceID.String
@@ -124,10 +124,10 @@ func (s *SQLiteStorage) GetDiscoveredDeviceByIP(ctx context.Context, networkID, 
 	}
 
 	if openPorts.Valid {
-		json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
+		_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
 	}
 	if services.Valid {
-		json.Unmarshal([]byte(services.String), &d.Services)
+		_ = json.Unmarshal([]byte(services.String), &d.Services)
 	}
 	if promotedToDeviceID.Valid {
 		d.PromotedToDeviceID = promotedToDeviceID.String
@@ -154,7 +154,7 @@ func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID str
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []model.DiscoveredDevice
 	for rows.Next() {
@@ -167,10 +167,10 @@ func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID str
 			return nil, err
 		}
 		if openPorts.Valid {
-			json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
+			_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
 		}
 		if services.Valid {
-			json.Unmarshal([]byte(services.String), &d.Services)
+			_ = json.Unmarshal([]byte(services.String), &d.Services)
 		}
 		if promotedToDeviceID.Valid {
 			d.PromotedToDeviceID = promotedToDeviceID.String
@@ -204,7 +204,7 @@ func (s *SQLiteStorage) PromoteDiscoveredDevice(ctx context.Context, discoveredI
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Check that the discovered device exists
 	var exists bool
@@ -319,7 +319,7 @@ func (s *SQLiteStorage) ListDiscoveryScans(ctx context.Context, networkID string
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var scans []model.DiscoveryScan
 	for rows.Next() {
@@ -415,7 +415,7 @@ func (s *SQLiteStorage) ListDiscoveryRules(ctx context.Context) ([]model.Discove
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var rules []model.DiscoveryRule
 	for rows.Next() {

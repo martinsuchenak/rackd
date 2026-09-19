@@ -474,8 +474,8 @@ func (s *DNSService) DeleteZone(ctx context.Context, id string) error {
 		if ptrZone, err := s.store.GetDNSZoneByName(ctx, *zone.PTRZone); err == nil {
 			// Only delete if it's owned by the same provider
 			if ptrZone.ProviderID == zone.ProviderID {
-				s.store.DeleteDNSRecordsByZone(ctx, ptrZone.ID)
-				s.store.DeleteDNSZone(ctx, ptrZone.ID)
+				_ = s.store.DeleteDNSRecordsByZone(ctx, ptrZone.ID)
+				_ = s.store.DeleteDNSZone(ctx, ptrZone.ID)
 			}
 		}
 	}
@@ -784,7 +784,7 @@ func (s *DNSService) SyncZone(ctx context.Context, zoneID string) (*model.SyncRe
 	}
 	zone.LastSyncAt = &now
 
-	s.store.UpdateDNSZone(ctx, zone)
+	_ = s.store.UpdateDNSZone(ctx, zone)
 
 	return result, nil
 }
@@ -866,7 +866,8 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 	for _, dnsRecord := range dnsRecords {
 		// Check if record already exists
 		existing, err := s.store.GetDNSRecordByName(ctx, zoneID, dnsRecord.Name, dnsRecord.Type)
-		if err == nil {
+		switch err {
+		case nil:
 			// Record exists, update value if different
 			if existing.Value != dnsRecord.Value {
 				existing.Value = dnsRecord.Value
@@ -893,7 +894,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 				result.Skipped++
 				result.SkippedIDs = append(result.SkippedIDs, dnsRecord.Name)
 			}
-		} else if err == storage.ErrDNSRecordNotFound {
+		case storage.ErrDNSRecordNotFound:
 			// Create new record
 			now := time.Now().UTC()
 			record := &model.DNSRecord{
@@ -921,7 +922,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 					result.Linked++
 				}
 			}
-		} else {
+		default:
 			result.Failed++
 			result.FailedIDs = append(result.FailedIDs, dnsRecord.Name)
 		}
@@ -1028,7 +1029,6 @@ func (s *DNSService) SyncRecord(ctx context.Context, record *model.DNSRecord) er
 
 	return s.store.UpdateDNSRecord(ctx, record)
 }
-
 
 // MatchZoneForDomain returns the best matching zone and the record prefix.
 // It selects the zone with the longest name (most specific match).

@@ -138,7 +138,7 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 			for _, ex := range existing {
 				if ex.Status == model.ConflictStatusActive {
 					// Mark as detected (refresh timestamp)
-					s.store.UpdateConflictStatus(ctx, ex.ID, ex.Status, "", "")
+					_ = s.store.UpdateConflictStatus(ctx, ex.ID, ex.Status, "", "")
 				}
 			}
 		} else {

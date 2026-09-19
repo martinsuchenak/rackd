@@ -27,7 +27,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Validate pool exists and get IP range for validation
 	var startIP, endIP string
@@ -247,7 +247,7 @@ func (s *SQLiteStorage) ListReservations(ctx context.Context, filter *model.Rese
 	if err != nil {
 		return nil, fmt.Errorf("failed to list reservations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanReservations(rows)
 }
@@ -309,7 +309,7 @@ func (s *SQLiteStorage) GetReservationsByPool(ctx context.Context, poolID string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations by pool: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanReservations(rows)
 }
@@ -329,7 +329,7 @@ func (s *SQLiteStorage) GetReservationsByUser(ctx context.Context, userID string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations by user: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanReservations(rows)
 }

@@ -18,8 +18,7 @@ func TestRotateKeyCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
-
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	oldKeyHex := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	newKeyHex := "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 
@@ -47,12 +46,11 @@ func TestRotateKeyCommand(t *testing.T) {
 	if err := oldCredStore.Create(testCred); err != nil {
 		t.Fatalf("failed to create test credential: %v", err)
 	}
-	store.Close() // Close the db so the CLI command can open it
+	_ = store.Close() // Close the db so the CLI command can open it
 
 	// Step 2: Set environment variable and run the command
-	os.Setenv("ENCRYPTION_KEY", oldKeyHex)
-	defer os.Unsetenv("ENCRYPTION_KEY")
-
+	_ = os.Setenv("ENCRYPTION_KEY", oldKeyHex)
+	defer func() { _ = os.Unsetenv("ENCRYPTION_KEY") }()
 	cmd := RotateKeyCommand()
 
 	// Create a CLI App context
@@ -76,7 +74,7 @@ func TestRotateKeyCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to re-open storage: %v", err)
 	}
-	defer verifyStore.Close()
+	defer func() { _ = verifyStore.Close() }()
 
 	// 3a. Verify reading with old key fails decryption (returns error)
 	oldVerifyStore, err := credentials.NewSQLiteStorage(verifyStore.DB(), oldKey)

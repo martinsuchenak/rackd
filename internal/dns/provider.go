@@ -39,5 +39,5 @@ type Record struct {
 	Type     string // A, AAAA, CNAME, PTR, TXT
 	Value    string // IP address or target
 	TTL      int
-	Priority *int   // For MX records
+	Priority *int // For MX records
 }

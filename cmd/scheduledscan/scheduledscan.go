@@ -47,13 +47,15 @@ func listCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var scans []map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&scans)
+			if err := json.NewDecoder(resp.Body).Decode(&scans); err != nil {
+				return err
+			}
 
 			if cmd.GetString("output") == "json" {
 				client.PrintJSON(scans)
@@ -61,13 +63,13 @@ func listCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tNETWORK\tPROFILE\tCRON\tENABLED\tLAST RUN")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tNETWORK\tPROFILE\tCRON\tENABLED\tLAST RUN")
 			for _, s := range scans {
 				lastRun := "never"
 				if v, ok := s["last_run_at"].(string); ok && v != "" {
 					lastRun = v
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%v\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%v\t%s\n",
 					client.GetString(s, "id"),
 					client.GetString(s, "name"),
 					client.GetString(s, "network_id"),
@@ -76,7 +78,7 @@ func listCommand() *cli.Command {
 					s["enabled"],
 					lastRun)
 			}
-			w.Flush()
+			_ = w.Flush()
 			return nil
 		},
 	}
@@ -96,13 +98,15 @@ func getCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var scan map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&scan)
+			if err := json.NewDecoder(resp.Body).Decode(&scan); err != nil {
+				return err
+			}
 
 			switch cmd.GetString("output") {
 			case "yaml":
@@ -132,10 +136,10 @@ func createCommand() *cli.Command {
 
 			body := map[string]interface{}{
 				"name":            cmd.GetString("name"),
-				"network_id":     cmd.GetString("network"),
-				"profile_id":     cmd.GetString("profile"),
+				"network_id":      cmd.GetString("network"),
+				"profile_id":      cmd.GetString("profile"),
 				"cron_expression": cmd.GetString("cron"),
-				"enabled":        cmd.GetBool("enabled"),
+				"enabled":         cmd.GetBool("enabled"),
 			}
 			if desc := cmd.GetString("description"); desc != "" {
 				body["description"] = desc
@@ -145,13 +149,15 @@ func createCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
 			}
 
 			var scan map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&scan)
+			if err := json.NewDecoder(resp.Body).Decode(&scan); err != nil {
+				return err
+			}
 			fmt.Printf("Scheduled scan created: %s\n", client.GetString(scan, "id"))
 			return nil
 		},
@@ -180,13 +186,15 @@ func updateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var body map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&body)
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				return err
+			}
 
 			if v := cmd.GetString("name"); v != "" {
 				body["name"] = v
@@ -214,7 +222,7 @@ func updateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp2.Body.Close()
+			defer func() { _ = resp2.Body.Close() }()
 			if resp2.StatusCode != http.StatusOK {
 				return client.HandleError(resp2)
 			}
@@ -238,7 +246,7 @@ func deleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
 			}

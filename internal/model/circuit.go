@@ -39,28 +39,28 @@ func (s CircuitStatus) String() string {
 type Circuit struct {
 	ID             string        `json:"id"`
 	Name           string        `json:"name"`
-	CircuitID      string        `json:"circuit_id"`        // Provider's circuit identifier
-	Provider       string        `json:"provider"`          // ISP or provider name
-	Type           string        `json:"type"`              // e.g., "fiber", "copper", "microwave", "dark_fiber"
+	CircuitID      string        `json:"circuit_id"` // Provider's circuit identifier
+	Provider       string        `json:"provider"`   // ISP or provider name
+	Type           string        `json:"type"`       // e.g., "fiber", "copper", "microwave", "dark_fiber"
 	Status         CircuitStatus `json:"status"`
-	CapacityMbps   int           `json:"capacity_mbps"`     // Bandwidth capacity
-	DatacenterAID  string        `json:"datacenter_a_id"`   // Endpoint A datacenter
-	DatacenterBID  string        `json:"datacenter_b_id"`   // Endpoint B datacenter (optional for WAN)
-	DeviceAID      string        `json:"device_a_id"`       // Device at endpoint A (optional)
-	DeviceBID      string        `json:"device_b_id"`       // Device at endpoint B (optional)
-	PortA          string        `json:"port_a"`            // Port/interface at endpoint A
-	PortB          string        `json:"port_b"`            // Port/interface at endpoint B
-	IPAddressA     string        `json:"ip_address_a"`      // IP address at endpoint A (optional)
-	IPAddressB     string        `json:"ip_address_b"`      // IP address at endpoint B (optional)
-	VLANID         int           `json:"vlan_id"`           // VLAN ID (optional)
+	CapacityMbps   int           `json:"capacity_mbps"`   // Bandwidth capacity
+	DatacenterAID  string        `json:"datacenter_a_id"` // Endpoint A datacenter
+	DatacenterBID  string        `json:"datacenter_b_id"` // Endpoint B datacenter (optional for WAN)
+	DeviceAID      string        `json:"device_a_id"`     // Device at endpoint A (optional)
+	DeviceBID      string        `json:"device_b_id"`     // Device at endpoint B (optional)
+	PortA          string        `json:"port_a"`          // Port/interface at endpoint A
+	PortB          string        `json:"port_b"`          // Port/interface at endpoint B
+	IPAddressA     string        `json:"ip_address_a"`    // IP address at endpoint A (optional)
+	IPAddressB     string        `json:"ip_address_b"`    // IP address at endpoint B (optional)
+	VLANID         int           `json:"vlan_id"`         // VLAN ID (optional)
 	Description    string        `json:"description"`
 	InstallDate    *time.Time    `json:"install_date,omitempty"`
 	TerminateDate  *time.Time    `json:"terminate_date,omitempty"`
-	MonthlyCost    float64       `json:"monthly_cost"`      // Optional cost tracking
-	ContractNumber string        `json:"contract_number"`   // Optional contract reference
-	ContactName    string        `json:"contact_name"`      // Provider contact
-	ContactPhone   string        `json:"contact_phone"`     // Provider phone
-	ContactEmail   string        `json:"contact_email"`     // Provider email
+	MonthlyCost    float64       `json:"monthly_cost"`    // Optional cost tracking
+	ContractNumber string        `json:"contract_number"` // Optional contract reference
+	ContactName    string        `json:"contact_name"`    // Provider contact
+	ContactPhone   string        `json:"contact_phone"`   // Provider phone
+	ContactEmail   string        `json:"contact_email"`   // Provider email
 	Tags           []string      `json:"tags"`
 	CreatedAt      time.Time     `json:"created_at"`
 	UpdatedAt      time.Time     `json:"updated_at"`

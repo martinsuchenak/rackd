@@ -62,9 +62,9 @@ func (s *SQLiteStorage) GetOAuthClient(ctx context.Context, clientID string) (*m
 	}
 
 	client.CreatedByUserID = createdByUserID.String
-	json.Unmarshal([]byte(redirectURIs), &client.RedirectURIs)
-	json.Unmarshal([]byte(grantTypes), &client.GrantTypes)
-	json.Unmarshal([]byte(responseTypes), &client.ResponseTypes)
+	_ = json.Unmarshal([]byte(redirectURIs), &client.RedirectURIs)
+	_ = json.Unmarshal([]byte(grantTypes), &client.GrantTypes)
+	_ = json.Unmarshal([]byte(responseTypes), &client.ResponseTypes)
 
 	return &client, nil
 }
@@ -91,7 +91,7 @@ func (s *SQLiteStorage) ListOAuthClients(ctx context.Context, createdByUserID st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var clients []model.OAuthClient
 	for rows.Next() {
@@ -106,9 +106,9 @@ func (s *SQLiteStorage) ListOAuthClients(ctx context.Context, createdByUserID st
 			return nil, err
 		}
 		client.CreatedByUserID = createdByUserID.String
-		json.Unmarshal([]byte(redirectURIs), &client.RedirectURIs)
-		json.Unmarshal([]byte(grantTypes), &client.GrantTypes)
-		json.Unmarshal([]byte(responseTypes), &client.ResponseTypes)
+		_ = json.Unmarshal([]byte(redirectURIs), &client.RedirectURIs)
+		_ = json.Unmarshal([]byte(grantTypes), &client.GrantTypes)
+		_ = json.Unmarshal([]byte(responseTypes), &client.ResponseTypes)
 		clients = append(clients, client)
 	}
 	return clients, rows.Err()

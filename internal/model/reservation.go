@@ -14,18 +14,18 @@ const (
 
 // Reservation represents an IP address reservation within a pool
 type Reservation struct {
-	ID          string            `json:"id"`
-	PoolID      string            `json:"pool_id"`
-	IPAddress   string            `json:"ip_address"`
-	Hostname    string            `json:"hostname,omitempty"`
-	Purpose     string            `json:"purpose,omitempty"`
-	ReservedBy  string            `json:"reserved_by"`
-	ReservedAt  time.Time         `json:"reserved_at"`
-	ExpiresAt   *time.Time        `json:"expires_at,omitempty"`
-	Status      ReservationStatus `json:"status"`
-	Notes       string            `json:"notes,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID         string            `json:"id"`
+	PoolID     string            `json:"pool_id"`
+	IPAddress  string            `json:"ip_address"`
+	Hostname   string            `json:"hostname,omitempty"`
+	Purpose    string            `json:"purpose,omitempty"`
+	ReservedBy string            `json:"reserved_by"`
+	ReservedAt time.Time         `json:"reserved_at"`
+	ExpiresAt  *time.Time        `json:"expires_at,omitempty"`
+	Status     ReservationStatus `json:"status"`
+	Notes      string            `json:"notes,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
 }
 
 // ReservationFilter defines filter criteria for listing reservations

@@ -18,7 +18,7 @@ func (h *Handler) metricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(output))
+	_, _ = w.Write([]byte(output))
 }
 
 // updateMetricsCounts updates gauge metrics with current counts

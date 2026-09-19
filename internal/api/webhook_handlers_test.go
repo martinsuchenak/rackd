@@ -12,7 +12,7 @@ import (
 
 func TestWebhookHandlers(t *testing.T) {
 	h, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -137,7 +137,7 @@ func TestWebhookHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var resp map[string]any
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		webhookID = resp["id"].(string)
 
 		req = authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID, nil))
@@ -149,7 +149,7 @@ func TestWebhookHandlers(t *testing.T) {
 		}
 
 		var webhook model.Webhook
-		json.Unmarshal(w.Body.Bytes(), &webhook)
+		_ = json.Unmarshal(w.Body.Bytes(), &webhook)
 		if webhook.Name != "test-webhook-2" {
 			t.Errorf("expected name 'test-webhook-2', got '%s'", webhook.Name)
 		}
@@ -177,7 +177,7 @@ func TestWebhookHandlers(t *testing.T) {
 		}
 
 		var webhook model.Webhook
-		json.Unmarshal(w.Body.Bytes(), &webhook)
+		_ = json.Unmarshal(w.Body.Bytes(), &webhook)
 		if webhook.Name != "updated-webhook" {
 			t.Errorf("expected name 'updated-webhook', got '%s'", webhook.Name)
 		}
@@ -208,7 +208,7 @@ func TestWebhookHandlers(t *testing.T) {
 		}
 
 		var webhooks []model.Webhook
-		json.Unmarshal(w.Body.Bytes(), &webhooks)
+		_ = json.Unmarshal(w.Body.Bytes(), &webhooks)
 		for _, w := range webhooks {
 			if w.Active != false {
 				t.Errorf("expected only inactive webhooks, got active webhook")

@@ -9,7 +9,7 @@ import (
 
 func TestRBACStoragePermissionsRolesAndAssignments(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	user := &model.User{
@@ -170,7 +170,7 @@ func TestRBACStoragePermissionsRolesAndAssignments(t *testing.T) {
 
 func TestRBACStorageSystemRoleDeleteBlocked(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	ctx := context.Background()
 	role := &model.Role{Name: "system-delete-test", Description: "system", IsSystem: true}

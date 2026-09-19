@@ -9,7 +9,7 @@ import (
 
 func TestMonitoringEndpoints(t *testing.T) {
 	handler, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)

@@ -150,7 +150,7 @@ func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFil
 	if err != nil {
 		return nil, fmt.Errorf("failed to list API keys: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var keys []model.APIKey
 	for rows.Next() {

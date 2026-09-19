@@ -113,19 +113,19 @@ func (s *SQLiteStorage) GetConflict(ctx context.Context, id string) (*model.Conf
 
 	// Unmarshal JSON arrays
 	if deviceIDsJSON.Valid && deviceIDsJSON.String != "" {
-		json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
+		_ = json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
 	}
 	if deviceNamesJSON.Valid && deviceNamesJSON.String != "" {
-		json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
+		_ = json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
 	}
 	if networkIDsJSON.Valid && networkIDsJSON.String != "" {
-		json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
+		_ = json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
 	}
 	if networkNamesJSON.Valid && networkNamesJSON.String != "" {
-		json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
+		_ = json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
 	}
 	if subnetsJSON.Valid && subnetsJSON.String != "" {
-		json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
+		_ = json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
 	}
 
 	return &conflict, nil
@@ -167,7 +167,7 @@ func (s *SQLiteStorage) ListConflicts(ctx context.Context, filter *model.Conflic
 	if err != nil {
 		return nil, fmt.Errorf("failed to list conflicts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var conflicts []model.Conflict
 	for rows.Next() {
@@ -200,19 +200,19 @@ func (s *SQLiteStorage) ListConflicts(ctx context.Context, filter *model.Conflic
 
 		// Unmarshal JSON arrays
 		if deviceIDsJSON.Valid && deviceIDsJSON.String != "" {
-			json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
+			_ = json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
 		}
 		if deviceNamesJSON.Valid && deviceNamesJSON.String != "" {
-			json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
+			_ = json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
 		}
 		if networkIDsJSON.Valid && networkIDsJSON.String != "" {
-			json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
+			_ = json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
 		}
 		if networkNamesJSON.Valid && networkNamesJSON.String != "" {
-			json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
+			_ = json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
 		}
 		if subnetsJSON.Valid && subnetsJSON.String != "" {
-			json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
+			_ = json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
 		}
 
 		conflicts = append(conflicts, conflict)
@@ -278,7 +278,7 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 	if err != nil {
 		return nil, fmt.Errorf("failed to find duplicate IPs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var conflicts []model.Conflict
 	for rows.Next() {
@@ -321,7 +321,7 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 	if err != nil {
 		return nil, fmt.Errorf("failed to get networks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type networkInfo struct {
 		ID     string
@@ -410,7 +410,7 @@ func (s *SQLiteStorage) GetConflictsByDeviceID(ctx context.Context, deviceID str
 	if err != nil {
 		return nil, fmt.Errorf("failed to get conflicts by device: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanConflicts(ctx, rows)
 }
@@ -431,7 +431,7 @@ func (s *SQLiteStorage) GetConflictsByIP(ctx context.Context, ip string) ([]mode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get conflicts by IP: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanConflicts(ctx, rows)
 }
@@ -494,19 +494,19 @@ func scanConflicts(ctx context.Context, rows *sql.Rows) ([]model.Conflict, error
 
 		// Unmarshal JSON arrays
 		if deviceIDsJSON.Valid && deviceIDsJSON.String != "" {
-			json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
+			_ = json.Unmarshal([]byte(deviceIDsJSON.String), &conflict.DeviceIDs)
 		}
 		if deviceNamesJSON.Valid && deviceNamesJSON.String != "" {
-			json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
+			_ = json.Unmarshal([]byte(deviceNamesJSON.String), &conflict.DeviceNames)
 		}
 		if networkIDsJSON.Valid && networkIDsJSON.String != "" {
-			json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
+			_ = json.Unmarshal([]byte(networkIDsJSON.String), &conflict.NetworkIDs)
 		}
 		if networkNamesJSON.Valid && networkNamesJSON.String != "" {
-			json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
+			_ = json.Unmarshal([]byte(networkNamesJSON.String), &conflict.NetworkNames)
 		}
 		if subnetsJSON.Valid && subnetsJSON.String != "" {
-			json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
+			_ = json.Unmarshal([]byte(subnetsJSON.String), &conflict.Subnets)
 		}
 
 		conflicts = append(conflicts, conflict)

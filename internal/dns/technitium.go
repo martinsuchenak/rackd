@@ -55,8 +55,8 @@ func (c *TechnitiumClient) Name() string {
 
 // apiResponse represents the standard Technitium API response format
 type apiResponse struct {
-	Status  string          `json:"status"`
-	Message string          `json:"errorMessage,omitempty"`
+	Status   string          `json:"status"`
+	Message  string          `json:"errorMessage,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
 }
 
@@ -77,12 +77,12 @@ type recordsGetResponse struct {
 		Disabled bool   `json:"disabled"`
 		// Technitium nests record data in rData object
 		RData struct {
-			IPAddress         string `json:"ipAddress,omitempty"`  // A/AAAA records
-			CNAME             string `json:"cname,omitempty"`      // CNAME records
-			NameServer        string `json:"nameServer,omitempty"` // NS records
-			Exchange          string `json:"exchange,omitempty"`   // MX records
-			Text              string `json:"text,omitempty"`       // TXT records
-			PtrName           string `json:"ptrName,omitempty"`    // PTR records
+			IPAddress         string `json:"ipAddress,omitempty"`         // A/AAAA records
+			CNAME             string `json:"cname,omitempty"`             // CNAME records
+			NameServer        string `json:"nameServer,omitempty"`        // NS records
+			Exchange          string `json:"exchange,omitempty"`          // MX records
+			Text              string `json:"text,omitempty"`              // TXT records
+			PtrName           string `json:"ptrName,omitempty"`           // PTR records
 			PrimaryNameServer string `json:"primaryNameServer,omitempty"` // SOA records
 		} `json:"rData"`
 	} `json:"records"`
@@ -122,14 +122,14 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 		}
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Technitium < v15 only authenticates via the token query parameter and
 	// ignores the Authorization header; depending on version an
 	// unauthenticated call 401s or 404s. Retry once with the legacy
 	// parameter so older servers keep working (header-only for v15+).
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		params.Set("token", c.token)
 		fullURL := c.endpoint + path + "?" + params.Encode()
 		if method == "POST" {
@@ -149,7 +149,7 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 			}
 			return fmt.Errorf("request failed: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	// Check for non-2xx HTTP status before attempting JSON decode. Include a
@@ -246,11 +246,10 @@ func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record
 		return fmt.Errorf("failed to create new record during update: %w", err)
 	}
 
-	// Now delete the old record; if this fails, we have a duplicate but no data loss
-	if err := c.DeleteRecord(ctx, zone, record.Name, record.Type, existing.Value); err != nil {
-		// Log-worthy but not fatal — the new record is already in place
-		// The old value may linger as a duplicate until next sync
-	}
+	// Now delete the old record; if this fails, we have a duplicate but no data
+	// loss — the new record is already in place and the old value may linger
+	// until the next sync removes it.
+	_ = c.DeleteRecord(ctx, zone, record.Name, record.Type, existing.Value)
 
 	return nil
 }
@@ -301,7 +300,7 @@ func (c *TechnitiumClient) GetRecord(ctx context.Context, zone string, name stri
 func (c *TechnitiumClient) ListRecords(ctx context.Context, zone string) ([]*Record, error) {
 	params := url.Values{}
 	params.Set("zone", zone)
-	params.Set("domain", zone) // domain is required by the API
+	params.Set("domain", zone)     // domain is required by the API
 	params.Set("listZone", "true") // list all records in the zone, not just for the domain
 
 	var resp recordsGetResponse
@@ -377,4 +376,3 @@ func (c *TechnitiumClient) HealthCheck(ctx context.Context) error {
 
 	return nil
 }
-

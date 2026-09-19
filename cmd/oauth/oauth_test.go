@@ -43,7 +43,7 @@ func TestMockOAuthAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/oauth/clients" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{
 					"client_id":       "client-1",
 					"client_name":     "test-app",
@@ -73,8 +73,8 @@ func TestMockOAuthAPIIntegration(t *testing.T) {
 	}
 
 	var clients []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&clients)
-	resp.Body.Close()
+	_ = json.NewDecoder(resp.Body).Decode(&clients)
+	_ = resp.Body.Close()
 	if len(clients) != 1 {
 		t.Errorf("expected 1 client, got %d", len(clients))
 	}

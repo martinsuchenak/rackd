@@ -47,7 +47,7 @@ func TestDNSWorkerRunOnceAndStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	services := service.NewServices(store, nil, nil)
 	services.SetDNSService(store, nil)
@@ -69,7 +69,7 @@ func TestSnapshotWorkerRunOnceAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	network := &model.Network{Name: "Snapshot Network", Subnet: "10.0.0.0/24"}
@@ -108,7 +108,7 @@ func TestScheduledScanWorkerLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	profiles, err := storage.NewSQLiteProfileStorage(store.DB())
@@ -183,7 +183,7 @@ func TestSchedulerCleanupRunsWithoutRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	cfg := &config.Config{
 		DiscoveryInterval:      time.Hour,

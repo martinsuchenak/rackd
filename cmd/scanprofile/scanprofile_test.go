@@ -71,26 +71,26 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/scan-profiles" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "sp1", "name": "quick-scan", "scan_type": "quick"},
 			})
 		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp1", "name": "quick-scan", "scan_type": "quick",
 				"timeout_sec": 30, "max_workers": 10,
 			})
 		case r.URL.Path == "/api/scan-profiles" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp-new", "name": "new-profile",
 			})
 		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp1", "name": "updated-profile",
 			})
 		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "DELETE":

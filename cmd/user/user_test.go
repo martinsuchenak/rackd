@@ -96,7 +96,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 from list users, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp, err = c.DoRequest("PUT", "/api/users/u1", map[string]any{
 		"username":  "alice-renamed",
@@ -108,7 +108,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 from update user, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if err := assignRole(c, "u1", "role-1"); err != nil {
 		t.Fatalf("assignRole returned error: %v", err)
@@ -125,7 +125,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204 from delete user, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if len(seenPaths) < 5 {
 		t.Fatalf("expected multiple user API calls, saw %d", len(seenPaths))

@@ -27,7 +27,7 @@ func LoadConfig() *Config {
 	configPath := filepath.Join(getConfigDir(), "config.json")
 
 	if data, err := os.ReadFile(configPath); err == nil {
-		json.Unmarshal(data, &cfg)
+		_ = json.Unmarshal(data, &cfg)
 	}
 
 	if url := os.Getenv("RACKD_SERVER_URL"); url != "" {

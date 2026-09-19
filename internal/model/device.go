@@ -6,9 +6,9 @@ import "time"
 type DeviceStatus string
 
 const (
-	DeviceStatusPlanned       DeviceStatus = "planned"
-	DeviceStatusActive        DeviceStatus = "active"
-	DeviceStatusMaintenance   DeviceStatus = "maintenance"
+	DeviceStatusPlanned        DeviceStatus = "planned"
+	DeviceStatusActive         DeviceStatus = "active"
+	DeviceStatusMaintenance    DeviceStatus = "maintenance"
 	DeviceStatusDecommissioned DeviceStatus = "decommissioned"
 )
 
@@ -36,25 +36,25 @@ func (s DeviceStatus) String() string {
 }
 
 type Device struct {
-	ID               string       `json:"id"`
-	Name             string       `json:"name"`
-	Hostname         string       `json:"hostname,omitempty"`
-	Description      string       `json:"description"`
-	MakeModel        string       `json:"make_model"`
-	OS               string       `json:"os"`
-	DatacenterID     string       `json:"datacenter_id,omitempty"`
-	Username         string       `json:"username,omitempty"`
-	Location         string       `json:"location,omitempty"`
-	Status           DeviceStatus `json:"status"`
-	DecommissionDate *time.Time   `json:"decommission_date,omitempty"`
-	StatusChangedAt  *time.Time   `json:"status_changed_at,omitempty"`
-	StatusChangedBy  string       `json:"status_changed_by,omitempty"`
-	Tags             []string     `json:"tags"`
-	Addresses        []Address    `json:"addresses"`
-	Domains          []string     `json:"domains"`
+	ID               string                  `json:"id"`
+	Name             string                  `json:"name"`
+	Hostname         string                  `json:"hostname,omitempty"`
+	Description      string                  `json:"description"`
+	MakeModel        string                  `json:"make_model"`
+	OS               string                  `json:"os"`
+	DatacenterID     string                  `json:"datacenter_id,omitempty"`
+	Username         string                  `json:"username,omitempty"`
+	Location         string                  `json:"location,omitempty"`
+	Status           DeviceStatus            `json:"status"`
+	DecommissionDate *time.Time              `json:"decommission_date,omitempty"`
+	StatusChangedAt  *time.Time              `json:"status_changed_at,omitempty"`
+	StatusChangedBy  string                  `json:"status_changed_by,omitempty"`
+	Tags             []string                `json:"tags"`
+	Addresses        []Address               `json:"addresses"`
+	Domains          []string                `json:"domains"`
 	CustomFields     []CustomFieldValueInput `json:"custom_fields,omitempty"`
-	CreatedAt        time.Time    `json:"created_at"`
-	UpdatedAt        time.Time    `json:"updated_at"`
+	CreatedAt        time.Time               `json:"created_at"`
+	UpdatedAt        time.Time               `json:"updated_at"`
 }
 
 type Address struct {
@@ -81,19 +81,19 @@ type DeviceFilter struct {
 
 // CreateDeviceRequest represents the input for creating a device
 type CreateDeviceRequest struct {
-	Name         string                   `json:"name"`
-	Hostname     string                   `json:"hostname,omitempty"`
-	Description  string                   `json:"description"`
-	MakeModel    string                   `json:"make_model"`
-	OS           string                   `json:"os"`
-	DatacenterID string                   `json:"datacenter_id,omitempty"`
-	Username     string                   `json:"username,omitempty"`
-	Location     string                   `json:"location,omitempty"`
-	Status       DeviceStatus             `json:"status"`
-	Tags         []string                 `json:"tags"`
-	Addresses    []Address                `json:"addresses"`
-	Domains      []string                 `json:"domains"`
-	CustomFields []CustomFieldValueInput  `json:"custom_fields,omitempty"`
+	Name         string                  `json:"name"`
+	Hostname     string                  `json:"hostname,omitempty"`
+	Description  string                  `json:"description"`
+	MakeModel    string                  `json:"make_model"`
+	OS           string                  `json:"os"`
+	DatacenterID string                  `json:"datacenter_id,omitempty"`
+	Username     string                  `json:"username,omitempty"`
+	Location     string                  `json:"location,omitempty"`
+	Status       DeviceStatus            `json:"status"`
+	Tags         []string                `json:"tags"`
+	Addresses    []Address               `json:"addresses"`
+	Domains      []string                `json:"domains"`
+	CustomFields []CustomFieldValueInput `json:"custom_fields,omitempty"`
 }
 
 // UpdateDeviceRequest represents the input for updating a device

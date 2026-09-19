@@ -369,13 +369,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
 		"code":  code,
 	})
@@ -440,7 +440,7 @@ func toValidationErrors(err error) ValidationErrors {
 func (h *Handler) writeValidationErrors(w http.ResponseWriter, errs ValidationErrors) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"error":   errs.Error(),
 		"code":    "VALIDATION_ERROR",
 		"details": errs,

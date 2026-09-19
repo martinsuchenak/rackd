@@ -8,9 +8,9 @@ import (
 
 // HealthStatus represents the health status of the application
 type HealthStatus struct {
-	Status    string            `json:"status"`
-	Timestamp string            `json:"timestamp"`
-	Checks    map[string]Check  `json:"checks,omitempty"`
+	Status    string           `json:"status"`
+	Timestamp string           `json:"timestamp"`
+	Checks    map[string]Check `json:"checks,omitempty"`
 }
 
 // Check represents a single health check
@@ -22,7 +22,7 @@ type Check struct {
 // healthz is a simple liveness probe
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }
 
 // readyz is a detailed readiness probe
@@ -60,7 +60,7 @@ func (h *Handler) readyz(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 func (h *Handler) checkDatabase() Check {

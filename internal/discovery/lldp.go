@@ -36,7 +36,7 @@ func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	resultChan := make(chan LLDPResult, 10)
 	doneChan := make(chan struct{})
@@ -49,7 +49,7 @@ func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 			case <-ctx.Done():
 				return
 			default:
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				n, addr, err := conn.ReadFrom(buf)
 				if err != nil {
 					// Discover() closes the conn when it returns; exit
@@ -72,7 +72,7 @@ func (s *LLDPScanner) Discover(ctx context.Context) ([]LLDPResult, error) {
 	// Closing the conn makes the listener's ReadFrom fail immediately; wait
 	// for it to exit before closing resultChan so a late packet cannot
 	// panic on send-to-closed-channel.
-	conn.Close()
+	_ = conn.Close()
 	<-doneChan
 	close(resultChan)
 

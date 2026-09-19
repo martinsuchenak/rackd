@@ -217,7 +217,7 @@ func (s *SQLiteStorage) ListCircuits(ctx context.Context, filter *model.CircuitF
 	if err != nil {
 		return nil, fmt.Errorf("failed to list circuits: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var circuits []model.Circuit
 	for rows.Next() {
@@ -348,7 +348,7 @@ func (s *SQLiteStorage) GetCircuitsByDevice(ctx context.Context, deviceID string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get circuits by device: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var circuits []model.Circuit
 	for rows.Next() {

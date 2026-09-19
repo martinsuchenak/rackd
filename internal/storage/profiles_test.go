@@ -9,7 +9,7 @@ import (
 
 func TestSQLiteProfileStorageCRUD(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	profiles, err := NewSQLiteProfileStorage(storage.DB())
 	if err != nil {
@@ -70,7 +70,7 @@ func TestSQLiteProfileStorageCRUD(t *testing.T) {
 
 func TestSQLiteProfileStorageErrors(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	profiles, err := NewSQLiteProfileStorage(storage.DB())
 	if err != nil {

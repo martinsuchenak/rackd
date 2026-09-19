@@ -148,7 +148,7 @@ func (s *AdaptiveScanner) MeasureLatency(ctx context.Context, ip string) time.Du
 	if err != nil {
 		return 1 * time.Second
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	latency := time.Since(start)
 	return latency
 }

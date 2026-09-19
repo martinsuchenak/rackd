@@ -145,7 +145,7 @@ func TestMockDNSAPIIntegration(t *testing.T) {
 		if resp.StatusCode != tc.status {
 			t.Fatalf("%s %s: expected %d, got %d", tc.method, tc.path, tc.status, resp.StatusCode)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	if len(seenPaths) != len(requests) {
@@ -163,9 +163,8 @@ func TestProviderCreateUsesTokenEnvAndFileInputs(t *testing.T) {
 		t.Fatalf("failed to write token file: %v", err)
 	}
 
-	os.Setenv("DNS_TEST_TOKEN", " env-token ")
-	defer os.Unsetenv("DNS_TEST_TOKEN")
-
+	_ = os.Setenv("DNS_TEST_TOKEN", " env-token ")
+	defer func() { _ = os.Unsetenv("DNS_TEST_TOKEN") }()
 	cmd := providerCreateCommand()
 	if cmd.Run == nil {
 		t.Fatal("provider create command should have a Run function")

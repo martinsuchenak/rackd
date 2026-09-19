@@ -10,7 +10,7 @@ import (
 
 func TestAuditLog(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create audit log
 	log := &model.AuditLog{
@@ -53,7 +53,7 @@ func TestAuditLog(t *testing.T) {
 
 func TestListAuditLogs(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create multiple audit logs
 	logs := []*model.AuditLog{
@@ -121,7 +121,7 @@ func TestListAuditLogs(t *testing.T) {
 
 func TestAuditLogPagination(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create 10 audit logs
 	for i := 0; i < 10; i++ {
@@ -163,7 +163,7 @@ func TestAuditLogPagination(t *testing.T) {
 
 func TestDeleteOldAuditLogs(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create old log
 	oldLog := &model.AuditLog{
@@ -206,7 +206,7 @@ func TestDeleteOldAuditLogs(t *testing.T) {
 
 func TestAuditLogTimeFilter(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1)

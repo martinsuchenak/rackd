@@ -109,7 +109,7 @@ func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanCustomFieldDefinitions(rows)
 }
@@ -152,7 +152,7 @@ func (s *SQLiteStorage) DeleteCustomFieldDefinition(ctx context.Context, id stri
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// First delete all values for this definition
 	_, err = tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ?`, id)
@@ -205,7 +205,7 @@ func (s *SQLiteStorage) GetCustomFieldValues(ctx context.Context, deviceID strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanCustomFieldValues(rows)
 }
@@ -344,7 +344,7 @@ func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, v
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var deviceIDs []string
 	for rows.Next() {
@@ -373,7 +373,7 @@ func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var results []model.CustomFieldWithDefinition
 	for rows.Next() {

@@ -72,7 +72,7 @@ func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 
 func TestNewServer(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	if srv == nil {
 		t.Fatal("expected server to be created")
@@ -84,7 +84,7 @@ func TestNewServer(t *testing.T) {
 
 func TestHandleRequest_NoAuth(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Test tools/list request
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
@@ -101,7 +101,7 @@ func TestHandleRequest_NoAuth(t *testing.T) {
 
 func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a user to associate with the API key
 	user := &model.User{
@@ -140,7 +140,7 @@ func TestHandleRequest_WithAuth_ValidToken(t *testing.T) {
 
 func TestHandleRequest_WithAuth_InvalidToken(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
@@ -157,7 +157,7 @@ func TestHandleRequest_WithAuth_InvalidToken(t *testing.T) {
 
 func TestHandleRequest_WithAuth_LegacyKeyRejected(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create an API key WITHOUT a user association (legacy key)
 	apiKeySecret := "legacy-key-no-user"
@@ -185,7 +185,7 @@ func TestHandleRequest_WithAuth_LegacyKeyRejected(t *testing.T) {
 
 func TestHandleRequest_WithAuth_MissingToken(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))
@@ -201,7 +201,7 @@ func TestHandleRequest_WithAuth_MissingToken(t *testing.T) {
 
 func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create an API key
 	apiKeySecret := "test-token-12345"
@@ -228,9 +228,9 @@ func TestHandleRequest_WithAuth_NoBearerPrefix(t *testing.T) {
 
 func TestToolsRegistered(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
-	tools := srv.Inner().ListTools()
+	tools := srv.Inner().ListToolsWithContext(context.Background())
 
 	// Only native (non-discoverable) tools appear in ListTools().
 	// Discoverable tools are registered but hidden until discovered via keywords.
@@ -292,7 +292,7 @@ func callTool(t *testing.T, srv *Server, toolName string, args map[string]interf
 
 func TestDeviceSave_Create(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	resp := callTool(t, srv, "device_save", map[string]interface{}{
 		"name":        "test-device",
@@ -313,7 +313,7 @@ func TestDeviceSave_Create(t *testing.T) {
 
 func TestDeviceList(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a device first
 	callTool(t, srv, "device_save", map[string]interface{}{
@@ -329,7 +329,7 @@ func TestDeviceList(t *testing.T) {
 
 func TestDatacenterSave_Create(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	resp := callTool(t, srv, "datacenter_save", map[string]interface{}{
 		"name":     "test-dc",
@@ -343,7 +343,7 @@ func TestDatacenterSave_Create(t *testing.T) {
 
 func TestDatacenterList(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a datacenter first
 	callTool(t, srv, "datacenter_save", map[string]interface{}{
@@ -359,7 +359,7 @@ func TestDatacenterList(t *testing.T) {
 
 func TestNetworkSave_Create(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	resp := callTool(t, srv, "network_save", map[string]interface{}{
 		"name":   "test-network",
@@ -373,7 +373,7 @@ func TestNetworkSave_Create(t *testing.T) {
 
 func TestNetworkList(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a network first
 	callTool(t, srv, "network_save", map[string]interface{}{
@@ -390,7 +390,7 @@ func TestNetworkList(t *testing.T) {
 
 func TestDiscoveryScan(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a network first
 	callTool(t, srv, "network_save", map[string]interface{}{
@@ -415,7 +415,7 @@ func TestDiscoveryScan(t *testing.T) {
 
 func TestDiscoveryList(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	resp := callTool(t, srv, "discovery_list", map[string]interface{}{})
 
@@ -426,7 +426,7 @@ func TestDiscoveryList(t *testing.T) {
 
 func TestAddRelationship_InvalidType(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create two devices
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "parent"})
@@ -450,7 +450,7 @@ func TestAddRelationship_InvalidType(t *testing.T) {
 
 func TestAddRelationship_ValidType(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create two devices
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "parent"})
@@ -474,7 +474,7 @@ func TestAddRelationship_ValidType(t *testing.T) {
 
 func TestGetRelationships(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Create a device
 	callTool(t, srv, "device_save", map[string]interface{}{"name": "test"})
@@ -494,7 +494,7 @@ func TestGetRelationships(t *testing.T) {
 
 func TestInner(t *testing.T) {
 	srv, store := newTestServer(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	inner := srv.Inner()
 	if inner == nil {

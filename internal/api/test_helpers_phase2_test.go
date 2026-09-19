@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/credentials"
+	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 type extendedTestHandler struct {
-	handler    *Handler
-	store      storage.ExtendedStorage
-	credStore  credentials.Storage
-	profiles   storage.ProfileStorage
-	scheduled  storage.ScheduledScanStorage
-	mux        *http.ServeMux
+	handler   *Handler
+	store     storage.ExtendedStorage
+	credStore credentials.Storage
+	profiles  storage.ProfileStorage
+	scheduled storage.ScheduledScanStorage
+	mux       *http.ServeMux
 }
 
 func setupExtendedTestHandler(t *testing.T, withSessions, withCredentials, withProfiles, withScheduled bool) *extendedTestHandler {

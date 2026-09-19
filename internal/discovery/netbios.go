@@ -84,7 +84,7 @@ func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast net.IP) ([]N
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	resultChan := make(chan NetBIOSResult, 10)
 	doneChan := make(chan struct{})
@@ -97,7 +97,7 @@ func (s *NetBIOSScanner) scanNetwork(ctx context.Context, broadcast net.IP) ([]N
 			case <-ctx.Done():
 				return
 			default:
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				n, addr, err := conn.ReadFrom(buf)
 				if err != nil {
 					// Discover() closes the conn when it returns; exit
@@ -139,7 +139,7 @@ cleanup:
 	// Closing the conn makes the listener's ReadFrom fail immediately; wait
 	// for it to exit before closing resultChan so a late packet cannot
 	// panic on send-to-closed-channel.
-	conn.Close()
+	_ = conn.Close()
 	<-doneChan
 	close(resultChan)
 
@@ -154,21 +154,21 @@ cleanup:
 func (s *NetBIOSScanner) buildNBNSQuery() []byte {
 	buf := new(bytes.Buffer)
 
-	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Transaction ID
-	binary.Write(buf, binary.BigEndian, uint16(0x0100)) // Flags: recursion desired
-	binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Questions
-	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Answer RRs
-	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Authority RRs
-	binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Additional RRs
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Transaction ID
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0100)) // Flags: recursion desired
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Questions
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Answer RRs
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Authority RRs
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0000)) // Additional RRs
 
 	name := "*"
 	encodedName := encodeNetBIOSName(name)
 	buf.WriteByte(byte(len(encodedName))) // Name length
 	buf.Write(encodedName)
 
-	buf.WriteByte(0x00)                                 // Name terminator
-	binary.Write(buf, binary.BigEndian, uint16(0x0021)) // Type: NBSTAT
-	binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Class: IN
+	buf.WriteByte(0x00)                                     // Name terminator
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0021)) // Type: NBSTAT
+	_ = binary.Write(buf, binary.BigEndian, uint16(0x0001)) // Class: IN
 
 	return buf.Bytes()
 }

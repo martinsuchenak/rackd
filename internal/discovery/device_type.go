@@ -63,7 +63,7 @@ func (c *DeviceTypeClassifier) Classify(device *DeviceInfo) DeviceType {
 		DeviceTypeCamera:      c.scoreCamera(device),
 	}
 
-	var bestType DeviceType = DeviceTypeUnknown
+	var bestType = DeviceTypeUnknown
 	var bestScore float64 = 0
 
 	for deviceType, score := range scores {

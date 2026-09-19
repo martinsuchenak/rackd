@@ -288,7 +288,7 @@ func (s *WebhookService) pingWebhook(ctx context.Context, webhook *model.Webhook
 		delivery.Error = err.Error()
 		return delivery, nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	delivery.ResponseCode = resp.StatusCode
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {

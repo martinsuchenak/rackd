@@ -26,7 +26,7 @@ func DeleteCommand() *cli.Command {
 			if !cmd.GetBool("force") {
 				fmt.Printf("Are you sure you want to delete reservation %s? [y/N]: ", reservationID)
 				var confirm string
-				fmt.Scanln(&confirm)
+				_, _ = fmt.Scanln(&confirm)
 				if confirm != "y" && confirm != "Y" {
 					fmt.Println("Cancelled")
 					return nil
@@ -37,7 +37,7 @@ func DeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)

@@ -146,11 +146,11 @@ func TestPrintReservationTable(t *testing.T) {
 
 	printReservationTable(reservations)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "ID") || !strings.Contains(output, "IP ADDRESS") || !strings.Contains(output, "STATUS") {
@@ -183,11 +183,11 @@ func TestPrintReservationDetail(t *testing.T) {
 
 	printReservationDetail(reservation)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "res-1") {
@@ -210,35 +210,35 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/reservations" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "res-1", "ip_address": "192.168.1.100", "status": "active"},
 			})
 		case r.URL.Path == "/api/reservations/res-1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-1", "ip_address": "192.168.1.100", "status": "active",
 			})
 		case r.URL.Path == "/api/reservations" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-new", "ip_address": "192.168.1.102", "status": "active",
 			})
 		case r.URL.Path == "/api/reservations/res-1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-1", "ip_address": "192.168.1.100", "status": "active", "hostname": "updated",
 			})
 		case r.URL.Path == "/api/reservations/res-1/release" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation released successfully"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation released successfully"})
 		case r.URL.Path == "/api/reservations/res-1" && r.Method == "DELETE":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation deleted successfully"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation deleted successfully"})
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

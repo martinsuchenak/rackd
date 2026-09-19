@@ -17,7 +17,7 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	handler := NewHandler(store, nil,
 		WithServices(service.NewServices(store, nil, nil)),

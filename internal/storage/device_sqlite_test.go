@@ -15,7 +15,7 @@ import (
 
 func TestDeviceOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device := &model.Device{
 		Name:        "test-server",
@@ -86,7 +86,7 @@ func TestDeviceOperations_CreateAndGet(t *testing.T) {
 
 func TestDeviceOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDevice(context.Background(), "non-existent-id")
 	if err != ErrDeviceNotFound {
@@ -96,7 +96,7 @@ func TestDeviceOperations_GetNotFound(t *testing.T) {
 
 func TestDeviceOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDevice(context.Background(), "")
 	if err != ErrInvalidID {
@@ -106,7 +106,7 @@ func TestDeviceOperations_GetInvalidID(t *testing.T) {
 
 func TestDeviceOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device
 	device := &model.Device{
@@ -162,7 +162,7 @@ func TestDeviceOperations_Update(t *testing.T) {
 
 func TestDeviceOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device := &model.Device{
 		ID:   "non-existent-id",
@@ -177,7 +177,7 @@ func TestDeviceOperations_UpdateNotFound(t *testing.T) {
 
 func TestDeviceOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device
 	device := &model.Device{
@@ -203,14 +203,14 @@ func TestDeviceOperations_Delete(t *testing.T) {
 
 	// Verify cascaded deletion of tags
 	var tagCount int
-	storage.db.QueryRow("SELECT COUNT(*) FROM tags WHERE device_id = ?", device.ID).Scan(&tagCount)
+	_ = storage.db.QueryRow("SELECT COUNT(*) FROM tags WHERE device_id = ?", device.ID).Scan(&tagCount)
 	if tagCount != 0 {
 		t.Errorf("expected 0 tags after deletion, got %d", tagCount)
 	}
 
 	// Verify cascaded deletion of addresses
 	var addrCount int
-	storage.db.QueryRow("SELECT COUNT(*) FROM addresses WHERE device_id = ?", device.ID).Scan(&addrCount)
+	_ = storage.db.QueryRow("SELECT COUNT(*) FROM addresses WHERE device_id = ?", device.ID).Scan(&addrCount)
 	if addrCount != 0 {
 		t.Errorf("expected 0 addresses after deletion, got %d", addrCount)
 	}
@@ -218,7 +218,7 @@ func TestDeviceOperations_Delete(t *testing.T) {
 
 func TestDeviceOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteDevice(context.Background(), "non-existent-id")
 	if err != ErrDeviceNotFound {
@@ -228,7 +228,7 @@ func TestDeviceOperations_DeleteNotFound(t *testing.T) {
 
 func TestDeviceOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteDevice(context.Background(), "")
 	if err != ErrInvalidID {
@@ -238,7 +238,7 @@ func TestDeviceOperations_DeleteInvalidID(t *testing.T) {
 
 func TestDeviceOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple devices
 	devices := []string{"server1", "server2", "server3"}
@@ -262,16 +262,16 @@ func TestDeviceOperations_ListAll(t *testing.T) {
 
 func TestDeviceOperations_ListWithTagsFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with different tags
 	device1 := &model.Device{Name: "server1", Tags: []string{"production", "web"}}
 	device2 := &model.Device{Name: "server2", Tags: []string{"production", "db"}}
 	device3 := &model.Device{Name: "server3", Tags: []string{"staging"}}
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
-	storage.CreateDevice(context.Background(), device3)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device3)
 
 	// Filter by single tag
 	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{Tags: []string{"production"}})
@@ -294,7 +294,7 @@ func TestDeviceOperations_ListWithTagsFilter(t *testing.T) {
 
 func TestDeviceOperations_ListWithDatacenterFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "DC1"}
@@ -307,9 +307,9 @@ func TestDeviceOperations_ListWithDatacenterFilter(t *testing.T) {
 	device2 := &model.Device{Name: "server2", DatacenterID: dc.ID}
 	device3 := &model.Device{Name: "server3"}
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
-	storage.CreateDevice(context.Background(), device3)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device3)
 
 	// Filter by datacenter
 	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{DatacenterID: dc.ID})
@@ -323,7 +323,7 @@ func TestDeviceOperations_ListWithDatacenterFilter(t *testing.T) {
 
 func TestDeviceOperations_Search(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices
 	device1 := &model.Device{
@@ -340,8 +340,8 @@ func TestDeviceOperations_Search(t *testing.T) {
 		Addresses:   []model.Address{{IP: "192.168.1.200", Type: "ipv4"}},
 	}
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
 
 	tests := []struct {
 		query    string
@@ -370,11 +370,11 @@ func TestDeviceOperations_Search(t *testing.T) {
 
 func TestDeviceOperations_SearchEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create a device
 	device := &model.Device{Name: "test"}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Empty search returns all
 	result, err := storage.SearchDevices(context.Background(), "")
@@ -388,7 +388,7 @@ func TestDeviceOperations_SearchEmpty(t *testing.T) {
 
 func TestDeviceOperations_EmptyArraysNotNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device with no tags, addresses, or domains
 	device := &model.Device{Name: "minimal"}
@@ -416,7 +416,7 @@ func TestDeviceOperations_EmptyArraysNotNil(t *testing.T) {
 
 func TestCreateDeviceNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateDevice(context.Background(), nil)
 	if err == nil {
@@ -426,7 +426,7 @@ func TestCreateDeviceNil(t *testing.T) {
 
 func TestUpdateDeviceNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.UpdateDevice(context.Background(), nil)
 	if err == nil {
@@ -436,7 +436,7 @@ func TestUpdateDeviceNil(t *testing.T) {
 
 func TestUpdateDeviceInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device := &model.Device{ID: "", Name: "test"}
 	err := storage.UpdateDevice(context.Background(), device)
@@ -447,11 +447,11 @@ func TestUpdateDeviceInvalidID(t *testing.T) {
 
 func TestListDevicesWithNetworkFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create devices with addresses in network
 	device1 := &model.Device{
@@ -462,8 +462,8 @@ func TestListDevicesWithNetworkFilter(t *testing.T) {
 		Name:      "server2",
 		Addresses: []model.Address{{IP: "10.0.0.1", Type: "ipv4"}},
 	}
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
 
 	// Filter by network
 	result, err := storage.ListDevices(context.Background(), &model.DeviceFilter{NetworkID: network.ID})
@@ -477,14 +477,14 @@ func TestListDevicesWithNetworkFilter(t *testing.T) {
 
 func TestDeviceWithAllFields(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter and network
 	dc := &model.Datacenter{Name: "DC1", Location: "NYC"}
-	storage.CreateDatacenter(context.Background(), dc)
+	_ = storage.CreateDatacenter(context.Background(), dc)
 
 	network := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -492,7 +492,7 @@ func TestDeviceWithAllFields(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create device with all fields populated
 	device := &model.Device{
@@ -550,14 +550,14 @@ func TestDeviceWithAllFields(t *testing.T) {
 
 func TestSearchDevicesWithSpecialCharacters(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device with special characters in name
 	device := &model.Device{
 		Name:        "server-01_test",
 		Description: "Test with % and _ characters",
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Search should handle special SQL characters
 	result, err := storage.SearchDevices(context.Background(), "server-01")
@@ -571,7 +571,7 @@ func TestSearchDevicesWithSpecialCharacters(t *testing.T) {
 
 func TestDeviceUpdateClearArrays(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device with arrays
 	device := &model.Device{
@@ -580,7 +580,7 @@ func TestDeviceUpdateClearArrays(t *testing.T) {
 		Domains:   []string{"domain1.com"},
 		Addresses: []model.Address{{IP: "192.168.1.1", Type: "ipv4"}},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Update to clear arrays
 	device.Tags = []string{}
@@ -604,20 +604,20 @@ func TestDeviceUpdateClearArrays(t *testing.T) {
 
 func TestSearchDevicesMultipleMatches(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with overlapping search terms
-	storage.CreateDevice(context.Background(), &model.Device{
+	_ = storage.CreateDevice(context.Background(), &model.Device{
 		Name:        "web-server-1",
 		Description: "Production web server",
 		Tags:        []string{"production", "web"},
 	})
-	storage.CreateDevice(context.Background(), &model.Device{
+	_ = storage.CreateDevice(context.Background(), &model.Device{
 		Name:        "web-server-2",
 		Description: "Staging web server",
 		Tags:        []string{"staging", "web"},
 	})
-	storage.CreateDevice(context.Background(), &model.Device{
+	_ = storage.CreateDevice(context.Background(), &model.Device{
 		Name:        "db-server",
 		Description: "Database server",
 		Tags:        []string{"production", "database"},
@@ -644,7 +644,7 @@ func TestSearchDevicesMultipleMatches(t *testing.T) {
 
 func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device := &model.Device{
 		Name: "multi-address",
@@ -655,7 +655,7 @@ func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 			{IP: "fe80::1", Type: "ipv6", Label: "link-local"},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	got, _ := storage.GetDevice(context.Background(), device.ID)
 	if len(got.Addresses) != 4 {
@@ -666,9 +666,10 @@ func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 	ipv4Count := 0
 	ipv6Count := 0
 	for _, addr := range got.Addresses {
-		if addr.Type == "ipv4" {
+		switch addr.Type {
+		case "ipv4":
 			ipv4Count++
-		} else if addr.Type == "ipv6" {
+		case "ipv6":
 			ipv6Count++
 		}
 	}
@@ -686,7 +687,7 @@ func TestDeviceWithMultipleAddressTypes(t *testing.T) {
 
 func TestDeviceStatus_DefaultStatus(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device without specifying status
 	device := &model.Device{Name: "test-device"}
@@ -712,7 +713,7 @@ func TestDeviceStatus_DefaultStatus(t *testing.T) {
 
 func TestDeviceStatus_CreateWithStatus(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device with planned status
 	device := &model.Device{
@@ -735,11 +736,11 @@ func TestDeviceStatus_CreateWithStatus(t *testing.T) {
 
 func TestDeviceStatus_UpdateStatus(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device
 	device := &model.Device{Name: "test-device"}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	originalStatusChangedAt := device.StatusChangedAt
 
@@ -768,7 +769,7 @@ func TestDeviceStatus_UpdateStatus(t *testing.T) {
 
 func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with different statuses
 	devices := []*model.Device{
@@ -780,7 +781,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 	}
 
 	for _, d := range devices {
-		storage.CreateDevice(context.Background(), d)
+		_ = storage.CreateDevice(context.Background(), d)
 	}
 
 	// Filter by planned status
@@ -822,7 +823,7 @@ func TestDeviceStatus_FilterByStatus(t *testing.T) {
 
 func TestDeviceStatus_StatusCounts(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with different statuses
 	devices := []*model.Device{
@@ -836,7 +837,7 @@ func TestDeviceStatus_StatusCounts(t *testing.T) {
 	}
 
 	for _, d := range devices {
-		storage.CreateDevice(context.Background(), d)
+		_ = storage.CreateDevice(context.Background(), d)
 	}
 
 	// Get status counts
@@ -861,7 +862,7 @@ func TestDeviceStatus_StatusCounts(t *testing.T) {
 
 func TestDeviceStatus_DecommissionDate(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device with decommission date
 	decomDate := parseTime("2025-12-31T00:00:00Z")
@@ -902,7 +903,7 @@ func parseTime(s string) time.Time {
 // Validates: Requirements 1.2
 func TestAddressID_StorageRoundTrip(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	rapid.Check(t, func(rt *rapid.T) {
 		// Generate 1-5 addresses with unique IPs

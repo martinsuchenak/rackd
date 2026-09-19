@@ -14,7 +14,7 @@ import (
 
 func TestNATMappingOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	mapping := &model.NATMapping{
 		Name:         "Web Server NAT",
@@ -77,7 +77,7 @@ func TestNATMappingOperations_CreateAndGet(t *testing.T) {
 
 func TestNATMappingOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create mapping
 	mapping := &model.NATMapping{
@@ -143,7 +143,7 @@ func TestNATMappingOperations_Update(t *testing.T) {
 
 func TestNATMappingOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create mapping
 	mapping := &model.NATMapping{
@@ -180,7 +180,7 @@ func TestNATMappingOperations_Delete(t *testing.T) {
 
 func TestNATMappingOperations_List(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple mappings
 	for i := 1; i <= 3; i++ {
@@ -229,7 +229,7 @@ func TestNATMappingOperations_List(t *testing.T) {
 
 func TestNATMappingOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNATMapping(context.Background(), "non-existent-id")
 	if err != ErrNATNotFound {
@@ -239,7 +239,7 @@ func TestNATMappingOperations_GetNotFound(t *testing.T) {
 
 func TestNATMappingOperations_WithDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter and device
 	dc := &model.Datacenter{Name: "Test DC", Location: "Test"}
@@ -292,7 +292,7 @@ func TestNATMappingOperations_WithDevice(t *testing.T) {
 
 func TestNATMappingOperations_WithDatacenter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "Test DC", Location: "Test"}
@@ -327,7 +327,7 @@ func TestNATMappingOperations_WithDatacenter(t *testing.T) {
 
 func TestNATMappingOperations_Tags(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create mapping with tags
 	mapping := &model.NATMapping{
@@ -377,7 +377,7 @@ func TestNATMappingOperations_Tags(t *testing.T) {
 
 func TestNATMappingOperations_AllProtocols(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	protocols := []model.NATProtocol{model.NATProtocolTCP, model.NATProtocolUDP, model.NATProtocolAny}
 

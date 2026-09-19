@@ -43,7 +43,7 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // oauthAuthorize handles the authorization endpoint.
@@ -62,7 +62,7 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 	// The SPA will then fetch this endpoint to get the consent data
 	if isBrowserNavigation {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(ui.IndexHTML())
+		_, _ = w.Write(ui.IndexHTML())
 		return
 	}
 
@@ -240,7 +240,7 @@ func (h *Handler) oauthToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // oauthRevoke handles token revocation (RFC 7009).
@@ -327,7 +327,7 @@ func (h *Handler) getSessionFromCookie(r *http.Request) *auth.Session {
 func (h *Handler) writeOAuthError(w http.ResponseWriter, status int, errorCode, description string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(model.OAuthErrorResponse{
+	_ = json.NewEncoder(w).Encode(model.OAuthErrorResponse{
 		Error:            errorCode,
 		ErrorDescription: description,
 	})

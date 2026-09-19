@@ -63,13 +63,15 @@ func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFi
 
 	query += " ORDER BY timestamp DESC"
 
-	query, args = appendPagination(query, args, &filter.Pagination)
+	if filter != nil {
+		query, args = appendPagination(query, args, &filter.Pagination)
+	}
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// Initialize to an empty slice so an empty result marshals as [] rather
 	// than null (the UI iterates .length on this).

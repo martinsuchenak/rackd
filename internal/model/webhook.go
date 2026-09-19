@@ -18,9 +18,9 @@ const (
 	EventTypeNetworkDeleted EventType = "network.deleted"
 
 	// Discovery events
-	EventTypeDiscoveryStarted  EventType = "discovery.started"
+	EventTypeDiscoveryStarted   EventType = "discovery.started"
 	EventTypeDiscoveryCompleted EventType = "discovery.completed"
-	EventTypeDeviceDiscovered  EventType = "discovery.device_found"
+	EventTypeDeviceDiscovered   EventType = "discovery.device_found"
 
 	// Conflict events
 	EventTypeConflictDetected EventType = "conflict.detected"
@@ -67,8 +67,8 @@ type Webhook struct {
 	ID          string      `json:"id"`
 	Name        string      `json:"name"`
 	URL         string      `json:"url"`
-	Secret      string      `json:"-"` // Used for HMAC signature, never exposed in API responses
-	HasSecret   bool        `json:"has_secret"`       // Indicates whether a secret is configured
+	Secret      string      `json:"-"`          // Used for HMAC signature, never exposed in API responses
+	HasSecret   bool        `json:"has_secret"` // Indicates whether a secret is configured
 	Events      []EventType `json:"events"`
 	Active      bool        `json:"active"`
 	Description string      `json:"description,omitempty"`
@@ -79,18 +79,18 @@ type Webhook struct {
 
 // WebhookDelivery represents a delivery attempt for a webhook
 type WebhookDelivery struct {
-	ID            string          `json:"id"`
-	WebhookID     string          `json:"webhook_id"`
-	EventType     EventType       `json:"event_type"`
-	Payload       string          `json:"payload"`
-	ResponseCode  int             `json:"response_code,omitempty"`
-	ResponseBody  string          `json:"response_body,omitempty"`
-	Error         string          `json:"error,omitempty"`
-	Duration      int64           `json:"duration_ms"`
-	Status        DeliveryStatus  `json:"status"`
-	AttemptNumber int             `json:"attempt_number"`
-	NextRetry     *time.Time      `json:"next_retry,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
+	ID            string         `json:"id"`
+	WebhookID     string         `json:"webhook_id"`
+	EventType     EventType      `json:"event_type"`
+	Payload       string         `json:"payload"`
+	ResponseCode  int            `json:"response_code,omitempty"`
+	ResponseBody  string         `json:"response_body,omitempty"`
+	Error         string         `json:"error,omitempty"`
+	Duration      int64          `json:"duration_ms"`
+	Status        DeliveryStatus `json:"status"`
+	AttemptNumber int            `json:"attempt_number"`
+	NextRetry     *time.Time     `json:"next_retry,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 // DeliveryStatus represents the status of a webhook delivery
@@ -156,17 +156,17 @@ type EventPayloadNetwork struct {
 
 // EventPayloadDiscovery contains discovery event data
 type EventPayloadDiscovery struct {
-	NetworkID   string `json:"network_id,omitempty"`
-	DevicesFound int   `json:"devices_found,omitempty"`
-	Duration    int64  `json:"duration_ms,omitempty"`
+	NetworkID    string `json:"network_id,omitempty"`
+	DevicesFound int    `json:"devices_found,omitempty"`
+	Duration     int64  `json:"duration_ms,omitempty"`
 }
 
 // EventPayloadConflict contains conflict event data
 type EventPayloadConflict struct {
-	ID          string       `json:"id"`
-	Type        string       `json:"type"`
-	Description string       `json:"description"`
-	DeviceIDs   []string     `json:"device_ids,omitempty"`
+	ID          string   `json:"id"`
+	Type        string   `json:"type"`
+	Description string   `json:"description"`
+	DeviceIDs   []string `json:"device_ids,omitempty"`
 }
 
 // EventPayloadPoolUtilization contains pool utilization event data
@@ -190,10 +190,10 @@ type CreateWebhookRequest struct {
 
 // UpdateWebhookRequest represents a request to update a webhook
 type UpdateWebhookRequest struct {
-	Name        *string     `json:"name,omitempty"`
-	URL         *string     `json:"url,omitempty"`
-	Secret      *string     `json:"secret,omitempty"`
+	Name        *string      `json:"name,omitempty"`
+	URL         *string      `json:"url,omitempty"`
+	Secret      *string      `json:"secret,omitempty"`
 	Events      *[]EventType `json:"events,omitempty"`
-	Active      *bool       `json:"active,omitempty"`
-	Description *string     `json:"description,omitempty"`
+	Active      *bool        `json:"active,omitempty"`
+	Description *string      `json:"description,omitempty"`
 }

@@ -44,7 +44,7 @@ func statusCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 
 			statuses, err := storage.GetMigrationStatus(ctx, db)
 			if err != nil {
@@ -53,7 +53,7 @@ func statusCommand() *cli.Command {
 
 			pending := 0
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "VERSION\tNAME\tSTATUS\tAPPLIED AT")
+			_, _ = fmt.Fprintln(w, "VERSION\tNAME\tSTATUS\tAPPLIED AT")
 			for _, s := range statuses {
 				status := "applied"
 				appliedAt := s.AppliedAt
@@ -62,9 +62,9 @@ func statusCommand() *cli.Command {
 					appliedAt = "-"
 					pending++
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Version, s.Name, status, appliedAt)
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Version, s.Name, status, appliedAt)
 			}
-			w.Flush()
+			_ = w.Flush()
 
 			fmt.Printf("\nTotal: %d migrations, %d pending\n", len(statuses), pending)
 			return nil
@@ -90,7 +90,7 @@ func runCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 
 			// Check pending count first
 			statuses, err := storage.GetMigrationStatus(ctx, db)
@@ -133,7 +133,7 @@ func openDB(dataDir string) (*sql.DB, error) {
 	}
 
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 

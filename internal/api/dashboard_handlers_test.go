@@ -12,7 +12,7 @@ import (
 
 func TestDashboardHandlers(t *testing.T) {
 	h, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -85,7 +85,7 @@ func TestDashboardHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var network model.Network
-		json.Unmarshal(w.Body.Bytes(), &network)
+		_ = json.Unmarshal(w.Body.Bytes(), &network)
 
 		// Get trend for the network
 		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=network&resource_id="+network.ID, nil))
@@ -116,7 +116,7 @@ func TestDashboardHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var network model.Network
-		json.Unmarshal(w.Body.Bytes(), &network)
+		_ = json.Unmarshal(w.Body.Bytes(), &network)
 
 		// Create pool
 		poolBody := `{"network_id":"` + network.ID + `","name":"Test Pool","start_ip":"192.168.2.100","end_ip":"192.168.2.200"}`
@@ -126,7 +126,7 @@ func TestDashboardHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var pool model.NetworkPool
-		json.Unmarshal(w.Body.Bytes(), &pool)
+		_ = json.Unmarshal(w.Body.Bytes(), &pool)
 
 		// Get trend for the pool
 		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=pool&resource_id="+pool.ID, nil))
@@ -152,7 +152,7 @@ func TestDashboardHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var network model.Network
-		json.Unmarshal(w.Body.Bytes(), &network)
+		_ = json.Unmarshal(w.Body.Bytes(), &network)
 
 		// Get trend with days parameter
 		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=network&resource_id="+network.ID+"&days=7", nil))

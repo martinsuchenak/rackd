@@ -116,7 +116,7 @@ func (s *SQLiteStorage) ListPermissions(ctx context.Context, filter *model.Permi
 	if err != nil {
 		return nil, fmt.Errorf("failed to list permissions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var perms []model.Permission
 	for rows.Next() {
@@ -232,7 +232,7 @@ func (s *SQLiteStorage) ListRoles(ctx context.Context, filter *model.RoleFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list roles: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var roles []model.Role
 	for rows.Next() {
@@ -319,7 +319,7 @@ func (s *SQLiteStorage) GetRolePermissions(ctx context.Context, roleID string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role permissions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var perms []model.Permission
 	for rows.Next() {
@@ -346,7 +346,7 @@ func (s *SQLiteStorage) SetRolePermissions(ctx context.Context, roleID string, p
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ?`, roleID)
 	if err != nil {
@@ -410,7 +410,7 @@ func (s *SQLiteStorage) GetUserRoles(ctx context.Context, userID string) ([]mode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var roles []model.Role
 	for rows.Next() {
@@ -446,7 +446,7 @@ func (s *SQLiteStorage) GetUserPermissions(ctx context.Context, userID string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user permissions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var perms []model.Permission
 	for rows.Next() {

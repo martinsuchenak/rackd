@@ -157,7 +157,7 @@ func (s *SQLiteStorage) List(datacenterID string) ([]model.Credential, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var creds []model.Credential
 	for rows.Next() {

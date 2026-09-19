@@ -23,12 +23,12 @@ const (
 
 // ImportResult contains the results of an import operation
 type ImportResult struct {
-	Total    int
-	Created  int
-	Updated  int
-	Skipped  int
-	Failed   int
-	Errors   []string
+	Total   int
+	Created int
+	Updated int
+	Skipped int
+	Failed  int
+	Errors  []string
 }
 
 // ImportDevicesJSON imports devices from JSON
@@ -43,7 +43,7 @@ func ImportDevicesJSON(r io.Reader) ([]model.Device, error) {
 // ImportDevicesCSV imports devices from CSV
 func ImportDevicesCSV(r io.Reader) ([]model.Device, error) {
 	reader := csv.NewReader(r)
-	
+
 	// Read header
 	header, err := reader.Read()
 	if err != nil {
@@ -126,7 +126,7 @@ func ImportNetworksJSON(r io.Reader) ([]model.Network, error) {
 // ImportNetworksCSV imports networks from CSV
 func ImportNetworksCSV(r io.Reader) ([]model.Network, error) {
 	reader := csv.NewReader(r)
-	
+
 	header, err := reader.Read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read header: %w", err)
@@ -195,7 +195,7 @@ func ImportDatacentersJSON(r io.Reader) ([]model.Datacenter, error) {
 // ImportDatacentersCSV imports datacenters from CSV
 func ImportDatacentersCSV(r io.Reader) ([]model.Datacenter, error) {
 	reader := csv.NewReader(r)
-	
+
 	header, err := reader.Read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read header: %w", err)

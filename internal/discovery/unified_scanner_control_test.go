@@ -11,7 +11,7 @@ import (
 
 func TestUnifiedScannerGetNetworkAndScanAdvanced(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	network := &model.Network{ID: "net-advanced", Name: "Advanced", Subnet: "127.0.0.0/30"}
@@ -45,7 +45,7 @@ func TestUnifiedScannerGetNetworkAndScanAdvanced(t *testing.T) {
 
 func TestUnifiedScannerCancelScanPaths(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	if err := scanner.CancelScan(ctx, "missing"); err != ErrScanNotFound {
@@ -99,7 +99,7 @@ func TestUnifiedScannerCancelScanPaths(t *testing.T) {
 
 func TestUnifiedScannerQuickNetworkScansAndHelpers(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	results := scanner.runNetworkScans(context.Background(), "192.168.1.0/24", model.ScanTypeQuick)
 	if len(results.netbios) != 0 || len(results.mdns) != 0 || len(results.lldp) != 0 {
@@ -110,7 +110,7 @@ func TestUnifiedScannerQuickNetworkScansAndHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	open := scanner.scanPorts("127.0.0.1", []int{port}, 200*time.Millisecond)
@@ -132,7 +132,7 @@ func TestUnifiedScannerQuickNetworkScansAndHelpers(t *testing.T) {
 
 func TestUnifiedScannerDiscoverHostHonorsCancelledContext(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -145,13 +145,13 @@ func TestUnifiedScannerDiscoverHostHonorsCancelledContext(t *testing.T) {
 
 func TestUnifiedScannerDiscoverHostWithOpenPort(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	device := scanner.discoverHostWithOptions(
@@ -179,14 +179,14 @@ func TestUnifiedScannerDiscoverHostWithOpenPort(t *testing.T) {
 
 func TestUnifiedScannerRunScanWithOptionsCompletesAndPersists(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	network := &model.Network{ID: "net-run", Name: "Loopback", Subnet: "127.0.0.1/32"}

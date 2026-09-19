@@ -212,11 +212,11 @@ func TestOutputFormats_JSON(t *testing.T) {
 
 	client.PrintJSON(devices)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	var parsed []map[string]interface{}
@@ -239,11 +239,11 @@ func TestOutputFormats_Table(t *testing.T) {
 
 	client.PrintDeviceTable(devices)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "ID") || !strings.Contains(output, "NAME") {
@@ -260,25 +260,25 @@ func TestMockAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/devices" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "1", "name": "test-device"},
 			})
 		case r.URL.Path == "/api/devices/1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "1", "name": "test-device", "make_model": "Dell",
 			})
 		case r.URL.Path == "/api/devices" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "new-id", "name": "new-device",
 			})
 		case r.URL.Path == "/api/devices/1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "1", "name": "updated-device",
 			})
 		case r.URL.Path == "/api/devices/1" && r.Method == "DELETE":

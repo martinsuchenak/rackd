@@ -50,15 +50,15 @@ type serviceTestStorage struct {
 		resolvedBy string
 		notes      string
 	}
-	circuits         map[string]*model.Circuit
-	circuitCreated   *model.Circuit
-	circuitUpdated   *model.Circuit
-	dashboardStaleDays int
+	circuits             map[string]*model.Circuit
+	circuitCreated       *model.Circuit
+	circuitUpdated       *model.Circuit
+	dashboardStaleDays   int
 	dashboardRecentLimit int
-	utilTrendDays int
-	bulkResult *storage.BulkResult
-	lastBulkOp string
-	auditLogs []model.AuditLog
+	utilTrendDays        int
+	bulkResult           *storage.BulkResult
+	lastBulkOp           string
+	auditLogs            []model.AuditLog
 
 	nextIPs               []string
 	nextIPCalls           int
@@ -88,23 +88,23 @@ type serviceTestStorage struct {
 
 func newServiceTestStorage() *serviceTestStorage {
 	return &serviceTestStorage{
-		permissions: make(map[string]bool),
-		users:       make(map[string]*model.User),
-		userRoles:   make(map[string][]model.Role),
-		roles:       make(map[string]*model.Role),
-		customDefs:  make(map[string]*model.CustomFieldDefinition),
-		pools:       make(map[string]bool),
-		devices:     make(map[string]*model.Device),
-		reservations: make(map[string]*model.Reservation),
-		natMappings: make(map[string]*model.NATMapping),
-		webhooks:    make(map[string]*model.Webhook),
-		apiKeys:     make(map[string]*model.APIKey),
-		conflicts:   make(map[string]*model.Conflict),
-		circuits:    make(map[string]*model.Circuit),
-		rules:       make(map[string]*model.DiscoveryRule),
-		discoveryScans: make(map[string]*model.DiscoveryScan),
-		datacenterDevices: make(map[string][]model.Device),
-		networkDevices: make(map[string][]model.Device),
+		permissions:         make(map[string]bool),
+		users:               make(map[string]*model.User),
+		userRoles:           make(map[string][]model.Role),
+		roles:               make(map[string]*model.Role),
+		customDefs:          make(map[string]*model.CustomFieldDefinition),
+		pools:               make(map[string]bool),
+		devices:             make(map[string]*model.Device),
+		reservations:        make(map[string]*model.Reservation),
+		natMappings:         make(map[string]*model.NATMapping),
+		webhooks:            make(map[string]*model.Webhook),
+		apiKeys:             make(map[string]*model.APIKey),
+		conflicts:           make(map[string]*model.Conflict),
+		circuits:            make(map[string]*model.Circuit),
+		rules:               make(map[string]*model.DiscoveryRule),
+		discoveryScans:      make(map[string]*model.DiscoveryScan),
+		datacenterDevices:   make(map[string][]model.Device),
+		networkDevices:      make(map[string][]model.Device),
 		discoveredByNetwork: make(map[string][]model.DiscoveredDevice),
 	}
 }

@@ -17,11 +17,11 @@ func TestOAuthScopeClampToUserPermissions(t *testing.T) {
 	store := newMockOAuthStorage()
 	ctx := context.Background()
 
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	// user1 holds NO permissions (zero-privilege account).
 
 	// Client registered with a scope inside the advertised catalog.
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
 		RedirectURIs: []string{"http://localhost/cb"},
@@ -40,7 +40,7 @@ func TestOAuthScopeClampToUserPermissions(t *testing.T) {
 
 	// 2. A user holding a subset must only delegate that subset.
 	store.userPerms["user2"] = []string{"devices:read"}
-	store.CreateUser(ctx, &model.User{ID: "user2", Username: "limited", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user2", Username: "limited", PasswordHash: "hash", IsActive: true})
 	code, err := svc.CreateAuthorizationCode(ctx, "client1", "user2", "http://localhost/cb",
 		"devices:read users:delete", "verifier", "S256")
 	if err != nil {
@@ -107,9 +107,9 @@ func TestOAuthRefreshReclampsScope(t *testing.T) {
 	store := newMockOAuthStorage()
 	ctx := context.Background()
 
-	store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
+	_ = store.CreateUser(ctx, &model.User{ID: "user1", Username: "test", PasswordHash: "hash", IsActive: true})
 	store.userPerms["user1"] = []string{"devices:read", "users:delete"}
-	store.CreateOAuthClient(ctx, &model.OAuthClient{
+	_ = store.CreateOAuthClient(ctx, &model.OAuthClient{
 		ID:           "client1",
 		Name:         "Test Client",
 		RedirectURIs: []string{"http://localhost/cb"},

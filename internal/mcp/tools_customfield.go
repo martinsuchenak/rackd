@@ -10,8 +10,7 @@ import (
 
 func (s *Server) registerCustomFieldTools() {
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("custom_field_list", "List custom field definitions",
-		).Discoverable("custom", "field", "definition", "metadata", "attribute"),
+		mcp.NewTool("custom_field_list", "List custom field definitions").Discoverable("custom", "field", "definition", "metadata", "attribute"),
 		s.handleCustomFieldList,
 	)
 

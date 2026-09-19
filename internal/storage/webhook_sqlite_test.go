@@ -14,7 +14,7 @@ import (
 
 func TestWebhookOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	webhook := &model.Webhook{
 		Name:        "test-webhook",
@@ -73,7 +73,7 @@ func TestWebhookOperations_CreateAndGet(t *testing.T) {
 
 func TestWebhookOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetWebhook(context.Background(), "non-existent-id")
 	if err != ErrWebhookNotFound {
@@ -83,7 +83,7 @@ func TestWebhookOperations_GetNotFound(t *testing.T) {
 
 func TestWebhookOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -134,7 +134,7 @@ func TestWebhookOperations_Update(t *testing.T) {
 
 func TestWebhookOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	webhook := &model.Webhook{
 		ID:     "non-existent-id",
@@ -151,7 +151,7 @@ func TestWebhookOperations_UpdateNotFound(t *testing.T) {
 
 func TestWebhookOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -178,7 +178,7 @@ func TestWebhookOperations_Delete(t *testing.T) {
 
 func TestWebhookOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteWebhook(context.Background(), "non-existent-id")
 	if err != ErrWebhookNotFound {
@@ -188,7 +188,7 @@ func TestWebhookOperations_DeleteNotFound(t *testing.T) {
 
 func TestWebhookOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple webhooks
 	webhooks := []struct {
@@ -225,19 +225,19 @@ func TestWebhookOperations_ListAll(t *testing.T) {
 
 func TestWebhookOperations_ListWithActiveFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhooks with different active states
 	active := true
 	inactive := false
 
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "active-1", URL: "https://example.com/1", Events: []model.EventType{model.EventTypeDeviceCreated}, Active: true,
 	})
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "active-2", URL: "https://example.com/2", Events: []model.EventType{model.EventTypeDeviceCreated}, Active: true,
 	})
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "inactive-1", URL: "https://example.com/3", Events: []model.EventType{model.EventTypeDeviceCreated}, Active: false,
 	})
 
@@ -262,20 +262,20 @@ func TestWebhookOperations_ListWithActiveFilter(t *testing.T) {
 
 func TestWebhookOperations_GetWebhooksForEvent(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhooks with different event subscriptions
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "device-webhook", URL: "https://example.com/device",
 		Events: []model.EventType{model.EventTypeDeviceCreated, model.EventTypeDeviceUpdated},
 		Active: true,
 	})
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "network-webhook", URL: "https://example.com/network",
 		Events: []model.EventType{model.EventTypeNetworkCreated},
 		Active: true,
 	})
-	storage.CreateWebhook(context.Background(), &model.Webhook{
+	_ = storage.CreateWebhook(context.Background(), &model.Webhook{
 		Name: "inactive-webhook", URL: "https://example.com/inactive",
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: false,
@@ -311,7 +311,7 @@ func TestWebhookOperations_GetWebhooksForEvent(t *testing.T) {
 
 func TestDeliveryOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook first
 	webhook := &model.Webhook{
@@ -367,7 +367,7 @@ func TestDeliveryOperations_CreateAndGet(t *testing.T) {
 
 func TestDeliveryOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDelivery(context.Background(), "non-existent-id")
 	if err != ErrDeliveryNotFound {
@@ -377,7 +377,7 @@ func TestDeliveryOperations_GetNotFound(t *testing.T) {
 
 func TestDeliveryOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook and delivery
 	webhook := &model.Webhook{
@@ -386,7 +386,7 @@ func TestDeliveryOperations_Update(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	delivery := &model.WebhookDelivery{
 		WebhookID: webhook.ID,
@@ -394,7 +394,7 @@ func TestDeliveryOperations_Update(t *testing.T) {
 		Payload:   `{"test": "data"}`,
 		Status:    model.DeliveryStatusPending,
 	}
-	storage.CreateDelivery(context.Background(), delivery)
+	_ = storage.CreateDelivery(context.Background(), delivery)
 
 	// Update delivery
 	delivery.Status = model.DeliveryStatusSuccess
@@ -426,7 +426,7 @@ func TestDeliveryOperations_Update(t *testing.T) {
 
 func TestDeliveryOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	delivery := &model.WebhookDelivery{
 		ID:     "non-existent-id",
@@ -441,7 +441,7 @@ func TestDeliveryOperations_UpdateNotFound(t *testing.T) {
 
 func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -450,18 +450,18 @@ func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated, model.EventTypeNetworkCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create deliveries with different statuses
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusSuccess,
 	})
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusFailed,
 	})
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeNetworkCreated,
 		Payload: `{}`, Status: model.DeliveryStatusSuccess,
 	})
@@ -496,7 +496,7 @@ func TestDeliveryOperations_ListWithFilter(t *testing.T) {
 
 func TestDeliveryOperations_ListWithLimit(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -505,11 +505,11 @@ func TestDeliveryOperations_ListWithLimit(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create multiple deliveries
 	for i := 0; i < 10; i++ {
-		storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+		_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 			WebhookID: webhook.ID,
 			EventType: model.EventTypeDeviceCreated,
 			Payload:   `{}`,
@@ -529,7 +529,7 @@ func TestDeliveryOperations_ListWithLimit(t *testing.T) {
 
 func TestDeliveryOperations_GetPendingDeliveries(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -538,7 +538,7 @@ func TestDeliveryOperations_GetPendingDeliveries(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create deliveries with different statuses
 	// Use UTC times formatted as RFC3339 for proper SQLite string comparison
@@ -546,28 +546,28 @@ func TestDeliveryOperations_GetPendingDeliveries(t *testing.T) {
 	futureTime := time.Now().UTC().Add(1 * time.Hour)
 
 	// Pending delivery ready for retry
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusPending,
 		NextRetry: &pastTime,
 	})
 
 	// Retrying delivery ready for retry
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusRetrying,
 		NextRetry: &pastTime,
 	})
 
 	// Pending delivery not ready yet
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusPending,
 		NextRetry: &futureTime,
 	})
 
 	// Successful delivery (should not be returned)
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID, EventType: model.EventTypeDeviceCreated,
 		Payload: `{}`, Status: model.DeliveryStatusSuccess,
 	})
@@ -586,7 +586,7 @@ func TestDeliveryOperations_GetPendingDeliveries(t *testing.T) {
 
 func TestDeliveryOperations_DeleteOldDeliveries(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -595,11 +595,11 @@ func TestDeliveryOperations_DeleteOldDeliveries(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create some deliveries
 	for i := 0; i < 5; i++ {
-		storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+		_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 			WebhookID: webhook.ID,
 			EventType: model.EventTypeDeviceCreated,
 			Payload:   `{}`,
@@ -625,7 +625,7 @@ func TestDeliveryOperations_DeleteOldDeliveries(t *testing.T) {
 
 func TestWebhookOperations_DeleteCascadesToDeliveries(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -634,10 +634,10 @@ func TestWebhookOperations_DeleteCascadesToDeliveries(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create deliveries
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID,
 		EventType: model.EventTypeDeviceCreated,
 		Payload:   `{}`,
@@ -661,7 +661,7 @@ func TestWebhookOperations_DeleteCascadesToDeliveries(t *testing.T) {
 
 func TestDeliveryOperations_ListWithTimeFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create webhook
 	webhook := &model.Webhook{
@@ -670,10 +670,10 @@ func TestDeliveryOperations_ListWithTimeFilter(t *testing.T) {
 		Events: []model.EventType{model.EventTypeDeviceCreated},
 		Active: true,
 	}
-	storage.CreateWebhook(context.Background(), webhook)
+	_ = storage.CreateWebhook(context.Background(), webhook)
 
 	// Create delivery
-	storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
+	_ = storage.CreateDelivery(context.Background(), &model.WebhookDelivery{
 		WebhookID: webhook.ID,
 		EventType: model.EventTypeDeviceCreated,
 		Payload:   `{}`,

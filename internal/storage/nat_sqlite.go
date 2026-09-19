@@ -148,7 +148,7 @@ func (s *SQLiteStorage) ListNATMappings(ctx context.Context, filter *model.NATFi
 	if err != nil {
 		return nil, fmt.Errorf("failed to list NAT mappings: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var mappings []model.NATMapping
 	for rows.Next() {

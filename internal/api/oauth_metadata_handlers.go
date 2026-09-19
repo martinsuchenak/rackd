@@ -9,10 +9,10 @@ import (
 func (h *Handler) oauthProtectedResource(w http.ResponseWriter, r *http.Request) {
 	issuerURL := h.svc.OAuth.IssuerURL()
 	h.writeJSON(w, http.StatusOK, map[string]any{
-		"resource":                issuerURL + "/mcp",
-		"authorization_servers":   []string{issuerURL},
+		"resource":                 issuerURL + "/mcp",
+		"authorization_servers":    []string{issuerURL},
 		"bearer_methods_supported": []string{"header"},
-		"scopes_supported":        h.svc.OAuth.GetAllScopes(),
+		"scopes_supported":         h.svc.OAuth.GetAllScopes(),
 	})
 }
 

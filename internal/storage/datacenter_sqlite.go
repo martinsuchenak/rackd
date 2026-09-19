@@ -56,7 +56,7 @@ func (s *SQLiteStorage) ListDatacenters(ctx context.Context, filter *model.Datac
 	if err != nil {
 		return nil, fmt.Errorf("failed to list datacenters: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var datacenters []model.Datacenter
 	for rows.Next() {
@@ -96,7 +96,7 @@ func (s *SQLiteStorage) SearchDatacenters(ctx context.Context, query string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to search datacenters: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var datacenters []model.Datacenter
 	for rows.Next() {

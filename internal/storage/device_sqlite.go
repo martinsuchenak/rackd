@@ -96,7 +96,7 @@ func (s *SQLiteStorage) getDeviceAddresses(ctx context.Context, deviceID string)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var addresses []model.Address
 	for rows.Next() {
@@ -135,7 +135,7 @@ func (s *SQLiteStorage) getDeviceTags(ctx context.Context, deviceID string) ([]s
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tags []string
 	for rows.Next() {
@@ -159,7 +159,7 @@ func (s *SQLiteStorage) getDeviceDomains(ctx context.Context, deviceID string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var domains []string
 	for rows.Next() {
@@ -187,7 +187,7 @@ func (s *SQLiteStorage) CreateDevice(ctx context.Context, device *model.Device) 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.createDeviceInTx(ctx, tx, device); err != nil {
 		return err
@@ -348,7 +348,7 @@ func (s *SQLiteStorage) UpdateDevice(ctx context.Context, device *model.Device) 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.updateDeviceInTx(ctx, tx, device); err != nil {
 		return err
@@ -444,7 +444,7 @@ func (s *SQLiteStorage) DeleteDevice(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.deleteDeviceInTx(ctx, tx, id); err != nil {
 		return err
@@ -546,7 +546,7 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []model.Device
 	for rows.Next() {
@@ -654,7 +654,7 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 	if err != nil {
 		return nil, fmt.Errorf("failed to search devices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []model.Device
 	for rows.Next() {
@@ -726,7 +726,7 @@ func (s *SQLiteStorage) GetDeviceStatusCounts(ctx context.Context) (map[model.De
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device status counts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	counts := make(map[model.DeviceStatus]int)
 	for rows.Next() {

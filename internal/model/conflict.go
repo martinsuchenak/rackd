@@ -6,7 +6,7 @@ import "time"
 type ConflictType string
 
 const (
-	ConflictTypeDuplicateIP    ConflictType = "duplicate_ip"
+	ConflictTypeDuplicateIP       ConflictType = "duplicate_ip"
 	ConflictTypeOverlappingSubnet ConflictType = "overlapping_subnet"
 )
 
@@ -16,20 +16,20 @@ type ConflictStatus string
 const (
 	ConflictStatusActive   ConflictStatus = "active"
 	ConflictStatusResolved ConflictStatus = "resolved"
-	ConflictStatusIgnored ConflictStatus = "ignored"
+	ConflictStatusIgnored  ConflictStatus = "ignored"
 )
 
 // Conflict represents an IP address or subnet conflict
 type Conflict struct {
-	ID          string        `json:"id"`
-	Type        ConflictType  `json:"type"`
+	ID          string         `json:"id"`
+	Type        ConflictType   `json:"type"`
 	Status      ConflictStatus `json:"status"`
-	Description string        `json:"description"`
+	Description string         `json:"description"`
 
 	// For duplicate IP conflicts
-	IPAddress    string   `json:"ip_address,omitempty"`
-	DeviceIDs    []string `json:"device_ids,omitempty"`
-	DeviceNames  []string `json:"device_names,omitempty"`
+	IPAddress   string   `json:"ip_address,omitempty"`
+	DeviceIDs   []string `json:"device_ids,omitempty"`
+	DeviceNames []string `json:"device_names,omitempty"`
 
 	// For overlapping subnet conflicts
 	NetworkIDs   []string `json:"network_ids,omitempty"`
@@ -37,10 +37,10 @@ type Conflict struct {
 	Subnets      []string `json:"subnets,omitempty"`
 
 	// Metadata
-	DetectedAt  time.Time  `json:"detected_at"`
-	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
-	ResolvedBy   string     `json:"resolved_by,omitempty"`
-	Notes        string     `json:"notes,omitempty"`
+	DetectedAt time.Time  `json:"detected_at"`
+	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
+	ResolvedBy string     `json:"resolved_by,omitempty"`
+	Notes      string     `json:"notes,omitempty"`
 }
 
 // ConflictFilter defines filter criteria for listing conflicts

@@ -10,7 +10,7 @@ import (
 
 func TestAPIKeyOperations(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 
@@ -88,7 +88,7 @@ func TestAPIKeyOperations(t *testing.T) {
 
 func TestAPIKeyExpiration(t *testing.T) {
 	store := newTestStorage(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	expired := time.Now().Add(-1 * time.Hour)
 	key := &model.APIKey{

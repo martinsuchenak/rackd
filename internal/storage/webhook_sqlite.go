@@ -93,7 +93,7 @@ func (s *SQLiteStorage) ListWebhooks(ctx context.Context, filter *model.WebhookF
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return s.scanWebhooks(rows)
 }
@@ -164,7 +164,7 @@ func (s *SQLiteStorage) GetWebhooksForEvent(ctx context.Context, eventType model
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	webhooks, err := s.scanWebhooks(rows)
 	if err != nil {
@@ -254,7 +254,7 @@ func (s *SQLiteStorage) ListDeliveries(ctx context.Context, filter *model.Delive
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanDeliveries(rows)
 }
@@ -304,7 +304,7 @@ func (s *SQLiteStorage) GetPendingDeliveries(ctx context.Context, limit int) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanDeliveries(rows)
 }

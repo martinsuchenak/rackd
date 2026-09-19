@@ -35,7 +35,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 		}
 
 		w.Header().Set("Content-Type", contentType(path))
-		w.Write(data)
+		_, _ = w.Write(data)
 	})
 }
 

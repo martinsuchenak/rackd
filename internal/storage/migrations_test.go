@@ -14,7 +14,7 @@ func TestRunMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -66,7 +66,7 @@ func TestMigrationsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -97,7 +97,7 @@ func TestMigrationTableSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -137,7 +137,7 @@ func TestForeignKeyConstraints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -165,7 +165,7 @@ func TestForeignKeyConstraints(t *testing.T) {
 	// This should fail due to foreign key constraint
 	if err == nil {
 		// Clean up and report
-		db.Exec("DELETE FROM devices WHERE id = 'test-id'")
+		_, _ = db.Exec("DELETE FROM devices WHERE id = 'test-id'")
 		t.Log("Foreign key constraint not enforced for datacenter_id (expected when datacenter doesn't exist)")
 	}
 }
@@ -176,7 +176,7 @@ func TestIndexesCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 

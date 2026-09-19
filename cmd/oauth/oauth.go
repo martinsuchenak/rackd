@@ -36,13 +36,15 @@ func listCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var clients []map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&clients)
+			if err := json.NewDecoder(resp.Body).Decode(&clients); err != nil {
+				return err
+			}
 
 			if cmd.GetString("output") == "json" {
 				client.PrintJSON(clients)
@@ -50,7 +52,7 @@ func listCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "CLIENT ID\tNAME\tGRANT TYPES\tCONFIDENTIAL\tCREATED")
+			_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tGRANT TYPES\tCONFIDENTIAL\tCREATED")
 			for _, cl := range clients {
 				grants := ""
 				if g, ok := cl["grant_types"].([]interface{}); ok {
@@ -61,14 +63,14 @@ func listCommand() *cli.Command {
 						grants += fmt.Sprint(v)
 					}
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n",
 					client.GetString(cl, "client_id"),
 					client.GetString(cl, "client_name"),
 					grants,
 					cl["is_confidential"],
 					client.GetString(cl, "created_at"))
 			}
-			w.Flush()
+			_ = w.Flush()
 			return nil
 		},
 	}
@@ -87,7 +89,7 @@ func deleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
 			}

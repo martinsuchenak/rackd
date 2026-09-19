@@ -31,23 +31,23 @@ func DeleteCommand() *cli.Command {
 			}
 
 			if resp.StatusCode == http.StatusNotFound {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				return fmt.Errorf("custom field not found: %s", id)
 			}
 
 			var field map[string]interface{}
 			if err := json.NewDecoder(resp.Body).Decode(&field); err != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				return err
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			// Confirm deletion unless --force is set
 			if !cmd.GetBool("force") {
 				fmt.Printf("Are you sure you want to delete custom field '%s' (key: %s)? [y/N]: ",
 					field["name"], field["key"])
 				var confirm string
-				fmt.Scanln(&confirm)
+				_, _ = fmt.Scanln(&confirm)
 				if confirm != "y" && confirm != "Y" {
 					fmt.Println("Cancelled")
 					return nil
@@ -58,7 +58,7 @@ func DeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)

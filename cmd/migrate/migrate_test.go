@@ -51,13 +51,13 @@ func TestOpenDBWithRealFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp db: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	db, err := openDB(tmpDir)
 	if err != nil {
 		t.Fatalf("openDB failed: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := db.Ping(); err != nil {
 		t.Errorf("ping failed: %v", err)

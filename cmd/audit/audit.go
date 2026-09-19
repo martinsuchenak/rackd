@@ -44,7 +44,7 @@ func listCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer store.Close()
+			defer func() { _ = store.Close() }()
 
 			svc := service.NewServices(store, nil, nil)
 
@@ -67,10 +67,10 @@ func listCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "TIMESTAMP\tACTION\tRESOURCE\tRESOURCE_ID\tUSER\tIP\tSTATUS")
+			_, _ = fmt.Fprintln(w, "TIMESTAMP\tACTION\tRESOURCE\tRESOURCE_ID\tUSER\tIP\tSTATUS")
 
 			for _, log := range logs {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 					log.Timestamp.Format(time.RFC3339),
 					log.Action,
 					log.Resource,
@@ -106,7 +106,7 @@ func exportCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer store.Close()
+			defer func() { _ = store.Close() }()
 
 			svc := service.NewServices(store, nil, nil)
 

@@ -45,11 +45,12 @@ func DevicesCommand() *cli.Command {
 			// Auto-detect format from extension
 			if format == "" {
 				ext := strings.ToLower(filepath.Ext(filename))
-				if ext == ".json" {
+				switch ext {
+				case ".json":
 					format = "json"
-				} else if ext == ".csv" {
+				case ".csv":
 					format = "csv"
-				} else {
+				default:
 					return fmt.Errorf("cannot auto-detect format, please specify --format")
 				}
 			}
@@ -59,7 +60,7 @@ func DevicesCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open file: %w", err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			// Parse devices
 			var devices []model.Device
@@ -94,7 +95,7 @@ func DevicesCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return fmt.Errorf("bulk import failed: HTTP %d", resp.StatusCode)
@@ -149,11 +150,12 @@ func NetworksCommand() *cli.Command {
 
 			if format == "" {
 				ext := strings.ToLower(filepath.Ext(filename))
-				if ext == ".json" {
+				switch ext {
+				case ".json":
 					format = "json"
-				} else if ext == ".csv" {
+				case ".csv":
 					format = "csv"
-				} else {
+				default:
 					return fmt.Errorf("cannot auto-detect format, please specify --format")
 				}
 			}
@@ -162,7 +164,7 @@ func NetworksCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open file: %w", err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			var networks []model.Network
 			if format == "json" {
@@ -195,7 +197,7 @@ func NetworksCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return fmt.Errorf("bulk import failed: HTTP %d", resp.StatusCode)
@@ -249,11 +251,12 @@ func DatacentersCommand() *cli.Command {
 
 			if format == "" {
 				ext := strings.ToLower(filepath.Ext(filename))
-				if ext == ".json" {
+				switch ext {
+				case ".json":
 					format = "json"
-				} else if ext == ".csv" {
+				case ".csv":
 					format = "csv"
-				} else {
+				default:
 					return fmt.Errorf("cannot auto-detect format, please specify --format")
 				}
 			}
@@ -262,7 +265,7 @@ func DatacentersCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open file: %w", err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			var datacenters []model.Datacenter
 			if format == "json" {
@@ -293,7 +296,7 @@ func DatacentersCommand() *cli.Command {
 					result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", datacenter.Name, err))
 					continue
 				}
-				resp.Body.Close()
+				_ = resp.Body.Close()
 
 				if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
 					result.Created++

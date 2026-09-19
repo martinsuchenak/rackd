@@ -22,24 +22,23 @@ func TestNetBIOSScanner_Discover(t *testing.T) {
 	scanner := NewNetBIOSScanner(1 * time.Second)
 
 	// Test with empty network
-	results, err := scanner.Discover(context.Background(), "")
+	_, err := scanner.Discover(context.Background(), "")
 	if err == nil {
 		t.Error("Expected error for empty network, got nil")
 	}
 
 	// Test with invalid network
-	results, err = scanner.Discover(context.Background(), "invalid")
+	_, err = scanner.Discover(context.Background(), "invalid")
 	if err == nil {
 		t.Error("Expected error for invalid network, got nil")
 	}
 
 	// Test with valid network (may not find anything)
-	results, err = scanner.Discover(context.Background(), "127.0.0.0/8")
+	_, err = scanner.Discover(context.Background(), "127.0.0.0/8")
 	// May not find anything in local network
 	if err != nil {
 		t.Logf("Discover returned error (may be expected): %v", err)
 	}
-	_ = results // Use results
 }
 
 func TestNetBIOSScanner_BuildNBNSQuery(t *testing.T) {

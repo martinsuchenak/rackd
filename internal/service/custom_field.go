@@ -320,11 +320,15 @@ func isValidFieldKey(key string) bool {
 		return false
 	}
 	for _, c := range key {
-		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') {
+		if !isLowerAlnumUnderscore(c) {
 			return false
 		}
 	}
 	return true
+}
+
+func isLowerAlnumUnderscore(c rune) bool {
+	return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 func validateCustomFieldValue(def *model.CustomFieldDefinition, value interface{}) error {

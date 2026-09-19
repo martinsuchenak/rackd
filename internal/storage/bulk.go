@@ -23,7 +23,7 @@ func (s *SQLiteStorage) BulkCreateDevices(ctx context.Context, devices []*model.
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, device := range devices {
 		if err := s.createDeviceInTx(ctx, tx, device); err != nil {
@@ -50,7 +50,7 @@ func (s *SQLiteStorage) BulkUpdateDevices(ctx context.Context, devices []*model.
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, device := range devices {
 		if err := s.updateDeviceInTx(ctx, tx, device); err != nil {
@@ -77,7 +77,7 @@ func (s *SQLiteStorage) BulkDeleteDevices(ctx context.Context, ids []string) (*B
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range ids {
 		if err := s.deleteDeviceInTx(ctx, tx, id); err != nil {
@@ -104,7 +104,7 @@ func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tag
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
 		// Get existing tags within transaction
@@ -119,14 +119,14 @@ func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tag
 		for rows.Next() {
 			var tag string
 			if err := rows.Scan(&tag); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				result.Failed++
 				result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 				continue
 			}
 			existingTags[tag] = true
 		}
-		rows.Close()
+		_ = rows.Close()
 
 		// Add new tags
 		for _, tag := range tags {
@@ -158,7 +158,7 @@ func (s *SQLiteStorage) BulkRemoveTags(ctx context.Context, deviceIDs []string, 
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
 		// Delete specified tags
@@ -189,7 +189,7 @@ func (s *SQLiteStorage) BulkCreateNetworks(ctx context.Context, networks []*mode
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, network := range networks {
 		if err := s.createNetworkInTx(ctx, tx, network); err != nil {
@@ -216,7 +216,7 @@ func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range ids {
 		if err := s.deleteNetworkInTx(ctx, tx, id); err != nil {

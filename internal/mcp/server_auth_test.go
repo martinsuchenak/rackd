@@ -9,7 +9,7 @@ import (
 
 func TestHandleRequestOptionsBypassesAuth(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	req := httptest.NewRequest(http.MethodOptions, "/mcp", nil)
 	w := httptest.NewRecorder()
@@ -23,7 +23,7 @@ func TestHandleRequestOptionsBypassesAuth(t *testing.T) {
 
 func TestWriteUnauthorizedHeaders(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	w := httptest.NewRecorder()
 	srv.writeUnauthorized(w)
@@ -41,7 +41,7 @@ func TestWriteUnauthorizedHeaders(t *testing.T) {
 
 func TestHandleRequestWithAuthMalformedBearer(t *testing.T) {
 	srv, store := newTestServerWithAuth(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(reqBody))

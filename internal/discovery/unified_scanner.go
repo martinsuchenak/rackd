@@ -39,7 +39,7 @@ type UnifiedScanner struct {
 func NewUnifiedScanner(store storage.ExtendedStorage, credStore credentials.Storage, timeout time.Duration, snmpV2cEnabled bool) *UnifiedScanner {
 	arpScanner := NewARPScanner()
 	// Load ARP table asynchronously to avoid blocking server startup
-	go arpScanner.LoadARPTable()
+	go func() { _ = arpScanner.LoadARPTable() }()
 
 	return &UnifiedScanner{
 		storage:         store,
@@ -264,7 +264,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	var scanMu sync.Mutex
 
 	// Refresh ARP table before scanning to get recent MAC addresses.
-	s.arpScanner.Refresh()
+	_ = s.arpScanner.Refresh()
 	// Keep re-reading the ARP table during the scan: probing hosts populates
 	// the host's ARP cache as a side effect, and a single pre-scan snapshot
 	// misses every device the host had not talked to yet.
@@ -282,7 +282,7 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 			case <-scanCtx.Done():
 				return
 			case <-ticker.C:
-				s.arpScanner.Refresh()
+				_ = s.arpScanner.Refresh()
 			}
 		}
 	}()
@@ -471,7 +471,7 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 				if nb.Hostname != "" && len(nb.Hostname) >= 3 && len(nb.Hostname) <= 15 {
 					hasValidChars := true
 					for _, c := range nb.Hostname {
-						if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+						if !isNetBIOSHostnameChar(c) {
 							hasValidChars = false
 							break
 						}
@@ -585,7 +585,7 @@ func (s *UnifiedScanner) scanPorts(ip string, ports []int, timeout time.Duration
 	for _, port := range ports {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 			open = append(open, port)
 		}
 	}
@@ -618,4 +618,10 @@ func (opts *ScanOptions) getPorts() []int {
 	default:
 		return []int{22, 80, 443, 3389}
 	}
+}
+
+// isNetBIOSHostnameChar reports whether c is valid in a NetBIOS hostname:
+// uppercase, lowercase, digits, or hyphen.
+func isNetBIOSHostnameChar(c rune) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'
 }

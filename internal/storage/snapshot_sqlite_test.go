@@ -14,7 +14,7 @@ import (
 
 func TestSnapshotOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network for reference
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
@@ -72,11 +72,11 @@ func TestSnapshotOperations_CreateAndGet(t *testing.T) {
 
 func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create pool
 	pool := &model.NetworkPool{
@@ -85,19 +85,19 @@ func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create snapshots for different resources
 	now := time.Now().UTC()
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 		TotalIPs: 254, UsedIPs: 100, Utilization: 39.37, Timestamp: now,
 	})
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypePool, ResourceID: pool.ID, ResourceName: pool.Name,
 		TotalIPs: 101, UsedIPs: 50, Utilization: 49.5, Timestamp: now,
 	})
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 		TotalIPs: 254, UsedIPs: 110, Utilization: 43.31, Timestamp: now.Add(-1 * time.Hour),
 	})
@@ -131,17 +131,17 @@ func TestSnapshotOperations_ListWithFilter(t *testing.T) {
 
 func TestSnapshotOperations_ListWithTimeFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create snapshots at different times
 	now := time.Now().UTC()
 	times := []time.Duration{0, -1 * time.Hour, -2 * time.Hour, -24 * time.Hour}
 	for i, offset := range times {
-		storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+		_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 			Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 			TotalIPs: 254, UsedIPs: 100 + i, Utilization: 39.37, Timestamp: now.Add(offset),
 		})
@@ -172,16 +172,16 @@ func TestSnapshotOperations_ListWithTimeFilter(t *testing.T) {
 
 func TestSnapshotOperations_ListWithLimit(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create multiple snapshots
 	now := time.Now().UTC()
 	for i := range 10 {
-		storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+		_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 			Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 			TotalIPs: 254, UsedIPs: 100, Utilization: 39.37, Timestamp: now.Add(time.Duration(i) * time.Minute),
 		})
@@ -199,30 +199,30 @@ func TestSnapshotOperations_ListWithLimit(t *testing.T) {
 
 func TestSnapshotOperations_GetLatestSnapshots(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks
 	network1 := &model.Network{Name: "Network 1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Network 2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
 	// Create snapshots at different times for each network
 	now := time.Now().UTC()
 
 	// Network 1: older snapshot
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network1.ID, ResourceName: network1.Name,
 		TotalIPs: 254, UsedIPs: 100, Utilization: 39.37, Timestamp: now.Add(-2 * time.Hour),
 	})
 	// Network 1: newer snapshot
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network1.ID, ResourceName: network1.Name,
 		TotalIPs: 254, UsedIPs: 110, Utilization: 43.31, Timestamp: now.Add(-1 * time.Hour),
 	})
 
 	// Network 2: only one snapshot
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network2.ID, ResourceName: network2.Name,
 		TotalIPs: 254, UsedIPs: 50, Utilization: 19.69, Timestamp: now,
 	})
@@ -251,21 +251,21 @@ func TestSnapshotOperations_GetLatestSnapshots(t *testing.T) {
 
 func TestSnapshotOperations_DeleteOldSnapshots(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create snapshots at different times
 	now := time.Now().UTC()
 	// Recent snapshot (should be kept)
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 		TotalIPs: 254, UsedIPs: 100, Utilization: 39.37, Timestamp: now.Add(-1 * time.Hour),
 	})
 	// Old snapshot (should be deleted)
-	storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+	_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 		Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 		TotalIPs: 254, UsedIPs: 90, Utilization: 35.43, Timestamp: now.Add(-8 * 24 * time.Hour),
 	})
@@ -291,16 +291,16 @@ func TestSnapshotOperations_DeleteOldSnapshots(t *testing.T) {
 
 func TestSnapshotOperations_GetUtilizationTrend(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Test Network", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create snapshots over time
 	now := time.Now().UTC()
 	for i := range 10 {
-		storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
+		_ = storage.CreateSnapshot(context.Background(), &model.UtilizationSnapshot{
 			Type: model.SnapshotTypeNetwork, ResourceID: network.ID, ResourceName: network.Name,
 			TotalIPs: 254, UsedIPs: 100 + i, Utilization: float64(100+i) / 254 * 100,
 			Timestamp: now.Add(time.Duration(-i) * 24 * time.Hour),
@@ -328,7 +328,7 @@ func TestSnapshotOperations_GetUtilizationTrend(t *testing.T) {
 
 func TestSnapshotOperations_GetUtilizationTrendEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Get trend for non-existent resource
 	trend, err := storage.GetUtilizationTrend(context.Background(), model.SnapshotTypeNetwork, "non-existent-id", 30)
@@ -347,7 +347,7 @@ func TestSnapshotOperations_GetUtilizationTrendEmpty(t *testing.T) {
 
 func TestDashboardStats_EmptyDatabase(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
@@ -374,7 +374,7 @@ func TestDashboardStats_EmptyDatabase(t *testing.T) {
 
 func TestDashboardStats_WithDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with different statuses
 	devices := []*model.Device{
@@ -388,7 +388,7 @@ func TestDashboardStats_WithDevices(t *testing.T) {
 	}
 
 	for _, d := range devices {
-		storage.CreateDevice(context.Background(), d)
+		_ = storage.CreateDevice(context.Background(), d)
 	}
 
 	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
@@ -415,17 +415,17 @@ func TestDashboardStats_WithDevices(t *testing.T) {
 
 func TestDashboardStats_WithNetworksAndPools(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "DC1"}
-	storage.CreateDatacenter(context.Background(), dc)
+	_ = storage.CreateDatacenter(context.Background(), dc)
 
 	// Create networks
 	network1 := &model.Network{Name: "Network 1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Network 2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
 	// Create pool
 	pool := &model.NetworkPool{
@@ -434,7 +434,7 @@ func TestDashboardStats_WithNetworksAndPools(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
@@ -455,22 +455,22 @@ func TestDashboardStats_WithNetworksAndPools(t *testing.T) {
 
 func TestDashboardStats_WithDiscoveredDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network 1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create discovered devices
 	now := time.Now().UTC()
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
 		IP:        "192.168.1.100",
 		Hostname:  "device1",
 		NetworkID: network.ID,
 		FirstSeen: now,
 		LastSeen:  now,
 	})
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
 		IP:        "192.168.1.101",
 		Hostname:  "device2",
 		NetworkID: network.ID,
@@ -493,16 +493,16 @@ func TestDashboardStats_WithDiscoveredDevices(t *testing.T) {
 
 func TestDashboardStats_RecentDiscoveriesLimit(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network 1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create more discovered devices than the limit
 	now := time.Now().UTC()
 	for i := range 20 {
-		storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
+		_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{
 			IP:        "192.168.1.100",
 			Hostname:  "device",
 			NetworkID: network.ID,
@@ -523,11 +523,11 @@ func TestDashboardStats_RecentDiscoveriesLimit(t *testing.T) {
 
 func TestDashboardStats_StaleDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create active device - this will be stale since no discovered device is linked
 	device := &model.Device{Name: "active-device", Status: model.DeviceStatusActive}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	stats, err := storage.GetDashboardStats(context.Background(), 7, 10)
 	if err != nil {
@@ -545,11 +545,11 @@ func TestDashboardStats_StaleDevices(t *testing.T) {
 
 func TestDashboardStats_NetworkUtilization(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network 1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create pool with addresses
 	pool := &model.NetworkPool{
@@ -558,10 +558,10 @@ func TestDashboardStats_NetworkUtilization(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create device with address in the network
-	storage.CreateDevice(context.Background(), &model.Device{
+	_ = storage.CreateDevice(context.Background(), &model.Device{
 		Name: "device1",
 		Addresses: []model.Address{
 			{IP: "192.168.1.100", Type: "ipv4", NetworkID: network.ID, PoolID: pool.ID},

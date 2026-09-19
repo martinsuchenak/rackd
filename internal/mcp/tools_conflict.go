@@ -20,8 +20,7 @@ func (s *Server) registerConflictTools() {
 	)
 
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("conflict_detect", "Run conflict detection (duplicate IPs and overlapping subnets)",
-		).Discoverable("conflict", "detect", "scan", "duplicate", "ip", "subnet", "overlap"),
+		mcp.NewTool("conflict_detect", "Run conflict detection (duplicate IPs and overlapping subnets)").Discoverable("conflict", "detect", "scan", "duplicate", "ip", "subnet", "overlap"),
 		s.handleConflictDetect,
 	)
 

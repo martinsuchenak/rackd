@@ -167,19 +167,19 @@ func (h *Handler) getEventTypes(w http.ResponseWriter, r *http.Request) {
 // getEventLabel returns a human-readable label for an event type
 func getEventLabel(et model.EventType) string {
 	labels := map[model.EventType]string{
-		model.EventTypeDeviceCreated:     "Device Created",
-		model.EventTypeDeviceUpdated:     "Device Updated",
-		model.EventTypeDeviceDeleted:     "Device Deleted",
-		model.EventTypeDevicePromoted:    "Device Promoted",
-		model.EventTypeNetworkCreated:    "Network Created",
-		model.EventTypeNetworkUpdated:    "Network Updated",
-		model.EventTypeNetworkDeleted:    "Network Deleted",
-		model.EventTypeDiscoveryStarted:  "Discovery Started",
+		model.EventTypeDeviceCreated:      "Device Created",
+		model.EventTypeDeviceUpdated:      "Device Updated",
+		model.EventTypeDeviceDeleted:      "Device Deleted",
+		model.EventTypeDevicePromoted:     "Device Promoted",
+		model.EventTypeNetworkCreated:     "Network Created",
+		model.EventTypeNetworkUpdated:     "Network Updated",
+		model.EventTypeNetworkDeleted:     "Network Deleted",
+		model.EventTypeDiscoveryStarted:   "Discovery Started",
 		model.EventTypeDiscoveryCompleted: "Discovery Completed",
-		model.EventTypeDeviceDiscovered:  "Device Discovered",
-		model.EventTypeConflictDetected:  "Conflict Detected",
-		model.EventTypeConflictResolved:  "Conflict Resolved",
-		model.EventTypePoolUtilization:   "Pool Utilization High",
+		model.EventTypeDeviceDiscovered:   "Device Discovered",
+		model.EventTypeConflictDetected:   "Conflict Detected",
+		model.EventTypeConflictResolved:   "Conflict Resolved",
+		model.EventTypePoolUtilization:    "Pool Utilization High",
 	}
 	if label, ok := labels[et]; ok {
 		return label

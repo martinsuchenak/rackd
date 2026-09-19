@@ -34,11 +34,11 @@ func CreateCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			req := map[string]interface{}{
-				"name":         cmd.GetString("name"),
-				"circuit_id":   cmd.GetString("circuit-id"),
-				"provider":     cmd.GetString("provider"),
-				"type":         cmd.GetString("type"),
-				"status":       cmd.GetString("status"),
+				"name":          cmd.GetString("name"),
+				"circuit_id":    cmd.GetString("circuit-id"),
+				"provider":      cmd.GetString("provider"),
+				"type":          cmd.GetString("type"),
+				"status":        cmd.GetString("status"),
 				"capacity_mbps": cmd.GetInt("capacity"),
 			}
 
@@ -68,7 +68,7 @@ func CreateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)

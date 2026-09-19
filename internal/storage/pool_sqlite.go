@@ -43,7 +43,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Insert pool
 	_, err = tx.ExecContext(ctx, `
@@ -86,7 +86,7 @@ func (s *SQLiteStorage) getPoolTags(ctx context.Context, poolID string) ([]strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tags []string
 	for rows.Next() {
@@ -150,7 +150,7 @@ func (s *SQLiteStorage) UpdateNetworkPool(ctx context.Context, pool *model.Netwo
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Check if pool exists
 	var exists bool
@@ -200,7 +200,7 @@ func (s *SQLiteStorage) DeleteNetworkPool(ctx context.Context, id string) error 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Check if pool exists
 	var exists bool
@@ -270,7 +270,7 @@ func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.Netw
 	if err != nil {
 		return nil, fmt.Errorf("failed to list network pools: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var pools []model.NetworkPool
 	for rows.Next() {
@@ -316,7 +316,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Get the pool
 	pool, err := s.getNetworkPoolTx(ctx, tx, poolID)
@@ -347,7 +347,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 	if err != nil {
 		return "", fmt.Errorf("failed to query used IPs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var ip string
@@ -516,7 +516,7 @@ func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IP
 	if err != nil {
 		return nil, fmt.Errorf("failed to query addresses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var ip, deviceID string
@@ -538,7 +538,7 @@ func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IP
 	if err != nil {
 		return nil, fmt.Errorf("failed to query reservations: %w", err)
 	}
-	defer resRows.Close()
+	defer func() { _ = resRows.Close() }()
 
 	for resRows.Next() {
 		var ip, reservationID string

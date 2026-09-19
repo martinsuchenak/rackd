@@ -23,7 +23,7 @@ func (s *SQLiteStorage) CreateDNSProvider(ctx context.Context, provider *model.D
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.createDNSProviderInTx(ctx, tx, provider); err != nil {
 		return err
@@ -141,7 +141,7 @@ func (s *SQLiteStorage) ListDNSProviders(ctx context.Context, filter *model.DNSP
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS providers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var providers []model.DNSProviderConfig
 	for rows.Next() {
@@ -250,7 +250,7 @@ func (s *SQLiteStorage) CreateDNSZone(ctx context.Context, zone *model.DNSZone) 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.createDNSZoneInTx(ctx, tx, zone); err != nil {
 		return err
@@ -435,7 +435,7 @@ func (s *SQLiteStorage) ListDNSZones(ctx context.Context, filter *model.DNSZoneF
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS zones: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var zones []model.DNSZone
 	for rows.Next() {
@@ -539,7 +539,7 @@ func (s *SQLiteStorage) DeleteDNSZone(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.deleteDNSZoneInTx(ctx, tx, id); err != nil {
 		return err
@@ -588,7 +588,7 @@ func (s *SQLiteStorage) GetDNSZonesByNetwork(ctx context.Context, networkID stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DNS zones by network: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var zones []model.DNSZone
 	for rows.Next() {
@@ -655,7 +655,7 @@ func (s *SQLiteStorage) CreateDNSRecord(ctx context.Context, record *model.DNSRe
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.createDNSRecordInTx(ctx, tx, record); err != nil {
 		return err
@@ -848,7 +848,7 @@ func (s *SQLiteStorage) ListDNSRecords(ctx context.Context, filter *model.DNSRec
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS records: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var records []model.DNSRecord
 	for rows.Next() {
@@ -1038,7 +1038,7 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(ctx context.Context, deviceID stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DNS records by device: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var records []model.DNSRecord
 	for rows.Next() {

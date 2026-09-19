@@ -43,7 +43,7 @@ func DevicesCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -65,7 +65,7 @@ func DevicesCommand() *cli.Command {
 				if err != nil {
 					return fmt.Errorf("failed to create output file: %w", err)
 				}
-				defer f.Close()
+				defer func() { _ = f.Close() }()
 				writer = f
 			}
 
@@ -98,7 +98,7 @@ func NetworksCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -120,7 +120,7 @@ func NetworksCommand() *cli.Command {
 				if err != nil {
 					return fmt.Errorf("failed to create output file: %w", err)
 				}
-				defer f.Close()
+				defer func() { _ = f.Close() }()
 				writer = f
 			}
 
@@ -153,7 +153,7 @@ func DatacentersCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -175,7 +175,7 @@ func DatacentersCommand() *cli.Command {
 				if err != nil {
 					return fmt.Errorf("failed to create output file: %w", err)
 				}
-				defer f.Close()
+				defer func() { _ = f.Close() }()
 				writer = f
 			}
 
@@ -219,9 +219,11 @@ func AllCommand() *cli.Command {
 				return err
 			}
 			if resp.StatusCode == http.StatusOK {
-				json.NewDecoder(resp.Body).Decode(&devices)
+				if err := json.NewDecoder(resp.Body).Decode(&devices); err != nil {
+					return err
+				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			// Get networks
 			resp, err = c.DoRequest("GET", "/api/networks", nil)
@@ -229,9 +231,11 @@ func AllCommand() *cli.Command {
 				return err
 			}
 			if resp.StatusCode == http.StatusOK {
-				json.NewDecoder(resp.Body).Decode(&networks)
+				if err := json.NewDecoder(resp.Body).Decode(&networks); err != nil {
+					return err
+				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			// Get datacenters
 			resp, err = c.DoRequest("GET", "/api/datacenters", nil)
@@ -239,9 +243,11 @@ func AllCommand() *cli.Command {
 				return err
 			}
 			if resp.StatusCode == http.StatusOK {
-				json.NewDecoder(resp.Body).Decode(&datacenters)
+				if err := json.NewDecoder(resp.Body).Decode(&datacenters); err != nil {
+					return err
+				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			// Create combined export
 			data := map[string]interface{}{
@@ -260,7 +266,7 @@ func AllCommand() *cli.Command {
 				if err != nil {
 					return fmt.Errorf("failed to create output file: %w", err)
 				}
-				defer f.Close()
+				defer func() { _ = f.Close() }()
 				writer = f
 			}
 

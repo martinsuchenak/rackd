@@ -126,14 +126,14 @@ func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorag
 
 func TestDiscoveryHandlers(t *testing.T) {
 	h, store, _ := setupTestHandlerWithScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	// Create a network for discovery tests
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(context.Background(), network)
+	_ = store.CreateNetwork(context.Background(), network)
 
 	var scanID string
 
@@ -149,7 +149,7 @@ func TestDiscoveryHandlers(t *testing.T) {
 		}
 
 		var scan model.DiscoveryScan
-		json.NewDecoder(w.Body).Decode(&scan)
+		_ = json.NewDecoder(w.Body).Decode(&scan)
 		scanID = scan.ID
 	})
 
@@ -294,13 +294,13 @@ func TestDiscoveryHandlers(t *testing.T) {
 
 func TestDiscoveryRuleHandlers(t *testing.T) {
 	h, store, _ := setupTestHandlerWithScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(context.Background(), network)
+	_ = store.CreateNetwork(context.Background(), network)
 
 	var ruleID string
 
@@ -316,7 +316,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 		}
 
 		var rule model.DiscoveryRule
-		json.NewDecoder(w.Body).Decode(&rule)
+		_ = json.NewDecoder(w.Body).Decode(&rule)
 		ruleID = rule.ID
 	})
 
@@ -332,7 +332,7 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 		}
 
 		var rule model.DiscoveryRule
-		json.NewDecoder(w.Body).Decode(&rule)
+		_ = json.NewDecoder(w.Body).Decode(&rule)
 		if rule.ScanType != "quick" {
 			t.Errorf("expected default scan_type 'quick', got '%s'", rule.ScanType)
 		}
@@ -462,13 +462,13 @@ func TestDiscoveryRuleHandlers(t *testing.T) {
 
 func TestPromoteDevice(t *testing.T) {
 	h, store, _ := setupTestHandlerWithScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(context.Background(), network)
+	_ = store.CreateNetwork(context.Background(), network)
 
 	discovered := &model.DiscoveredDevice{
 		IP:        "192.168.1.100",
@@ -476,7 +476,7 @@ func TestPromoteDevice(t *testing.T) {
 		NetworkID: network.ID,
 		Status:    "active",
 	}
-	store.CreateDiscoveredDevice(context.Background(), discovered)
+	_ = store.CreateDiscoveredDevice(context.Background(), discovered)
 
 	t.Run("PromoteDevice", func(t *testing.T) {
 		body := `{"name":"promoted-device","make_model":"Dell R640"}`
@@ -490,7 +490,7 @@ func TestPromoteDevice(t *testing.T) {
 		}
 
 		var device model.Device
-		json.NewDecoder(w.Body).Decode(&device)
+		_ = json.NewDecoder(w.Body).Decode(&device)
 		if device.Name != "promoted-device" {
 			t.Errorf("expected name 'promoted-device', got '%s'", device.Name)
 		}
@@ -499,7 +499,7 @@ func TestPromoteDevice(t *testing.T) {
 	t.Run("PromoteDevice_WithDatacenter", func(t *testing.T) {
 		// Create a datacenter first
 		dc := &model.Datacenter{Name: "Test DC", Location: "NYC"}
-		store.CreateDatacenter(context.Background(), dc)
+		_ = store.CreateDatacenter(context.Background(), dc)
 
 		// Create another discovered device
 		discovered2 := &model.DiscoveredDevice{
@@ -508,7 +508,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(context.Background(), discovered2)
+		_ = store.CreateDiscoveredDevice(context.Background(), discovered2)
 
 		body := `{"name":"promoted-device-2","make_model":"HP DL380","datacenter_id":"` + dc.ID + `"}`
 		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered2.ID+"/promote", bytes.NewBufferString(body)))
@@ -529,7 +529,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(context.Background(), discovered3)
+		_ = store.CreateDiscoveredDevice(context.Background(), discovered3)
 
 		// Name should be provided (now required by service)
 		body := `{"name":"auto-named-host"}`
@@ -543,7 +543,7 @@ func TestPromoteDevice(t *testing.T) {
 		}
 
 		var device model.Device
-		json.NewDecoder(w.Body).Decode(&device)
+		_ = json.NewDecoder(w.Body).Decode(&device)
 		if device.Name != "auto-named-host" {
 			t.Errorf("expected name 'auto-named-host', got '%s'", device.Name)
 		}
@@ -569,7 +569,7 @@ func TestPromoteDevice(t *testing.T) {
 			NetworkID: network.ID,
 			Status:    "active",
 		}
-		store.CreateDiscoveredDevice(context.Background(), discovered4)
+		_ = store.CreateDiscoveredDevice(context.Background(), discovered4)
 
 		req := authReq(httptest.NewRequest("POST", "/api/discovery/devices/"+discovered4.ID+"/promote", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()

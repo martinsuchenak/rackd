@@ -13,7 +13,7 @@ func TestNewSQLiteStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Verify database connection is valid
 	if storage.db == nil {
@@ -34,7 +34,7 @@ func TestNewSQLiteStorageWithDataDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Verify database connection is valid
 	if storage.db == nil {
@@ -52,7 +52,7 @@ func TestSQLiteStorageRunsMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Verify migrations were run by checking for tables
 	tables := []string{"devices", "networks", "datacenters"}
@@ -108,11 +108,11 @@ func TestFactoryFunctions(t *testing.T) {
 		}
 
 		// Verify it implements Storage interface
-		var _ Storage = storage
+		var _ = storage
 
 		// Close
 		if s, ok := storage.(*SQLiteStorage); ok {
-			s.Close()
+			_ = s.Close()
 		}
 	})
 
@@ -123,10 +123,10 @@ func TestFactoryFunctions(t *testing.T) {
 		}
 
 		// Verify it implements ExtendedStorage interface
-		var _ ExtendedStorage = storage
+		var _ = storage
 
 		// Close
-		storage.Close()
+		_ = storage.Close()
 	})
 }
 
@@ -135,7 +135,7 @@ func TestSQLiteStorageImplementsInterfaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Verify SQLiteStorage implements all interfaces
 	var _ DeviceStorage = storage
@@ -155,7 +155,7 @@ func TestWALModeEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Check journal mode is WAL
 	var journalMode string
@@ -177,12 +177,12 @@ func newTestStorage(t *testing.T) *SQLiteStorage {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 	dbPath := tmpFile.Name()
 	t.Cleanup(func() {
-		os.Remove(dbPath)
-		os.Remove(dbPath + "-wal")
-		os.Remove(dbPath + "-shm")
+		_ = os.Remove(dbPath)
+		_ = os.Remove(dbPath + "-wal")
+		_ = os.Remove(dbPath + "-shm")
 	})
 
 	storage, err := NewSQLiteStorageWithPath(dbPath)
@@ -239,7 +239,7 @@ func TestNullInt(t *testing.T) {
 
 func TestDBMethod(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	db := storage.DB()
 	if db == nil {

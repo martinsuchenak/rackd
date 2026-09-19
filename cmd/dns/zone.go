@@ -57,7 +57,7 @@ func zoneListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -98,7 +98,7 @@ func zoneGetCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -164,7 +164,7 @@ func zoneCreateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -244,7 +244,7 @@ func zoneUpdateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -297,7 +297,7 @@ func zoneDeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
@@ -311,18 +311,18 @@ func zoneDeleteCommand() *cli.Command {
 
 func printZoneTable(zones []map[string]interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tPROVIDER\tNETWORK\tAUTO-SYNC")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tPROVIDER\tNETWORK\tAUTO-SYNC")
 	for _, z := range zones {
 		autoSync := "false"
 		if v, ok := z["auto_sync"].(bool); ok && v {
 			autoSync = "true"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			client.GetString(z, "id"),
 			client.GetString(z, "name"),
 			client.GetString(z, "provider_id"),
 			client.GetString(z, "network_id"),
 			autoSync)
 	}
-	w.Flush()
+	_ = w.Flush()
 }

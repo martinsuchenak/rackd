@@ -9,7 +9,7 @@ import (
 
 func TestCircuitStorageCRUDAndFilters(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	ctx := context.Background()
 	dcA := &model.Datacenter{Name: "DC A", Location: "A"}
@@ -85,7 +85,7 @@ func TestCircuitStorageCRUDAndFilters(t *testing.T) {
 
 func TestCircuitStorageNotFoundAndValidation(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	ctx := context.Background()
 	if _, err := storage.GetCircuit(ctx, "missing"); err != ErrCircuitNotFound {

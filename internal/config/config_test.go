@@ -27,12 +27,12 @@ func TestLoad(t *testing.T) {
 
 func TestLoadWithEnvVars(t *testing.T) {
 	os.Clearenv()
-	os.Setenv("DATA_DIR", "/test/data")
-	os.Setenv("LISTEN_ADDR", ":9999")
-	os.Setenv("LOG_FORMAT", "json")
-	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("DISCOVERY_INTERVAL", "1h")
-	os.Setenv("DISCOVERY_MAX_CONCURRENT", "5")
+	_ = os.Setenv("DATA_DIR", "/test/data")
+	_ = os.Setenv("LISTEN_ADDR", ":9999")
+	_ = os.Setenv("LOG_FORMAT", "json")
+	_ = os.Setenv("LOG_LEVEL", "debug")
+	_ = os.Setenv("DISCOVERY_INTERVAL", "1h")
+	_ = os.Setenv("DISCOVERY_MAX_CONCURRENT", "5")
 
 	cfg := Load()
 
@@ -55,12 +55,12 @@ func TestLoadWithEnvVars(t *testing.T) {
 		t.Errorf("Expected DiscoveryMaxConcurrent 5, got %d", cfg.DiscoveryMaxConcurrent)
 	}
 
-	os.Unsetenv("DATA_DIR")
-	os.Unsetenv("LISTEN_ADDR")
-	os.Unsetenv("LOG_FORMAT")
-	os.Unsetenv("LOG_LEVEL")
-	os.Unsetenv("DISCOVERY_INTERVAL")
-	os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
+	_ = os.Unsetenv("DATA_DIR")
+	_ = os.Unsetenv("LISTEN_ADDR")
+	_ = os.Unsetenv("LOG_FORMAT")
+	_ = os.Unsetenv("LOG_LEVEL")
+	_ = os.Unsetenv("DISCOVERY_INTERVAL")
+	_ = os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
 }
 
 func TestGetIntEnv(t *testing.T) {
@@ -69,17 +69,17 @@ func TestGetIntEnv(t *testing.T) {
 		t.Errorf("Expected default value 42, got %d", result)
 	}
 
-	os.Setenv("TEST_INT", "100")
+	_ = os.Setenv("TEST_INT", "100")
 	if result := getIntEnv("TEST_INT", 42); result != 100 {
 		t.Errorf("Expected 100, got %d", result)
 	}
 
-	os.Setenv("TEST_INT_INVALID", "notanumber")
+	_ = os.Setenv("TEST_INT_INVALID", "notanumber")
 	if result := getIntEnv("TEST_INT_INVALID", 42); result != 42 {
 		t.Errorf("Expected default 42 for invalid input, got %d", result)
 	}
-	os.Unsetenv("TEST_INT")
-	os.Unsetenv("TEST_INT_INVALID")
+	_ = os.Unsetenv("TEST_INT")
+	_ = os.Unsetenv("TEST_INT_INVALID")
 }
 
 func TestGetBoolEnv(t *testing.T) {
@@ -88,22 +88,22 @@ func TestGetBoolEnv(t *testing.T) {
 		t.Errorf("Expected default true, got %v", result)
 	}
 
-	os.Setenv("TEST_BOOL", "true")
+	_ = os.Setenv("TEST_BOOL", "true")
 	if result := getBoolEnv("TEST_BOOL", false); result != true {
 		t.Errorf("Expected true, got %v", result)
 	}
 
-	os.Setenv("TEST_BOOL", "false")
+	_ = os.Setenv("TEST_BOOL", "false")
 	if result := getBoolEnv("TEST_BOOL", true); result != false {
 		t.Errorf("Expected false, got %v", result)
 	}
 
-	os.Setenv("TEST_BOOL_INVALID", "notabool")
+	_ = os.Setenv("TEST_BOOL_INVALID", "notabool")
 	if result := getBoolEnv("TEST_BOOL_INVALID", true); result != true {
 		t.Errorf("Expected default true for invalid input, got %v", result)
 	}
-	os.Unsetenv("TEST_BOOL")
-	os.Unsetenv("TEST_BOOL_INVALID")
+	_ = os.Unsetenv("TEST_BOOL")
+	_ = os.Unsetenv("TEST_BOOL_INVALID")
 }
 
 func TestGetDurationEnv(t *testing.T) {
@@ -113,22 +113,22 @@ func TestGetDurationEnv(t *testing.T) {
 		t.Errorf("Expected default %v, got %v", defaultDuration, result)
 	}
 
-	os.Setenv("TEST_DURATION", "5s")
+	_ = os.Setenv("TEST_DURATION", "5s")
 	if result := getDurationEnv("TEST_DURATION", defaultDuration); result != 5*time.Second {
 		t.Errorf("Expected 5s, got %v", result)
 	}
 
-	os.Setenv("TEST_DURATION_INVALID", "notaduration")
+	_ = os.Setenv("TEST_DURATION_INVALID", "notaduration")
 	if result := getDurationEnv("TEST_DURATION_INVALID", defaultDuration); result != defaultDuration {
 		t.Errorf("Expected default for invalid input, got %v", result)
 	}
-	os.Unsetenv("TEST_DURATION")
-	os.Unsetenv("TEST_DURATION_INVALID")
+	_ = os.Unsetenv("TEST_DURATION")
+	_ = os.Unsetenv("TEST_DURATION_INVALID")
 }
 
 func TestValidate(t *testing.T) {
 	os.Clearenv()
-	os.Setenv("LOG_LEVEL", "invalid")
+	_ = os.Setenv("LOG_LEVEL", "invalid")
 	cfg := Load()
 
 	err := cfg.Validate()
@@ -138,10 +138,10 @@ func TestValidate(t *testing.T) {
 	if !strings.Contains(err.Error(), "invalid LOG_LEVEL") {
 		t.Errorf("Expected error message to mention invalid log level, got: %v", err)
 	}
-	os.Unsetenv("LOG_LEVEL")
+	_ = os.Unsetenv("LOG_LEVEL")
 
 	os.Clearenv()
-	os.Setenv("LOG_FORMAT", "invalid")
+	_ = os.Setenv("LOG_FORMAT", "invalid")
 	cfg = Load()
 
 	err = cfg.Validate()
@@ -151,10 +151,10 @@ func TestValidate(t *testing.T) {
 	if !strings.Contains(err.Error(), "invalid LOG_FORMAT") {
 		t.Errorf("Expected error message to mention invalid log format, got: %v", err)
 	}
-	os.Unsetenv("LOG_FORMAT")
+	_ = os.Unsetenv("LOG_FORMAT")
 
 	os.Clearenv()
-	os.Setenv("DISCOVERY_INTERVAL", "-1h")
+	_ = os.Setenv("DISCOVERY_INTERVAL", "-1h")
 	cfg = Load()
 
 	err = cfg.Validate()
@@ -164,10 +164,10 @@ func TestValidate(t *testing.T) {
 	if !strings.Contains(err.Error(), "DISCOVERY_INTERVAL") {
 		t.Errorf("Expected error message to mention interval, got: %v", err)
 	}
-	os.Unsetenv("DISCOVERY_INTERVAL")
+	_ = os.Unsetenv("DISCOVERY_INTERVAL")
 
 	os.Clearenv()
-	os.Setenv("DISCOVERY_MAX_CONCURRENT", "0")
+	_ = os.Setenv("DISCOVERY_MAX_CONCURRENT", "0")
 	cfg = Load()
 
 	err = cfg.Validate()
@@ -177,7 +177,7 @@ func TestValidate(t *testing.T) {
 	if !strings.Contains(err.Error(), "DISCOVERY_MAX_CONCURRENT") {
 		t.Errorf("Expected error message to mention max concurrent, got: %v", err)
 	}
-	os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
+	_ = os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
 
 	os.Clearenv()
 	cfg = Load()

@@ -97,7 +97,7 @@ func (s *SSHScanner) Scan(ctx context.Context, ip string, credentialID string) (
 	if err != nil {
 		return nil, fmt.Errorf("SSH connect failed: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	result := &SSHResult{}
 	s.getOSInfo(client, result)
@@ -112,7 +112,7 @@ func (s *SSHScanner) runCommand(client *ssh.Client, cmd string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 	out, err := session.CombinedOutput(cmd)
 	return strings.TrimSpace(string(out)), err
 }
@@ -162,22 +162,23 @@ func (s *SSHScanner) IsAvailable(ip string, cred *model.Credential) bool {
 		HostKeyCallback: s.trustOnFirstUseCallback(ip),
 		Timeout:         2 * time.Second,
 	}
-	if cred.Type == "ssh_password" {
+	switch cred.Type {
+	case "ssh_password":
 		config.Auth = []ssh.AuthMethod{ssh.Password(cred.SSHKeyID)}
-	} else if cred.Type == "ssh_key" {
+	case "ssh_key":
 		signer, err := ssh.ParsePrivateKey([]byte(cred.SSHKeyID))
 		if err != nil {
 			return false
 		}
 		config.Auth = []ssh.AuthMethod{ssh.PublicKeys(signer)}
-	} else {
+	default:
 		return false
 	}
 	client, err := ssh.Dial("tcp", net.JoinHostPort(ip, "22"), config)
 	if err != nil {
 		return false
 	}
-	client.Close()
+	_ = client.Close()
 	return true
 }
 

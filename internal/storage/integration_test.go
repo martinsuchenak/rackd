@@ -333,7 +333,7 @@ func TestMigrationOnFreshDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Verify all tables exist
 	tables := []string{

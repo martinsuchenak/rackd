@@ -84,5 +84,5 @@ func (h *Handler) exportLogs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=recent-logs.json")
 	}
-	w.Write(data)
+	_, _ = w.Write(data)
 }

@@ -16,7 +16,7 @@ func TestRelationshipCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create two devices
 	device1 := &model.Device{Name: "Server1"}
@@ -65,7 +65,7 @@ func TestGetRelatedDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices
 	parent := &model.Device{Name: "Parent"}
@@ -78,8 +78,8 @@ func TestGetRelatedDevices(t *testing.T) {
 	}
 
 	// Add relationships
-	storage.AddRelationship(context.Background(), parent.ID, child1.ID, model.RelationshipContains, "")
-	storage.AddRelationship(context.Background(), parent.ID, child2.ID, model.RelationshipConnectedTo, "")
+	_ = storage.AddRelationship(context.Background(), parent.ID, child1.ID, model.RelationshipContains, "")
+	_ = storage.AddRelationship(context.Background(), parent.ID, child2.ID, model.RelationshipConnectedTo, "")
 
 	// Get related by type
 	related, err := storage.GetRelatedDevices(context.Background(), parent.ID, model.RelationshipContains)
@@ -96,12 +96,12 @@ func TestAddRelationshipIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device1 := &model.Device{Name: "D1"}
 	device2 := &model.Device{Name: "D2"}
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
 
 	// Add same relationship twice - should not error
 	if err := storage.AddRelationship(context.Background(), device1.ID, device2.ID, model.RelationshipContains, ""); err != nil {
@@ -120,13 +120,13 @@ func TestAddRelationshipIdempotent(t *testing.T) {
 
 func TestRelationshipInvalidIDs(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create valid devices for testing
 	device1 := &model.Device{Name: "D1"}
 	device2 := &model.Device{Name: "D2"}
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
 
 	// Test with non-existent device IDs (FK constraint)
 	err := storage.AddRelationship(context.Background(), "nonexistent1", "nonexistent2", model.RelationshipContains, "")
@@ -167,13 +167,13 @@ func TestRelationshipInvalidIDs(t *testing.T) {
 
 func TestRemoveRelationshipNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices but no relationship
 	device1 := &model.Device{Name: "D1"}
 	device2 := &model.Device{Name: "D2"}
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
 
 	// Remove non-existent relationship should not error (idempotent)
 	err := storage.RemoveRelationship(context.Background(), device1.ID, device2.ID, model.RelationshipContains)
@@ -184,10 +184,10 @@ func TestRemoveRelationshipNotFound(t *testing.T) {
 
 func TestGetRelatedDevicesEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	device := &model.Device{Name: "Lonely"}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	related, err := storage.GetRelatedDevices(context.Background(), device.ID, model.RelationshipContains)
 	if err != nil {
@@ -200,14 +200,14 @@ func TestGetRelatedDevicesEmpty(t *testing.T) {
 
 func TestDeleteDeviceWithRelationships(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with relationships
 	parent := &model.Device{Name: "Parent"}
 	child := &model.Device{Name: "Child"}
-	storage.CreateDevice(context.Background(), parent)
-	storage.CreateDevice(context.Background(), child)
-	storage.AddRelationship(context.Background(), parent.ID, child.ID, model.RelationshipContains, "")
+	_ = storage.CreateDevice(context.Background(), parent)
+	_ = storage.CreateDevice(context.Background(), child)
+	_ = storage.AddRelationship(context.Background(), parent.ID, child.ID, model.RelationshipContains, "")
 
 	// Delete parent - should cascade relationships
 	if err := storage.DeleteDevice(context.Background(), parent.ID); err != nil {
@@ -223,7 +223,7 @@ func TestDeleteDeviceWithRelationships(t *testing.T) {
 
 func TestRelationshipNotesAndListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	parent := &model.Device{Name: "ParentWithNotes"}

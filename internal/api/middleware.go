@@ -25,7 +25,7 @@ const MaxRequestBodySize = 1 << 20
 func writeAuthError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
 		"code":  code,
 	})
@@ -114,7 +114,7 @@ func AuthenticateAPIKey(ctx context.Context, store storage.ExtendedStorage, toke
 
 	// Update last used (async, don't block request)
 	go func() {
-		store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
+		_ = store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
 	}()
 
 	// API keys must be associated with a user to enforce RBAC
@@ -157,9 +157,10 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, nil), "api")
 		if err != nil {
 			code := "UNAUTHORIZED"
-			if err == ErrAuthExpiredKey {
+			switch err {
+			case ErrAuthExpiredKey:
 				code = "EXPIRED_KEY"
-			} else if err == ErrAuthLegacyKey {
+			case ErrAuthLegacyKey:
 				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
 			log.Debug("Auth failed", "path", r.URL.Path, "error", err)
@@ -180,7 +181,7 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 			if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
 				session, err := sessionManager.GetSession(cookie.Value)
 				if err == nil {
-					sessionManager.RefreshSession(cookie.Value)
+					_, _ = sessionManager.RefreshSession(cookie.Value)
 
 					// CSRF Protection for state-changing requests when using sessions (M-6)
 					switch r.Method {
@@ -222,9 +223,10 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 		caller, err := AuthenticateAPIKey(r.Context(), store, token, getClientIP(r, nil), "api")
 		if err != nil {
 			code := "UNAUTHORIZED"
-			if err == ErrAuthExpiredKey {
+			switch err {
+			case ErrAuthExpiredKey:
 				code = "EXPIRED_KEY"
-			} else if err == ErrAuthLegacyKey {
+			case ErrAuthLegacyKey:
 				code = "LEGACY_API_KEY_UNSUPPORTED"
 			}
 			log.Debug("Auth failed", "path", r.URL.Path, "error", err)

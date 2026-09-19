@@ -63,7 +63,7 @@ func (s *SQLiteProfileStorage) seedDefaults() error {
 	for _, p := range defaults {
 		existing, _ := s.Get(context.Background(), p.ID)
 		if existing == nil {
-			s.Create(context.Background(), &p)
+			_ = s.Create(context.Background(), &p)
 		}
 	}
 	return nil
@@ -119,7 +119,7 @@ func (s *SQLiteProfileStorage) List(ctx context.Context) ([]model.ScanProfile, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var profiles []model.ScanProfile
 	for rows.Next() {
@@ -131,7 +131,7 @@ func (s *SQLiteProfileStorage) List(ctx context.Context) ([]model.ScanProfile, e
 			return nil, err
 		}
 		if portsJSON.Valid {
-			json.Unmarshal([]byte(portsJSON.String), &p.Ports)
+			_ = json.Unmarshal([]byte(portsJSON.String), &p.Ports)
 		}
 		p.Description = description.String
 		profiles = append(profiles, p)
@@ -163,7 +163,7 @@ func (s *SQLiteProfileStorage) scanProfile(row *sql.Row) (*model.ScanProfile, er
 		return nil, err
 	}
 	if portsJSON.Valid {
-		json.Unmarshal([]byte(portsJSON.String), &p.Ports)
+		_ = json.Unmarshal([]byte(portsJSON.String), &p.Ports)
 	}
 	p.Description = description.String
 	return &p, nil

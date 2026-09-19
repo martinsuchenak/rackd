@@ -52,7 +52,7 @@ func ListRolesCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -64,18 +64,18 @@ func ListRolesCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tDESCRIPTION\tSYSTEM\tCREATED\tUPDATED")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tDESCRIPTION\tSYSTEM\tCREATED\tUPDATED")
 			for _, role := range roles {
 				system := "no"
 				if role.IsSystem {
 					system = "yes"
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 					role.ID, role.Name, role.Description, system,
 					role.CreatedAt.Format("2006-01-02 15:04"),
 					role.UpdatedAt.Format("2006-01-02 15:04"))
 			}
-			w.Flush()
+			_ = w.Flush()
 
 			return nil
 		},
@@ -122,7 +122,7 @@ func ListPermissionsCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -134,13 +134,13 @@ func ListPermissionsCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tRESOURCE\tACTION\tCREATED")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tRESOURCE\tACTION\tCREATED")
 			for _, perm := range permissions {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 					perm.ID, perm.Name, perm.Resource, perm.Action,
 					perm.CreatedAt.Format("2006-01-02 15:04"))
 			}
-			w.Flush()
+			_ = w.Flush()
 
 			return nil
 		},
@@ -175,7 +175,7 @@ func CreateRoleCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -212,7 +212,7 @@ func DeleteRoleCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
@@ -253,7 +253,7 @@ func AssignRoleCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -294,7 +294,7 @@ func RevokeRoleCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)

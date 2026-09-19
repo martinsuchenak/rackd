@@ -98,5 +98,5 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-	w.Write(data)
+	_, _ = w.Write(data)
 }

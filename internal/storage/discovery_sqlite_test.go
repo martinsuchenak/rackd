@@ -16,7 +16,7 @@ func TestDiscoveredDeviceCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network first
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
@@ -87,17 +87,17 @@ func TestDiscoveredDeviceByIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	device := &model.DiscoveredDevice{
 		IP:        "192.168.1.50",
 		NetworkID: network.ID,
 		Status:    "active",
 	}
-	storage.CreateDiscoveredDevice(context.Background(), device)
+	_ = storage.CreateDiscoveredDevice(context.Background(), device)
 
 	got, err := storage.GetDiscoveredDeviceByIP(context.Background(), network.ID, "192.168.1.50")
 	if err != nil {
@@ -119,16 +119,16 @@ func TestListDiscoveredDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network1.ID})
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.2", NetworkID: network1.ID})
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.2.1", NetworkID: network2.ID})
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network1.ID})
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.2", NetworkID: network1.ID})
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.2.1", NetworkID: network2.ID})
 
 	// List all
 	all, err := storage.ListDiscoveredDevices(context.Background(), "")
@@ -154,16 +154,16 @@ func TestPromoteDiscoveredDevice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	discovered := &model.DiscoveredDevice{IP: "192.168.1.10", NetworkID: network.ID}
-	storage.CreateDiscoveredDevice(context.Background(), discovered)
+	_ = storage.CreateDiscoveredDevice(context.Background(), discovered)
 
 	device := &model.Device{Name: "Promoted Device"}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	if err := storage.PromoteDiscoveredDevice(context.Background(), discovered.ID, device.ID); err != nil {
 		t.Fatalf("PromoteDiscoveredDevice failed: %v", err)
@@ -183,10 +183,10 @@ func TestDiscoveryScanCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	scan := &model.DiscoveryScan{
 		NetworkID:  network.ID,
@@ -227,13 +227,13 @@ func TestListDiscoveryScans(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
-	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusCompleted})
-	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusRunning})
+	_ = storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusCompleted})
+	_ = storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network.ID, Status: model.ScanStatusRunning})
 
 	scans, err := storage.ListDiscoveryScans(context.Background(), network.ID)
 	if err != nil {
@@ -249,10 +249,10 @@ func TestDiscoveryRuleCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	rule := &model.DiscoveryRule{
 		NetworkID:     network.ID,
@@ -290,15 +290,15 @@ func TestListDiscoveryRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
-	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network1.ID, Enabled: true})
-	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false})
+	_ = storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network1.ID, Enabled: true})
+	_ = storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false})
 
 	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
@@ -314,19 +314,19 @@ func TestCleanupOldDiscoveries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create devices - one will be promoted
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
 	promoted := &model.DiscoveredDevice{IP: "192.168.1.2", NetworkID: network.ID}
-	storage.CreateDiscoveredDevice(context.Background(), promoted)
+	_ = storage.CreateDiscoveredDevice(context.Background(), promoted)
 
 	device := &model.Device{Name: "Promoted"}
-	storage.CreateDevice(context.Background(), device)
-	storage.PromoteDiscoveredDevice(context.Background(), promoted.ID, device.ID)
+	_ = storage.CreateDevice(context.Background(), device)
+	_ = storage.PromoteDiscoveredDevice(context.Background(), promoted.ID, device.ID)
 
 	// Cleanup with 0 days should remove non-promoted devices
 	if err := storage.CleanupOldDiscoveries(context.Background(), 0); err != nil {
@@ -347,7 +347,7 @@ func TestDiscoveryNotFoundErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteStorage failed: %v", err)
 	}
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err = storage.GetDiscoveredDevice(context.Background(), "nonexistent")
 	if err != ErrDiscoveryNotFound {
@@ -387,10 +387,10 @@ func TestDiscoveryNotFoundErrors(t *testing.T) {
 
 func TestDiscoveryInvalidIDs(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// UpdateDiscoveredDevice with non-existent ID
 	err := storage.UpdateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{ID: "nonexistent", IP: "192.168.1.1", NetworkID: network.ID})
@@ -425,10 +425,10 @@ func TestDiscoveryInvalidIDs(t *testing.T) {
 
 func TestDiscoveryScanInvalidIDs(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// UpdateDiscoveryScan with non-existent ID
 	err := storage.UpdateDiscoveryScan(context.Background(), &model.DiscoveryScan{ID: "nonexistent", NetworkID: network.ID})
@@ -445,10 +445,10 @@ func TestDiscoveryScanInvalidIDs(t *testing.T) {
 
 func TestDiscoveryRuleInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// GetDiscoveryRuleByNetwork with non-existent network ID
 	_, err := storage.GetDiscoveryRuleByNetwork(context.Background(), "nonexistent")
@@ -499,13 +499,13 @@ func TestDiscoveryRuleInvalidID(t *testing.T) {
 
 func TestCleanupOldDiscoveriesWithDays(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create discovered device
-	storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
+	_ = storage.CreateDiscoveredDevice(context.Background(), &model.DiscoveredDevice{IP: "192.168.1.1", NetworkID: network.ID})
 
 	// Cleanup with 30 days should not remove recent devices
 	if err := storage.CleanupOldDiscoveries(context.Background(), 30); err != nil {
@@ -520,10 +520,10 @@ func TestCleanupOldDiscoveriesWithDays(t *testing.T) {
 
 func TestDiscoveryScanWithAllFields(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	scan := &model.DiscoveryScan{
 		NetworkID:       network.ID,
@@ -559,10 +559,10 @@ func TestDiscoveryScanWithAllFields(t *testing.T) {
 
 func TestDiscoveredDeviceWithServices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	device := &model.DiscoveredDevice{
 		IP:        "192.168.1.50",
@@ -576,7 +576,7 @@ func TestDiscoveredDeviceWithServices(t *testing.T) {
 			{Port: 5432, Protocol: "tcp", Service: "postgresql", Version: "14.0"},
 		},
 	}
-	storage.CreateDiscoveredDevice(context.Background(), device)
+	_ = storage.CreateDiscoveredDevice(context.Background(), device)
 
 	got, _ := storage.GetDiscoveredDevice(context.Background(), device.ID)
 	if len(got.OpenPorts) != 5 {
@@ -589,10 +589,10 @@ func TestDiscoveredDeviceWithServices(t *testing.T) {
 
 func TestListDiscoveryScansEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	scans, err := storage.ListDiscoveryScans(context.Background(), network.ID)
 	if err != nil {
@@ -605,7 +605,7 @@ func TestListDiscoveryScansEmpty(t *testing.T) {
 
 func TestListDiscoveryRulesEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
@@ -618,10 +618,10 @@ func TestListDiscoveryRulesEmpty(t *testing.T) {
 
 func TestDiscoveryScanWithError(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create scan with error message
 	scan := &model.DiscoveryScan{
@@ -646,15 +646,15 @@ func TestDiscoveryScanWithError(t *testing.T) {
 
 func TestListDiscoveryScansAllNetworks(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
-	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network1.ID, Status: model.ScanStatusCompleted})
-	storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network2.ID, Status: model.ScanStatusCompleted})
+	_ = storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network1.ID, Status: model.ScanStatusCompleted})
+	_ = storage.CreateDiscoveryScan(context.Background(), &model.DiscoveryScan{NetworkID: network2.ID, Status: model.ScanStatusCompleted})
 
 	// List all scans (empty network ID)
 	scans, err := storage.ListDiscoveryScans(context.Background(), "")
@@ -668,10 +668,10 @@ func TestListDiscoveryScansAllNetworks(t *testing.T) {
 
 func TestDiscoveredDeviceUpdate(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	device := &model.DiscoveredDevice{
 		IP:         "192.168.1.50",
@@ -679,7 +679,7 @@ func TestDiscoveredDeviceUpdate(t *testing.T) {
 		Status:     "active",
 		Confidence: 50,
 	}
-	storage.CreateDiscoveredDevice(context.Background(), device)
+	_ = storage.CreateDiscoveredDevice(context.Background(), device)
 
 	// Update with new data
 	device.Hostname = "updated-host"
@@ -707,10 +707,10 @@ func TestDiscoveredDeviceUpdate(t *testing.T) {
 
 func TestDiscoveryRuleWithAllFields(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "TestNet", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	rule := &model.DiscoveryRule{
 		NetworkID:     network.ID,
@@ -719,7 +719,7 @@ func TestDiscoveryRuleWithAllFields(t *testing.T) {
 		IntervalHours: 12,
 		ExcludeIPs:    "192.168.1.1,192.168.1.254",
 	}
-	storage.SaveDiscoveryRule(context.Background(), rule)
+	_ = storage.SaveDiscoveryRule(context.Background(), rule)
 
 	got, _ := storage.GetDiscoveryRuleByNetwork(context.Background(), network.ID)
 	if got.ScanType != model.ScanTypeDeep {
@@ -735,18 +735,18 @@ func TestDiscoveryRuleWithAllFields(t *testing.T) {
 
 func TestListDiscoveryRulesMultiple(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network1 := &model.Network{Name: "Net1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Net2", Subnet: "192.168.2.0/24"}
 	network3 := &model.Network{Name: "Net3", Subnet: "192.168.3.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
-	storage.CreateNetwork(context.Background(), network3)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network3)
 
-	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network1.ID, Enabled: true, ScanType: model.ScanTypeQuick})
-	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false, ScanType: model.ScanTypeFull})
-	storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network3.ID, Enabled: true, ScanType: model.ScanTypeDeep})
+	_ = storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network1.ID, Enabled: true, ScanType: model.ScanTypeQuick})
+	_ = storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network2.ID, Enabled: false, ScanType: model.ScanTypeFull})
+	_ = storage.SaveDiscoveryRule(context.Background(), &model.DiscoveryRule{NetworkID: network3.ID, Enabled: true, ScanType: model.ScanTypeDeep})
 
 	rules, err := storage.ListDiscoveryRules(context.Background())
 	if err != nil {
@@ -759,7 +759,7 @@ func TestListDiscoveryRulesMultiple(t *testing.T) {
 
 func TestDeleteDiscoveryScanAndDiscoveredDevicesByNetwork(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	network1 := &model.Network{Name: "DeleteNet1", Subnet: "192.168.10.0/24"}

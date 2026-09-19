@@ -59,7 +59,7 @@ func RotateKeyCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to open database: %w", err)
 			}
-			defer store.Close()
+			defer func() { _ = store.Close() }()
 
 			// Initialize credential storage with old key to read current encrypted rows
 			oldCredStore, err := credentials.NewSQLiteStorage(store.DB(), oldKey)
@@ -126,7 +126,7 @@ func rotateColumn(store storage.ExtendedStorage, oldEnc, newEnc *credentials.Enc
 	if err != nil {
 		return fmt.Errorf("failed to read rows for rotation: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type pending struct {
 		id    string

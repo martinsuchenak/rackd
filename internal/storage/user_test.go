@@ -10,7 +10,7 @@ import (
 
 func TestCreateUser(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	passwordHash, err := auth.HashPassword("password123")
 	if err != nil {
@@ -46,7 +46,7 @@ func TestCreateUser(t *testing.T) {
 
 func TestGetUser(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, err := createUser(t, db, "testuser", "test@example.com")
 	if err != nil {
@@ -73,7 +73,7 @@ func TestGetUser(t *testing.T) {
 
 func TestGetUserNotFound(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.GetUser(context.Background(), "nonexistent")
 	if err == nil {
@@ -83,7 +83,7 @@ func TestGetUserNotFound(t *testing.T) {
 
 func TestGetUserByID(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
@@ -99,7 +99,7 @@ func TestGetUserByID(t *testing.T) {
 
 func TestGetUserByUsername(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
@@ -115,7 +115,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 func TestGetUserByEmail(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
@@ -131,7 +131,7 @@ func TestGetUserByEmail(t *testing.T) {
 
 func TestListUsers(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, _ = createUser(t, db, "user1", "user1@example.com")
 	_, _ = createUser(t, db, "user2", "user2@example.com")
@@ -149,7 +149,7 @@ func TestListUsers(t *testing.T) {
 
 func TestListUsersFilter(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, _ = createUser(t, db, "admin1", "admin@example.com")
 	_, _ = createUser(t, db, "admin2", "admin2@example.com")
@@ -177,7 +177,7 @@ func TestListUsersFilter(t *testing.T) {
 
 func TestUpdateUser(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 	newHash, err := auth.HashPassword("updatedpassword123")
@@ -223,7 +223,7 @@ func TestUpdateUser(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
@@ -240,7 +240,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestUpdateUserLastLogin(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 
@@ -261,7 +261,7 @@ func TestUpdateUserLastLogin(t *testing.T) {
 
 func TestUpdateUserPassword(t *testing.T) {
 	db := newTestStorage(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	created, _ := createUser(t, db, "testuser", "test@example.com")
 

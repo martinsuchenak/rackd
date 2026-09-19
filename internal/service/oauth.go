@@ -450,7 +450,7 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 			"client_id", refreshToken.ClientID,
 			"user_id", refreshToken.UserID,
 		)
-		s.store.RevokeOAuthTokenChain(ctx, refreshToken.ID)
+		_ = s.store.RevokeOAuthTokenChain(ctx, refreshToken.ID)
 		return nil, storage.ErrOAuthTokenRevoked
 	}
 
@@ -704,7 +704,7 @@ func (s *OAuthService) RevokeToken(ctx context.Context, req *model.OAuthTokenReq
 
 	// If revoking a refresh token, also revoke associated access tokens
 	if oauthToken.TokenType == "refresh" && oauthToken.ParentTokenID != "" {
-		s.store.RevokeOAuthToken(ctx, oauthToken.ParentTokenID)
+		_ = s.store.RevokeOAuthToken(ctx, oauthToken.ParentTokenID)
 	}
 
 	return nil
@@ -726,7 +726,7 @@ func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error 
 		return err
 	}
 	// Revoke all tokens for this client first
-	s.store.RevokeOAuthTokensByClient(ctx, clientID)
+	_ = s.store.RevokeOAuthTokensByClient(ctx, clientID)
 	return s.store.DeleteOAuthClient(ctx, clientID)
 }
 

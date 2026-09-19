@@ -50,7 +50,7 @@ func (s *SQLiteStorage) ListNetworks(ctx context.Context, filter *model.NetworkF
 	if err != nil {
 		return nil, fmt.Errorf("failed to list networks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var networks []model.Network
 	for rows.Next() {
@@ -102,7 +102,7 @@ func (s *SQLiteStorage) SearchNetworks(ctx context.Context, query string) ([]mod
 	if err != nil {
 		return nil, fmt.Errorf("failed to search networks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var networks []model.Network
 	for rows.Next() {
@@ -179,7 +179,7 @@ func (s *SQLiteStorage) CreateNetwork(ctx context.Context, network *model.Networ
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.createNetworkInTx(ctx, tx, network); err != nil {
 		return err
@@ -263,7 +263,7 @@ func (s *SQLiteStorage) DeleteNetwork(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := s.deleteNetworkInTx(ctx, tx, id); err != nil {
 		return err

@@ -30,7 +30,7 @@ func ResolveCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -49,13 +49,14 @@ func ResolveCommand() *cli.Command {
 				"notes":       cmd.GetString("notes"),
 			}
 
-			if conflictType == "duplicate_ip" {
+			switch conflictType {
+			case "duplicate_ip":
 				keepDeviceID := cmd.GetString("keep-device-id")
 				if keepDeviceID == "" {
 					return fmt.Errorf("keep-device-id is required for duplicate_ip conflicts")
 				}
 				resolution["keep_device_id"] = keepDeviceID
-			} else if conflictType == "overlapping_subnet" {
+			case "overlapping_subnet":
 				keepNetworkID := cmd.GetString("keep-network-id")
 				if keepNetworkID == "" {
 					return fmt.Errorf("keep-network-id is required for overlapping_subnet conflicts")
@@ -68,7 +69,7 @@ func ResolveCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp2.Body.Close()
+			defer func() { _ = resp2.Body.Close() }()
 
 			if resp2.StatusCode != http.StatusOK {
 				return client.HandleError(resp2)

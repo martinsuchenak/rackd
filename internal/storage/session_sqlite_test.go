@@ -11,7 +11,7 @@ import (
 
 func TestSQLiteSessionStoreLifecycle(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	store := NewSQLiteSessionStore(storage.DB())
 	ctx := context.Background()
@@ -68,7 +68,7 @@ func TestSQLiteSessionStoreLifecycle(t *testing.T) {
 
 func TestSQLiteSessionStoreExpiryCleanupAndDeleteByUser(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	store := NewSQLiteSessionStore(storage.DB())
 	ctx := context.Background()

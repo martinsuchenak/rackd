@@ -285,7 +285,6 @@ func TestAuthBypassAttempts(t *testing.T) {
 			}
 
 			// Malformed Bearer token
-			w = ts.doRequest(t, ep.method, ep.path, nil, "")
 			req := httptest.NewRequest(ep.method, ep.path, nil)
 			req.Header.Set("Authorization", "Bearer")
 			rec := httptest.NewRecorder()

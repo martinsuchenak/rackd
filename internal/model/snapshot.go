@@ -39,9 +39,9 @@ type SnapshotFilter struct {
 
 // DeviceStatusCounts for dashboard device status breakdown
 type DeviceStatusCounts struct {
-	Planned       int `json:"planned"`
-	Active        int `json:"active"`
-	Maintenance   int `json:"maintenance"`
+	Planned        int `json:"planned"`
+	Active         int `json:"active"`
+	Maintenance    int `json:"maintenance"`
 	Decommissioned int `json:"decommissioned"`
 }
 
@@ -100,7 +100,7 @@ type DashboardStats struct {
 	NetworkUtilization []NetworkUtilizationSummary `json:"network_utilization"`
 
 	// Stale devices
-	StaleDevices       int          `json:"stale_devices"`
-	StaleThresholdDays int          `json:"stale_threshold_days"`
+	StaleDevices       int           `json:"stale_devices"`
+	StaleThresholdDays int           `json:"stale_threshold_days"`
 	StaleDeviceList    []StaleDevice `json:"stale_device_list"`
 }

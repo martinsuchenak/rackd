@@ -13,7 +13,7 @@ import (
 
 func TestDatacenterOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	dc := &model.Datacenter{
 		Name:        "DC1",
@@ -53,7 +53,7 @@ func TestDatacenterOperations_CreateAndGet(t *testing.T) {
 
 func TestDatacenterOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDatacenter(context.Background(), "non-existent-id")
 	if err != ErrDatacenterNotFound {
@@ -63,7 +63,7 @@ func TestDatacenterOperations_GetNotFound(t *testing.T) {
 
 func TestDatacenterOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDatacenter(context.Background(), "")
 	if err != ErrInvalidID {
@@ -73,7 +73,7 @@ func TestDatacenterOperations_GetInvalidID(t *testing.T) {
 
 func TestDatacenterOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{
@@ -114,7 +114,7 @@ func TestDatacenterOperations_Update(t *testing.T) {
 
 func TestDatacenterOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	dc := &model.Datacenter{
 		ID:   "non-existent-id",
@@ -129,7 +129,7 @@ func TestDatacenterOperations_UpdateNotFound(t *testing.T) {
 
 func TestDatacenterOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "DC-to-delete"}
@@ -151,7 +151,7 @@ func TestDatacenterOperations_Delete(t *testing.T) {
 
 func TestDatacenterOperations_DeleteWithDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "DC1"}
@@ -182,7 +182,7 @@ func TestDatacenterOperations_DeleteWithDevices(t *testing.T) {
 
 func TestDatacenterOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteDatacenter(context.Background(), "non-existent-id")
 	if err != ErrDatacenterNotFound {
@@ -192,7 +192,7 @@ func TestDatacenterOperations_DeleteNotFound(t *testing.T) {
 
 func TestDatacenterOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteDatacenter(context.Background(), "")
 	if err != ErrInvalidID {
@@ -202,12 +202,12 @@ func TestDatacenterOperations_DeleteInvalidID(t *testing.T) {
 
 func TestDatacenterOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Remove default datacenter to start clean
 	defaultDCs, _ := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "Default"})
 	for _, dc := range defaultDCs {
-		storage.DeleteDatacenter(context.Background(), dc.ID)
+		_ = storage.DeleteDatacenter(context.Background(), dc.ID)
 	}
 
 	// Create multiple datacenters
@@ -232,7 +232,7 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 
 func TestDatacenterOperations_Search(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 	ctx := context.Background()
 
 	dc := &model.Datacenter{
@@ -263,12 +263,12 @@ func TestDatacenterOperations_Search(t *testing.T) {
 
 func TestDatacenterOperations_ListWithFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenters
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC1"})
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC2"})
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC1"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC2"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1"})
 
 	// Filter by name
 	result, err := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "NYC"})
@@ -283,12 +283,12 @@ func TestDatacenterOperations_ListWithFilter(t *testing.T) {
 
 func TestDatacenterOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Remove default datacenter to start clean
 	defaultDCs, _ := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "Default"})
 	for _, dc := range defaultDCs {
-		storage.DeleteDatacenter(context.Background(), dc.ID)
+		_ = storage.DeleteDatacenter(context.Background(), dc.ID)
 	}
 
 	result, err := storage.ListDatacenters(context.Background(), nil)
@@ -306,7 +306,7 @@ func TestDatacenterOperations_ListEmpty(t *testing.T) {
 
 func TestDatacenterOperations_GetDatacenterDevices(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter
 	dc := &model.Datacenter{Name: "DC1"}
@@ -319,9 +319,9 @@ func TestDatacenterOperations_GetDatacenterDevices(t *testing.T) {
 	device2 := &model.Device{Name: "server2", DatacenterID: dc.ID}
 	device3 := &model.Device{Name: "server3"} // Not in datacenter
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
-	storage.CreateDevice(context.Background(), device3)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device3)
 
 	// Get devices in datacenter
 	devices, err := storage.GetDatacenterDevices(context.Background(), dc.ID)
@@ -336,7 +336,7 @@ func TestDatacenterOperations_GetDatacenterDevices(t *testing.T) {
 
 func TestDatacenterOperations_GetDatacenterDevicesNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDatacenterDevices(context.Background(), "non-existent-id")
 	if err != ErrDatacenterNotFound {
@@ -346,7 +346,7 @@ func TestDatacenterOperations_GetDatacenterDevicesNotFound(t *testing.T) {
 
 func TestDatacenterOperations_GetDatacenterDevicesEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenter with no devices
 	dc := &model.Datacenter{Name: "Empty-DC"}
@@ -369,7 +369,7 @@ func TestDatacenterOperations_GetDatacenterDevicesEmpty(t *testing.T) {
 
 func TestDatacenterOperations_GetDatacenterDevicesInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetDatacenterDevices(context.Background(), "")
 	if err != ErrInvalidID {
@@ -379,7 +379,7 @@ func TestDatacenterOperations_GetDatacenterDevicesInvalidID(t *testing.T) {
 
 func TestCreateDatacenterNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateDatacenter(context.Background(), nil)
 	if err == nil {
@@ -389,7 +389,7 @@ func TestCreateDatacenterNil(t *testing.T) {
 
 func TestUpdateDatacenterNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.UpdateDatacenter(context.Background(), nil)
 	if err == nil {
@@ -399,7 +399,7 @@ func TestUpdateDatacenterNil(t *testing.T) {
 
 func TestUpdateDatacenterInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	dc := &model.Datacenter{ID: "", Name: "test"}
 	err := storage.UpdateDatacenter(context.Background(), dc)
@@ -410,12 +410,12 @@ func TestUpdateDatacenterInvalidID(t *testing.T) {
 
 func TestListDatacentersWithNameFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create datacenters with different names
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC1", Location: "New York"})
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC2", Location: "New York"})
-	storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1", Location: "Los Angeles"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC1", Location: "New York"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "NYC-DC2", Location: "New York"})
+	_ = storage.CreateDatacenter(context.Background(), &model.Datacenter{Name: "LA-DC1", Location: "Los Angeles"})
 
 	// Filter by name prefix
 	result, err := storage.ListDatacenters(context.Background(), &model.DatacenterFilter{Name: "NYC"})

@@ -100,7 +100,7 @@ func (s *SQLiteScheduledScanStorage) List(networkID string) ([]model.ScheduledSc
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var scans []model.ScheduledScan
 	for rows.Next() {

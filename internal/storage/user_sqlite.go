@@ -177,7 +177,7 @@ func (s *SQLiteStorage) ListUsers(ctx context.Context, filter *model.UserFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []model.User
 	for rows.Next() {

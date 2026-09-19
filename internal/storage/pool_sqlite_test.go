@@ -14,7 +14,7 @@ import (
 
 func TestPoolOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network first
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
@@ -75,7 +75,7 @@ func TestPoolOperations_CreateAndGet(t *testing.T) {
 
 func TestPoolOperations_CreateWithInvalidNetwork(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	pool := &model.NetworkPool{
 		NetworkID: "non-existent-network",
@@ -92,7 +92,7 @@ func TestPoolOperations_CreateWithInvalidNetwork(t *testing.T) {
 
 func TestPoolOperations_CreateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateNetworkPool(context.Background(), nil)
 	if err == nil {
@@ -102,7 +102,7 @@ func TestPoolOperations_CreateNil(t *testing.T) {
 
 func TestPoolOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkPool(context.Background(), "non-existent-id")
 	if err != ErrPoolNotFound {
@@ -112,7 +112,7 @@ func TestPoolOperations_GetNotFound(t *testing.T) {
 
 func TestPoolOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNetworkPool(context.Background(), "")
 	if err != ErrInvalidID {
@@ -122,11 +122,11 @@ func TestPoolOperations_GetInvalidID(t *testing.T) {
 
 func TestPoolOperations_Update(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -177,7 +177,7 @@ func TestPoolOperations_Update(t *testing.T) {
 
 func TestPoolOperations_UpdateNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	pool := &model.NetworkPool{
 		ID:   "non-existent-id",
@@ -192,7 +192,7 @@ func TestPoolOperations_UpdateNotFound(t *testing.T) {
 
 func TestPoolOperations_UpdateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.UpdateNetworkPool(context.Background(), nil)
 	if err == nil {
@@ -202,7 +202,7 @@ func TestPoolOperations_UpdateNil(t *testing.T) {
 
 func TestPoolOperations_UpdateInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	pool := &model.NetworkPool{
 		ID:   "",
@@ -217,11 +217,11 @@ func TestPoolOperations_UpdateInvalidID(t *testing.T) {
 
 func TestPoolOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -247,7 +247,7 @@ func TestPoolOperations_Delete(t *testing.T) {
 
 	// Verify cascaded deletion of tags
 	var tagCount int
-	storage.db.QueryRow("SELECT COUNT(*) FROM pool_tags WHERE pool_id = ?", pool.ID).Scan(&tagCount)
+	_ = storage.db.QueryRow("SELECT COUNT(*) FROM pool_tags WHERE pool_id = ?", pool.ID).Scan(&tagCount)
 	if tagCount != 0 {
 		t.Errorf("expected 0 tags after deletion, got %d", tagCount)
 	}
@@ -255,11 +255,11 @@ func TestPoolOperations_Delete(t *testing.T) {
 
 func TestPoolOperations_DeleteWithAddresses(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -267,7 +267,7 @@ func TestPoolOperations_DeleteWithAddresses(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create device with address in this pool
 	device := &model.Device{
@@ -300,7 +300,7 @@ func TestPoolOperations_DeleteWithAddresses(t *testing.T) {
 
 func TestPoolOperations_DeleteNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteNetworkPool(context.Background(), "non-existent-id")
 	if err != ErrPoolNotFound {
@@ -310,7 +310,7 @@ func TestPoolOperations_DeleteNotFound(t *testing.T) {
 
 func TestPoolOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteNetworkPool(context.Background(), "")
 	if err != ErrInvalidID {
@@ -320,11 +320,11 @@ func TestPoolOperations_DeleteInvalidID(t *testing.T) {
 
 func TestPoolOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create multiple pools
 	pools := []string{"Pool1", "Pool2", "Pool3"}
@@ -353,22 +353,22 @@ func TestPoolOperations_ListAll(t *testing.T) {
 
 func TestPoolOperations_ListWithNetworkFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create two networks
 	network1 := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
 	network2 := &model.Network{Name: "Network2", Subnet: "192.168.2.0/24"}
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
 	// Create pools in different networks
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network1.ID, Name: "Pool1", StartIP: "192.168.1.100", EndIP: "192.168.1.200",
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network1.ID, Name: "Pool2", StartIP: "192.168.1.201", EndIP: "192.168.1.250",
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network2.ID, Name: "Pool3", StartIP: "192.168.2.100", EndIP: "192.168.2.200",
 	})
 
@@ -385,22 +385,22 @@ func TestPoolOperations_ListWithNetworkFilter(t *testing.T) {
 
 func TestPoolOperations_ListWithTagsFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	// Create pools with different tags
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "Pool1", StartIP: "192.168.1.100", EndIP: "192.168.1.150",
 		Tags: []string{"dhcp", "production"},
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "Pool2", StartIP: "192.168.1.151", EndIP: "192.168.1.200",
 		Tags: []string{"dhcp", "staging"},
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "Pool3", StartIP: "192.168.1.201", EndIP: "192.168.1.250",
 		Tags: []string{"static"},
 	})
@@ -426,7 +426,7 @@ func TestPoolOperations_ListWithTagsFilter(t *testing.T) {
 
 func TestPoolOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	result, err := storage.ListNetworkPools(context.Background(), nil)
 	if err != nil {
@@ -443,11 +443,11 @@ func TestPoolOperations_ListEmpty(t *testing.T) {
 
 func TestPoolOperations_EmptyTagsNotNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool without tags
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -477,11 +477,11 @@ func TestPoolOperations_EmptyTagsNotNil(t *testing.T) {
 
 func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -489,7 +489,7 @@ func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.105",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Get first available IP
 	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
@@ -507,7 +507,7 @@ func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 			{IP: "192.168.1.100", Type: "ipv4", PoolID: pool.ID},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Get next available IP (should skip used one)
 	ip, err = storage.GetNextAvailableIP(context.Background(), pool.ID)
@@ -521,11 +521,11 @@ func TestPoolOperations_GetNextAvailableIP(t *testing.T) {
 
 func TestPoolOperations_GetNextAvailableIP_AllUsed(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and small pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -533,7 +533,7 @@ func TestPoolOperations_GetNextAvailableIP_AllUsed(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.101",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Use all IPs
 	device := &model.Device{
@@ -543,7 +543,7 @@ func TestPoolOperations_GetNextAvailableIP_AllUsed(t *testing.T) {
 			{IP: "192.168.1.101", Type: "ipv4", PoolID: pool.ID},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Try to get next available IP
 	_, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
@@ -554,7 +554,7 @@ func TestPoolOperations_GetNextAvailableIP_AllUsed(t *testing.T) {
 
 func TestPoolOperations_GetNextAvailableIP_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNextAvailableIP(context.Background(), "non-existent-pool")
 	if err != ErrPoolNotFound {
@@ -564,7 +564,7 @@ func TestPoolOperations_GetNextAvailableIP_PoolNotFound(t *testing.T) {
 
 func TestPoolOperations_GetNextAvailableIP_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetNextAvailableIP(context.Background(), "")
 	if err != ErrInvalidID {
@@ -578,11 +578,11 @@ func TestPoolOperations_GetNextAvailableIP_InvalidID(t *testing.T) {
 
 func TestPoolOperations_ValidateIPInPool(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -590,7 +590,7 @@ func TestPoolOperations_ValidateIPInPool(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	tests := []struct {
 		ip       string
@@ -620,7 +620,7 @@ func TestPoolOperations_ValidateIPInPool(t *testing.T) {
 
 func TestPoolOperations_ValidateIPInPool_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.ValidateIPInPool(context.Background(), "non-existent-pool", "192.168.1.100")
 	if err != ErrPoolNotFound {
@@ -630,7 +630,7 @@ func TestPoolOperations_ValidateIPInPool_PoolNotFound(t *testing.T) {
 
 func TestPoolOperations_ValidateIPInPool_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.ValidateIPInPool(context.Background(), "", "192.168.1.100")
 	if err != ErrInvalidID {
@@ -640,11 +640,11 @@ func TestPoolOperations_ValidateIPInPool_InvalidID(t *testing.T) {
 
 func TestPoolOperations_ValidateIPInPool_InvalidIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -652,7 +652,7 @@ func TestPoolOperations_ValidateIPInPool_InvalidIP(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.200",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	_, err := storage.ValidateIPInPool(context.Background(), pool.ID, "invalid-ip")
 	if err == nil {
@@ -666,11 +666,11 @@ func TestPoolOperations_ValidateIPInPool_InvalidIP(t *testing.T) {
 
 func TestPoolOperations_GetPoolHeatmap(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and small pool
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -678,7 +678,7 @@ func TestPoolOperations_GetPoolHeatmap(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.103",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Create device with some addresses in the pool
 	device := &model.Device{
@@ -688,7 +688,7 @@ func TestPoolOperations_GetPoolHeatmap(t *testing.T) {
 			{IP: "192.168.1.102", Type: "ipv4", PoolID: pool.ID},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Get heatmap
 	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
@@ -728,11 +728,11 @@ func TestPoolOperations_GetPoolHeatmap(t *testing.T) {
 
 func TestPoolOperations_GetPoolHeatmap_Empty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool with no used addresses
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -740,7 +740,7 @@ func TestPoolOperations_GetPoolHeatmap_Empty(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.102",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
@@ -760,7 +760,7 @@ func TestPoolOperations_GetPoolHeatmap_Empty(t *testing.T) {
 
 func TestPoolOperations_GetPoolHeatmap_PoolNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetPoolHeatmap(context.Background(), "non-existent-pool")
 	if err != ErrPoolNotFound {
@@ -770,7 +770,7 @@ func TestPoolOperations_GetPoolHeatmap_PoolNotFound(t *testing.T) {
 
 func TestPoolOperations_GetPoolHeatmap_InvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetPoolHeatmap(context.Background(), "")
 	if err != ErrInvalidID {
@@ -780,11 +780,11 @@ func TestPoolOperations_GetPoolHeatmap_InvalidID(t *testing.T) {
 
 func TestPoolOperations_GetPoolHeatmap_SingleIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool with single IP
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -792,7 +792,7 @@ func TestPoolOperations_GetPoolHeatmap_SingleIP(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.100",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
@@ -876,7 +876,7 @@ func TestIncrementIP(t *testing.T) {
 func parseIPv4(s string) []byte {
 	ip := make([]byte, 4)
 	var a, b, c, d int
-	fmt.Sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d)
+	_, _ = fmt.Sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d)
 	ip[0] = byte(a)
 	ip[1] = byte(b)
 	ip[2] = byte(c)
@@ -886,11 +886,11 @@ func parseIPv4(s string) []byte {
 
 func TestPoolOperations_LargeRange(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create network and pool with larger range
 	network := &model.Network{Name: "Network1", Subnet: "10.0.0.0/16"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -898,7 +898,7 @@ func TestPoolOperations_LargeRange(t *testing.T) {
 		StartIP:   "10.0.1.0",
 		EndIP:     "10.0.1.255",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Get first available IP
 	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
@@ -912,10 +912,10 @@ func TestPoolOperations_LargeRange(t *testing.T) {
 
 func TestNetworkPoolUpdateTags(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -924,7 +924,7 @@ func TestNetworkPoolUpdateTags(t *testing.T) {
 		EndIP:     "192.168.1.200",
 		Tags:      []string{"original"},
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Update with new tags
 	pool.Tags = []string{"updated", "new-tag", "another"}
@@ -940,10 +940,10 @@ func TestNetworkPoolUpdateTags(t *testing.T) {
 
 func TestPoolUpdateClearTags(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -952,7 +952,7 @@ func TestPoolUpdateClearTags(t *testing.T) {
 		EndIP:     "192.168.1.200",
 		Tags:      []string{"tag1", "tag2"},
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Update to clear tags
 	pool.Tags = []string{}
@@ -968,10 +968,10 @@ func TestPoolUpdateClearTags(t *testing.T) {
 
 func TestGetNextAvailableIPWithGaps(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -979,7 +979,7 @@ func TestGetNextAvailableIPWithGaps(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.110",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	// Use IPs with gaps: 100, 102, 104
 	device := &model.Device{
@@ -990,7 +990,7 @@ func TestGetNextAvailableIPWithGaps(t *testing.T) {
 			{IP: "192.168.1.104", Type: "ipv4", PoolID: pool.ID},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Should return first gap: 101
 	ip, err := storage.GetNextAvailableIP(context.Background(), pool.ID)
@@ -1004,10 +1004,10 @@ func TestGetNextAvailableIPWithGaps(t *testing.T) {
 
 func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
 	pool := &model.NetworkPool{
 		NetworkID: network.ID,
@@ -1015,7 +1015,7 @@ func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
 		StartIP:   "192.168.1.100",
 		EndIP:     "192.168.1.102",
 	}
-	storage.CreateNetworkPool(context.Background(), pool)
+	_ = storage.CreateNetworkPool(context.Background(), pool)
 
 	device := &model.Device{
 		Name: "server1",
@@ -1023,7 +1023,7 @@ func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
 			{IP: "192.168.1.101", Type: "ipv4", PoolID: pool.ID},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	heatmap, err := storage.GetPoolHeatmap(context.Background(), pool.ID)
 	if err != nil {
@@ -1045,20 +1045,20 @@ func TestPoolHeatmapWithDeviceInfo(t *testing.T) {
 
 func TestListNetworkPoolsWithCombinedFilters(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	network := &model.Network{Name: "Network1", Subnet: "192.168.1.0/24"}
-	storage.CreateNetwork(context.Background(), network)
+	_ = storage.CreateNetwork(context.Background(), network)
 
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "DHCP-Pool", StartIP: "192.168.1.100", EndIP: "192.168.1.150",
 		Tags: []string{"dhcp", "production"},
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "Static-Pool", StartIP: "192.168.1.151", EndIP: "192.168.1.200",
 		Tags: []string{"static", "production"},
 	})
-	storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
+	_ = storage.CreateNetworkPool(context.Background(), &model.NetworkPool{
 		NetworkID: network.ID, Name: "DHCP-Reserved", StartIP: "192.168.1.201", EndIP: "192.168.1.250",
 		Tags: []string{"dhcp", "reserved"},
 	})

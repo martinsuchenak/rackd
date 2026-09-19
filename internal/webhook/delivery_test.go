@@ -30,7 +30,7 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 func TestDeliveryServiceDeliverSuccessAndRetryFailure(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		store := newWebhookTestStore(t)
-		defer store.Close()
+		defer func() { _ = store.Close() }()
 
 		service := NewDeliveryService(store, DeliveryConfig{MaxRetries: 2, RetryBackoff: time.Second, HTTPTimeout: 2 * time.Second, RetentionDays: 1})
 		service.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -58,7 +58,7 @@ func TestDeliveryServiceDeliverSuccessAndRetryFailure(t *testing.T) {
 
 	t.Run("failure creates retry", func(t *testing.T) {
 		store := newWebhookTestStore(t)
-		defer store.Close()
+		defer func() { _ = store.Close() }()
 
 		service := NewDeliveryService(store, DeliveryConfig{MaxRetries: 2, RetryBackoff: time.Second, HTTPTimeout: 2 * time.Second, RetentionDays: 1})
 		service.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -84,7 +84,7 @@ func TestDeliveryServiceDeliverSuccessAndRetryFailure(t *testing.T) {
 
 func TestDeliveryServiceProcessPendingRetriesAndCleanup(t *testing.T) {
 	store := newWebhookTestStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	service := NewDeliveryService(store, DeliveryConfig{MaxRetries: 2, RetryBackoff: time.Second, HTTPTimeout: 2 * time.Second, RetentionDays: 1})
@@ -169,7 +169,7 @@ func TestDeliveryServiceProcessPendingRetriesAndCleanup(t *testing.T) {
 
 func TestWorkerDeliverEventAndStop(t *testing.T) {
 	store := newWebhookTestStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	wh := &model.Webhook{

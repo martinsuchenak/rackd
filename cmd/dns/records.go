@@ -48,7 +48,7 @@ func RecordsCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -74,21 +74,21 @@ func RecordsCommand() *cli.Command {
 
 func printRecordsTable(records []map[string]interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tTYPE\tVALUE\tTTL\tDEVICE")
+	_, _ = fmt.Fprintln(w, "NAME\tTYPE\tVALUE\tTTL\tDEVICE")
 	for _, r := range records {
 		value := client.GetString(r, "value")
 		// Truncate long values
 		if len(value) > 40 {
 			value = value[:37] + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n",
 			client.GetString(r, "name"),
 			client.GetString(r, "type"),
 			value,
 			r["ttl"],
 			client.GetString(r, "device_id"))
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	// Print summary
 	fmt.Printf("\nTotal records: %d\n", len(records))

@@ -115,7 +115,7 @@ func (e *benchEnv) seedDevices(b *testing.B, n int) []string {
 
 func BenchmarkStorageCreateDevice(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -137,7 +137,7 @@ func BenchmarkStorageCreateDevice(b *testing.B) {
 
 func BenchmarkStorageGetDevice(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	ids := env.seedDevices(b, 100)
 
 	b.ResetTimer()
@@ -150,7 +150,7 @@ func BenchmarkStorageGetDevice(b *testing.B) {
 
 func BenchmarkStorageListDevices(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 500)
 
 	for _, limit := range []int{10, 50, 100} {
@@ -170,7 +170,7 @@ func BenchmarkStorageListDevices(b *testing.B) {
 
 func BenchmarkStorageSearchDevices(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 500)
 
 	queries := []string{"bench", "host-42", "Dell", "Ubuntu"}
@@ -185,7 +185,7 @@ func BenchmarkStorageSearchDevices(b *testing.B) {
 
 func BenchmarkStorageListDevicesWithTagFilter(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 500)
 
 	filter := &model.DeviceFilter{
@@ -204,7 +204,7 @@ func BenchmarkStorageListDevicesWithTagFilter(b *testing.B) {
 
 func BenchmarkAPIKeyAuth(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -217,7 +217,7 @@ func BenchmarkAPIKeyAuth(b *testing.B) {
 
 func BenchmarkSessionValidation(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 
 	sess, err := env.sm.CreateSession(env.userID, "benchadmin", true)
 	if err != nil {
@@ -244,13 +244,13 @@ func BenchmarkPasswordVerify(b *testing.B) {
 	hash, _ := auth.HashPassword("benchmarkpassword123")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		auth.VerifyPassword(hash, "benchmarkpassword123")
+		_ = auth.VerifyPassword(hash, "benchmarkpassword123")
 	}
 }
 
 func BenchmarkRBACPermissionCheck(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 
 	ctx := service.WithCaller(context.Background(), &service.Caller{
 		Type:   service.CallerTypeUser,
@@ -273,7 +273,7 @@ func BenchmarkRBACPermissionCheck(b *testing.B) {
 
 func BenchmarkHTTPListDevices(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 200)
 
 	b.ResetTimer()
@@ -289,7 +289,7 @@ func BenchmarkHTTPListDevices(b *testing.B) {
 
 func BenchmarkHTTPGetDevice(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	ids := env.seedDevices(b, 100)
 
 	b.ResetTimer()
@@ -305,7 +305,7 @@ func BenchmarkHTTPGetDevice(b *testing.B) {
 
 func BenchmarkHTTPCreateDevice(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -326,7 +326,7 @@ func BenchmarkHTTPCreateDevice(b *testing.B) {
 
 func BenchmarkHTTPSearchGlobal(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 500)
 
 	queries := []string{"bench", "host-42", "Dell", "Ubuntu"}
@@ -374,7 +374,7 @@ func BenchmarkJSONSerializeDeviceList(b *testing.B) {
 
 func BenchmarkMiddlewareChain(b *testing.B) {
 	env := newBenchEnv(b)
-	defer env.store.Close()
+	defer func() { _ = env.store.Close() }()
 	env.seedDevices(b, 10)
 
 	// Wrap mux with the same middleware chain as production

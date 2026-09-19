@@ -21,7 +21,7 @@ func DecodeJSON(data string, v any) {
 	if data == "" || data == "null" {
 		return
 	}
-	json.Unmarshal([]byte(data), v)
+	_ = json.Unmarshal([]byte(data), v)
 }
 
 // DecodeJSONNullable decodes from sql.NullString-like values.
@@ -30,5 +30,5 @@ func DecodeJSONNullable(data string, valid bool, v any) {
 	if !valid || data == "" {
 		return
 	}
-	json.Unmarshal([]byte(data), v)
+	_ = json.Unmarshal([]byte(data), v)
 }

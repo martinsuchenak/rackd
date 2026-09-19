@@ -404,5 +404,3 @@ func (h *Handler) promoteDNSRecord(w http.ResponseWriter, r *http.Request) {
 	}
 	h.writeJSON(w, http.StatusOK, record)
 }
-
-

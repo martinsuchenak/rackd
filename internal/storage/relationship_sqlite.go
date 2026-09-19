@@ -56,7 +56,7 @@ func (s *SQLiteStorage) GetRelationships(ctx context.Context, deviceID string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var rels []model.DeviceRelationship
 	for rows.Next() {
@@ -77,7 +77,7 @@ func (s *SQLiteStorage) ListAllRelationships(ctx context.Context) ([]model.Devic
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var rels []model.DeviceRelationship
 	for rows.Next() {
@@ -101,7 +101,7 @@ func (s *SQLiteStorage) GetRelatedDevices(ctx context.Context, deviceID, relatio
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []model.Device
 	for rows.Next() {

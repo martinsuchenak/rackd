@@ -134,11 +134,11 @@ func TestConflictTableOutput(t *testing.T) {
 
 	client.PrintConflictTable(conflicts)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "ID") || !strings.Contains(output, "TYPE") || !strings.Contains(output, "STATUS") {
@@ -163,11 +163,11 @@ func TestConflictJSONOutput(t *testing.T) {
 
 	client.PrintJSON(conflicts)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	var parsed []map[string]interface{}
@@ -185,19 +185,19 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/conflicts" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "conflict-1", "type": "duplicate_ip", "status": "active", "description": "IP 10.0.0.1 conflict"},
 			})
 		case r.URL.Path == "/api/conflicts/conflict-1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "conflict-1", "type": "duplicate_ip", "status": "active", "description": "IP 10.0.0.1 conflict",
 			})
 		case r.URL.Path == "/api/conflicts/detect" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"conflicts": []map[string]interface{}{
 					{"id": "detected-1", "type": "duplicate_ip", "status": "active"},
 				},
@@ -205,7 +205,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/conflicts/resolve" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
 		case r.URL.Path == "/api/conflicts/conflict-1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -265,17 +265,17 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 
 func TestPrintConflictDetail(t *testing.T) {
 	conflict := map[string]interface{}{
-		"id":          "conflict-1",
-		"type":        "duplicate_ip",
-		"status":      "active",
-		"description": "IP 10.0.0.1 assigned to multiple devices",
-		"ip_address": "10.0.0.1",
-		"device_ids":  []interface{}{"device-1", "device-2"},
+		"id":           "conflict-1",
+		"type":         "duplicate_ip",
+		"status":       "active",
+		"description":  "IP 10.0.0.1 assigned to multiple devices",
+		"ip_address":   "10.0.0.1",
+		"device_ids":   []interface{}{"device-1", "device-2"},
 		"device_names": []interface{}{"server1", "server2"},
-		"detected_at": "2024-01-15T10:30:00Z",
-		"resolved_at": nil,
-		"resolved_by": nil,
-		"notes":       nil,
+		"detected_at":  "2024-01-15T10:30:00Z",
+		"resolved_at":  nil,
+		"resolved_by":  nil,
+		"notes":        nil,
 	}
 
 	old := os.Stdout
@@ -284,11 +284,11 @@ func TestPrintConflictDetail(t *testing.T) {
 
 	printConflictDetail(conflict)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "conflict-1") {

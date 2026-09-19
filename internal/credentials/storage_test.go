@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "modernc.org/sqlite"
 	"github.com/martinsuchenak/rackd/internal/model"
+	_ "modernc.org/sqlite"
 )
 
 func setupTestDB(t *testing.T) (*SQLiteStorage, func()) {
@@ -26,7 +26,7 @@ func setupTestDB(t *testing.T) (*SQLiteStorage, func()) {
 	}
 
 	cleanup := func() {
-		db.Close()
+		_ = db.Close()
 	}
 
 	return storage, cleanup

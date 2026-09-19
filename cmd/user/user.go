@@ -52,7 +52,7 @@ func ListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -64,7 +64,7 @@ func ListCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tUSERNAME\tEMAIL\tNAME\tADMIN\tACTIVE\tCREATED")
+			_, _ = fmt.Fprintln(w, "ID\tUSERNAME\tEMAIL\tNAME\tADMIN\tACTIVE\tCREATED")
 			for _, user := range users {
 				admin := "no"
 				if user.IsAdmin {
@@ -74,12 +74,12 @@ func ListCommand() *cli.Command {
 				if user.IsActive {
 					active = "yes"
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 					user.ID, user.Username, user.Email,
 					user.FullName, admin, active,
 					user.CreatedAt.Format("2006-01-02 15:04"))
 			}
-			w.Flush()
+			_ = w.Flush()
 
 			return nil
 		},
@@ -160,7 +160,7 @@ func CreateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -286,7 +286,7 @@ func UpdateCommand() *cli.Command {
 				if err != nil {
 					return err
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 
 				if resp.StatusCode != http.StatusOK {
 					return client.HandleError(resp)
@@ -317,7 +317,7 @@ func UpdateCommand() *cli.Command {
 				if err != nil {
 					return err
 				}
-				defer refetchResp.Body.Close()
+				defer func() { _ = refetchResp.Body.Close() }()
 				if refetchResp.StatusCode != http.StatusOK {
 					return client.HandleError(refetchResp)
 				}
@@ -350,7 +350,7 @@ func assignRole(c *client.Client, userID, roleID string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		return client.HandleError(resp)
@@ -367,7 +367,7 @@ func revokeRole(c *client.Client, userID, roleID string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {
 		return client.HandleError(resp)
@@ -392,7 +392,7 @@ func DeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
@@ -467,7 +467,7 @@ func ChangePasswordCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)

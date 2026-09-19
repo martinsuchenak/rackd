@@ -13,7 +13,7 @@ import (
 
 func TestConflictOperations_CreateAndGet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	conflict := &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
@@ -65,7 +65,7 @@ func TestConflictOperations_CreateAndGet(t *testing.T) {
 
 func TestConflictOperations_CreateOverlappingSubnet(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	conflict := &model.Conflict{
 		Type:         model.ConflictTypeOverlappingSubnet,
@@ -99,7 +99,7 @@ func TestConflictOperations_CreateOverlappingSubnet(t *testing.T) {
 
 func TestConflictOperations_GetNotFound(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetConflict(context.Background(), "non-existent-id")
 	if err == nil {
@@ -109,7 +109,7 @@ func TestConflictOperations_GetNotFound(t *testing.T) {
 
 func TestConflictOperations_GetInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetConflict(context.Background(), "")
 	if err != ErrInvalidID {
@@ -119,16 +119,16 @@ func TestConflictOperations_GetInvalidID(t *testing.T) {
 
 func TestConflictOperations_ListAll(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create multiple conflicts
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusActive,
 		Description: "Conflict 1",
 		IPAddress:   "10.0.0.1",
 	})
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeOverlappingSubnet,
 		Status:      model.ConflictStatusResolved,
 		Description: "Conflict 2",
@@ -147,16 +147,16 @@ func TestConflictOperations_ListAll(t *testing.T) {
 
 func TestConflictOperations_ListWithTypeFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflicts of different types
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusActive,
 		Description: "Duplicate IP",
 		IPAddress:   "10.0.0.1",
 	})
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeOverlappingSubnet,
 		Status:      model.ConflictStatusActive,
 		Description: "Overlapping subnet",
@@ -180,16 +180,16 @@ func TestConflictOperations_ListWithTypeFilter(t *testing.T) {
 
 func TestConflictOperations_ListWithStatusFilter(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflicts with different statuses
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusActive,
 		Description: "Active conflict",
 		IPAddress:   "10.0.0.1",
 	})
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusResolved,
 		Description: "Resolved conflict",
@@ -214,7 +214,7 @@ func TestConflictOperations_ListWithStatusFilter(t *testing.T) {
 
 func TestConflictOperations_ListEmpty(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	conflicts, err := storage.ListConflicts(context.Background(), nil)
 	if err != nil {
@@ -231,7 +231,7 @@ func TestConflictOperations_ListEmpty(t *testing.T) {
 
 func TestConflictOperations_UpdateStatus(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflict
 	conflict := &model.Conflict{
@@ -272,7 +272,7 @@ func TestConflictOperations_UpdateStatus(t *testing.T) {
 
 func TestConflictOperations_UpdateStatusInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.UpdateConflictStatus(context.Background(), "", model.ConflictStatusResolved, "admin", "notes")
 	if err != ErrInvalidID {
@@ -282,7 +282,7 @@ func TestConflictOperations_UpdateStatusInvalidID(t *testing.T) {
 
 func TestConflictOperations_Delete(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflict
 	conflict := &model.Conflict{
@@ -309,7 +309,7 @@ func TestConflictOperations_Delete(t *testing.T) {
 
 func TestConflictOperations_DeleteInvalidID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.DeleteConflict(context.Background(), "")
 	if err != ErrInvalidID {
@@ -319,7 +319,7 @@ func TestConflictOperations_DeleteInvalidID(t *testing.T) {
 
 func TestConflictOperations_FindDuplicateIPs(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create devices with duplicate IPs
 	device1 := &model.Device{
@@ -341,9 +341,9 @@ func TestConflictOperations_FindDuplicateIPs(t *testing.T) {
 		},
 	}
 
-	storage.CreateDevice(context.Background(), device1)
-	storage.CreateDevice(context.Background(), device2)
-	storage.CreateDevice(context.Background(), device3)
+	_ = storage.CreateDevice(context.Background(), device1)
+	_ = storage.CreateDevice(context.Background(), device2)
+	_ = storage.CreateDevice(context.Background(), device3)
 
 	// Find duplicate IPs
 	conflicts, err := storage.FindDuplicateIPs(context.Background())
@@ -371,16 +371,16 @@ func TestConflictOperations_FindDuplicateIPs(t *testing.T) {
 
 func TestConflictOperations_FindOverlappingSubnets(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks with overlapping subnets
 	network1 := &model.Network{Name: "Network1", Subnet: "10.0.0.0/24"}
 	network2 := &model.Network{Name: "Network2", Subnet: "10.0.0.0/16"}    // Overlaps with network1
 	network3 := &model.Network{Name: "Network3", Subnet: "192.168.1.0/24"} // No overlap
 
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
-	storage.CreateNetwork(context.Background(), network3)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network3)
 
 	// Find overlapping subnets
 	conflicts, err := storage.FindOverlappingSubnets(context.Background())
@@ -408,14 +408,14 @@ func TestConflictOperations_FindOverlappingSubnets(t *testing.T) {
 
 func TestConflictOperations_FindOverlappingSubnetsIdentical(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks with identical subnets (should still detect overlap)
 	network1 := &model.Network{Name: "Network1", Subnet: "10.0.0.0/24"}
 	network2 := &model.Network{Name: "Network2", Subnet: "10.0.0.0/24"}
 
-	storage.CreateNetwork(context.Background(), network1)
-	storage.CreateNetwork(context.Background(), network2)
+	_ = storage.CreateNetwork(context.Background(), network1)
+	_ = storage.CreateNetwork(context.Background(), network2)
 
 	// Find overlapping subnets
 	conflicts, err := storage.FindOverlappingSubnets(context.Background())
@@ -430,12 +430,12 @@ func TestConflictOperations_FindOverlappingSubnetsIdentical(t *testing.T) {
 
 func TestConflictOperations_FindOverlappingSubnetsNoOverlap(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create networks with non-overlapping subnets
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "10.0.0.0/24"})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.0.0/24"})
-	storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "172.16.0.0/24"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network1", Subnet: "10.0.0.0/24"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network2", Subnet: "192.168.0.0/24"})
+	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "172.16.0.0/24"})
 
 	// Find overlapping subnets
 	conflicts, err := storage.FindOverlappingSubnets(context.Background())
@@ -450,7 +450,7 @@ func TestConflictOperations_FindOverlappingSubnetsNoOverlap(t *testing.T) {
 
 func TestConflictOperations_GetConflictsByDeviceID(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device
 	device := &model.Device{
@@ -459,7 +459,7 @@ func TestConflictOperations_GetConflictsByDeviceID(t *testing.T) {
 			{IP: "192.168.1.100", Type: "ipv4"},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Create conflict involving this device
 	conflict := &model.Conflict{
@@ -469,7 +469,7 @@ func TestConflictOperations_GetConflictsByDeviceID(t *testing.T) {
 		IPAddress:   "192.168.1.100",
 		DeviceIDs:   []string{device.ID, "other-device"},
 	}
-	storage.CreateConflict(context.Background(), conflict)
+	_ = storage.CreateConflict(context.Background(), conflict)
 
 	// Get conflicts by device ID
 	conflicts, err := storage.GetConflictsByDeviceID(context.Background(), device.ID)
@@ -484,7 +484,7 @@ func TestConflictOperations_GetConflictsByDeviceID(t *testing.T) {
 
 func TestConflictOperations_GetConflictsByDeviceIDInvalid(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetConflictsByDeviceID(context.Background(), "")
 	if err != ErrInvalidID {
@@ -494,7 +494,7 @@ func TestConflictOperations_GetConflictsByDeviceIDInvalid(t *testing.T) {
 
 func TestConflictOperations_GetConflictsByIP(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflict with specific IP
 	conflict := &model.Conflict{
@@ -504,7 +504,7 @@ func TestConflictOperations_GetConflictsByIP(t *testing.T) {
 		IPAddress:   "10.0.0.100",
 		DeviceIDs:   []string{"device1", "device2"},
 	}
-	storage.CreateConflict(context.Background(), conflict)
+	_ = storage.CreateConflict(context.Background(), conflict)
 
 	// Get conflicts by IP
 	conflicts, err := storage.GetConflictsByIP(context.Background(), "10.0.0.100")
@@ -523,7 +523,7 @@ func TestConflictOperations_GetConflictsByIP(t *testing.T) {
 
 func TestConflictOperations_GetConflictsByIPInvalid(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	_, err := storage.GetConflictsByIP(context.Background(), "")
 	if err != ErrInvalidID {
@@ -533,7 +533,7 @@ func TestConflictOperations_GetConflictsByIPInvalid(t *testing.T) {
 
 func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create device
 	device := &model.Device{
@@ -542,7 +542,7 @@ func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 			{IP: "192.168.1.100", Type: "ipv4"},
 		},
 	}
-	storage.CreateDevice(context.Background(), device)
+	_ = storage.CreateDevice(context.Background(), device)
 
 	// Create active conflicts involving this device
 	conflict1 := &model.Conflict{
@@ -559,8 +559,8 @@ func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 		IPAddress:   "192.168.1.101",
 		DeviceIDs:   []string{device.ID},
 	}
-	storage.CreateConflict(context.Background(), conflict1)
-	storage.CreateConflict(context.Background(), conflict2)
+	_ = storage.CreateConflict(context.Background(), conflict1)
+	_ = storage.CreateConflict(context.Background(), conflict2)
 
 	// Mark conflicts as resolved
 	err := storage.MarkConflictsResolvedForDevice(context.Background(), device.ID, "admin")
@@ -586,7 +586,7 @@ func TestConflictOperations_MarkConflictsResolvedForDevice(t *testing.T) {
 
 func TestConflictOperations_CreateNil(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	err := storage.CreateConflict(context.Background(), nil)
 	if err == nil {
@@ -596,16 +596,16 @@ func TestConflictOperations_CreateNil(t *testing.T) {
 
 func TestConflictOperations_ListOrderedByDetectedAt(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	// Create conflicts - they should be ordered by detected_at DESC
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusActive,
 		Description: "First conflict",
 		IPAddress:   "10.0.0.1",
 	})
-	storage.CreateConflict(context.Background(), &model.Conflict{
+	_ = storage.CreateConflict(context.Background(), &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,
 		Status:      model.ConflictStatusActive,
 		Description: "Second conflict",
@@ -629,7 +629,7 @@ func TestConflictOperations_ListOrderedByDetectedAt(t *testing.T) {
 
 func TestConflictOperations_WithResolvedTimestamp(t *testing.T) {
 	storage := newTestStorage(t)
-	defer storage.Close()
+	defer func() { _ = storage.Close() }()
 
 	conflict := &model.Conflict{
 		Type:        model.ConflictTypeDuplicateIP,

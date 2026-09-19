@@ -27,7 +27,7 @@ func EventsCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -58,11 +58,11 @@ func printEventsTable(events []map[string]interface{}) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "VALUE\tLABEL")
+	_, _ = fmt.Fprintln(w, "VALUE\tLABEL")
 	for _, e := range events {
-		fmt.Fprintf(w, "%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\n",
 			getString(e, "value"),
 			getString(e, "label"))
 	}
-	w.Flush()
+	_ = w.Flush()
 }

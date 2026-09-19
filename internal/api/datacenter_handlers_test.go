@@ -113,7 +113,7 @@ func authReq(req *http.Request) *http.Request {
 
 func TestDatacenterHandlers(t *testing.T) {
 	h, store := setupTestHandler(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -194,7 +194,7 @@ func TestDatacenterHandlers(t *testing.T) {
 		mux.ServeHTTP(w, req)
 
 		var resp map[string]any
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		dcID = resp["id"].(string)
 
 		req = authReq(httptest.NewRequest("GET", "/api/datacenters/"+dcID, nil))

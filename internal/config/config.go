@@ -62,7 +62,7 @@ type Config struct {
 var cfg Config
 
 func Load() *Config {
-	env.Load()
+	_ = env.Load()
 
 	cfg = Config{
 		DataDir:                 getEnv("DATA_DIR", "./data"),

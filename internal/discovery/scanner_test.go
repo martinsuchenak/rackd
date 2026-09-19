@@ -122,7 +122,7 @@ func TestGetTop100Ports(t *testing.T) {
 
 func TestScan_InvalidCIDR(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	network := &model.Network{
 		ID:     "net-1",
@@ -138,7 +138,7 @@ func TestScan_InvalidCIDR(t *testing.T) {
 
 func TestScan_CreatesScanRecord(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	network := &model.Network{
@@ -146,7 +146,7 @@ func TestScan_CreatesScanRecord(t *testing.T) {
 		Name:   "Test",
 		Subnet: "192.168.1.0/30",
 	}
-	store.CreateNetwork(ctx, network)
+	_ = store.CreateNetwork(ctx, network)
 
 	scan, err := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 	if err != nil {
@@ -166,7 +166,7 @@ func TestScan_CreatesScanRecord(t *testing.T) {
 
 func TestGetScanStatus_FromCache(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	network := &model.Network{
@@ -174,7 +174,7 @@ func TestGetScanStatus_FromCache(t *testing.T) {
 		Name:   "Test",
 		Subnet: "192.168.1.0/30",
 	}
-	store.CreateNetwork(ctx, network)
+	_ = store.CreateNetwork(ctx, network)
 
 	scan, _ := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 
@@ -189,12 +189,12 @@ func TestGetScanStatus_FromCache(t *testing.T) {
 
 func TestGetScanStatus_FromStorage(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	// Create network first (foreign key constraint)
 	network := &model.Network{ID: "net-1", Name: "Test", Subnet: "192.168.1.0/24"}
-	store.CreateNetwork(ctx, network)
+	_ = store.CreateNetwork(ctx, network)
 
 	scan := &model.DiscoveryScan{
 		ID:        "scan-123",
@@ -202,7 +202,7 @@ func TestGetScanStatus_FromStorage(t *testing.T) {
 		Status:    model.ScanStatusCompleted,
 		ScanType:  model.ScanTypeQuick,
 	}
-	store.CreateDiscoveryScan(ctx, scan)
+	_ = store.CreateDiscoveryScan(ctx, scan)
 
 	status, err := scanner.GetScanStatus(context.Background(), "scan-123")
 	if err != nil {
@@ -215,7 +215,7 @@ func TestGetScanStatus_FromStorage(t *testing.T) {
 
 func TestScan_SubnetTooLarge(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	network := &model.Network{
 		ID:     "net-1",
@@ -231,7 +231,7 @@ func TestScan_SubnetTooLarge(t *testing.T) {
 
 func TestScan_MaxAllowedSubnet(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
 	network := &model.Network{
@@ -239,7 +239,7 @@ func TestScan_MaxAllowedSubnet(t *testing.T) {
 		Name:   "Test",
 		Subnet: "10.0.0.0/16", // Max allowed
 	}
-	store.CreateNetwork(ctx, network)
+	_ = store.CreateNetwork(ctx, network)
 
 	scan, err := scanner.Scan(context.Background(), network, model.ScanTypeQuick)
 	if err != nil {
@@ -252,7 +252,7 @@ func TestScan_MaxAllowedSubnet(t *testing.T) {
 
 func TestCleanupCompletedScans(t *testing.T) {
 	scanner, store := newTestUnifiedScanner(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// Add a completed scan with old timestamp
 	oldTime := time.Now().Add(-5 * time.Minute)

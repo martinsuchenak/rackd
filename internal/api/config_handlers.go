@@ -120,6 +120,6 @@ func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(cfg)
+		_ = json.NewEncoder(w).Encode(cfg)
 	}
 }

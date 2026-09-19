@@ -41,7 +41,7 @@ func newTestServer(t *testing.T) *testServer {
 	if err != nil {
 		t.Fatalf("failed to create test storage: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 
 	sm := auth.NewSessionManager(24*time.Hour, nil)
 	t.Cleanup(func() { sm.Stop() })
@@ -662,9 +662,9 @@ func TestCustomFieldsFullStack(t *testing.T) {
 
 	// Create custom field definition
 	w := ts.doRequest(t, http.MethodPost, "/api/custom-fields", map[string]any{
-		"name": "Environment",
-		"key":  "environment",
-		"type": "select",
+		"name":    "Environment",
+		"key":     "environment",
+		"type":    "select",
 		"options": []string{"production", "staging", "development"},
 	}, token)
 	if w.Code != http.StatusCreated {

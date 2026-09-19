@@ -54,7 +54,7 @@ func providerListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -95,7 +95,7 @@ func providerGetCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -166,7 +166,7 @@ func providerCreateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -248,7 +248,7 @@ func providerUpdateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -301,7 +301,7 @@ func providerDeleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
@@ -329,7 +329,7 @@ func providerTestCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -355,13 +355,13 @@ func providerTestCommand() *cli.Command {
 
 func printProviderTable(providers []map[string]interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tTYPE\tENDPOINT")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tTYPE\tENDPOINT")
 	for _, p := range providers {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			client.GetString(p, "id"),
 			client.GetString(p, "name"),
 			client.GetString(p, "type"),
 			client.GetString(p, "endpoint"))
 	}
-	w.Flush()
+	_ = w.Flush()
 }

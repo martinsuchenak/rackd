@@ -33,7 +33,7 @@ func ListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -64,7 +64,7 @@ func printFieldTable(fields []map[string]interface{}) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tKEY\tTYPE\tREQUIRED")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tKEY\tTYPE\tREQUIRED")
 	for _, f := range fields {
 		id := getString(f, "id")
 		if len(id) > 8 {
@@ -74,7 +74,7 @@ func printFieldTable(fields []map[string]interface{}) {
 		if getBool(f, "required") {
 			required = "yes"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			id,
 			getString(f, "name"),
 			getString(f, "key"),
@@ -82,7 +82,7 @@ func printFieldTable(fields []map[string]interface{}) {
 			required,
 		)
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func getString(m map[string]interface{}, key string) string {

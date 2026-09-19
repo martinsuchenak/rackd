@@ -43,7 +43,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/scheduled-scans" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode([]map[string]interface{}{
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{
 					"id": "ss1", "name": "nightly-scan", "network_id": "net1",
 					"profile_id": "sp1", "cron_expression": "0 2 * * *", "enabled": true,
@@ -52,20 +52,20 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss1", "name": "nightly-scan", "network_id": "net1",
 				"profile_id": "sp1", "cron_expression": "0 2 * * *", "enabled": true,
 			})
 		case r.URL.Path == "/api/scheduled-scans" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss-new", "name": "new-scan",
 			})
 		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss1", "name": "updated-scan",
 			})
 		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "DELETE":

@@ -33,7 +33,7 @@ func ListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -64,7 +64,7 @@ func printWebhookTable(webhooks []map[string]interface{}) {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tURL\tACTIVE\tEVENTS")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tURL\tACTIVE\tEVENTS")
 	for _, wh := range webhooks {
 		id := getString(wh, "id")
 		if len(id) > 8 {
@@ -86,14 +86,14 @@ func printWebhookTable(webhooks []map[string]interface{}) {
 				events = events[:27] + "..."
 			}
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			id,
 			getString(wh, "name"),
 			getString(wh, "url"),
 			active,
 			events)
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func getString(m map[string]interface{}, key string) string {

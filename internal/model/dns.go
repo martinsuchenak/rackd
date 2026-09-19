@@ -162,32 +162,32 @@ func (s RecordSyncStatus) String() string {
 
 // DNSZone represents a DNS zone
 type DNSZone struct {
-	ID             string           `json:"id"`
-	Name           string           `json:"name"`
-	ProviderID     string           `json:"provider_id"`
-	NetworkID      *string          `json:"network_id,omitempty"`
-	AutoSync       bool             `json:"auto_sync"`
-	CreatePTR      bool             `json:"create_ptr"`
-	PTRZone        *string          `json:"ptr_zone,omitempty"`
-	TTL            int              `json:"ttl"`
-	Description    string           `json:"description"`
-	LastSyncAt     *time.Time       `json:"last_sync_at,omitempty"`
-	LastSyncStatus SyncStatus       `json:"last_sync_status"`
-	LastSyncError  *string          `json:"last_sync_error,omitempty"`
-	CreatedAt      time.Time        `json:"created_at"`
-	UpdatedAt      time.Time        `json:"updated_at"`
+	ID             string     `json:"id"`
+	Name           string     `json:"name"`
+	ProviderID     string     `json:"provider_id"`
+	NetworkID      *string    `json:"network_id,omitempty"`
+	AutoSync       bool       `json:"auto_sync"`
+	CreatePTR      bool       `json:"create_ptr"`
+	PTRZone        *string    `json:"ptr_zone,omitempty"`
+	TTL            int        `json:"ttl"`
+	Description    string     `json:"description"`
+	LastSyncAt     *time.Time `json:"last_sync_at,omitempty"`
+	LastSyncStatus SyncStatus `json:"last_sync_status"`
+	LastSyncError  *string    `json:"last_sync_error,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // DNSZoneInput represents input for creating/updating a zone (non-pointer fields)
 type DNSZoneInput struct {
-	Name        string   `json:"name"`
-	ProviderID  string   `json:"provider_id"`
-	NetworkID   *string  `json:"network_id,omitempty"`
-	AutoSync    bool     `json:"auto_sync"`
-	CreatePTR   bool     `json:"create_ptr"`
-	PTRZone     *string  `json:"ptr_zone,omitempty"`
-	TTL         int      `json:"ttl"`
-	Description string   `json:"description"`
+	Name        string  `json:"name"`
+	ProviderID  string  `json:"provider_id"`
+	NetworkID   *string `json:"network_id,omitempty"`
+	AutoSync    bool    `json:"auto_sync"`
+	CreatePTR   bool    `json:"create_ptr"`
+	PTRZone     *string `json:"ptr_zone,omitempty"`
+	TTL         int     `json:"ttl"`
+	Description string  `json:"description"`
 }
 
 // DNSRecord represents a DNS record
@@ -227,12 +227,12 @@ type DNSRecordFilter struct {
 
 // SyncResult represents the result of a DNS sync operation
 type SyncResult struct {
-	Success     bool     `json:"success"`
-	Total       int      `json:"total"`
-	Synced      int      `json:"synced"`
-	Failed      int      `json:"failed"`
-	Error       string   `json:"error,omitempty"`
-	FailedIDs   []string `json:"failed_ids,omitempty"`
+	Success   bool     `json:"success"`
+	Total     int      `json:"total"`
+	Synced    int      `json:"synced"`
+	Failed    int      `json:"failed"`
+	Error     string   `json:"error,omitempty"`
+	FailedIDs []string `json:"failed_ids,omitempty"`
 }
 
 // ImportResult represents the result of a DNS import operation
@@ -280,13 +280,13 @@ type CreateDNSZoneRequest struct {
 
 // UpdateDNSZoneRequest represents the input for updating a DNS zone
 type UpdateDNSZoneRequest struct {
-	Name        *string  `json:"name,omitempty"`
-	NetworkID   *string  `json:"network_id,omitempty"`
-	AutoSync    *bool    `json:"auto_sync,omitempty"`
-	CreatePTR   *bool    `json:"create_ptr,omitempty"`
-	PTRZone     *string  `json:"ptr_zone,omitempty"`
-	TTL         *int     `json:"ttl,omitempty"`
-	Description *string  `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	NetworkID   *string `json:"network_id,omitempty"`
+	AutoSync    *bool   `json:"auto_sync,omitempty"`
+	CreatePTR   *bool   `json:"create_ptr,omitempty"`
+	PTRZone     *string `json:"ptr_zone,omitempty"`
+	TTL         *int    `json:"ttl,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 // CreateDNSRecordRequest represents the input for creating a DNS record

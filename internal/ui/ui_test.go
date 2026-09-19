@@ -20,7 +20,7 @@ func TestRegisterRoutes(t *testing.T) {
 		{"/index.html", http.StatusOK, "<!DOCTYPE html>"},
 		{"/app.js", http.StatusOK, "placeholder"},
 		{"/output.css", http.StatusOK, "font-family"},
-		{"/devices", http.StatusOK, "<!DOCTYPE html>"}, // SPA fallback
+		{"/devices", http.StatusOK, "<!DOCTYPE html>"},      // SPA fallback
 		{"/networks/123", http.StatusOK, "<!DOCTYPE html>"}, // SPA fallback
 	}
 

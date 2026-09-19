@@ -41,7 +41,7 @@ func listCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
@@ -57,9 +57,9 @@ func listCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tTYPE\tTIMEOUT\tWORKERS\tSNMP\tSSH")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tTYPE\tTIMEOUT\tWORKERS\tSNMP\tSSH")
 			for _, p := range profiles {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%v\t%v\n",
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%v\t%v\t%v\n",
 					client.GetString(p, "id"),
 					client.GetString(p, "name"),
 					client.GetString(p, "scan_type"),
@@ -68,7 +68,7 @@ func listCommand() *cli.Command {
 					p["enable_snmp"],
 					p["enable_ssh"])
 			}
-			w.Flush()
+			_ = w.Flush()
 			return nil
 		},
 	}
@@ -88,13 +88,15 @@ func getCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var profile map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&profile)
+			if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
+				return err
+			}
 
 			switch cmd.GetString("output") {
 			case "yaml":
@@ -143,13 +145,15 @@ func createCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
 			}
 
 			var profile map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&profile)
+			if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
+				return err
+			}
 			fmt.Printf("Scan profile created: %s\n", client.GetString(profile, "id"))
 			return nil
 		},
@@ -179,13 +183,15 @@ func updateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
 			}
 
 			var body map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&body)
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				return err
+			}
 
 			// Override with provided flags
 			if v := cmd.GetString("name"); v != "" {
@@ -217,7 +223,7 @@ func updateCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp2.Body.Close()
+			defer func() { _ = resp2.Body.Close() }()
 			if resp2.StatusCode != http.StatusOK {
 				return client.HandleError(resp2)
 			}
@@ -241,7 +247,7 @@ func deleteCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusNoContent {
 				return client.HandleError(resp)
 			}

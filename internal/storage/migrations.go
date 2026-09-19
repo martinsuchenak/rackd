@@ -331,7 +331,7 @@ func getAppliedMigrations(ctx context.Context, db *sql.DB) (map[string]Migration
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	applied := make(map[string]MigrationRecord)
 	for rows.Next() {
@@ -353,7 +353,7 @@ func runMigration(ctx context.Context, db *sql.DB, m *Migration) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Run the migration
 	if err := m.Up(ctx, tx); err != nil {

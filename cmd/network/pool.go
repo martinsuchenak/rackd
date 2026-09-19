@@ -41,7 +41,7 @@ func poolListCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				return client.HandleError(resp)
@@ -91,7 +91,7 @@ func poolAddCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 				return client.HandleError(resp)
@@ -116,13 +116,13 @@ func poolAddCommand() *cli.Command {
 
 func printPoolTable(pools []map[string]interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tSTART IP\tEND IP")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tSTART IP\tEND IP")
 	for _, p := range pools {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			getString(p, "id"),
 			getString(p, "name"),
 			getString(p, "start_ip"),
 			getString(p, "end_ip"))
 	}
-	w.Flush()
+	_ = w.Flush()
 }
