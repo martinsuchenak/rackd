@@ -454,7 +454,7 @@ curl http://localhost:8080/
 
 # Check assets are embedded
 # Rebuild if necessary
-make build
+task build:local
 
 # Check browser console for errors
 # Open DevTools (F12) and check Console tab

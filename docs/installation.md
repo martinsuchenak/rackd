@@ -75,7 +75,7 @@ bun install
 cd ..
 
 # Build everything
-make build
+task build:local
 
 # The binary will be in ./build/rackd
 ./build/rackd version

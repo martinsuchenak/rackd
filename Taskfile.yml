@@ -1,0 +1,183 @@
+version: '3'
+
+env:
+  GOTOOLCHAIN: go1.27.1
+
+vars:
+  APP_NAME: rackd
+  BUILD_DIR: ./build
+  WEBUI_DIR: ./webui
+  ASSETS_DIR: ./internal/ui/assets
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  DATE:
+    sh: date -u '+%Y-%m-%dT%H:%M:%SZ'
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.date={{.DATE}}
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  build:
+    desc: Cross-compile all release platforms
+    cmds:
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+
+  build:local:
+    desc: Build for local platform (UI + binary)
+    deps: [ui:build]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - CGO_ENABLED=0 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}} .
+
+  build:linux:
+    desc: Build for Linux (amd64, arm64)
+    deps: [ui:build]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}}-linux-amd64 .
+      - CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}}-linux-arm64 .
+
+  build:darwin:
+    desc: Build for macOS (amd64, arm64)
+    deps: [ui:build]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}}-darwin-amd64 .
+      - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}}-darwin-arm64 .
+
+  build:windows:
+    desc: Build for Windows (amd64)
+    deps: [ui:build]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.APP_NAME}}-windows-amd64.exe .
+
+  ui:build:
+    desc: Build web UI assets
+    dir: '{{.WEBUI_DIR}}'
+    cmds:
+      - bun install
+      - bun run build
+
+  test:
+    desc: Run all tests with coverage profile
+    deps: [ui:build]
+    env:
+      RACKD_BCRYPT_COST: "6"
+    cmds:
+      - go test ./... -v -count=1 -coverprofile=coverage.out
+
+  test:short:
+    desc: Run short tests only
+    env:
+      RACKD_BCRYPT_COST: "6"
+    cmds:
+      - go test ./... -v -count=1 -short
+
+  test:race:
+    desc: Run tests with race detector
+    deps: [ui:build]
+    env:
+      RACKD_BCRYPT_COST: "6"
+    cmds:
+      - go test ./... -v -count=1 -race -timeout 30m
+
+  test:cover:
+    desc: Run tests and show per-function coverage
+    cmds:
+      - task: test
+      - go tool cover -func=coverage.out
+
+  test:e2e:
+    desc: Run web UI Playwright end-to-end tests
+    dir: '{{.WEBUI_DIR}}'
+    cmds:
+      - bun run test:e2e
+
+  run:
+    desc: Build and run server
+    cmds:
+      - task: build:local
+      - '{{.BUILD_DIR}}/{{.APP_NAME}} server'
+
+  run:dev:
+    desc: Build and run server in dev mode
+    cmds:
+      - task: build:local
+      - '{{.BUILD_DIR}}/{{.APP_NAME}} server --dev-mode --log-level debug'
+
+  dev:
+    desc: Run in development mode (go run, debug logging)
+    cmds:
+      - task: ui:build
+      - go run . server --log-level debug
+
+  fmt:
+    desc: Format code (go fmt + gofumpt)
+    cmds:
+      - go fmt ./...
+      - gofumpt -w .
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run ./...
+
+  tidy:
+    desc: Tidy and verify go modules
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  security:
+    desc: Run security scanner (gosec)
+    cmds:
+      - gosec ./...
+
+  check:
+    desc: Full CI gate — vet + lint + tests with race detector
+    cmds:
+      - task: vet
+      - task: lint
+      - task: test:race
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -rf {{.ASSETS_DIR}}
+      - rm -f coverage.out
+
+  docker:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.APP_NAME}}:{{.VERSION}} .
+
+  docker:run:
+    desc: Run Docker container
+    cmds:
+      - docker run -p 8080:8080 -v {{.USER_WORKING_DIR}}/data:/data {{.APP_NAME}}:{{.VERSION}}
+
+  release:
+    desc: 'Create a version tag and push it (usage: task release -- v0.1.0)'
+    deps: [check, build]
+    preconditions:
+      - sh: 'test -n "{{.CLI_ARGS}}"'
+        msg: 'version tag required (e.g. task release -- v0.1.0)'
+      - sh: 'git diff --quiet'
+        msg: 'working tree has uncommitted changes'
+    cmds:
+      - git tag {{.CLI_ARGS}}
+      - git push origin {{.CLI_ARGS}}
+      - echo "Tagged and pushed {{.CLI_ARGS}}"

@@ -54,7 +54,7 @@ go mod download
 cd webui && bun install && cd ..
 
 # Build the complete application
-make build
+task build:local
 
 # Run the server
 ./build/rackd server
@@ -62,27 +62,29 @@ make build
 
 ### Build Targets
 
-The project uses a Makefile with several build targets:
+The project uses a Taskfile (go-task) with several build targets. Run `task --list` to see all of them:
 
 #### Core Targets
-- `make build` - Build complete application (UI + binary)
-- `make binary` - Build Go binary only
-- `make ui-build` - Build web UI assets only
-- `make clean` - Remove build artifacts
+- `task build` - Cross-compile all release platforms (linux, darwin, windows)
+- `task build:local` - Build for the local platform (UI + binary)
+- `task build:linux` / `task build:darwin` / `task build:windows` - Build for a single OS
+- `task ui:build` - Build web UI assets only
+- `task clean` - Remove build artifacts
 
 #### Development Targets
-- `make dev` - Run in development mode with hot reload
-- `make run-server` - Build and run server
-- `make fmt` - Format code
-- `make lint` - Run linters
-- `make validate` - Run all validations (build, test, vet, lint)
+- `task dev` - Run in development mode (go run, debug logging)
+- `task run` - Build and run server
+- `task run:dev` - Build and run server in dev mode
+- `task fmt` / `task vet` / `task lint` / `task tidy` - Formatting and static checks
+- `task check` - Full CI gate (vet + lint + tests with race detector)
+- `task security` - Run security scanner (gosec)
 
 #### Testing Targets
-- `make test` - Run all tests
-- `make test-e2e` - Run web UI Playwright end-to-end tests
-- `make test-short` - Run short tests only
-- `make test-race` - Run tests with race detector
-- `make test-coverage` - Show test coverage
+- `task test` - Run all tests (with coverage profile)
+- `task test:short` - Run short tests only
+- `task test:race` - Run tests with race detector
+- `task test:cover` - Run tests and show per-function coverage
+- `task test:e2e` - Run web UI Playwright end-to-end tests
 
 Before the first E2E run, install the Playwright browser runtime once:
 
@@ -91,27 +93,25 @@ cd webui
 bun run test:e2e:install
 ```
 
-#### Cross-Platform Builds
-- `make build-linux` - Build for Linux (amd64, arm64)
-- `make build-darwin` - Build for macOS (amd64, arm64)
-- `make build-windows` - Build for Windows (amd64)
-
 #### Docker Targets
-- `make docker` - Build Docker image
-- `make docker-run` - Run Docker container
+- `task docker` - Build Docker image
+- `task docker:run` - Run Docker container
+
+#### Release
+- `task release -- v0.1.0` - Tag a version and push it (triggers the goreleaser release workflow)
 
 ### Build Process
 
 The build process consists of two main phases:
 
-1. **Frontend Build** (`make ui-build`):
+1. **Frontend Build** (`task ui:build`):
    - Installs Node.js dependencies with Bun
    - Compiles TypeScript to JavaScript
    - Processes CSS with TailwindCSS
    - Builds HTML templates
    - Copies assets to `internal/ui/assets/`
 
-2. **Backend Build** (`make binary`):
+2. **Backend Build** (`task build:local`):
    - Compiles Go code with embedded UI assets
    - Includes version information via ldflags
    - Produces single binary with no external dependencies
@@ -519,16 +519,16 @@ Tests are organized alongside the code they test, following Go conventions:
 
 ```bash
 # Run all tests
-make test
+task test
 
 # Run tests with coverage
-make test-coverage
+task test:cover
 
 # Run only short tests (excludes integration tests)
-make test-short
+task test:short
 
 # Run tests with race detection
-make test-race
+task test:race
 
 # Run specific package tests
 go test ./internal/storage/...
@@ -536,6 +536,12 @@ go test ./internal/storage/...
 # Run with verbose output
 go test -v ./...
 ```
+
+The `test`, `test:short`, and `test:race` tasks set `RACKD_BCRYPT_COST=6` to keep
+the suite fast: bcrypt at the production cost (14) takes ~700ms per hash natively
+and ~7s under the race detector, which made auth-heavy tests dominate the run.
+Production binaries are unaffected — the cost defaults to 14 unless the variable
+is set explicitly.
 
 ### Test Categories
 
@@ -598,7 +604,7 @@ func TestIntegration(t *testing.T) {
 
 4. **Validate Changes**
    ```bash
-   make validate
+   task check
    ```
 
 5. **Commit and Push**
@@ -648,7 +654,7 @@ Follow standard Go conventions:
 
 ```bash
 # Format code
-make fmt
+task fmt
 
 # This runs:
 go fmt ./...
@@ -659,7 +665,7 @@ gofumpt -w .
 
 ```bash
 # Run linter
-make lint
+task lint
 
 # This runs:
 golangci-lint run ./...
@@ -861,7 +867,7 @@ result, _ := someFunction()
 
 ```bash
 # Run security scanner
-make security
+task security
 ```
 
 ## Development Environment
@@ -893,7 +899,7 @@ Rackd uses SQLite for data storage:
 
 ```bash
 # Start development server with hot reload
-make dev
+task dev
 
 # This will:
 # 1. Build the UI
@@ -950,7 +956,7 @@ dlv debug . -- server
 
 2. **Test Failures**
    - Run tests individually to isolate issues
-   - Check for race conditions with `make test-race`
+   - Check for race conditions with `task test:race`
    - Ensure test database is clean
 
 3. **Frontend Issues**
@@ -982,9 +988,9 @@ dlv debug . -- server
 
 ```bash
 # Build for all platforms
-make build-linux
-make build-darwin
-make build-windows
+task build:linux
+task build:darwin
+task build:windows
 
 # Or use GoReleaser (if configured)
 goreleaser release --snapshot --rm-dist

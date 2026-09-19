@@ -1,8 +1,9 @@
 # Build stage
-FROM golang:1.26.6-alpine AS builder
+FROM golang:1.27.1-alpine AS builder
 
-RUN apk add --no-cache git make
+RUN apk add --no-cache git
 RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community bun
+RUN go install github.com/go-task/task/v3/cmd/task@v3.53.1
 
 WORKDIR /app
 
@@ -11,7 +12,7 @@ RUN go mod download
 
 COPY . .
 
-RUN make build
+RUN task build:local
 
 # Runtime stage
 FROM alpine:latest

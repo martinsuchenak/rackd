@@ -146,7 +146,7 @@ rackd/
 ├── data/                  # Runtime data directory
 │   └── rackd.db          # SQLite database
 ├── main.go               # Application entry point
-├── Makefile              # Build automation
+├── Taskfile.yml          # Build automation
 ├── Dockerfile            # Container image
 ├── docker-compose.yml    # Docker Compose config
 └── go.mod                # Go dependencies

@@ -135,16 +135,16 @@ func setupIntegrationServer(t *testing.T, authToken string) *httptest.Server {
 
 ```bash
 # Run all tests
-make test
+task test
 
 # Run only unit tests (short tests)
-make test-short
+task test:short
 
 # Run tests with race detection
-make test-race
+task test:race
 
 # Show test coverage
-make test-coverage
+task test:cover
 ```
 
 ### Manual Test Commands
@@ -195,7 +195,7 @@ go test -v -run "Test.*Handler" ./internal/api
 
 ```bash
 # Generate coverage report
-make test-coverage
+task test:cover
 
 # View coverage in browser
 go test -coverprofile=coverage.out ./...
@@ -334,9 +334,9 @@ Tests run automatically on:
 ```yaml
 - name: Run Tests
   run: |
-    make test-short
-    make test-race
-    make test-coverage
+    task test:short
+    task test:race
+    task test:cover
 ```
 
 ### Quality Gates

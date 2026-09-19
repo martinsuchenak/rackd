@@ -136,7 +136,7 @@ go mod download
 cd webui && bun install && cd ..
 
 # Build
-make build
+task build:local
 
 # Run
 ./build/rackd server
