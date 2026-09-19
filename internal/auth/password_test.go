@@ -161,3 +161,27 @@ func TestHashPasswordConsistency(t *testing.T) {
 		t.Errorf("VerifyPassword() failed for hash2: %v", err)
 	}
 }
+
+func TestBcryptCostFromEnv(t *testing.T) {
+	cases := []struct {
+		name string
+		env  string
+		want int
+	}{
+		{"unset uses default", "", defaultBcryptCost},
+		{"valid low cost", "6", 6},
+		{"valid high cost", "31", 31},
+		{"below minimum rejected", "3", defaultBcryptCost},
+		{"above maximum rejected", "32", defaultBcryptCost},
+		{"non-numeric rejected", "strong", defaultBcryptCost},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("RACKD_BCRYPT_COST", tc.env)
+			if got := bcryptCostFromEnv(); got != tc.want {
+				t.Errorf("bcryptCostFromEnv() with RACKD_BCRYPT_COST=%q = %d, want %d", tc.env, got, tc.want)
+			}
+		})
+	}
+}
