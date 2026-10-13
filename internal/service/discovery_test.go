@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	discoverypkg "github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -13,29 +14,31 @@ import (
 
 type discoveryTestStorage struct {
 	storage.ExtendedStorage
-	permissions map[string]bool
-	networks    map[string]*model.Network
-	discovered  map[string]*model.DiscoveredDevice
-	created     *model.Device
-	promotedID  string
-	promotedTo  string
+	perms      testPermissions
+	networks   map[string]*model.Network
+	discovered map[string]*model.DiscoveredDevice
+	created    *model.Device
+	promotedID string
+	promotedTo string
 }
 
 func newDiscoveryTestStorage() *discoveryTestStorage {
 	return &discoveryTestStorage{
-		permissions: make(map[string]bool),
-		networks:    make(map[string]*model.Network),
-		discovered:  make(map[string]*model.DiscoveredDevice),
+		perms:      newTestPermissions(),
+		networks:   make(map[string]*model.Network),
+		discovered: make(map[string]*model.DiscoveredDevice),
 	}
 }
 
 func (s *discoveryTestStorage) setPermission(userID, resource, action string, allowed bool) {
-	s.permissions[userID+":"+resource+":"+action] = allowed
+	s.perms.set(userID, resource, action, allowed)
 }
 
-func (s *discoveryTestStorage) HasPermission(_ context.Context, userID, resource, action string) (bool, error) {
-	return s.permissions[userID+":"+resource+":"+action], nil
+func (s *discoveryTestStorage) GetUserRoles(_ context.Context, userID string) ([]model.Role, error) {
+	return s.perms.roles(userID), nil
 }
+
+func (s *discoveryTestStorage) RBACManager() *rbac.Manager { return s.perms.manager }
 
 func (s *discoveryTestStorage) GetNetwork(_ context.Context, id string) (*model.Network, error) {
 	network, ok := s.networks[id]

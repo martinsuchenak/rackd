@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	dnspkg "github.com/martinsuchenak/rackd/internal/dns"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -450,9 +451,15 @@ func (s *linkTestStorage) UpdateDevice(_ context.Context, device *model.Device) 
 	return nil
 }
 
-func (s *linkTestStorage) HasPermission(_ context.Context, _, _, _ string) (bool, error) {
-	return true, nil
+var linkRBACManager = rbac.New(map[rbac.Role]rbac.RoleDefinition{
+	"superuser": {Permissions: []rbac.Permission{"*"}},
+})
+
+func (s *linkTestStorage) GetUserRoles(_ context.Context, _ string) ([]model.Role, error) {
+	return []model.Role{{Name: "superuser"}}, nil
 }
+
+func (s *linkTestStorage) RBACManager() *rbac.Manager { return linkRBACManager }
 
 func buildLinkTestService(ss *linkTestStorage) *DNSService {
 	return &DNSService{

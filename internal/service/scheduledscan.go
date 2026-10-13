@@ -10,10 +10,10 @@ import (
 
 type ScheduledScanService struct {
 	store storage.ScheduledScanStorage
-	rbac  PermissionChecker
+	rbac  permissionStore
 }
 
-func NewScheduledScanService(store storage.ScheduledScanStorage, rbac PermissionChecker) *ScheduledScanService {
+func NewScheduledScanService(store storage.ScheduledScanStorage, rbac permissionStore) *ScheduledScanService {
 	return &ScheduledScanService{store: store, rbac: rbac}
 }
 

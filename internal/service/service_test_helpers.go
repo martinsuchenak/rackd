@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -16,10 +17,10 @@ func init() {
 type serviceTestStorage struct {
 	storage.ExtendedStorage
 
-	permissions map[string]bool
-	users       map[string]*model.User
-	userRoles   map[string][]model.Role
-	roles       map[string]*model.Role
+	perms     testPermissions
+	users     map[string]*model.User
+	userRoles map[string][]model.Role
+	roles     map[string]*model.Role
 
 	networks     []model.Network
 	datacenters  []model.Datacenter
@@ -88,7 +89,7 @@ type serviceTestStorage struct {
 
 func newServiceTestStorage() *serviceTestStorage {
 	return &serviceTestStorage{
-		permissions:         make(map[string]bool),
+		perms:               newTestPermissions(),
 		users:               make(map[string]*model.User),
 		userRoles:           make(map[string][]model.Role),
 		roles:               make(map[string]*model.Role),
@@ -109,13 +110,58 @@ func newServiceTestStorage() *serviceTestStorage {
 	}
 }
 
-func (s *serviceTestStorage) setPermission(userID, resource, action string, allowed bool) {
-	s.permissions[userID+":"+resource+":"+action] = allowed
+// testPermissions grants permissions to test users through a synthetic
+// per-user role ("role-<userID>") held in a real go-rbac manager, so service
+// tests exercise the same permission check as production.
+type testPermissions struct {
+	byUser  map[string]map[string]bool // userID → "resource:action" → granted
+	manager *rbac.Manager
 }
 
-func (s *serviceTestStorage) HasPermission(_ context.Context, userID, resource, action string) (bool, error) {
-	return s.permissions[userID+":"+resource+":"+action], nil
+func newTestPermissions() testPermissions {
+	return testPermissions{
+		byUser:  make(map[string]map[string]bool),
+		manager: rbac.New(map[rbac.Role]rbac.RoleDefinition{}),
+	}
 }
+
+// set grants or revokes resource:action for userID and rebuilds the manager.
+func (p testPermissions) set(userID, resource, action string, allowed bool) {
+	if p.byUser[userID] == nil {
+		p.byUser[userID] = make(map[string]bool)
+	}
+	if allowed {
+		p.byUser[userID][resource+":"+action] = true
+	} else {
+		delete(p.byUser[userID], resource+":"+action)
+	}
+
+	defs := make(map[rbac.Role]rbac.RoleDefinition, len(p.byUser))
+	for uid, perms := range p.byUser {
+		ps := make([]rbac.Permission, 0, len(perms))
+		for perm := range perms {
+			ps = append(ps, rbac.Permission(perm))
+		}
+		defs[rbac.Role("role-"+uid)] = rbac.RoleDefinition{Permissions: ps}
+	}
+	if err := p.manager.Rebuild(defs); err != nil {
+		panic(err)
+	}
+}
+
+// roles returns the synthetic role for userID, if any permissions were set.
+func (p testPermissions) roles(userID string) []model.Role {
+	if len(p.byUser[userID]) == 0 {
+		return nil
+	}
+	return []model.Role{{Name: "role-" + userID}}
+}
+
+func (s *serviceTestStorage) setPermission(userID, resource, action string, allowed bool) {
+	s.perms.set(userID, resource, action, allowed)
+}
+
+func (s *serviceTestStorage) RBACManager() *rbac.Manager { return s.perms.manager }
 
 func (s *serviceTestStorage) GetUser(_ context.Context, id string) (*model.User, error) {
 	user, ok := s.users[id]
@@ -144,7 +190,8 @@ func (s *serviceTestStorage) UpdateUser(_ context.Context, user *model.User) err
 }
 
 func (s *serviceTestStorage) GetUserRoles(_ context.Context, userID string) ([]model.Role, error) {
-	return append([]model.Role(nil), s.userRoles[userID]...), nil
+	roles := append([]model.Role(nil), s.userRoles[userID]...)
+	return append(roles, s.perms.roles(userID)...), nil
 }
 
 func (s *serviceTestStorage) GetRole(_ context.Context, id string) (*model.Role, error) {

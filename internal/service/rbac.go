@@ -4,14 +4,27 @@ import (
 	"context"
 	"fmt"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
-type PermissionChecker interface {
-	HasPermission(ctx context.Context, userID, resource, action string) (bool, error)
+type permissionStore interface {
+	GetUserRoles(ctx context.Context, userID string) ([]model.Role, error)
+	RBACManager() *rbac.Manager
 }
 
-func requirePermission(ctx context.Context, checker PermissionChecker, resource, action string) error {
+// userCan reports whether userID's roles grant resource:action.
+func userCan(ctx context.Context, store permissionStore, userID, resource, action string) (bool, error) {
+	roles, err := store.GetUserRoles(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return store.RBACManager().Can(storage.RBACRoles(roles), rbac.Permission(resource+":"+action)), nil
+}
+
+func requirePermission(ctx context.Context, store permissionStore, resource, action string) error {
 	caller := CallerFrom(ctx)
 	if caller != nil && caller.IsSystem() {
 		return nil
@@ -42,7 +55,7 @@ func requirePermission(ctx context.Context, checker PermissionChecker, resource,
 		}
 	}
 
-	has, err := checker.HasPermission(ctx, caller.UserID, resource, action)
+	has, err := userCan(ctx, store, caller.UserID, resource, action)
 	if err != nil {
 		log.Error("RBAC: permission check error", "error", err, "user_id", caller.UserID, "resource", resource, "action", action)
 		return fmt.Errorf("checking permission %s:%s: %w", resource, action, err)

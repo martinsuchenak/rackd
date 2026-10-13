@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	dnspkg "github.com/martinsuchenak/rackd/internal/dns"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -75,9 +76,15 @@ func (s *stubStorage) GetDNSProvider(_ context.Context, id string) (*model.DNSPr
 	return nil, storage.ErrDNSProviderNotFound
 }
 
-func (s *stubStorage) HasPermission(_ context.Context, _, _, _ string) (bool, error) {
-	return true, nil
+var stubRBACManager = rbac.New(map[rbac.Role]rbac.RoleDefinition{
+	"superuser": {Permissions: []rbac.Permission{"*"}},
+})
+
+func (s *stubStorage) GetUserRoles(_ context.Context, _ string) ([]model.Role, error) {
+	return []model.Role{{Name: "superuser"}}, nil
 }
+
+func (s *stubStorage) RBACManager() *rbac.Manager { return stubRBACManager }
 
 func (s *stubStorage) DB() *sql.DB  { return nil }
 func (s *stubStorage) Close() error { return nil }

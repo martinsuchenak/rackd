@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -257,13 +258,15 @@ func BenchmarkRBACPermissionCheck(b *testing.B) {
 		UserID: env.userID,
 	})
 
+	// Mirrors the production check (service.userCan): load the user's roles
+	// from the DB, then evaluate against the in-memory manager.
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		has, err := env.store.HasPermission(ctx, env.userID, "devices", "list")
+		roles, err := env.store.GetUserRoles(ctx, env.userID)
 		if err != nil {
-			b.Fatalf("rbac: %v", err)
+			b.Fatalf("rbac get roles: %v", err)
 		}
-		if !has {
+		if !env.store.RBACManager().Can(storage.RBACRoles(roles), rbac.Permission("devices:list")) {
 			b.Fatal("expected permission")
 		}
 	}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -24,6 +25,8 @@ type SQLiteStorage struct {
 	auditDone chan struct{}
 	auditWG   sync.WaitGroup
 	closeOnce sync.Once
+
+	rbacManager *rbac.Manager
 
 	// webhookEncryptor, when set, transparently encrypts webhook signing
 	// secrets at rest (write) and decrypts them on read. Legacy plaintext
@@ -97,6 +100,12 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
 	}
 
+	// Build in-memory RBAC manager from seeded role/permission data
+	if err := s.initRBAC(ctx); err != nil {
+		_ = s.Close()
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -145,6 +154,12 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 	if err := s.ensureDefaultDatacenter(ctx); err != nil {
 		_ = s.Close()
 		return nil, fmt.Errorf("failed to ensure default datacenter: %w", err)
+	}
+
+	// Build in-memory RBAC manager from seeded role/permission data
+	if err := s.initRBAC(ctx); err != nil {
+		_ = s.Close()
+		return nil, err
 	}
 
 	return s, nil

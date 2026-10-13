@@ -4,8 +4,17 @@ import (
 	"context"
 	"testing"
 
+	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/model"
 )
+
+func canPermission(ctx context.Context, s *SQLiteStorage, userID, resource, action string) (bool, error) {
+	roles, err := s.GetUserRoles(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return s.RBACManager().Can(RBACRoles(roles), rbac.Permission(resource+":"+action)), nil
+}
 
 func TestRBACStoragePermissionsRolesAndAssignments(t *testing.T) {
 	storage := newTestStorage(t)
@@ -129,9 +138,9 @@ func TestRBACStoragePermissionsRolesAndAssignments(t *testing.T) {
 		t.Fatal("expected permissions inherited from role")
 	}
 
-	allowed, err := storage.HasPermission(ctx, user.ID, "devices", "list")
+	allowed, err := canPermission(ctx, storage, user.ID, "devices", "list")
 	if err != nil {
-		t.Fatalf("HasPermission failed: %v", err)
+		t.Fatalf("canPermission failed: %v", err)
 	}
 	if !allowed {
 		t.Fatal("expected permission check to pass")
@@ -140,9 +149,9 @@ func TestRBACStoragePermissionsRolesAndAssignments(t *testing.T) {
 	if err := storage.RemoveRoleFromUser(ctx, user.ID, role.ID); err != nil {
 		t.Fatalf("RemoveRoleFromUser failed: %v", err)
 	}
-	allowed, err = storage.HasPermission(ctx, user.ID, "devices", "list")
+	allowed, err = canPermission(ctx, storage, user.ID, "devices", "list")
 	if err != nil {
-		t.Fatalf("HasPermission after remove failed: %v", err)
+		t.Fatalf("canPermission after remove failed: %v", err)
 	}
 	if allowed {
 		t.Fatal("expected permission check to fail after removing role")
@@ -180,5 +189,156 @@ func TestRBACStorageSystemRoleDeleteBlocked(t *testing.T) {
 
 	if err := storage.DeleteRole(ctx, role.ID); err == nil {
 		t.Fatal("expected system role delete to fail")
+	}
+}
+
+func TestRBACStorageDeletePermissionRevokesAccess(t *testing.T) {
+	storage := newTestStorage(t)
+	defer func() { _ = storage.Close() }()
+	ctx := context.Background()
+
+	user := &model.User{Username: "rbac-del", Email: "rbac-del@example.com", PasswordHash: "hash", IsActive: true}
+	if err := storage.CreateUser(ctx, user); err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	perm := &model.Permission{Name: "widgets:frob", Resource: "widgets", Action: "frob"}
+	if err := storage.CreatePermission(ctx, perm); err != nil {
+		t.Fatalf("CreatePermission failed: %v", err)
+	}
+	role := &model.Role{Name: "widget-frobber"}
+	if err := storage.CreateRole(ctx, role); err != nil {
+		t.Fatalf("CreateRole failed: %v", err)
+	}
+	if err := storage.AddRolePermission(ctx, role.ID, perm.ID); err != nil {
+		t.Fatalf("AddRolePermission failed: %v", err)
+	}
+	if err := storage.AssignRoleToUser(ctx, user.ID, role.ID); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+
+	allowed, err := canPermission(ctx, storage, user.ID, "widgets", "frob")
+	if err != nil || !allowed {
+		t.Fatalf("expected permission before delete, allowed=%v err=%v", allowed, err)
+	}
+
+	if err := storage.DeletePermission(ctx, perm.ID); err != nil {
+		t.Fatalf("DeletePermission failed: %v", err)
+	}
+	allowed, err = canPermission(ctx, storage, user.ID, "widgets", "frob")
+	if err != nil {
+		t.Fatalf("canPermission failed: %v", err)
+	}
+	if allowed {
+		t.Fatal("expected deleted permission to no longer grant access")
+	}
+}
+
+func TestRBACStorageMutationWithCancelledContextStillRebuilds(t *testing.T) {
+	storage := newTestStorage(t)
+	defer func() { _ = storage.Close() }()
+	ctx := context.Background()
+
+	user := &model.User{Username: "rbac-cancel", Email: "rbac-cancel@example.com", PasswordHash: "hash", IsActive: true}
+	if err := storage.CreateUser(ctx, user); err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	perm := &model.Permission{Name: "gadgets:zap", Resource: "gadgets", Action: "zap"}
+	if err := storage.CreatePermission(ctx, perm); err != nil {
+		t.Fatalf("CreatePermission failed: %v", err)
+	}
+	role := &model.Role{Name: "gadget-zapper"}
+	if err := storage.CreateRole(ctx, role); err != nil {
+		t.Fatalf("CreateRole failed: %v", err)
+	}
+	if err := storage.AddRolePermission(ctx, role.ID, perm.ID); err != nil {
+		t.Fatalf("AddRolePermission failed: %v", err)
+	}
+	if err := storage.AssignRoleToUser(ctx, user.ID, role.ID); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+
+	// Revoke in the DB without rebuilding, then rebuild the way a mutator does
+	// after its commit, with a request context the client has already
+	// cancelled. The rebuild must still happen.
+	if _, err := storage.db.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ?`, role.ID); err != nil {
+		t.Fatalf("revoking permission failed: %v", err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	storage.refreshRBAC(cancelled)
+
+	allowed, err := canPermission(ctx, storage, user.ID, "gadgets", "zap")
+	if err != nil {
+		t.Fatalf("canPermission failed: %v", err)
+	}
+	if allowed {
+		t.Fatal("revoked permission still granted after rebuild with cancelled context")
+	}
+}
+
+func TestRBACStorageWildcardPermissionsAreLiteral(t *testing.T) {
+	storage := newTestStorage(t)
+	defer func() { _ = storage.Close() }()
+	ctx := context.Background()
+
+	user := &model.User{Username: "rbac-wild", Email: "rbac-wild@example.com", PasswordHash: "hash", IsActive: true}
+	if err := storage.CreateUser(ctx, user); err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	perm := &model.Permission{Name: "devices:star", Resource: "devices", Action: "*"}
+	if err := storage.CreatePermission(ctx, perm); err != nil {
+		t.Fatalf("CreatePermission failed: %v", err)
+	}
+	role := &model.Role{Name: "star-role"}
+	if err := storage.CreateRole(ctx, role); err != nil {
+		t.Fatalf("CreateRole failed: %v", err)
+	}
+	if err := storage.AddRolePermission(ctx, role.ID, perm.ID); err != nil {
+		t.Fatalf("AddRolePermission failed: %v", err)
+	}
+	if err := storage.AssignRoleToUser(ctx, user.ID, role.ID); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+
+	allowed, err := canPermission(ctx, storage, user.ID, "devices", "delete")
+	if err != nil {
+		t.Fatalf("canPermission failed: %v", err)
+	}
+	if allowed {
+		t.Fatal(`stored action "*" must not act as a wildcard`)
+	}
+}
+
+func TestRBACStorageGetUserPermissionsMatchesEnforcement(t *testing.T) {
+	storage := newTestStorage(t)
+	defer func() { _ = storage.Close() }()
+	ctx := context.Background()
+
+	admin := &model.User{Username: "rbac-admin", Email: "rbac-admin@example.com", PasswordHash: "hash", IsActive: true}
+	if err := storage.CreateUser(ctx, admin); err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	adminRole, err := storage.GetRoleByName(ctx, "admin")
+	if err != nil {
+		t.Fatalf("GetRoleByName(admin) failed: %v", err)
+	}
+	if err := storage.AssignRoleToUser(ctx, admin.ID, adminRole.ID); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+	perms, err := storage.GetUserPermissions(ctx, admin.ID)
+	if err != nil {
+		t.Fatalf("GetUserPermissions failed: %v", err)
+	}
+	if len(perms) == 0 {
+		t.Fatal("expected admin to have permissions")
+	}
+	for _, p := range perms {
+		allowed, err := canPermission(ctx, storage, admin.ID, p.Resource, p.Action)
+		if err != nil {
+			t.Fatalf("canPermission failed: %v", err)
+		}
+		if !allowed {
+			t.Errorf("GetUserPermissions lists %s:%s but enforcement denies it", p.Resource, p.Action)
+		}
 	}
 }

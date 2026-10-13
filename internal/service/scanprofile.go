@@ -10,10 +10,10 @@ import (
 
 type ScanProfileService struct {
 	store storage.ProfileStorage
-	rbac  PermissionChecker
+	rbac  permissionStore
 }
 
-func NewScanProfileService(store storage.ProfileStorage, rbac PermissionChecker) *ScanProfileService {
+func NewScanProfileService(store storage.ProfileStorage, rbac permissionStore) *ScanProfileService {
 	return &ScanProfileService{store: store, rbac: rbac}
 }
 

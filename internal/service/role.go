@@ -104,11 +104,7 @@ func (s *RoleService) Delete(ctx context.Context, id string) error {
 		return ErrSystemRole
 	}
 
-	if err := s.store.DeleteRole(ctx, id); err != nil {
-		return err
-	}
-
-	return nil
+	return s.store.DeleteRole(ctx, id)
 }
 
 func (s *RoleService) GetPermissions(ctx context.Context, id string) ([]model.Permission, error) {

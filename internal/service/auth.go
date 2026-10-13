@@ -51,7 +51,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		return nil, ErrUnauthenticated
 	}
 
-	isAdmin, _ := s.store.HasPermission(ctx, user.ID, "users", "create")
+	isAdmin, _ := userCan(ctx, s.store, user.ID, "users", "create")
 	session, err := s.sessionManager.CreateSession(user.ID, user.Username, isAdmin)
 	if err != nil {
 		log.Error("Failed to create session", "error", err, "user_id", user.ID)

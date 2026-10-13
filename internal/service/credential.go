@@ -10,10 +10,10 @@ import (
 
 type CredentialService struct {
 	store credentials.Storage
-	rbac  PermissionChecker
+	rbac  permissionStore
 }
 
-func NewCredentialService(store credentials.Storage, rbac PermissionChecker) *CredentialService {
+func NewCredentialService(store credentials.Storage, rbac permissionStore) *CredentialService {
 	return &CredentialService{store: store, rbac: rbac}
 }
 
