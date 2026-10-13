@@ -16,6 +16,7 @@ env:
   GO_VERSION: '1.27.1'
   TASK_VERSION: 'v3.53.1'
   GOLANGCI_LINT_VERSION: 'v2.14.0'
+  GOVULNCHECK_VERSION: 'v1.8.0'
   RACKD_BCRYPT_COST: '6'
 
 jobs:
@@ -66,6 +67,11 @@ jobs:
 
       - name: Test
         run: go test ./... -count=1
+
+      - name: Check for known vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+          govulncheck ./...
 
   race:
     name: Go (race detector)
@@ -119,3 +125,13 @@ jobs:
 
       - name: Unit tests
         run: bun test
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build --build-arg VERSION=ci --build-arg COMMIT=${{ github.sha }} -t rackd:ci .

@@ -16,7 +16,7 @@ services:
       - DISCOVERY_INTERVAL=24h
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/datacenters"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 3s
       retries: 3

@@ -46,14 +46,13 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 ## Quick Start
 
 ```bash
-# Download the latest release
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-amd64
-
-# Make it executable
-chmod +x rackd-linux-amd64
+# Download and unpack a release (see docs/installation.md for other platforms and verification)
+VERSION=0.0.21
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_linux_amd64.tar.gz"
+tar -xzf "rackd_${VERSION}_linux_amd64.tar.gz" rackd
 
 # Start the server
-./rackd-linux-amd64 server
+./rackd server
 
 # Access the web UI at http://localhost:8080
 ```

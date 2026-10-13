@@ -7,6 +7,9 @@ on:
 
 permissions:
   contents: write
+  # Keyless cosign signing and build provenance attestations use the workflow's OIDC token.
+  id-token: write
+  attestations: write
 
 jobs:
   goreleaser:
@@ -37,6 +40,12 @@ jobs:
       - name: Build UI Assets
         run: task ui:build
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0.24.2
+
       - name: Extract release notes from CHANGELOG.md
         id: notes
         run: |
@@ -60,6 +69,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-checksums: ./dist/checksums.txt
 
       # Rebuild getrackd.dev so its changelog page picks up this release.
       # Skipped if the CF_PAGES_DEPLOY_HOOK secret is removed.

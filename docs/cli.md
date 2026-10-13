@@ -16,8 +16,8 @@ rackd [global options] command [command options] [arguments...]
 
 | Flag | Environment Variable | Default | Description |
 |------|---------------------|---------|-------------|
-| `--api-url` | `RACKD_API_URL` | `http://localhost:8080` | API server URL |
-| `--api-token` | `RACKD_API_TOKEN` | - | API authentication token |
+| `--api-url` | `RACKD_SERVER_URL` | `http://localhost:8080` | API server URL |
+| `--api-token` | `RACKD_TOKEN` | - | API authentication token |
 | `--timeout` | `RACKD_TIMEOUT` | `30s` | Request timeout |
 | `--output` | `RACKD_OUTPUT` | `table` | Output format (table, json, yaml) |
 | `--help, -h` | - | - | Show help |
@@ -606,7 +606,7 @@ docker stop rackd
 
 # 2. Run the reset against the mounted data directory
 docker run -it --rm -v /path/on/host/data:/data --entrypoint rackd \
-  ghcr.io/martinsuchenak/rackd:latest \
+  rackd:local \
   user reset-password --data-dir /data --username admin
 
 # 3. Start the server and log in with the new password
@@ -1274,12 +1274,12 @@ rackd device list --output yaml
 
 ## Environment Variables
 
-All CLI options can be set via environment variables:
+The CLI reads its server connection from environment variables, which override the config file:
 
 ```bash
-export RACKD_API_URL=http://localhost:8080
-export RACKD_API_TOKEN=mysecret
-export RACKD_OUTPUT=json
+export RACKD_SERVER_URL=http://localhost:8080
+export RACKD_TOKEN=mysecret
+export RACKD_VERIFY_SSL=false   # only for self-signed certificates in testing
 
 rackd device list
 ```
@@ -1308,7 +1308,7 @@ rackd completion fish > ~/.config/fish/completions/rackd.fish
 rackd server --api-auth-token mysecret &
 
 # 2. Configure CLI
-export RACKD_API_TOKEN=mysecret
+export RACKD_TOKEN=mysecret
 
 # 3. Add datacenter
 rackd datacenter add --name dc1 --location "New York"

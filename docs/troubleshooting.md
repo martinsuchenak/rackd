@@ -200,10 +200,10 @@ journalctl -u rackd -n 100
 
 ```bash
 # Check token is set
-echo $RACKD_API_TOKEN
+echo $RACKD_TOKEN
 
 # Set token
-export RACKD_API_TOKEN=your-secret-token
+export RACKD_TOKEN=your-secret-token
 
 # Or pass in request
 curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/devices
@@ -224,7 +224,7 @@ export RACKD_API_AUTH_TOKEN=mysecret
 rackd server
 
 # Client
-export RACKD_API_TOKEN=mysecret
+export RACKD_TOKEN=mysecret
 rackd device list
 ```
 
@@ -414,7 +414,7 @@ ssh user@10.0.1.10
 snmpwalk -v2c -c public 10.0.1.10
 
 # Check credential encryption key is set
-export RACKD_ENCRYPTION_KEY=your-32-byte-key
+export ENCRYPTION_KEY=your-32-byte-key
 ```
 
 ### Scheduled Scans Not Running
@@ -548,8 +548,8 @@ api_token: your-secret-token
 EOF
 
 # Or use environment variables
-export RACKD_API_URL=http://localhost:8080
-export RACKD_API_TOKEN=your-secret-token
+export RACKD_SERVER_URL=http://localhost:8080
+export RACKD_TOKEN=your-secret-token
 ```
 
 ## Docker Issues
@@ -573,7 +573,8 @@ docker volume inspect rackd-data
 # Remove and recreate container
 docker stop rackd
 docker rm rackd
-docker run -d --name rackd -p 8080:8080 -v rackd-data:/data martinsuchenak/rackd:latest
+# No pre-built image is published; build rackd:local from the repository (see installation.md)
+docker run -d --name rackd -p 8080:8080 -v rackd-data:/data rackd:local
 ```
 
 ### Data Not Persisting
@@ -589,10 +590,10 @@ docker run -d --name rackd -p 8080:8080 -v rackd-data:/data martinsuchenak/rackd
 docker inspect rackd | grep Mounts
 
 # Use named volume
-docker run -d -v rackd-data:/data martinsuchenak/rackd:latest
+docker run -d -v rackd-data:/data rackd:local
 
 # Or bind mount
-docker run -d -v /var/lib/rackd:/data martinsuchenak/rackd:latest
+docker run -d -v /var/lib/rackd:/data rackd:local
 ```
 
 ### Network Issues
@@ -608,7 +609,7 @@ docker run -d -v /var/lib/rackd:/data martinsuchenak/rackd:latest
 docker port rackd
 
 # Ensure port is published
-docker run -d -p 8080:8080 martinsuchenak/rackd:latest
+docker run -d -p 8080:8080 rackd:local
 
 # Check firewall
 sudo ufw allow 8080
@@ -699,7 +700,7 @@ sqlite3 /var/lib/rackd/rackd.db ".schema"
 rackd server --log-level debug --log-format json
 
 # Or set environment variable
-export RACKD_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 rackd server
 ```
 
