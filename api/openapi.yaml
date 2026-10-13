@@ -1034,7 +1034,10 @@ components:
       required: [name, type, endpoint, token]
       properties:
         name: { type: string }
-        type: { type: string, enum: [technitium, powerdns, bind] }
+        type:
+          type: string
+          enum: [technitium]
+          description: Provider integration. PowerDNS and BIND are planned and currently rejected.
         endpoint:
           type: string
           description: Provider API base URL; must be a well-formed http(s) URL with a host and no userinfo

@@ -19,7 +19,7 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 
 ### DNS & Network Services
 
-- **DNS Management**: Zone management with external provider sync (Cloudflare, Route53, PowerDNS)
+- **DNS Management**: Zone and record management synced to [Technitium DNS Server](https://technitium.com/dns/); PowerDNS and BIND support is planned
 - **NAT Tracking**: Manage NAT pools and mappings
 - **Circuit Tracking**: Document network circuits and providers
 
@@ -31,7 +31,7 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 
 ### Extensibility
 
-- **Custom Fields**: User-defined fields on devices and networks
+- **Custom Fields**: User-defined fields on devices
 - **IP Reservations**: Reserve IPs for future use with owner tracking
 - **Import/Export**: JSON/CSV bulk data operations
 - **MCP Server**: Model Context Protocol integration for AI/automation tools

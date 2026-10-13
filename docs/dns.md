@@ -8,16 +8,16 @@ The DNS integration enables:
 
 - Automatic A/AAAA record creation for devices
 - Automatic PTR record generation for reverse DNS lookups
-- Integration with multiple DNS provider types
+- Integration with Technitium DNS Server (PowerDNS and BIND are planned)
 - Bidirectional sync between Rackd and DNS servers
 
 ## Supported Providers
 
-| Provider | Type | Description |
-|----------|------|-------------|
-| Technitium | `technitium` | Technitium DNS Server |
-| PowerDNS | `powerdns` | PowerDNS Authoritative Server |
-| BIND | `bind` | BIND DNS Server (via RFC 2136) |
+| Provider | Type | Status |
+|----------|------|--------|
+| Technitium | `technitium` | Supported |
+| PowerDNS | `powerdns` | Planned; rejected when creating a provider |
+| BIND (RFC 2136) | `bind` | Planned; rejected when creating a provider |
 
 ## Configuration
 
@@ -44,13 +44,6 @@ rackd dns provider create \
   --type technitium \
   --endpoint http://dns.example.com:5380 \
   --token-env TECHNITIUM_TOKEN
-
-# Create a PowerDNS provider
-rackd dns provider create \
-  --name "PowerDNS" \
-  --type powerdns \
-  --endpoint http://pdns.example.com:8081 \
-  --token-env POWERDNS_API_KEY
 ```
 
 #### Token Sources
@@ -178,37 +171,9 @@ Requirements:
 - Admin API token with zone management permissions
 - HTTP/HTTPS access to the server
 
-### PowerDNS
+### PowerDNS and BIND
 
-```bash
-rackd dns provider create \
-  --name "PowerDNS" \
-  --type powerdns \
-  --endpoint http://pdns.example.com:8081 \
-  --token-env POWERDNS_API_KEY
-```
-
-Requirements:
-
-- PowerDNS Authoritative Server 4.x+
-- API key with full zone access
-- HTTP API enabled
-
-### BIND (RFC 2136)
-
-```bash
-rackd dns provider create \
-  --name "BIND" \
-  --type bind \
-  --endpoint 192.168.1.10:53 \
-  --token-env TSIG_KEY
-```
-
-Requirements:
-
-- BIND 9.x server with RFC 2136 dynamic updates enabled
-- TSIG key for authentication
-- UDP/TCP access to DNS server
+Planned. The `powerdns` and `bind` provider types are reserved, but the API rejects them until their integrations exist.
 
 ## Reverse DNS (PTR Records)
 
