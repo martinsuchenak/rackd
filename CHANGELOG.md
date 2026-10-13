@@ -13,6 +13,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - The `rackd dns` CLI command group (providers, zones, sync, import, records) is now
   available. It existed but was never registered.
+- `CONTRIBUTING.md`, and a Contributor License Agreement (`CLA.md`) that a GitHub
+  workflow asks first-time contributors to sign on their pull request.
 - Automatic backup before migrations. When the server starts or `rackd migrate run`
   runs with pending migrations on an existing database, a verified snapshot is written
   to `<data-dir>/backups/` first. The five newest are kept. If the snapshot fails, no
@@ -41,6 +43,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- **Licence:** Rackd is now licensed under the Apache License 2.0, which adds an
+  explicit patent grant; see `LICENSE` and `NOTICE`. Releases up to and including
+  v0.0.21 remain available under the MIT License.
 - Creating or updating a DNS provider now accepts only `technitium`. The `powerdns`
   and `bind` types were accepted before but failed with "not yet implemented"
   whenever the provider was used. They are planned, and the API now says so.

@@ -153,4 +153,4 @@ See [Development Guide](docs/development.md) for detailed build instructions.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Apache License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE). Contributions are accepted under the [Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
