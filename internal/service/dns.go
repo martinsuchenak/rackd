@@ -18,6 +18,9 @@ import (
 	wh "github.com/martinsuchenak/rackd/internal/webhook"
 )
 
+// unsupportedProviderMessage is returned for provider types without a working integration.
+const unsupportedProviderMessage = "Type must be technitium; PowerDNS and BIND support is planned"
+
 var (
 	// ErrDNSProviderInUse is returned when trying to delete a provider that has zones
 	ErrDNSProviderInUse = fmt.Errorf("dns provider is in use")
@@ -100,8 +103,8 @@ func (s *DNSService) CreateProvider(ctx context.Context, req *model.CreateDNSPro
 	if req.Name == "" {
 		return nil, ValidationErrors{{Field: "name", Message: "Name is required"}}
 	}
-	if req.Type == "" || !req.Type.IsValid() {
-		return nil, ValidationErrors{{Field: "type", Message: "Type must be one of: technitium, powerdns, bind"}}
+	if req.Type == "" || !req.Type.IsSupported() {
+		return nil, ValidationErrors{{Field: "type", Message: unsupportedProviderMessage}}
 	}
 	if req.Endpoint == "" {
 		return nil, ValidationErrors{{Field: "endpoint", Message: "Endpoint is required"}}
@@ -205,8 +208,8 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 		provider.Name = *req.Name
 	}
 	if req.Type != nil {
-		if !req.Type.IsValid() {
-			return nil, ValidationErrors{{Field: "type", Message: "Invalid provider type"}}
+		if !req.Type.IsSupported() {
+			return nil, ValidationErrors{{Field: "type", Message: unsupportedProviderMessage}}
 		}
 		provider.Type = *req.Type
 	}

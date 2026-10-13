@@ -22,8 +22,19 @@ func TestDNSHandlers(t *testing.T) {
 		t.Fatalf("failed to seed network: %v", err)
 	}
 
+	t.Run("UnimplementedProviderTypesRejected", func(t *testing.T) {
+		for _, typ := range []string{"powerdns", "bind"} {
+			req := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"planned-`+typ+`","type":"`+typ+`","endpoint":"https://203.0.113.10","token":"x"}`)))
+			req.Header.Set("Content-Type", "application/json")
+			w := performRequest(env.mux, req)
+			if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "planned") {
+				t.Errorf("%s provider: expected 400 naming it as planned, got %d: %s", typ, w.Code, w.Body.String())
+			}
+		}
+	})
+
 	t.Run("ProviderAndZoneCRUD", func(t *testing.T) {
-		createProviderReq := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"phase2-dns","type":"bind","endpoint":"https://203.0.113.10","token":"super-secret","description":"phase 2 provider"}`)))
+		createProviderReq := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"phase2-dns","type":"technitium","endpoint":"https://203.0.113.10","token":"super-secret","description":"phase 2 provider"}`)))
 		createProviderReq.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, createProviderReq)
 		if w.Code != http.StatusCreated {

@@ -15,6 +15,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/datacenter"
 	"github.com/martinsuchenak/rackd/cmd/device"
 	"github.com/martinsuchenak/rackd/cmd/discovery"
+	"github.com/martinsuchenak/rackd/cmd/dns"
 	"github.com/martinsuchenak/rackd/cmd/export"
 	importcmd "github.com/martinsuchenak/rackd/cmd/import"
 	"github.com/martinsuchenak/rackd/cmd/migrate"
@@ -74,6 +75,7 @@ func main() {
 			scheduledscan.Command(),
 			oauth.Command(),
 			backup.Command(),
+			dns.Command(),
 			migrate.Command(),
 			{
 				Name:  "version",

@@ -11,6 +11,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Added
 
+- The `rackd dns` CLI command group (providers, zones, sync, import, records) is now
+  available. It existed but was never registered.
 - Automatic backup before migrations. When the server starts or `rackd migrate run`
   runs with pending migrations on an existing database, a verified snapshot is written
   to `<data-dir>/backups/` first. The five newest are kept. If the snapshot fails, no
@@ -39,6 +41,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- Creating or updating a DNS provider now accepts only `technitium`. The `powerdns`
+  and `bind` types were accepted before but failed with "not yet implemented"
+  whenever the provider was used. They are planned, and the API now says so.
 - Migrations run on [xdal](https://github.com/martinsuchenak/xdal) `pkg/migrate`
   (v0.1.0). This is groundwork for PostgreSQL and MySQL support.
   - Applied migrations are recorded in `xdal_migrations` under the `core` namespace.
@@ -76,6 +81,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   lock.
 - Logging before the logger was initialised (for example from CLI commands and tests)
   panicked. Messages are now discarded until initialisation.
+- The README listed Cloudflare, Route53 and PowerDNS as DNS providers, and custom
+  fields on networks. Only Technitium and custom fields on devices exist. The DNS
+  guide and the architecture page no longer describe PowerDNS, BIND or a feature
+  interface as available.
 - The backup guide referred to `rackd server --dry-run`, `--init-db` and `/api/health`,
   which do not exist. It now uses the real commands and `/healthz` / `/readyz`.
 

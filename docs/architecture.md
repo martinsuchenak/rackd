@@ -348,14 +348,9 @@ type ExtendedStorage interface {
 }
 ```
 
-### 2. Feature Interface
-```go
-type Feature interface {
-    Name() string
-    RegisterRoutes(mux *http.ServeMux)
-    RegisterMCPTools(mcpServer interface{})
-}
-```
+### 2. Feature Extensions (planned)
+
+There is no feature interface yet. A planned `pkg/extension` package will let a feature register API routes, MCP tools, event types, UI pages and its own migration namespace in `xdal_migrations`. Until then, `server.RunWithCustomRoutes` is the only extension hook.
 
 ### 3. Discovery Scanner Interface
 ```go

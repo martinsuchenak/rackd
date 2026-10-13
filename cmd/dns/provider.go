@@ -125,7 +125,7 @@ func providerCreateCommand() *cli.Command {
 		Usage: "Create a new DNS provider",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "name", Usage: "Provider name", Required: true},
-			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)", Required: true},
+			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium; PowerDNS and BIND are planned)", Required: true},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
 			&cli.StringFlag{Name: "token-env", Usage: "Environment variable name containing the API token"},
 			&cli.StringFlag{Name: "token-file", Usage: "Path to a file containing the API token"},
@@ -199,7 +199,7 @@ func providerUpdateCommand() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "id", Usage: "Provider ID", Required: true},
 			&cli.StringFlag{Name: "name", Usage: "Provider name"},
-			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium, powerdns, bind)"},
+			&cli.StringFlag{Name: "type", Usage: "Provider type (technitium; PowerDNS and BIND are planned)"},
 			&cli.StringFlag{Name: "endpoint", Usage: "API endpoint URL"},
 			&cli.StringFlag{Name: "token-env", Usage: "Environment variable name containing the API token"},
 			&cli.StringFlag{Name: "token-file", Usage: "Path to a file containing the API token"},

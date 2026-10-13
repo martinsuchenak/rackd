@@ -28,6 +28,22 @@ func (t DNSProviderType) IsValid() bool {
 	return false
 }
 
+// SupportedDNSProviderTypes lists the provider types with a working integration.
+// PowerDNS and BIND are recognised but not implemented yet.
+var SupportedDNSProviderTypes = []DNSProviderType{
+	DNSProviderTypeTechnitium,
+}
+
+// IsSupported reports whether the provider type has a working integration.
+func (t DNSProviderType) IsSupported() bool {
+	for _, pt := range SupportedDNSProviderTypes {
+		if t == pt {
+			return true
+		}
+	}
+	return false
+}
+
 // String returns the string representation of the provider type
 func (t DNSProviderType) String() string {
 	return string(t)
