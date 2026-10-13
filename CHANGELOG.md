@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.0.21] - 2026-10-13
+
 ### Added
 
 - This changelog. Each release's section is published as its GitHub release
@@ -62,5 +64,6 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.0.20...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.0.21...HEAD
+[0.0.21]: https://github.com/martinsuchenak/rackd/compare/v0.0.20...v0.0.21
 [0.0.20]: https://github.com/martinsuchenak/rackd/compare/v0.0.19...v0.0.20
