@@ -28,4 +28,4 @@ CI runs the same checks, plus the tests with the race detector, on every pull re
 
 ## Reporting security issues
 
-Do not open a public issue for a vulnerability. Contact the maintainer privately through [GitHub security advisories](https://github.com/martinsuchenak/rackd/security/advisories/new).
+Do not open a public issue for a vulnerability. Report it privately through [GitHub security advisories](https://github.com/martinsuchenak/rackd/security/advisories/new). If that page is not available, open an issue that asks for a private contact, without any details of the vulnerability.
