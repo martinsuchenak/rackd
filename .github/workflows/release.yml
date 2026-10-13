@@ -11,6 +11,9 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    env:
+      # Optional: Cloudflare Pages deploy hook for rackd-web (see last step).
+      CF_PAGES_DEPLOY_HOOK: ${{ secrets.CF_PAGES_DEPLOY_HOOK }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -33,6 +36,15 @@ jobs:
       - name: Build UI Assets
         run: task ui:build
 
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          if ./scripts/changelog-section.sh "${GITHUB_REF_NAME}" > "${RUNNER_TEMP}/release-notes.md"; then
+            echo "args=--release-notes=${RUNNER_TEMP}/release-notes.md" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No CHANGELOG.md section for ${GITHUB_REF_NAME}; falling back to GoReleaser's generated changelog"
+          fi
+
       - name: Delete release
         run: gh release delete ${{ github.ref_name }} --yes || true
         env:
@@ -44,7 +56,14 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: release --clean ${{ steps.notes.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      # Rebuild docs.rackd.io so its changelog page picks up this release.
+      # Set the CF_PAGES_DEPLOY_HOOK secret to a Cloudflare Pages deploy hook
+      # URL for the rackd-web project; the step is skipped while it is unset.
+      - name: Trigger website rebuild
+        if: ${{ env.CF_PAGES_DEPLOY_HOOK != '' }}
+        run: curl -fsS -X POST "$CF_PAGES_DEPLOY_HOOK" > /dev/null

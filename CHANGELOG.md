@@ -9,6 +9,11 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- This changelog. Each release's section is published as its GitHub release
+  notes and on the [documentation site](https://docs.rackd.io/changelog/).
+
 ### Changed
 
 - RBAC permission checks now use the [go-rbac](https://github.com/martinsuchenak/go-rbac)

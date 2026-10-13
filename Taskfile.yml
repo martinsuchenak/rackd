@@ -177,6 +177,8 @@ tasks:
         msg: 'version tag required (e.g. task release -- v0.1.0)'
       - sh: 'git diff --quiet'
         msg: 'working tree has uncommitted changes'
+      - sh: './scripts/changelog-section.sh {{.CLI_ARGS}} >/dev/null'
+        msg: 'CHANGELOG.md has no section for {{.CLI_ARGS}}: rename [Unreleased] to the version and date, then commit'
     cmds:
       - git tag {{.CLI_ARGS}}
       - git push origin {{.CLI_ARGS}}
