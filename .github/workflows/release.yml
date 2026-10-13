@@ -10,9 +10,10 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    # Pinned so runner image migrations don't change release builds unannounced.
+    runs-on: ubuntu-24.04
     env:
-      # Optional: Cloudflare Pages deploy hook for rackd-web (see last step).
+      # Cloudflare Pages deploy hook for rackd-web (see last step).
       CF_PAGES_DEPLOY_HOOK: ${{ secrets.CF_PAGES_DEPLOY_HOOK }}
     steps:
       - name: Checkout
@@ -50,20 +51,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: latest
+          version: '~> v2'
           args: release --clean ${{ steps.notes.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
 
       # Rebuild getrackd.dev so its changelog page picks up this release.
-      # Set the CF_PAGES_DEPLOY_HOOK secret to a Cloudflare Pages deploy hook
-      # URL for the rackd-web project; the step is skipped while it is unset.
+      # Skipped if the CF_PAGES_DEPLOY_HOOK secret is removed.
       - name: Trigger website rebuild
         if: ${{ env.CF_PAGES_DEPLOY_HOOK != '' }}
         run: curl -fsS -X POST "$CF_PAGES_DEPLOY_HOOK" > /dev/null
