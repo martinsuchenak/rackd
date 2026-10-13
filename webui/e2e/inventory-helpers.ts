@@ -8,6 +8,15 @@ export function rowByExactText(page: Page, text: string): Locator {
   return page.locator('tbody tr').filter({ has: page.getByText(text, { exact: true }) });
 }
 
+// The device modal moves focus to its first field (Name) shortly after
+// opening. Wait for that before filling: otherwise, on a busy browser, the
+// delayed focus can land between Playwright focusing another field and
+// inserting text, and the text ends up appended to the device name.
+export async function waitForDeviceModalReady(dialog: Locator): Promise<void> {
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Name/)).toBeFocused();
+}
+
 export async function createDatacenter(
   page: Page,
   values: { name: string; location: string; description?: string },
@@ -79,7 +88,7 @@ export async function createDevice(
 
   await page.getByRole('button', { name: 'Add Device' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add Device' });
-  await expect(dialog).toBeVisible();
+  await waitForDeviceModalReady(dialog);
 
   await dialog.getByLabel(/^Name/).fill(values.name);
   if (values.hostname) {

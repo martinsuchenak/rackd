@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { login } from './auth';
-import { createDatacenter, createDevice, createNetwork, rowByExactText, uniqueName } from './inventory-helpers';
+import { createDatacenter, createDevice, createNetwork, rowByExactText, uniqueName, waitForDeviceModalReady } from './inventory-helpers';
 
 test('@inventory datacenter list supports edit and delete flows', async ({ page }) => {
   await login(page);
@@ -100,7 +100,7 @@ test('@inventory device list supports edit and delete flows', async ({ page }) =
 
   await page.getByRole('button', { name: `Edit ${deviceName}` }).click();
   const editDialog = page.getByRole('dialog', { name: 'Edit Device' });
-  await expect(editDialog).toBeVisible();
+  await waitForDeviceModalReady(editDialog);
   await editDialog.getByLabel(/^Name/).fill(updatedName);
   await editDialog.locator('#device-make-model').fill('Dell R740');
   await editDialog.getByRole('button', { name: 'Save Changes' }).click();
