@@ -75,7 +75,7 @@ api_token: YOUR_API_KEY
 Or via environment variable:
 
 ```bash
-export RACKD_API_TOKEN=YOUR_API_KEY
+export RACKD_TOKEN=YOUR_API_KEY
 ```
 
 #### Key Requirements

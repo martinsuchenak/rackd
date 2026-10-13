@@ -1,9 +1,19 @@
+# Web UI stage
+FROM oven/bun:1.3.8-alpine AS ui
+
+WORKDIR /app/webui
+
+COPY webui/package.json webui/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY webui/ ./
+RUN mkdir -p ../internal/ui && bun run build
+
 # Build stage
 FROM golang:1.27.1-alpine AS builder
 
-RUN apk add --no-cache git
-RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community bun
-RUN go install github.com/go-task/task/v3/cmd/task@v3.53.1
+ARG VERSION=dev
+ARG COMMIT=unknown
 
 WORKDIR /app
 
@@ -11,8 +21,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+COPY --from=ui /app/internal/ui/assets ./internal/ui/assets
 
-RUN task build:local
+RUN CGO_ENABLED=0 go build \
+    -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -o /app/build/rackd .
 
 # Runtime stage
 FROM alpine:latest
@@ -31,7 +44,7 @@ ENV LISTEN_ADDR=:8080
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:8080/api/datacenters || exit 1
+    CMD wget -q --spider http://localhost:8080/healthz || exit 1
 
 ENTRYPOINT ["rackd"]
 CMD ["server"]

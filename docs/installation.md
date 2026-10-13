@@ -17,34 +17,28 @@ This guide covers different methods to install and run Rackd.
 
 ## Installation Methods
 
-### 1. Download Pre-built Binary (Recommended)
+### 1. Download a Release (Recommended)
 
-Download the latest release for your platform:
+Releases are published as archives on [GitHub Releases](https://github.com/martinsuchenak/rackd/releases), named `rackd_<version>_<os>_<arch>.tar.gz` (`.zip` for Windows) for `linux`, `darwin` and `windows` on `amd64` and `arm64`.
 
 ```bash
-# Linux (x86_64)
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-amd64
-chmod +x rackd-linux-amd64
-sudo mv rackd-linux-amd64 /usr/local/bin/rackd
+VERSION=0.0.21
+OS=linux        # linux or darwin
+ARCH=amd64      # amd64 or arm64
 
-# Linux (ARM64)
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-arm64
-chmod +x rackd-linux-arm64
-sudo mv rackd-linux-arm64 /usr/local/bin/rackd
-
-# macOS (Intel)
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-darwin-amd64
-chmod +x rackd-darwin-amd64
-sudo mv rackd-darwin-amd64 /usr/local/bin/rackd
-
-# macOS (Apple Silicon)
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-darwin-arm64
-chmod +x rackd-darwin-arm64
-sudo mv rackd-darwin-arm64 /usr/local/bin/rackd
-
-# Windows (PowerShell)
-Invoke-WebRequest -Uri "https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-windows-amd64.exe" -OutFile "rackd.exe"
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_${OS}_${ARCH}.tar.gz"
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/checksums.txt"
+tar -xzf "rackd_${VERSION}_${OS}_${ARCH}.tar.gz" rackd
+sudo install -m 0755 rackd /usr/local/bin/rackd
 ```
+
+On macOS you can also install with Homebrew:
+
+```bash
+brew install --cask martinsuchenak/tap/rackd
+```
+
+On Windows, download `rackd_<version>_windows_amd64.zip` from the release page and extract `rackd.exe`.
 
 Verify installation:
 
@@ -52,32 +46,45 @@ Verify installation:
 rackd version
 ```
 
+### Verifying a Release
+
+Check that the archive matches the published checksum:
+
+```bash
+sha256sum --ignore-missing -c checksums.txt     # macOS: shasum -a 256 --ignore-missing -c checksums.txt
+```
+
+Releases after v0.0.21 also publish a [cosign](https://github.com/sigstore/cosign) signature bundle (`checksums.txt.sigstore.json`), an SPDX SBOM per archive (`*.sbom.json`, each with its own `.sigstore.json`), and a GitHub build provenance attestation. To confirm `checksums.txt` was produced by this repository's release workflow:
+
+```bash
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/checksums.txt.sigstore.json"
+cosign verify-blob checksums.txt \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/martinsuchenak/rackd/.github/workflows/release.yml@refs/tags/v${VERSION}" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Or check the build provenance with the GitHub CLI:
+
+```bash
+gh attestation verify "rackd_${VERSION}_${OS}_${ARCH}.tar.gz" --repo martinsuchenak/rackd
+```
+
 ### 2. Build from Source
 
 #### Prerequisites
-- Go 1.25 or later
+- Go 1.27 or later
 - Bun (for building the web UI)
-- Make
+- [Task](https://taskfile.dev)
 
 #### Build Steps
 
 ```bash
-# Clone the repository
 git clone https://github.com/martinsuchenak/rackd.git
 cd rackd
 
-# Install Go dependencies
-go mod download
-
-# Install frontend dependencies
-cd webui
-bun install
-cd ..
-
-# Build everything
+# Builds the web UI and the binary into ./build/rackd
 task build:local
-
-# The binary will be in ./build/rackd
 ./build/rackd version
 ```
 
@@ -85,59 +92,22 @@ See [Development Guide](development.md) for more details.
 
 ### 3. Docker
 
-#### Using Docker Hub
+No pre-built image is published; build it from the repository:
 
 ```bash
-# Pull the image
-docker pull martinsuchenak/rackd:latest
-
-# Run the container
-docker run -d \
-  --name rackd \
-  -p 8080:8080 \
-  -v rackd-data:/data \
-  martinsuchenak/rackd:latest
-```
-
-#### Using Docker Compose
-
-Create `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  rackd:
-    image: martinsuchenak/rackd:latest
-    container_name: rackd
-    ports:
-      - "8080:8080"
-    volumes:
-      - rackd-data:/data
-    environment:
-      - RACKD_LOG_LEVEL=info
-      - RACKD_API_AUTH_TOKEN=your-secret-token
-    restart: unless-stopped
-
-volumes:
-  rackd-data:
-```
-
-Start the service:
-
-```bash
-docker-compose up -d
-```
-
-#### Build Your Own Image
-
-```bash
-# Build the image
+git clone https://github.com/martinsuchenak/rackd.git
+cd rackd
 docker build -t rackd:local .
-
-# Run it
-docker run -d -p 8080:8080 -v rackd-data:/data rackd:local
+docker run -d --name rackd -p 8080:8080 -v rackd-data:/data rackd:local
 ```
+
+Or use the repository's `docker-compose.yml`, which builds the same image:
+
+```bash
+docker compose up -d
+```
+
+Settings are environment variables without a prefix (for example `LOG_LEVEL`, `DATA_DIR`, `ENCRYPTION_KEY`); see [Configuration](configuration.md). The image's health check uses `/healthz`.
 
 ### 4. Nomad Deployment
 
