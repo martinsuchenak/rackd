@@ -22,6 +22,18 @@ jobs:
       github.event.comment.body == 'recheck' ||
       github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA'
     steps:
+      - name: Ensure the signature branch exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if ! gh api "repos/$REPO/branches/cla-signatures" > /dev/null 2>&1; then
+            sha=$(gh api "repos/$REPO/git/ref/heads/$DEFAULT_BRANCH" --jq .object.sha)
+            gh api "repos/$REPO/git/refs" -f ref=refs/heads/cla-signatures -f sha="$sha" > /dev/null
+            echo "Created branch cla-signatures"
+          fi
+
       - name: CLA Assistant
         uses: contributor-assistant/github-action@v2.6.1
         env:
