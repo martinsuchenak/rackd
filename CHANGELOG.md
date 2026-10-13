@@ -9,6 +9,69 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- Automatic backup before migrations. When the server starts or `rackd migrate run`
+  runs with pending migrations on an existing database, a verified snapshot is written
+  to `<data-dir>/backups/` first. The five newest are kept. If the snapshot fails, no
+  migration runs. Set `PRE_MIGRATION_BACKUP=false` to skip the snapshot, for example
+  on a full disk.
+- `rackd migrate rollback --steps N` / `--to VERSION` reverts migrations after taking
+  the same snapshot. It requires `--yes`, because some Down steps drop data.
+  The target is validated first, and nothing is written when there is nothing to
+  revert.
+- `rackd backup verify --file F` checks a backup's integrity and migration history, and
+  warns when it was made by a newer Rackd.
+- `rackd backup restore --file F --yes` replaces the database with a verified backup.
+  The backup is first consolidated into a single file, so a backup copied together
+  with its `-wal` file keeps all its data. The restored database is left in WAL mode.
+  The current database is kept as `rackd.db.pre-restore-<timestamp>`. The command
+  refuses to run while the server has the database open, and refuses backups from a
+  newer Rackd.
+- `rackd migrate run --no-backup` skips the pre-migration snapshot.
+- Upgrade tests against a real v0.0.21 database. A reversibility test applies each
+  migration, reverts it, and checks that the schema and row counts match the state
+  before it ran.
+
+### Changed
+
+- Migrations run on [xdal](https://github.com/martinsuchenak/xdal) `pkg/migrate`
+  (v0.1.0). This is groundwork for PostgreSQL and MySQL support.
+  - Applied migrations are recorded in `xdal_migrations` under the `core` namespace.
+  - On first start, the existing history is copied from `schema_migrations`, once:
+    a marker row stops a later full rollback from triggering the copy again. The old
+    table is left in place so an older binary can still open the database.
+- `rackd migrate status` also reports dirty migrations, and migrations applied by a
+  newer Rackd. It never writes to the database; before the first upgrade it reads
+  the old `schema_migrations` table directly.
+- A database migrated by a newer Rackd is refused at startup with a clear error,
+  instead of being run against an older schema definition.
+- Per-migration log lines are now at debug level. One summary line is logged at info.
+- The `scan_profiles`, `scheduled_scans` and `credentials` tables are now created by a
+  versioned migration (`20261013120000`) instead of when their stores start.
+  - Existing tables and data are kept.
+  - The default scan profiles are seeded once. A deleted default profile no longer
+    comes back on the next restart.
+  - Opening one of these stores before migrations have run now returns a clear error.
+
+### Fixed
+
+- `rackd backup` copied the live database file and its WAL file separately, so a
+  backup taken while the server was writing could be inconsistent. It now uses
+  SQLite's `VACUUM INTO`, which produces one self-contained file. The backup is
+  verified, written with mode `0600`, and never overwrites an existing file.
+- Rolling back a migration now fully reverses it. Previously these Down steps left
+  changes behind:
+  - Device `hostname`, the device status columns, relationship `notes` and DNS
+    record `address_id` stayed in place.
+  - The `api_keys` rebuild lost its primary key, NOT NULL and UNIQUE constraints.
+  - The DNS rollback left seven permissions behind.
+  - The audit/logs rollback left the operator's `audit:list` grant behind.
+- Logging before the logger was initialised (for example from CLI commands and tests)
+  panicked. Messages are now discarded until initialisation.
+- The backup guide referred to `rackd server --dry-run`, `--init-db` and `/api/health`,
+  which do not exist. It now uses the real commands and `/healthz` / `/readyz`.
+
 ## [0.0.21] - 2026-10-13
 
 ### Added

@@ -1,17 +1,23 @@
 package credentials
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/model"
+	corestorage "github.com/martinsuchenak/rackd/internal/storage"
 	_ "modernc.org/sqlite"
 )
 
 func setupTestDB(t *testing.T) (*SQLiteStorage, func()) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	if err := corestorage.RunMigrations(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
 

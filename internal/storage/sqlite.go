@@ -47,7 +47,20 @@ func (s *SQLiteStorage) SetWebhookEncryptor(e WebhookEncryptor) {
 }
 
 // NewSQLiteStorage creates a new SQLite storage instance
+// StorageOptions configures NewSQLiteStorageWithOptions.
+type StorageOptions struct {
+	// SkipPreMigrationBackup disables the snapshot taken before pending migrations run.
+	SkipPreMigrationBackup bool
+}
+
+// NewSQLiteStorage opens the database in dataDir and runs pending migrations,
+// backing up an existing database first.
 func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
+	return NewSQLiteStorageWithOptions(dataDir, StorageOptions{})
+}
+
+// NewSQLiteStorageWithOptions is NewSQLiteStorage with options.
+func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteStorage, error) {
 	var dbPath string
 
 	if dataDir == ":memory:" {
@@ -87,11 +100,15 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 	s.auditWG.Add(1)
 	go s.auditWorker()
 
-	// Run migrations
+	// Run migrations, snapshotting an existing database first
 	ctx := context.Background()
-	if err := RunMigrations(ctx, db); err != nil {
+	var migrateOpts MigrationOptions
+	if dataDir != ":memory:" && !opts.SkipPreMigrationBackup {
+		migrateOpts.BackupDir = filepath.Join(dataDir, "backups")
+	}
+	if err := s.runMigrations(ctx, migrateOpts); err != nil {
 		_ = s.Close()
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
+		return nil, err
 	}
 
 	// Create default datacenter if none exists
@@ -107,6 +124,17 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 	}
 
 	return s, nil
+}
+
+func (s *SQLiteStorage) runMigrations(ctx context.Context, opts MigrationOptions) error {
+	res, err := RunMigrationsWithOptions(ctx, s.db, opts)
+	if err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+	if len(res.Versions) > 0 {
+		log.Info("Applied database migrations", "count", len(res.Versions), "latest", res.Versions[len(res.Versions)-1], "backup", res.BackupPath)
+	}
+	return nil
 }
 
 // NewSQLiteStorageWithPath creates a new SQLite storage instance with a specific database file path
@@ -143,11 +171,11 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 	s.auditWG.Add(1)
 	go s.auditWorker()
 
-	// Run migrations
+	// Run migrations, snapshotting an existing database first
 	ctx := context.Background()
-	if err := RunMigrations(ctx, db); err != nil {
+	if err := s.runMigrations(ctx, MigrationOptions{BackupDir: filepath.Join(filepath.Dir(dbPath), "backups")}); err != nil {
 		_ = s.Close()
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
+		return nil, err
 	}
 
 	// Create default datacenter if none exists

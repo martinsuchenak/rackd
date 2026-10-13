@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gosnmp/gosnmp v1.45.0
 	github.com/martinsuchenak/go-rbac v0.1.0
+	github.com/martinsuchenak/xdal v0.1.0
 	github.com/paularlott/cli v0.10.1
 	github.com/paularlott/logger v0.3.0
 	github.com/paularlott/mcp v0.32.4

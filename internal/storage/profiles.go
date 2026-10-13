@@ -25,48 +25,10 @@ type SQLiteProfileStorage struct {
 }
 
 func NewSQLiteProfileStorage(db *sql.DB) (*SQLiteProfileStorage, error) {
-	s := &SQLiteProfileStorage{db: db}
-	if err := s.migrate(); err != nil {
+	if err := RequireTables(db, "scan_profiles"); err != nil {
 		return nil, err
 	}
-	if err := s.seedDefaults(); err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
-func (s *SQLiteProfileStorage) migrate() error {
-	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS scan_profiles (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL UNIQUE,
-			scan_type TEXT NOT NULL,
-			ports TEXT,
-			enable_snmp INTEGER DEFAULT 0,
-			enable_ssh INTEGER DEFAULT 0,
-			timeout_sec INTEGER DEFAULT 30,
-			max_workers INTEGER DEFAULT 10,
-			description TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	return err
-}
-
-func (s *SQLiteProfileStorage) seedDefaults() error {
-	defaults := []model.ScanProfile{
-		{ID: "default-quick", Name: "Quick Scan", ScanType: "quick", Ports: []int{22, 80, 443, 3389}, EnableSNMP: false, EnableSSH: false, TimeoutSec: 10, MaxWorkers: 50},
-		{ID: "default-full", Name: "Full Scan", ScanType: "full", Ports: []int{22, 80, 443, 3389, 8080, 8443}, EnableSNMP: true, EnableSSH: false, TimeoutSec: 30, MaxWorkers: 20},
-		{ID: "default-deep", Name: "Deep Scan", ScanType: "deep", Ports: []int{22, 80, 443, 3389, 8080, 8443, 3306, 5432}, EnableSNMP: true, EnableSSH: true, TimeoutSec: 60, MaxWorkers: 10},
-	}
-	for _, p := range defaults {
-		existing, _ := s.Get(context.Background(), p.ID)
-		if existing == nil {
-			_ = s.Create(context.Background(), &p)
-		}
-	}
-	return nil
+	return &SQLiteProfileStorage{db: db}, nil
 }
 
 func (s *SQLiteProfileStorage) Create(ctx context.Context, profile *model.ScanProfile) error {

@@ -2,11 +2,10 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 )
 
-func migrateAddOAuthTablesUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddOAuthTablesUp(ctx context.Context, tx sqlTx) error {
 	// OAuth clients table
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS oauth_clients (
@@ -92,7 +91,7 @@ func migrateAddOAuthTablesUp(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddOAuthTablesDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddOAuthTablesDown(ctx context.Context, tx sqlTx) error {
 	tables := []string{"oauth_tokens", "oauth_authorization_codes", "oauth_clients"}
 	for _, table := range tables {
 		if _, err := tx.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {

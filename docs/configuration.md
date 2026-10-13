@@ -9,6 +9,7 @@ Rackd can be configured through environment variables. All configuration options
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATA_DIR` | `./data` | Directory for SQLite database and application data |
+| `PRE_MIGRATION_BACKUP` | `true` | Back up the database to `<DATA_DIR>/backups/` before pending migrations run at startup. If the backup fails, the server does not start; set `false` to skip it (for example on a full disk). |
 | `LISTEN_ADDR` | `:8080` | Address and port for the HTTP server (e.g., `:8080`, `127.0.0.1:3000`) |
 
 ### Security Options

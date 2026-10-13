@@ -22,6 +22,8 @@ github.com/klauspost/cpuid/v2 v2.4.0 h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV91
 github.com/klauspost/cpuid/v2 v2.4.0/go.mod h1:19jmZ9mjzoF//ddRSUsv0zfBTJWh3QJh9FNxZTMrGxU=
 github.com/martinsuchenak/go-rbac v0.1.0 h1:Ccf9ORvUfiY3rM3UmugiwExxLWZ+jNgsqssu+Do6goY=
 github.com/martinsuchenak/go-rbac v0.1.0/go.mod h1:K5tOjgR7OjISf7SQF047FWJAPbOidpZeWr+XXEiQr2U=
+github.com/martinsuchenak/xdal v0.1.0 h1:Oiv4+Ol8dP0cfPufrXFCHiv8FUJOWgbJYFhr0gzhxA4=
+github.com/martinsuchenak/xdal v0.1.0/go.mod h1:FrwVKjOwT4RiIWv/sox43tBUpsMtzAt2dWE9iQD9A7c=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
 github.com/ncruces/go-strftime v1.1.0 h1:vtPmPWMkb539RGV9WpWT9EwJGvrOCKvMNI4obWL47Hk=

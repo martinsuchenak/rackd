@@ -22,25 +22,29 @@ func Command() *cli.Command {
 		Commands: []*cli.Command{
 			statusCommand(),
 			runCommand(),
+			rollbackCommand(),
 		},
 	}
+}
+
+func dataDirFlag() cli.Flag {
+	return &cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"}
+}
+
+func resolveDataDir(cmd *cli.Command) string {
+	if dataDir := cmd.GetString("data-dir"); dataDir != "" {
+		return dataDir
+	}
+	return config.Load().DataDir
 }
 
 func statusCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "status",
 		Usage: "Show migration status",
-		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"},
-		},
+		Flags: []cli.Flag{dataDirFlag()},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
-			cfg := config.Load()
-			dataDir := cmd.GetString("data-dir")
-			if dataDir == "" {
-				dataDir = cfg.DataDir
-			}
-
-			db, err := openDB(dataDir)
+			db, err := openDB(resolveDataDir(cmd))
 			if err != nil {
 				return err
 			}
@@ -57,7 +61,12 @@ func statusCommand() *cli.Command {
 			for _, s := range statuses {
 				status := "applied"
 				appliedAt := s.AppliedAt
-				if !s.Applied {
+				switch {
+				case s.Dirty:
+					status = "dirty"
+				case s.Unknown:
+					status = "unknown (newer rackd)"
+				case !s.Applied:
 					status = "pending"
 					appliedAt = "-"
 					pending++
@@ -75,47 +84,86 @@ func statusCommand() *cli.Command {
 func runCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "run",
-		Usage: "Run pending migrations",
+		Usage: "Run pending migrations, backing up the database first",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"},
+			dataDirFlag(),
+			&cli.BoolFlag{Name: "no-backup", Usage: "Skip the pre-migration backup"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
-			cfg := config.Load()
-			dataDir := cmd.GetString("data-dir")
-			if dataDir == "" {
-				dataDir = cfg.DataDir
-			}
-
+			dataDir := resolveDataDir(cmd)
 			db, err := openDB(dataDir)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
 
-			// Check pending count first
-			statuses, err := storage.GetMigrationStatus(ctx, db)
+			opts := storage.MigrationOptions{BackupDir: filepath.Join(dataDir, "backups")}
+			if cmd.GetBool("no-backup") {
+				opts.BackupDir = ""
+			}
+			res, err := storage.RunMigrationsWithOptions(ctx, db, opts)
 			if err != nil {
-				return fmt.Errorf("failed to get migration status: %w", err)
+				return fmt.Errorf("migration failed: %w", err)
 			}
-
-			pending := 0
-			for _, s := range statuses {
-				if !s.Applied {
-					pending++
-				}
-			}
-
-			if pending == 0 {
+			if len(res.Versions) == 0 {
 				fmt.Println("Database is up to date, no pending migrations")
 				return nil
 			}
+			if res.BackupPath != "" {
+				fmt.Printf("Backup created: %s\n", res.BackupPath)
+			}
+			fmt.Printf("Applied %d migration(s)\n", len(res.Versions))
+			return nil
+		},
+	}
+}
 
-			fmt.Printf("Running %d pending migration(s)...\n", pending)
-			if err := storage.RunMigrations(ctx, db); err != nil {
-				return fmt.Errorf("migration failed: %w", err)
+func rollbackCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "rollback",
+		Usage: "Revert applied migrations, backing up the database first",
+		Flags: []cli.Flag{
+			dataDirFlag(),
+			&cli.IntFlag{Name: "steps", Usage: "Number of migrations to revert", DefaultValue: 1},
+			&cli.StringFlag{Name: "to", Usage: "Revert every migration newer than this version"},
+			&cli.BoolFlag{Name: "yes", Usage: "Confirm the rollback; reverting can drop tables and data"},
+		},
+		Run: func(ctx context.Context, cmd *cli.Command) error {
+			steps := cmd.GetInt("steps")
+			to := cmd.GetString("to")
+			if steps < 1 && to == "" {
+				return fmt.Errorf("--steps must be at least 1")
+			}
+			target := fmt.Sprintf("the latest %d migration(s)", steps)
+			if to != "" {
+				target = "every migration newer than " + to
+			}
+			if !cmd.GetBool("yes") {
+				fmt.Printf("This reverts %s and can drop tables and data.\nA backup is taken first. Re-run with --yes to continue.\n", target)
+				return nil
 			}
 
-			fmt.Println("All migrations applied successfully")
+			dataDir := resolveDataDir(cmd)
+			db, err := openDB(dataDir)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = db.Close() }()
+
+			res, err := storage.RollbackMigrations(ctx, db, steps, to, storage.MigrationOptions{BackupDir: filepath.Join(dataDir, "backups")})
+			if err != nil {
+				return fmt.Errorf("rollback failed: %w", err)
+			}
+			if res.BackupPath != "" {
+				fmt.Printf("Backup created: %s\n", res.BackupPath)
+			}
+			if len(res.Versions) == 0 {
+				fmt.Println("Nothing to roll back")
+				return nil
+			}
+			for _, v := range res.Versions {
+				fmt.Printf("Reverted %s\n", v)
+			}
 			return nil
 		},
 	}
@@ -127,10 +175,11 @@ func openDB(dataDir string) (*sql.DB, error) {
 		return nil, fmt.Errorf("database not found at %s", dbPath)
 	}
 
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+	db.SetMaxOpenConns(1)
 
 	if err := db.Ping(); err != nil {
 		_ = db.Close()

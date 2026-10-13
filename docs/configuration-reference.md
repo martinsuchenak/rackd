@@ -9,6 +9,7 @@ Use `--dev-mode` flag on `rackd server` to automatically disable `COOKIE_SECURE`
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `DATA_DIR` | string | `./data` | Directory for SQLite database and data files |
+| `PRE_MIGRATION_BACKUP` | bool | `true` | Back up the database to `<DATA_DIR>/backups/` before pending migrations run at startup; the server does not start if the backup fails. Set `false` to skip it |
 | `LISTEN_ADDR` | string | `:8080` | Address and port to listen on |
 | `REQUEST_TIMEOUT` | duration | `30s` | HTTP request timeout |
 | `LOG_FORMAT` | string | `text` | Log format: `text` or `json` |
