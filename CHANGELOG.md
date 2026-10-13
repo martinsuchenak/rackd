@@ -14,7 +14,7 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 ### Added
 
 - This changelog. Each release's section is published as its GitHub release
-  notes and on the [documentation site](https://docs.rackd.io/changelog/).
+  notes and on the [documentation site](https://getrackd.dev/changelog/).
 
 ### Changed
 

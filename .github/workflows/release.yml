@@ -61,7 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
 
-      # Rebuild docs.rackd.io so its changelog page picks up this release.
+      # Rebuild getrackd.dev so its changelog page picks up this release.
       # Set the CF_PAGES_DEPLOY_HOOK secret to a Cloudflare Pages deploy hook
       # URL for the rackd-web project; the step is skipped while it is unset.
       - name: Trigger website rebuild
