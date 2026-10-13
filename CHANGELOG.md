@@ -49,6 +49,7 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - Creating or updating a DNS provider now accepts only `technitium`. The `powerdns`
   and `bind` types were accepted before but failed with "not yet implemented"
   whenever the provider was used. They are planned, and the API now says so.
+  Providers already stored with those types can still be edited and deleted.
 - Migrations run on [xdal](https://github.com/martinsuchenak/xdal) `pkg/migrate`
   (v0.1.0). This is groundwork for PostgreSQL and MySQL support.
   - Applied migrations are recorded in `xdal_migrations` under the `core` namespace.

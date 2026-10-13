@@ -11,14 +11,16 @@ const (
 	DNSProviderTypeBIND       DNSProviderType = "bind"
 )
 
-// ValidDNSProviderTypes contains all valid DNS provider types
+// ValidDNSProviderTypes lists every provider type that can appear in stored data.
+// Validate new input with IsSupported instead, which excludes planned types.
 var ValidDNSProviderTypes = []DNSProviderType{
 	DNSProviderTypeTechnitium,
 	DNSProviderTypePowerDNS,
 	DNSProviderTypeBIND,
 }
 
-// IsValid checks if the provider type is valid
+// IsValid reports whether the type is a known value, including planned types that
+// are not accepted for new providers. Use IsSupported to validate input.
 func (t DNSProviderType) IsValid() bool {
 	for _, pt := range ValidDNSProviderTypes {
 		if t == pt {
