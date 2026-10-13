@@ -33,6 +33,29 @@ func TestDNSHandlers(t *testing.T) {
 		}
 	})
 
+	t.Run("StoredUnsupportedProviderStillUpdatable", func(t *testing.T) {
+		legacy := &model.DNSProviderConfig{
+			Name:     "legacy-powerdns",
+			Type:     model.DNSProviderTypePowerDNS,
+			Endpoint: "https://203.0.113.20",
+			Token:    "stored",
+		}
+		if err := env.store.CreateDNSProvider(context.Background(), legacy); err != nil {
+			t.Fatalf("failed to seed provider: %v", err)
+		}
+		put := func(body string) *httptest.ResponseRecorder {
+			req := authReq(httptest.NewRequest("PUT", "/api/dns/providers/"+legacy.ID, bytes.NewBufferString(body)))
+			req.Header.Set("Content-Type", "application/json")
+			return performRequest(env.mux, req)
+		}
+		if w := put(`{"type":"powerdns","description":"kept type"}`); w.Code != http.StatusOK {
+			t.Errorf("update keeping the stored type: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		if w := put(`{"type":"bind"}`); w.Code != http.StatusBadRequest {
+			t.Errorf("change to another unsupported type: expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
 	t.Run("ProviderAndZoneCRUD", func(t *testing.T) {
 		createProviderReq := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"phase2-dns","type":"technitium","endpoint":"https://203.0.113.10","token":"super-secret","description":"phase 2 provider"}`)))
 		createProviderReq.Header.Set("Content-Type", "application/json")

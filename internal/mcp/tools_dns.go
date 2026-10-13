@@ -8,7 +8,7 @@ func (s *Server) registerDNSTools() {
 	// Provider tools
 	s.mcpServer.RegisterTool(
 		mcp.NewTool("dns_provider_list", "List DNS providers",
-			mcp.String("type", "Filter by provider type (technitium, powerdns, bind)"),
+			mcp.String("type", "Filter by provider type, e.g. technitium"),
 			mcp.Number("limit", "Max results to return (default 100, max 1000)"),
 			mcp.Number("offset", "Number of results to skip for pagination"),
 		).Discoverable("dns", "provider", "nameserver"),
@@ -26,7 +26,7 @@ func (s *Server) registerDNSTools() {
 		mcp.NewTool("dns_provider_save", "Create or update a DNS provider",
 			mcp.String("id", "Provider ID (omit for new)"),
 			mcp.String("name", "Provider name", mcp.Required()),
-			mcp.String("type", "Provider type (technitium, powerdns, bind)", mcp.Required()),
+			mcp.String("type", "Provider type: technitium (PowerDNS and BIND are planned and rejected)", mcp.Required()),
 			mcp.String("endpoint", "Provider API endpoint URL"),
 			mcp.String("token", "Provider API token/key"),
 			mcp.String("description", "Description"),

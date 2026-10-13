@@ -795,7 +795,7 @@ rackd dns provider list [options]
 ```
 
 **Options:**
-- `--type <type>` - Filter by provider type (technitium, powerdns, bind)
+- `--type <type>` - Filter by provider type, e.g. `technitium`
 - `--output <format>` - Output format (table/json/yaml)
 
 ##### dns provider create
@@ -808,7 +808,7 @@ rackd dns provider create [options]
 
 **Options:**
 - `--name <name>` - Provider name (required)
-- `--type <type>` - Provider type: technitium, powerdns, bind (required)
+- `--type <type>` - Provider type (required): `technitium`. PowerDNS and BIND are planned and currently rejected
 - `--endpoint <url>` - API endpoint URL
 - `--token-env <var>` - Environment variable containing API token
 - `--token-file <path>` - File containing API token
@@ -823,13 +823,6 @@ rackd dns provider create \
   --type technitium \
   --endpoint http://dns.example.com:5380 \
   --token-env TECHNITIUM_TOKEN
-
-# Create PowerDNS provider
-rackd dns provider create \
-  --name "PowerDNS" \
-  --type powerdns \
-  --endpoint http://pdns.example.com:8081 \
-  --token-env POWERDNS_API_KEY
 ```
 
 ##### dns provider test

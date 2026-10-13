@@ -207,7 +207,9 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 		}
 		provider.Name = *req.Name
 	}
-	if req.Type != nil {
+	if req.Type != nil && *req.Type != provider.Type {
+		// Only a change of type is validated, so providers stored with a type
+		// that is no longer accepted can still be renamed or re-keyed.
 		if !req.Type.IsSupported() {
 			return nil, ValidationErrors{{Field: "type", Message: unsupportedProviderMessage}}
 		}
