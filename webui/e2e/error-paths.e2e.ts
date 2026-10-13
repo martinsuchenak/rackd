@@ -59,7 +59,7 @@ test('@errors invalid cron expressions are rejected for scheduled scans', async 
 });
 
 test('@errors dns provider connection failures are surfaced in the test modal', async ({ page }) => {
-  // The provider HTTP client times out after 30s against the unreachable
+  // The provider HTTP client times out after 20s against the unreachable
   // TEST-NET-3 endpoint, so the failure alert needs a longer budget.
   test.setTimeout(90_000);
   await login(page);

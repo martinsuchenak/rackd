@@ -21,13 +21,19 @@ type TechnitiumClient struct {
 	client   *http.Client
 }
 
+// providerTimeout bounds each call to the DNS server. Provider calls run inside
+// API requests (e.g. "Test Connection"), so it is kept below the default
+// REQUEST_TIMEOUT (30s); the caller then gets the real cause (timeout,
+// refused, SSRF block) instead of a generic request timeout.
+const providerTimeout = 20 * time.Second
+
 // NewTechnitiumClient creates a new Technitium DNS client
 func NewTechnitiumClient(endpoint, token string) *TechnitiumClient {
 	// The client carries the provider API token, so it must not be
 	// redirectable to arbitrary hosts and must not dial loopback,
 	// link-local (cloud metadata) or private ranges. The secure client
 	// enforces this at dial time and re-validates every redirect hop.
-	return NewTechnitiumClientWithHTTPClient(endpoint, token, securl.NewSecureHTTPClient(30*time.Second))
+	return NewTechnitiumClientWithHTTPClient(endpoint, token, securl.NewSecureHTTPClient(providerTimeout))
 }
 
 // NewTechnitiumClientWithHTTPClient creates a Technitium DNS client that

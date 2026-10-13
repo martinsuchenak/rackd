@@ -253,7 +253,9 @@ func (s *WebhookService) pingWebhook(ctx context.Context, webhook *model.Webhook
 		return nil, fmt.Errorf("failed to serialize event: %w", err)
 	}
 
-	client := wh.NewSecureHTTPClient(30 * time.Second)
+	// Runs inside the API request, so stay below the default REQUEST_TIMEOUT
+	// (30s) and report the real failure rather than a generic timeout.
+	client := wh.NewSecureHTTPClient(20 * time.Second)
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

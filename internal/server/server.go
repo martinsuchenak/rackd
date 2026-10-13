@@ -180,7 +180,7 @@ func RunWithAdvancedFeatures(
 		Addr:         cfg.ListenAddr,
 		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		WriteTimeout: writeTimeout(cfg.RequestTimeout),
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -319,7 +319,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		Addr:         cfg.ListenAddr,
 		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		WriteTimeout: writeTimeout(cfg.RequestTimeout),
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -343,4 +343,13 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 		return err
 	}
 	return <-errCh
+}
+
+// writeTimeout returns the HTTP server write timeout. It must outlast the
+// request timeout: once the write deadline passes the connection is closed, so
+// http.TimeoutHandler could no longer send its timeout response and slow
+// requests would get an empty reply instead of an error.
+func writeTimeout(requestTimeout time.Duration) time.Duration {
+	const minWriteTimeout = 15 * time.Second
+	return max(minWriteTimeout, requestTimeout+5*time.Second)
 }
