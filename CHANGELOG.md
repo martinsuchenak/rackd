@@ -29,6 +29,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   refuses to run while the server has the database open, and refuses backups from a
   newer Rackd.
 - `rackd migrate run --no-backup` skips the pre-migration snapshot.
+- A CI workflow for pull requests and pushes to `main`:
+  - Go: formatting, `go mod tidy`, vet, golangci-lint and the full test suite.
+  - A separate job runs the tests with the race detector.
+  - Web UI: typecheck, the OpenAPI type check and unit tests.
 - Upgrade tests against a real v0.0.21 database. A reversibility test applies each
   migration, reverts it, and checks that the schema and row counts match the state
   before it ran.
