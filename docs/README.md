@@ -228,4 +228,4 @@ If you can't find what you're looking for:
 
 ## License
 
-Documentation is licensed under MIT License, same as the Rackd project.
+Documentation is licensed under the Apache License 2.0, the same as the Rackd project.
