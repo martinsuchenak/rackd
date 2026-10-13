@@ -298,8 +298,7 @@ export function deviceGraph(): GraphData {
           spacingFactor: 1.5
         } as any,
         minZoom: 0.2,
-        maxZoom: 3,
-        wheelSensitivity: 0.3
+        maxZoom: 3
       });
 
       // Fit graph to viewport

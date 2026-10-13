@@ -35,16 +35,16 @@
     "validate:types": "bun run ./scripts/validate-openapi-types.ts"
   },
   "dependencies": {
-    "@alpinejs/collapse": "^3.16.1",
-    "@alpinejs/csp": "^3.16.1",
-    "@alpinejs/focus": "^3.16.1",
-    "alpinejs": "^3.16.1",
-    "cytoscape": "^3.34.1"
+    "@alpinejs/collapse": "^3.17.4",
+    "@alpinejs/csp": "^3.17.4",
+    "@alpinejs/focus": "^3.17.4",
+    "alpinejs": "^3.17.4",
+    "cytoscape": "^3.34.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/cli": "^4.3.3",
-    "@types/alpinejs": "^3.13.11",
+    "@types/alpinejs": "^3.17.0",
     "posthtml": "^0.16.7",
     "posthtml-include": "^2.0.1",
     "tailwindcss": "^4.3.3",
