@@ -71,6 +71,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   - The `api_keys` rebuild lost its primary key, NOT NULL and UNIQUE constraints.
   - The DNS rollback left seven permissions behind.
   - The audit/logs rollback left the operator's `audit:list` grant behind.
+- Discovery's ARP table was read and replaced by concurrent scans and the startup
+  load without locking, a data race on Linux. It is now swapped in and read under a
+  lock.
 - Logging before the logger was initialised (for example from CLI commands and tests)
   panicked. Messages are now discarded until initialisation.
 - The backup guide referred to `rackd server --dry-run`, `--init-db` and `/api/health`,

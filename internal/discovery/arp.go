@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 type ARPEntry struct {
@@ -15,7 +16,10 @@ type ARPEntry struct {
 	MAC string
 }
 
+// ARPScanner caches the host's ARP table. It is shared by concurrent scans and
+// a background load, so the table is replaced and read under a lock.
 type ARPScanner struct {
+	mu      sync.RWMutex
 	entries []ARPEntry
 }
 
@@ -23,23 +27,35 @@ func NewARPScanner() *ARPScanner {
 	return &ARPScanner{entries: []ARPEntry{}}
 }
 
+// LoadARPTable reads the host's ARP table and replaces the cached entries.
 func (s *ARPScanner) LoadARPTable() error {
+	var entries []ARPEntry
+	var err error
 	switch runtime.GOOS {
 	case "linux":
-		return s.loadLinuxARP()
+		entries, err = loadLinuxARP()
 	case "darwin":
-		return s.loadDarwinARP()
+		entries, err = loadDarwinARP()
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
+	if entries == nil {
+		entries = []ARPEntry{}
+	}
+	s.mu.Lock()
+	s.entries = entries
+	s.mu.Unlock()
+	return err
 }
 
+// Refresh reloads the ARP table.
 func (s *ARPScanner) Refresh() error {
-	s.entries = []ARPEntry{}
 	return s.LoadARPTable()
 }
 
 func (s *ARPScanner) LookupMAC(ip string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, entry := range s.entries {
 		if entry.IP == ip {
 			return entry.MAC
@@ -48,13 +64,14 @@ func (s *ARPScanner) LookupMAC(ip string) string {
 	return ""
 }
 
-func (s *ARPScanner) loadLinuxARP() error {
+func loadLinuxARP() ([]ARPEntry, error) {
 	file, err := os.Open("/proc/net/arp")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = file.Close() }()
 
+	var entries []ARPEntry
 	scanner := bufio.NewScanner(file)
 
 	scanner.Scan()
@@ -68,23 +85,24 @@ func (s *ARPScanner) loadLinuxARP() error {
 			if mac != "00:00:00:00:00:00" {
 				if net.ParseIP(ip) != nil {
 					if _, err := net.ParseMAC(mac); err == nil {
-						s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+						entries = append(entries, ARPEntry{IP: ip, MAC: mac})
 					}
 				}
 			}
 		}
 	}
 
-	return scanner.Err()
+	return entries, scanner.Err()
 }
 
-func (s *ARPScanner) loadDarwinARP() error {
+func loadDarwinARP() ([]ARPEntry, error) {
 	cmd := exec.Command("arp", "-a")
 	output, err := cmd.Output()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	var entries []ARPEntry
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -118,11 +136,11 @@ func (s *ARPScanner) loadDarwinARP() error {
 		if ip != "" && mac != "" && mac != "00:00:00:00:00:00" && mac != "(incomplete)" {
 			if net.ParseIP(ip) != nil {
 				if _, err := net.ParseMAC(mac); err == nil {
-					s.entries = append(s.entries, ARPEntry{IP: ip, MAC: mac})
+					entries = append(entries, ARPEntry{IP: ip, MAC: mac})
 				}
 			}
 		}
 	}
 
-	return nil
+	return entries, nil
 }
