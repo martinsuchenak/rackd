@@ -66,7 +66,7 @@ func Command() *cli.Command {
 				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)
 			}
 
-			store, err := storage.NewExtendedStorage(cfg.DataDir)
+			store, err := storage.NewExtendedStorageWithOptions(cfg.DataDir, storage.StorageOptions{SkipPreMigrationBackup: !cfg.PreMigrationBackup})
 			if err != nil {
 				return err
 			}

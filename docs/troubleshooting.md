@@ -170,11 +170,12 @@ Error: migration failed: ...
 
 ```bash
 # Check migration status
-sqlite3 /var/lib/rackd/rackd.db "SELECT * FROM schema_migrations;"
+rackd migrate status --data-dir /var/lib/rackd
 
-# Restore from backup
+# Restore the snapshot taken automatically before the migration
+ls /var/lib/rackd/backups/
 sudo systemctl stop rackd
-cp /var/lib/rackd/rackd.db.backup /var/lib/rackd/rackd.db
+rackd backup restore --data-dir /var/lib/rackd --file /var/lib/rackd/backups/rackd-pre-migrate-<timestamp>-<target>.db --yes
 sudo systemctl start rackd
 
 # If no backup, check logs for specific error
@@ -745,7 +746,7 @@ journalctl -u rackd -n 100 --no-pager
 
 # Database info
 sqlite3 /var/lib/rackd/rackd.db "PRAGMA integrity_check;"
-sqlite3 /var/lib/rackd/rackd.db "SELECT * FROM schema_migrations;"
+rackd migrate status --data-dir /var/lib/rackd
 
 # Configuration
 env | grep RACKD

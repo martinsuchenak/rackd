@@ -15,7 +15,9 @@ import (
 	logslog "github.com/paularlott/logger/slog"
 )
 
-var defaultLogger logger.Logger
+// defaultLogger discards messages until Init is called, so packages that log
+// (such as storage during migrations) are safe to use from tests and tools.
+var defaultLogger logger.Logger = logger.NewNullLogger()
 
 const recentLogCapacity = 2000
 

@@ -1,74 +1,50 @@
 # Backup & Restore
 
-This guide covers backup strategies, restore procedures, and data migration for Rackd.
+This guide covers backup strategies, restore procedures, and upgrades for Rackd.
 
-## SQLite Backup Strategies
+## Backing Up
 
-### 1. File-Based Backup
-
-The simplest approach is copying the SQLite database file:
+`rackd backup` writes a consistent snapshot of the database with SQLite's `VACUUM INTO`. It is safe while the server is running, produces a single file (no `-wal`/`-shm` companions), sets the file mode to `0600`, and verifies the copy before reporting success.
 
 ```bash
-# Stop Rackd service
-systemctl stop rackd
+# Snapshot to rackd-backup-<timestamp>.db in the current directory
+rackd backup --data-dir /var/lib/rackd
 
-# Copy database file
-cp /var/lib/rackd/rackd.db /backup/rackd-$(date +%Y%m%d-%H%M%S).db
-
-# Start Rackd service
-systemctl start rackd
+# Snapshot to a specific file (the command refuses to overwrite an existing file)
+rackd backup --data-dir /var/lib/rackd --output /backup/rackd-$(date +%Y%m%d-%H%M%S).db
 ```
 
-### 2. Online Backup (Recommended)
+Do not copy `rackd.db` with `cp` while the server runs: in WAL mode the main file and the `-wal` file change independently, and a plain copy can be inconsistent.
 
-Use SQLite's `.backup` command for consistent backups without stopping the service:
+### Verifying a Backup
 
 ```bash
-# Create backup while service is running
-sqlite3 /var/lib/rackd/rackd.db ".backup /backup/rackd-$(date +%Y%m%d-%H%M%S).db"
+rackd backup verify --file /backup/rackd-20260101-020000.db
 ```
 
-### 3. WAL Mode Backup
+This opens the file read-only, runs `PRAGMA integrity_check`, and reports how many migrations it contains. It also warns when the backup was made by a newer Rackd version, which this binary cannot restore.
 
-If using WAL mode, backup both database and WAL files:
+### Automatic Backups Before Migrations
 
-```bash
-# Checkpoint WAL file first
-sqlite3 /var/lib/rackd/rackd.db "PRAGMA wal_checkpoint(FULL);"
-
-# Backup database file
-cp /var/lib/rackd/rackd.db /backup/rackd-$(date +%Y%m%d-%H%M%S).db
-```
+When the server starts (or `rackd migrate run` runs) and there are pending migrations on an existing database, Rackd first writes a verified snapshot to `<data-dir>/backups/rackd-pre-migrate-<timestamp>-<target>.db`. `rackd migrate rollback` does the same before reverting. The five newest pre-migration snapshots are kept. If the snapshot fails, no migration runs.
 
 ## Automated Backups
 
-### Cron-Based Backup Script
-
-Create `/usr/local/bin/rackd-backup.sh`:
+### Cron
 
 ```bash
 #!/bin/bash
+# /usr/local/bin/rackd-backup.sh
+set -euo pipefail
 BACKUP_DIR="/backup/rackd"
-DB_PATH="/var/lib/rackd/rackd.db"
 RETENTION_DAYS=30
 
-# Create backup directory
 mkdir -p "$BACKUP_DIR"
-
-# Create backup
 BACKUP_FILE="$BACKUP_DIR/rackd-$(date +%Y%m%d-%H%M%S).db"
-sqlite3 "$DB_PATH" ".backup $BACKUP_FILE"
-
-# Compress backup
+rackd backup --data-dir /var/lib/rackd --output "$BACKUP_FILE"
 gzip "$BACKUP_FILE"
-
-# Remove old backups
-find "$BACKUP_DIR" -name "*.db.gz" -mtime +$RETENTION_DAYS -delete
-
-echo "Backup completed: $BACKUP_FILE.gz"
+find "$BACKUP_DIR" -name "rackd-*.db.gz" -mtime +$RETENTION_DAYS -delete
 ```
-
-Add to crontab:
 
 ```bash
 # Daily backup at 2 AM
@@ -114,47 +90,38 @@ systemctl start rackd-backup.timer
 
 ## Restore Procedures
 
-### Basic Restore
+### Restoring a Backup
+
+Stop the server first; `restore` refuses to run while another process has the database open.
 
 ```bash
-# Stop Rackd service
-systemctl stop rackd
+sudo systemctl stop rackd
 
-# Backup current database (optional)
-cp /var/lib/rackd/rackd.db /var/lib/rackd/rackd.db.backup
+# Preview, then restore
+rackd backup restore --data-dir /var/lib/rackd --file /backup/rackd-20260101-020000.db
+rackd backup restore --data-dir /var/lib/rackd --file /backup/rackd-20260101-020000.db --yes
 
-# Restore from backup
-cp /backup/rackd-20240101-020000.db /var/lib/rackd/rackd.db
-
-# Set correct permissions
-chown rackd:rackd /var/lib/rackd/rackd.db
-chmod 644 /var/lib/rackd/rackd.db
-
-# Start Rackd service
-systemctl start rackd
+sudo chown rackd:rackd /var/lib/rackd/rackd.db
+sudo systemctl start rackd
 ```
+
+`restore` verifies the backup, folds the current database's WAL into its main file, moves it aside as `rackd.db.pre-restore-<timestamp>` (nothing is deleted), and copies the backup into place with mode `0600`. Restoring an older backup is fine: pending migrations run on the next start. A backup made by a newer Rackd version is refused.
 
 ### Restore from Compressed Backup
 
 ```bash
-# Decompress backup
-gunzip /backup/rackd-20240101-020000.db.gz
-
-# Follow basic restore procedure
+gunzip -k /backup/rackd-20260101-020000.db.gz
+rackd backup restore --data-dir /var/lib/rackd --file /backup/rackd-20260101-020000.db --yes
 ```
 
 ### Verify Restore
 
 ```bash
-# Check database integrity
-sqlite3 /var/lib/rackd/rackd.db "PRAGMA integrity_check;"
-
-# Verify Rackd can start
-rackd server --dry-run
-
-# Check web UI and API
-curl http://localhost:8080/api/health
+rackd migrate status --data-dir /var/lib/rackd
+curl -fsS http://localhost:8080/healthz
+curl -fsS http://localhost:8080/readyz
 ```
+
 
 ## Disaster Recovery
 
@@ -292,28 +259,21 @@ sqlite3 /var/lib/rackd/rackd-new.db < rackd-export.sql
    systemctl start rackd
    ```
 
-### Cross-Version Migration
+### Upgrading Rackd
 
-1. **Export data from source**
-   ```bash
-   # Export using CLI
-   rackd device list --format json > devices.json
-   rackd network list --format json > networks.json
-   rackd datacenter list --format json > datacenters.json
-   ```
+Upgrades run in place: replace the binary and restart. On start, Rackd applies pending migrations after taking a verified snapshot in `<data-dir>/backups/`.
 
-2. **Setup destination with new version**
-   ```bash
-   # Install new Rackd version
-   # Initialize fresh database
-   ./rackd server --init-db
-   ```
+```bash
+rackd backup --data-dir /var/lib/rackd --output /backup/rackd-pre-upgrade.db   # optional extra copy
+sudo systemctl stop rackd
+sudo install -m 0755 rackd-linux-amd64 /usr/local/bin/rackd
+rackd migrate status --data-dir /var/lib/rackd    # shows the pending migrations
+sudo systemctl start rackd
+```
 
-3. **Import data to destination**
-   ```bash
-   # Import each data type
-   # Handle any schema differences
-   ```
+To undo an upgrade, either restore the pre-migration snapshot with `rackd backup restore` and reinstall the old binary, or revert migrations with `rackd migrate rollback --steps N --yes` before downgrading. Rollback also snapshots first; some Down steps drop tables and data.
+
+Rackd versions after v0.0.21 record migrations in the `xdal_migrations` table. On first start they copy the history from the older `schema_migrations` table, which is left in place so an older binary can still open the database.
 
 ### Migration Validation
 

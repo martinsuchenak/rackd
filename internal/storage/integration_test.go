@@ -341,7 +341,7 @@ func TestMigrationOnFreshDB(t *testing.T) {
 		"datacenters", "networks", "network_pools", "pool_tags",
 		"device_relationships",
 		"discovered_devices", "discovery_scans", "discovery_rules",
-		"schema_migrations",
+		"xdal_migrations",
 	}
 
 	for _, table := range tables {

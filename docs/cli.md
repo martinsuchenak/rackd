@@ -1002,7 +1002,7 @@ rackd audit export [options]
 
 ### backup
 
-Backup the Rackd database.
+Back up the Rackd database. The snapshot is consistent even while the server is running, and is verified before the command reports success.
 
 ```bash
 rackd backup [options]
@@ -1010,7 +1010,7 @@ rackd backup [options]
 
 **Options:**
 - `--data-dir <dir>` - Data directory (default: ./data)
-- `--output <file>` - Output file (default: rackd-backup-<timestamp>.db)
+- `--output <file>` - Output file (default: rackd-backup-<timestamp>.db); an existing file is never overwritten
 
 **Examples:**
 
@@ -1021,6 +1021,27 @@ rackd backup
 # Create backup with specific filename
 rackd backup --output /backups/rackd-$(date +%Y%m%d).db
 ```
+
+#### backup verify
+
+Check a backup's integrity and migration history.
+
+```bash
+rackd backup verify --file /backups/rackd-20260101.db
+```
+
+#### backup restore
+
+Replace the database with a backup. Stop the server first. The current database is kept as `rackd.db.pre-restore-<timestamp>`.
+
+```bash
+rackd backup restore --data-dir <dir> --file <backup> [--yes]
+```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+- `--file <file>` - Backup to restore (required)
+- `--yes` - Confirm; without it the command only describes what it would do
 
 ### import
 
@@ -1121,7 +1142,7 @@ rackd export all [options]
 
 ### migrate
 
-Database migration management.
+Database migration management. Migrations are recorded in the `xdal_migrations` table; history from the older `schema_migrations` table is adopted automatically.
 
 #### migrate status
 
@@ -1137,17 +1158,19 @@ rackd migrate status [options]
 **Output:**
 
 ```
-VERSION     NAME                    STATUS      APPLIED AT
-001         initial_schema          applied     2024-01-15 10:30:00
-002         add_rbac_tables         applied     2024-01-15 10:30:00
-003         add_dns_tables          pending     -
+VERSION         NAME                            STATUS   APPLIED AT
+20240120080000  initial_schema                  applied  2026-10-13 08:08:32
+20260305080000  add_ssh_host_keys               applied  2026-10-13 08:08:32
+20260409100000  add_audit_and_logs_permissions  pending  -
 
-Total: 3 migrations, 1 pending
+Total: 35 migrations, 1 pending
 ```
+
+`dirty` marks a migration that failed part-way; `unknown (newer rackd)` marks one applied by a newer version.
 
 #### migrate run
 
-Run pending migrations.
+Run pending migrations. An existing database is backed up to `<data-dir>/backups/` first; the server does the same on start.
 
 ```bash
 rackd migrate run [options]
@@ -1155,12 +1178,21 @@ rackd migrate run [options]
 
 **Options:**
 - `--data-dir <dir>` - Data directory (default: ./data)
+- `--no-backup` - Skip the pre-migration backup
 
-**Examples:**
+#### migrate rollback
+
+Revert applied migrations, newest first, after backing up to `<data-dir>/backups/`. Some Down steps drop tables and data; restore the backup to undo a rollback.
 
 ```bash
-rackd migrate run
+rackd migrate rollback [options] --yes
 ```
+
+**Options:**
+- `--data-dir <dir>` - Data directory (default: ./data)
+- `--steps <n>` - Number of migrations to revert (default: 1)
+- `--to <version>` - Revert every migration newer than this version
+- `--yes` - Confirm; without it the command only describes what it would do
 
 ### version
 

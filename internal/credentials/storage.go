@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 var (
@@ -33,32 +34,10 @@ func NewSQLiteStorage(db *sql.DB, encryptionKey []byte) (*SQLiteStorage, error) 
 	if err != nil {
 		return nil, err
 	}
-	s := &SQLiteStorage{db: db, encryptor: enc}
-	if err := s.migrate(); err != nil {
+	if err := storage.RequireTables(db, "credentials"); err != nil {
 		return nil, err
 	}
-	return s, nil
-}
-
-func (s *SQLiteStorage) migrate() error {
-	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS credentials (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			type TEXT NOT NULL,
-			snmp_community TEXT,
-			snmp_v3_user TEXT,
-			snmp_v3_auth TEXT,
-			snmp_v3_priv TEXT,
-			ssh_username TEXT,
-			ssh_key_id TEXT,
-			datacenter_id TEXT,
-			description TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	return err
+	return &SQLiteStorage{db: db, encryptor: enc}, nil
 }
 
 func (s *SQLiteStorage) Create(cred *model.Credential) error {

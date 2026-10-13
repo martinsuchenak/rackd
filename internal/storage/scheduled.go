@@ -23,30 +23,10 @@ type SQLiteScheduledScanStorage struct {
 }
 
 func NewSQLiteScheduledScanStorage(db *sql.DB) (*SQLiteScheduledScanStorage, error) {
-	s := &SQLiteScheduledScanStorage{db: db}
-	if err := s.migrate(); err != nil {
+	if err := RequireTables(db, "scheduled_scans"); err != nil {
 		return nil, err
 	}
-	return s, nil
-}
-
-func (s *SQLiteScheduledScanStorage) migrate() error {
-	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS scheduled_scans (
-			id TEXT PRIMARY KEY,
-			network_id TEXT NOT NULL,
-			profile_id TEXT NOT NULL,
-			name TEXT NOT NULL,
-			cron_expression TEXT NOT NULL,
-			enabled INTEGER DEFAULT 1,
-			description TEXT,
-			last_run_at TIMESTAMP,
-			next_run_at TIMESTAMP,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	return err
+	return &SQLiteScheduledScanStorage{db: db}, nil
 }
 
 func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {

@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	DataDir                 string
+	PreMigrationBackup      bool
 	ListenAddr              string
 	RequestTimeout          time.Duration
 	LogFormat               string
@@ -66,6 +67,7 @@ func Load() *Config {
 
 	cfg = Config{
 		DataDir:                 getEnv("DATA_DIR", "./data"),
+		PreMigrationBackup:      getBoolEnv("PRE_MIGRATION_BACKUP", true),
 		ListenAddr:              getEnv("LISTEN_ADDR", ":8080"),
 		RequestTimeout:          getDurationEnv("REQUEST_TIMEOUT", 30*time.Second),
 		LogFormat:               getEnv("LOG_FORMAT", "text"),

@@ -13,11 +13,11 @@ func TestCommandStructure(t *testing.T) {
 		t.Errorf("expected command name 'migrate', got %q", cmd.Name)
 	}
 
-	if len(cmd.Commands) != 2 {
-		t.Errorf("expected 2 subcommands, got %d", len(cmd.Commands))
+	expectedSubcommands := []string{"status", "run", "rollback"}
+	if len(cmd.Commands) != len(expectedSubcommands) {
+		t.Fatalf("expected %d subcommands, got %d", len(expectedSubcommands), len(cmd.Commands))
 	}
 
-	expectedSubcommands := []string{"status", "run"}
 	for i, expected := range expectedSubcommands {
 		if cmd.Commands[i].Name != expected {
 			t.Errorf("subcommand %d: expected %q, got %q", i, expected, cmd.Commands[i].Name)

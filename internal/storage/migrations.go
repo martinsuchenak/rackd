@@ -2,30 +2,16 @@ package storage
 
 import (
 	"context"
-	"crypto/sha256"
-	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"time"
 )
 
-// Migration represents a single database migration
+// Migration is one versioned change to the core schema.
 type Migration struct {
-	Version  string
-	Name     string
-	Up       func(ctx context.Context, tx *sql.Tx) error
-	Down     func(ctx context.Context, tx *sql.Tx) error
-	Checksum string
-}
-
-// MigrationRecord represents a migration record in the database
-type MigrationRecord struct {
-	Version         string
-	Name            string
-	AppliedAt       time.Time
-	Checksum        string
-	ExecutionTimeMs int64
-	Success         bool
+	Version string
+	Name    string
+	Up      func(ctx context.Context, tx sqlTx) error
+	Down    func(ctx context.Context, tx sqlTx) error
 }
 
 // migrations is the ordered list of all migrations
@@ -240,143 +226,16 @@ var migrations = []*Migration{
 		Up:      migrateAddAuditAndLogsPermissionsUp,
 		Down:    migrateAddAuditAndLogsPermissionsDown,
 	},
-}
-
-// calculateChecksum generates a checksum for a migration
-func calculateChecksum(m *Migration) string {
-	data := m.Version + m.Name
-	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:8])
-}
-
-// RunMigrations runs all pending migrations
-func RunMigrations(ctx context.Context, db *sql.DB) error {
-	// Create migration tracking table if it doesn't exist
-	if err := createMigrationTable(ctx, db); err != nil {
-		return fmt.Errorf("failed to create migration table: %w", err)
-	}
-
-	// Get applied migrations
-	applied, err := getAppliedMigrations(ctx, db)
-	if err != nil {
-		return fmt.Errorf("failed to get applied migrations: %w", err)
-	}
-
-	// Run pending migrations
-	for _, m := range migrations {
-		if _, ok := applied[m.Version]; ok {
-			continue // Already applied
-		}
-
-		if err := runMigration(ctx, db, m); err != nil {
-			return fmt.Errorf("migration %s failed: %w", m.Version, err)
-		}
-	}
-
-	return nil
-}
-
-// MigrationStatus describes the state of a single migration.
-type MigrationStatus struct {
-	Version   string
-	Name      string
-	Applied   bool
-	AppliedAt string // empty if not applied
-}
-
-// GetMigrationStatus returns the status of all known migrations.
-func GetMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
-	if err := createMigrationTable(ctx, db); err != nil {
-		return nil, err
-	}
-	applied, err := getAppliedMigrations(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	var out []MigrationStatus
-	for _, m := range migrations {
-		ms := MigrationStatus{Version: m.Version, Name: m.Name}
-		if rec, ok := applied[m.Version]; ok {
-			ms.Applied = true
-			ms.AppliedAt = rec.AppliedAt.Format("2006-01-02 15:04:05")
-		}
-		out = append(out, ms)
-	}
-	return out, nil
-}
-
-// createMigrationTable creates the schema_migrations table
-func createMigrationTable(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			checksum TEXT NOT NULL,
-			execution_time_ms INTEGER,
-			success INTEGER NOT NULL DEFAULT 1
-		)
-	`)
-	return err
-}
-
-// getAppliedMigrations returns a map of applied migration versions
-func getAppliedMigrations(ctx context.Context, db *sql.DB) (map[string]MigrationRecord, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT version, name, applied_at, checksum, execution_time_ms, success
-		FROM schema_migrations
-		WHERE success = 1
-		ORDER BY version
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	applied := make(map[string]MigrationRecord)
-	for rows.Next() {
-		var r MigrationRecord
-		if err := rows.Scan(&r.Version, &r.Name, &r.AppliedAt, &r.Checksum, &r.ExecutionTimeMs, &r.Success); err != nil {
-			return nil, err
-		}
-		applied[r.Version] = r
-	}
-
-	return applied, rows.Err()
-}
-
-// runMigration runs a single migration within a transaction
-func runMigration(ctx context.Context, db *sql.DB, m *Migration) error {
-	start := time.Now()
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Run the migration
-	if err := m.Up(ctx, tx); err != nil {
-		return err
-	}
-
-	// Record the migration
-	duration := time.Since(start)
-	checksum := calculateChecksum(m)
-
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO schema_migrations (version, name, applied_at, checksum, execution_time_ms, success)
-		VALUES (?, ?, ?, ?, ?, 1)
-	`, m.Version, m.Name, time.Now().UTC(), checksum, duration.Milliseconds())
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	{
+		Version: "20261013120000",
+		Name:    "adopt_scan_profiles_scheduled_scans_credentials",
+		Up:      migrateAdoptDiscoveryTablesUp,
+		Down:    migrateAdoptDiscoveryTablesDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
-func migrateInitialSchemaUp(ctx context.Context, tx *sql.Tx) error {
+func migrateInitialSchemaUp(ctx context.Context, tx sqlTx) error {
 	// Create datacenters table
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS datacenters (
@@ -598,7 +457,7 @@ func migrateInitialSchemaUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateInitialSchemaDown drops all tables
-func migrateInitialSchemaDown(ctx context.Context, tx *sql.Tx) error {
+func migrateInitialSchemaDown(ctx context.Context, tx sqlTx) error {
 	// Drop tables in reverse order of dependencies
 	tables := []string{
 		"discovery_rules",
@@ -624,7 +483,7 @@ func migrateInitialSchemaDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddPoolTagsUp creates the pool_tags table
-func migrateAddPoolTagsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddPoolTagsUp(ctx context.Context, tx sqlTx) error {
 	// Create pool_tags table
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS pool_tags (
@@ -648,7 +507,7 @@ func migrateAddPoolTagsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddPoolTagsDown drops the pool_tags table
-func migrateAddPoolTagsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddPoolTagsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS pool_tags`); err != nil {
 		return fmt.Errorf("failed to drop pool_tags table: %w", err)
 	}
@@ -656,7 +515,7 @@ func migrateAddPoolTagsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDeviceHostnameUp adds the hostname column to devices table
-func migrateAddDeviceHostnameUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDeviceHostnameUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `ALTER TABLE devices ADD COLUMN hostname TEXT DEFAULT ''`); err != nil {
 		return fmt.Errorf("failed to add hostname column: %w", err)
 	}
@@ -664,14 +523,15 @@ func migrateAddDeviceHostnameUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDeviceHostnameDown removes the hostname column from devices table
-func migrateAddDeviceHostnameDown(ctx context.Context, tx *sql.Tx) error {
-	// SQLite doesn't support DROP COLUMN directly, so we'd need to recreate the table
-	// For simplicity, we'll just leave the column (it's safe to have extra columns)
+func migrateAddDeviceHostnameDown(ctx context.Context, tx sqlTx) error {
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE devices DROP COLUMN hostname`); err != nil {
+		return fmt.Errorf("failed to drop hostname column: %w", err)
+	}
 	return nil
 }
 
 // migrateAddRelationshipNotesUp adds the notes column to device_relationships table
-func migrateAddRelationshipNotesUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRelationshipNotesUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `ALTER TABLE device_relationships ADD COLUMN notes TEXT DEFAULT ''`); err != nil {
 		return fmt.Errorf("failed to add notes column: %w", err)
 	}
@@ -679,12 +539,15 @@ func migrateAddRelationshipNotesUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddRelationshipNotesDown removes the notes column from device_relationships table
-func migrateAddRelationshipNotesDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRelationshipNotesDown(ctx context.Context, tx sqlTx) error {
+	if _, err := tx.ExecContext(ctx, `ALTER TABLE device_relationships DROP COLUMN notes`); err != nil {
+		return fmt.Errorf("failed to drop notes column: %w", err)
+	}
 	return nil
 }
 
 // migrateFTSUp creates FTS5 virtual tables for full-text search
-func migrateFTSUp(ctx context.Context, tx *sql.Tx) error {
+func migrateFTSUp(ctx context.Context, tx sqlTx) error {
 	// Create standalone FTS5 virtual table for devices
 	if _, err := tx.ExecContext(ctx, `
 		CREATE VIRTUAL TABLE IF NOT EXISTS devices_fts USING fts5(
@@ -850,7 +713,7 @@ func migrateFTSUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateFTSDown drops FTS5 virtual tables and triggers
-func migrateFTSDown(ctx context.Context, tx *sql.Tx) error {
+func migrateFTSDown(ctx context.Context, tx sqlTx) error {
 	// Drop triggers
 	for _, trigger := range []string{
 		"devices_fts_insert", "devices_fts_delete", "devices_fts_update",
@@ -873,7 +736,7 @@ func migrateFTSDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAPIKeysUp creates the api_keys table
-func migrateAddAPIKeysUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAPIKeysUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS api_keys (
 			id TEXT PRIMARY KEY,
@@ -902,7 +765,7 @@ func migrateAddAPIKeysUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAPIKeysDown drops the api_keys table
-func migrateAddAPIKeysDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAPIKeysDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS api_keys`); err != nil {
 		return fmt.Errorf("failed to drop api_keys table: %w", err)
 	}
@@ -910,7 +773,7 @@ func migrateAddAPIKeysDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAuditLogsUp creates the audit_logs table
-func migrateAddAuditLogsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditLogsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS audit_logs (
 			id TEXT PRIMARY KEY,
@@ -948,7 +811,7 @@ func migrateAddAuditLogsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAuditLogsDown drops the audit_logs table
-func migrateAddAuditLogsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditLogsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS audit_logs`); err != nil {
 		return fmt.Errorf("failed to drop audit_logs table: %w", err)
 	}
@@ -956,7 +819,7 @@ func migrateAddAuditLogsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAuditSourceUp adds source column to audit_logs table
-func migrateAddAuditSourceUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditSourceUp(ctx context.Context, tx sqlTx) error {
 	// Add source column
 	if _, err := tx.ExecContext(ctx, `ALTER TABLE audit_logs ADD COLUMN source TEXT`); err != nil {
 		return fmt.Errorf("failed to add source column to audit_logs: %w", err)
@@ -971,7 +834,7 @@ func migrateAddAuditSourceUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAuditSourceDown removes source column from audit_logs table
-func migrateAddAuditSourceDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditSourceDown(ctx context.Context, tx sqlTx) error {
 	// Drop index first
 	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_audit_logs_source`); err != nil {
 		return fmt.Errorf("failed to drop idx_audit_logs_source index: %w", err)
@@ -1032,7 +895,7 @@ func migrateAddAuditSourceDown(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddUsersUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddUsersUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
@@ -1066,14 +929,14 @@ func migrateAddUsersUp(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddUsersDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddUsersDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS users`); err != nil {
 		return fmt.Errorf("failed to drop users table: %w", err)
 	}
 	return nil
 }
 
-func migrateAddRBACUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRBACUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS permissions (
 			id TEXT PRIMARY KEY,
@@ -1258,7 +1121,7 @@ func migrateAddRBACUp(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddRBACDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRBACDown(ctx context.Context, tx sqlTx) error {
 	tables := []string{"user_roles", "role_permissions", "roles", "permissions"}
 
 	for _, table := range tables {
@@ -1270,7 +1133,7 @@ func migrateAddRBACDown(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddRBACMissingPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRBACMissingPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	// Add missing permissions for resources that weren't covered in the initial RBAC migration
@@ -1370,7 +1233,7 @@ func migrateAddRBACMissingPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddRBACMissingPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddRBACMissingPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{
 		"pool:list", "pool:create", "pool:read", "pool:update", "pool:delete",
 		"credential:list", "credential:create", "credential:read", "credential:update", "credential:delete",
@@ -1390,7 +1253,7 @@ func migrateAddRBACMissingPermissionsDown(ctx context.Context, tx *sql.Tx) error
 // migrateAssignRolesToExistingAdminsUp assigns the admin role to any existing users
 // with is_admin=true who don't already have it. This fixes the case where users were
 // created before RBAC was introduced and thus have no entries in user_roles.
-func migrateAssignRolesToExistingAdminsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAssignRolesToExistingAdminsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	_, err := tx.ExecContext(ctx, `
@@ -1410,13 +1273,15 @@ func migrateAssignRolesToExistingAdminsUp(ctx context.Context, tx *sql.Tx) error
 	return nil
 }
 
-func migrateAssignRolesToExistingAdminsDown(ctx context.Context, tx *sql.Tx) error {
+// migrateAssignRolesToExistingAdminsDown is intentionally a no-op: the Up step only
+// backfills role assignments, and removing them could lock administrators out.
+func migrateAssignRolesToExistingAdminsDown(ctx context.Context, tx sqlTx) error {
 	// No-op: removing role assignments could lock out admin users
 	return nil
 }
 
 // migrateAddAPIKeyUserIDUp adds user_id column to api_keys table
-func migrateAddAPIKeyUserIDUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAPIKeyUserIDUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `ALTER TABLE api_keys ADD COLUMN user_id TEXT REFERENCES users(id)`); err != nil {
 		return fmt.Errorf("failed to add user_id column to api_keys: %w", err)
 	}
@@ -1427,12 +1292,24 @@ func migrateAddAPIKeyUserIDUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddAPIKeyUserIDDown removes user_id column from api_keys table
-func migrateAddAPIKeyUserIDDown(ctx context.Context, tx *sql.Tx) error {
-	// SQLite doesn't support DROP COLUMN before 3.35.0, so recreate the table
+func migrateAddAPIKeyUserIDDown(ctx context.Context, tx sqlTx) error {
+	// SQLite cannot drop a column that is part of a foreign key, so rebuild the
+	// table with its original definition.
 	queries := []string{
-		`CREATE TABLE api_keys_backup AS SELECT id, name, key, description, created_at, last_used_at, expires_at FROM api_keys`,
+		`DROP INDEX IF EXISTS idx_api_keys_user_id`,
+		`CREATE TABLE api_keys_rebuild (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			key TEXT NOT NULL UNIQUE,
+			description TEXT,
+			created_at DATETIME NOT NULL,
+			last_used_at DATETIME,
+			expires_at DATETIME
+		)`,
+		`INSERT INTO api_keys_rebuild (id, name, key, description, created_at, last_used_at, expires_at)
+			SELECT id, name, key, description, created_at, last_used_at, expires_at FROM api_keys`,
 		`DROP TABLE api_keys`,
-		`ALTER TABLE api_keys_backup RENAME TO api_keys`,
+		`ALTER TABLE api_keys_rebuild RENAME TO api_keys`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key)`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_name ON api_keys(name)`,
 	}
@@ -1445,7 +1322,7 @@ func migrateAddAPIKeyUserIDDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddConflictsUp creates the conflicts table for tracking IP conflicts
-func migrateAddConflictsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddConflictsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS conflicts (
 			id TEXT PRIMARY KEY,
@@ -1486,7 +1363,7 @@ func migrateAddConflictsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddConflictsDown drops the conflicts table
-func migrateAddConflictsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddConflictsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS conflicts`); err != nil {
 		return fmt.Errorf("failed to drop conflicts table: %w", err)
 	}
@@ -1494,7 +1371,7 @@ func migrateAddConflictsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddConflictPermissionsUp adds permissions for conflict management
-func migrateAddConflictPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddConflictPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	conflictPermissions := [][]string{
@@ -1563,7 +1440,7 @@ func migrateAddConflictPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddConflictPermissionsDown removes conflict permissions
-func migrateAddConflictPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddConflictPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{
 		"conflict:list", "conflict:read", "conflict:resolve", "conflict:detect", "conflict:delete",
 	}
@@ -1576,7 +1453,7 @@ func migrateAddConflictPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddReservationsUp creates the reservations table
-func migrateAddReservationsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddReservationsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS reservations (
 			id TEXT PRIMARY KEY,
@@ -1617,7 +1494,7 @@ func migrateAddReservationsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddReservationsDown drops the reservations table
-func migrateAddReservationsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddReservationsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS reservations`); err != nil {
 		return fmt.Errorf("failed to drop reservations table: %w", err)
 	}
@@ -1625,7 +1502,7 @@ func migrateAddReservationsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddReservationPermissionsUp adds permissions for reservation management
-func migrateAddReservationPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddReservationPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	reservationPermissions := [][]string{
@@ -1694,7 +1571,7 @@ func migrateAddReservationPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddReservationPermissionsDown removes reservation permissions
-func migrateAddReservationPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddReservationPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{
 		"reservation:list", "reservation:read", "reservation:create", "reservation:update", "reservation:delete",
 	}
@@ -1707,7 +1584,7 @@ func migrateAddReservationPermissionsDown(ctx context.Context, tx *sql.Tx) error
 }
 
 // migrateAddDeviceStatusUp adds status tracking fields to devices table
-func migrateAddDeviceStatusUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDeviceStatusUp(ctx context.Context, tx sqlTx) error {
 	// Add status column with default 'active'
 	if _, err := tx.ExecContext(ctx, `
 		ALTER TABLE devices ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
@@ -1747,20 +1624,24 @@ func migrateAddDeviceStatusUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDeviceStatusDown removes device status columns
-func migrateAddDeviceStatusDown(ctx context.Context, tx *sql.Tx) error {
-	// SQLite doesn't support DROP COLUMN directly in older versions
-	// We need to recreate the table without the status columns
-	// For simplicity, we'll just drop the index
-	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_devices_status`); err != nil {
-		return fmt.Errorf("failed to drop status index: %w", err)
+func migrateAddDeviceStatusDown(ctx context.Context, tx sqlTx) error {
+	stmts := []string{
+		`DROP INDEX IF EXISTS idx_devices_status`,
+		`ALTER TABLE devices DROP COLUMN status_changed_by`,
+		`ALTER TABLE devices DROP COLUMN status_changed_at`,
+		`ALTER TABLE devices DROP COLUMN decommission_date`,
+		`ALTER TABLE devices DROP COLUMN status`,
 	}
-	// Note: In production SQLite, columns cannot be easily dropped
-	// The columns will remain but be unused
+	for _, q := range stmts {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to revert device status (%s): %w", q, err)
+		}
+	}
 	return nil
 }
 
 // migrateAddUtilizationSnapshotsUp creates the utilization_snapshots table
-func migrateAddUtilizationSnapshotsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddUtilizationSnapshotsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE utilization_snapshots (
 			id TEXT PRIMARY KEY,
@@ -1784,7 +1665,7 @@ func migrateAddUtilizationSnapshotsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddUtilizationSnapshotsDown drops the utilization_snapshots table
-func migrateAddUtilizationSnapshotsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddUtilizationSnapshotsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS utilization_snapshots`); err != nil {
 		return fmt.Errorf("failed to drop utilization_snapshots table: %w", err)
 	}
@@ -1792,7 +1673,7 @@ func migrateAddUtilizationSnapshotsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDashboardPermissionsUp adds dashboard permissions
-func migrateAddDashboardPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDashboardPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now().UTC()
 
 	// Add dashboard permissions
@@ -1853,7 +1734,7 @@ func migrateAddDashboardPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDashboardPermissionsDown removes dashboard permissions
-func migrateAddDashboardPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDashboardPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{"dashboard:read"}
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
@@ -1864,7 +1745,7 @@ func migrateAddDashboardPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddWebhooksUp creates the webhooks and webhook_deliveries tables
-func migrateAddWebhooksUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddWebhooksUp(ctx context.Context, tx sqlTx) error {
 	// Create webhooks table
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS webhooks (
@@ -1926,7 +1807,7 @@ func migrateAddWebhooksUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddWebhooksDown drops the webhooks and webhook_deliveries tables
-func migrateAddWebhooksDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddWebhooksDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS webhook_deliveries`); err != nil {
 		return fmt.Errorf("failed to drop webhook_deliveries table: %w", err)
 	}
@@ -1937,7 +1818,7 @@ func migrateAddWebhooksDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddWebhookPermissionsUp adds webhook permissions
-func migrateAddWebhookPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddWebhookPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now().UTC()
 
 	// Add webhook permissions (name, resource, action)
@@ -2004,7 +1885,7 @@ func migrateAddWebhookPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddWebhookPermissionsDown removes webhook permissions
-func migrateAddWebhookPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddWebhookPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{"webhook:list", "webhook:read", "webhook:create", "webhook:update", "webhook:delete"}
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
@@ -2015,7 +1896,7 @@ func migrateAddWebhookPermissionsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddCustomFieldsUp creates the custom field tables
-func migrateAddCustomFieldsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCustomFieldsUp(ctx context.Context, tx sqlTx) error {
 	// Create custom field definitions table
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS custom_field_definitions (
@@ -2067,7 +1948,7 @@ func migrateAddCustomFieldsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddCustomFieldsDown drops the custom field tables
-func migrateAddCustomFieldsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCustomFieldsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS custom_field_values`); err != nil {
 		return fmt.Errorf("failed to drop custom_field_values table: %w", err)
 	}
@@ -2078,7 +1959,7 @@ func migrateAddCustomFieldsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddCustomFieldPermissionsUp adds custom field permissions
-func migrateAddCustomFieldPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCustomFieldPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now().UTC()
 
 	// Add custom field permissions (name, resource, action)
@@ -2145,7 +2026,7 @@ func migrateAddCustomFieldPermissionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddCustomFieldPermissionsDown removes custom field permissions
-func migrateAddCustomFieldPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCustomFieldPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{"custom-fields:list", "custom-fields:read", "custom-fields:create", "custom-fields:update", "custom-fields:delete"}
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
@@ -2156,7 +2037,7 @@ func migrateAddCustomFieldPermissionsDown(ctx context.Context, tx *sql.Tx) error
 }
 
 // migrateAddCircuitsUp creates the circuits table
-func migrateAddCircuitsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCircuitsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS circuits (
 			id TEXT PRIMARY KEY,
@@ -2276,7 +2157,7 @@ func migrateAddCircuitsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddCircuitsDown drops the circuits table
-func migrateAddCircuitsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddCircuitsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS circuits`); err != nil {
 		return fmt.Errorf("failed to drop circuits table: %w", err)
 	}
@@ -2292,7 +2173,7 @@ func migrateAddCircuitsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddNATMappingsUp creates the nat_mappings table
-func migrateAddNATMappingsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddNATMappingsUp(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS nat_mappings (
 			id TEXT PRIMARY KEY,
@@ -2400,7 +2281,7 @@ func migrateAddNATMappingsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddNATMappingsDown drops the nat_mappings table
-func migrateAddNATMappingsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddNATMappingsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS nat_mappings`); err != nil {
 		return fmt.Errorf("failed to drop nat_mappings table: %w", err)
 	}
@@ -2416,7 +2297,7 @@ func migrateAddNATMappingsDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDNSTablesUp creates the DNS provider configs, zones, and records tables
-func migrateAddDNSTablesUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDNSTablesUp(ctx context.Context, tx sqlTx) error {
 	// Create dns_provider_configs table
 	_, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS dns_provider_configs (
@@ -2587,7 +2468,7 @@ func migrateAddDNSTablesUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDNSTablesDown drops the DNS tables
-func migrateAddDNSTablesDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDNSTablesDown(ctx context.Context, tx sqlTx) error {
 	// Drop tables in correct order (child tables first)
 	tables := []string{"dns_records", "dns_zones", "dns_provider_configs"}
 	for _, table := range tables {
@@ -2599,8 +2480,8 @@ func migrateAddDNSTablesDown(ctx context.Context, tx *sql.Tx) error {
 	// Remove DNS permissions
 	permNames := []string{
 		"dns-provider:list", "dns-provider:read", "dns-provider:create", "dns-provider:update", "dns-provider:delete",
-		"dns-zone:list", "dns-zone:read", "dns-zone:create", "dns-zone:update", "dns-zone:delete",
-		"dns:sync", "dns:import",
+		"dns-zone:list", "dns-zone:read", "dns-zone:create", "dns-zone:update", "dns-zone:delete", "dns-zone:sync", "dns-zone:import",
+		"dns:list", "dns:read", "dns:create", "dns:update", "dns:delete", "dns:sync", "dns:import",
 	}
 	for _, name := range permNames {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM permissions WHERE name = ?`, name); err != nil {
@@ -2611,7 +2492,7 @@ func migrateAddDNSTablesDown(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddDNSProviderTestPermissionUp adds the dns-provider:test permission
-func migrateAddDNSProviderTestPermissionUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDNSProviderTestPermissionUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	// Add the test permission
@@ -2660,7 +2541,7 @@ func migrateAddDNSProviderTestPermissionUp(ctx context.Context, tx *sql.Tx) erro
 }
 
 // migrateAddDNSProviderTestPermissionDown removes the dns-provider:test permission
-func migrateAddDNSProviderTestPermissionDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDNSProviderTestPermissionDown(ctx context.Context, tx sqlTx) error {
 	// Remove from role_permissions first
 	_, err := tx.ExecContext(ctx, `
 		DELETE FROM role_permissions
@@ -2681,7 +2562,7 @@ func migrateAddDNSProviderTestPermissionDown(ctx context.Context, tx *sql.Tx) er
 
 // migrateRenameWebhookResourceUp renames the "webhook" resource to "webhooks" for consistency
 // with the plural convention used by all other resources (devices, networks, circuits, etc.).
-func migrateRenameWebhookResourceUp(ctx context.Context, tx *sql.Tx) error {
+func migrateRenameWebhookResourceUp(ctx context.Context, tx sqlTx) error {
 	// Update the resource column
 	_, err := tx.ExecContext(ctx, `UPDATE permissions SET resource = 'webhooks' WHERE resource = 'webhook'`)
 	if err != nil {
@@ -2698,7 +2579,7 @@ func migrateRenameWebhookResourceUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateRenameWebhookResourceDown reverts the resource name back to singular
-func migrateRenameWebhookResourceDown(ctx context.Context, tx *sql.Tx) error {
+func migrateRenameWebhookResourceDown(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `UPDATE permissions SET resource = 'webhook' WHERE resource = 'webhooks'`)
 	if err != nil {
 		return fmt.Errorf("failed to revert webhook resource: %w", err)
@@ -2712,7 +2593,7 @@ func migrateRenameWebhookResourceDown(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddDNSRecordAddressIDUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDNSRecordAddressIDUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `ALTER TABLE dns_records ADD COLUMN address_id TEXT REFERENCES addresses(id) ON DELETE SET NULL`); err != nil {
 		return fmt.Errorf("failed to add address_id column to dns_records: %w", err)
 	}
@@ -2722,17 +2603,45 @@ func migrateAddDNSRecordAddressIDUp(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func migrateAddDNSRecordAddressIDDown(ctx context.Context, tx *sql.Tx) error {
-	// SQLite doesn't support DROP COLUMN directly, so we'd need to recreate the table
-	// For simplicity, we'll just leave the column (it's safe to have extra columns)
-	if _, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_dns_records_address`); err != nil {
-		return fmt.Errorf("failed to drop index idx_dns_records_address: %w", err)
+// migrateAddDNSRecordAddressIDDown rebuilds dns_records without address_id, because
+// SQLite cannot drop a column that is part of a foreign key.
+func migrateAddDNSRecordAddressIDDown(ctx context.Context, tx sqlTx) error {
+	stmts := []string{
+		`DROP INDEX IF EXISTS idx_dns_records_address`,
+		`CREATE TABLE dns_records_rebuild (
+			id TEXT PRIMARY KEY,
+			zone_id TEXT NOT NULL,
+			device_id TEXT,
+			name TEXT NOT NULL,
+			type TEXT NOT NULL,
+			value TEXT NOT NULL,
+			ttl INTEGER NOT NULL,
+			sync_status TEXT NOT NULL DEFAULT 'pending',
+			last_sync_at DATETIME,
+			error_message TEXT,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (zone_id) REFERENCES dns_zones(id) ON DELETE CASCADE,
+			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL,
+			UNIQUE(zone_id, name, type)
+		)`,
+		`INSERT INTO dns_records_rebuild (id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at)
+			SELECT id, zone_id, device_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at FROM dns_records`,
+		`DROP TABLE dns_records`,
+		`ALTER TABLE dns_records_rebuild RENAME TO dns_records`,
+		`CREATE INDEX IF NOT EXISTS idx_dns_records_zone ON dns_records(zone_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_dns_records_device ON dns_records(device_id)`,
+	}
+	for _, q := range stmts {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to remove dns_records.address_id: %w", err)
+		}
 	}
 	return nil
 }
 
 // migrateAddDiscoveryUpdatePermissionUp adds the missing discovery:update permission
-func migrateAddDiscoveryUpdatePermissionUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDiscoveryUpdatePermissionUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	// Add discovery:update permission
@@ -2784,7 +2693,7 @@ func migrateAddDiscoveryUpdatePermissionUp(ctx context.Context, tx *sql.Tx) erro
 }
 
 // migrateAddDiscoveryUpdatePermissionDown removes the discovery:update permission
-func migrateAddDiscoveryUpdatePermissionDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddDiscoveryUpdatePermissionDown(ctx context.Context, tx sqlTx) error {
 	// Get the permission ID
 	var permID string
 	err := tx.QueryRowContext(ctx, `SELECT id FROM permissions WHERE name = 'discovery:update'`).Scan(&permID)
@@ -2808,7 +2717,7 @@ func migrateAddDiscoveryUpdatePermissionDown(ctx context.Context, tx *sql.Tx) er
 }
 
 // migrateAddSessionsUp creates the sessions table
-func migrateAddSessionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddSessionsUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS sessions (
 			token TEXT PRIMARY KEY,
@@ -2839,14 +2748,14 @@ func migrateAddSessionsUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddSessionsDown drops the sessions table
-func migrateAddSessionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddSessionsDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS sessions`); err != nil {
 		return fmt.Errorf("failed to drop sessions table: %w", err)
 	}
 	return nil
 }
 
-func migrateAddAuditAndLogsPermissionsUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditAndLogsPermissionsUp(ctx context.Context, tx sqlTx) error {
 	now := time.Now()
 
 	permissions := [][3]string{
@@ -2893,7 +2802,7 @@ func migrateAddAuditAndLogsPermissionsUp(ctx context.Context, tx *sql.Tx) error 
 	return nil
 }
 
-func migrateAddAuditAndLogsPermissionsDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddAuditAndLogsPermissionsDown(ctx context.Context, tx sqlTx) error {
 	permNames := []string{
 		"audit:read",
 		"audit:export",
@@ -2914,11 +2823,20 @@ func migrateAddAuditAndLogsPermissionsDown(ctx context.Context, tx *sql.Tx) erro
 		}
 	}
 
+	// The Up step also granted the existing audit:list permission to operators.
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM role_permissions
+		WHERE role_id IN (SELECT id FROM roles WHERE name = 'operator')
+		AND permission_id IN (SELECT id FROM permissions WHERE name = 'audit:list')
+	`); err != nil {
+		return fmt.Errorf("failed to remove audit:list from operator role: %w", err)
+	}
+
 	return nil
 }
 
 // migrateAddSSHHostKeysUp creates the ssh_host_keys table
-func migrateAddSSHHostKeysUp(ctx context.Context, tx *sql.Tx) error {
+func migrateAddSSHHostKeysUp(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS ssh_host_keys (
 			host TEXT PRIMARY KEY,
@@ -2933,9 +2851,96 @@ func migrateAddSSHHostKeysUp(ctx context.Context, tx *sql.Tx) error {
 }
 
 // migrateAddSSHHostKeysDown drops the ssh_host_keys table
-func migrateAddSSHHostKeysDown(ctx context.Context, tx *sql.Tx) error {
+func migrateAddSSHHostKeysDown(ctx context.Context, tx sqlTx) error {
 	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS ssh_host_keys`); err != nil {
 		return fmt.Errorf("failed to drop ssh_host_keys table: %w", err)
+	}
+	return nil
+}
+
+// migrateAdoptDiscoveryTablesUp brings the scan profile, scheduled scan and
+// credential tables under version control. Earlier versions created them when
+// their stores started, so CREATE TABLE IF NOT EXISTS keeps existing tables and data.
+// The default scan profiles are seeded once; deleting one later is permanent.
+func migrateAdoptDiscoveryTablesUp(ctx context.Context, tx sqlTx) error {
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS scan_profiles (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			scan_type TEXT NOT NULL,
+			ports TEXT,
+			enable_snmp INTEGER DEFAULT 0,
+			enable_ssh INTEGER DEFAULT 0,
+			timeout_sec INTEGER DEFAULT 30,
+			max_workers INTEGER DEFAULT 10,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS scheduled_scans (
+			id TEXT PRIMARY KEY,
+			network_id TEXT NOT NULL,
+			profile_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			cron_expression TEXT NOT NULL,
+			enabled INTEGER DEFAULT 1,
+			description TEXT,
+			last_run_at TIMESTAMP,
+			next_run_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS credentials (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			type TEXT NOT NULL,
+			snmp_community TEXT,
+			snmp_v3_user TEXT,
+			snmp_v3_auth TEXT,
+			snmp_v3_priv TEXT,
+			ssh_username TEXT,
+			ssh_key_id TEXT,
+			datacenter_id TEXT,
+			description TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+	for _, q := range stmts {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to create discovery table: %w", err)
+		}
+	}
+
+	now := time.Now().UTC()
+	profiles := []struct {
+		id, name, scanType, ports string
+		snmp, ssh                 bool
+		timeout, workers          int
+	}{
+		{"default-quick", "Quick Scan", "quick", "[22,80,443,3389]", false, false, 10, 50},
+		{"default-full", "Full Scan", "full", "[22,80,443,3389,8080,8443]", true, false, 30, 20},
+		{"default-deep", "Deep Scan", "deep", "[22,80,443,3389,8080,8443,3306,5432]", true, true, 60, 10},
+	}
+	for _, p := range profiles {
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO scan_profiles (id, name, scan_type, ports, enable_snmp, enable_ssh, timeout_sec, max_workers, description, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)
+		`, p.id, p.name, p.scanType, p.ports, p.snmp, p.ssh, p.timeout, p.workers, now, now)
+		if err != nil {
+			return fmt.Errorf("failed to seed scan profile %s: %w", p.id, err)
+		}
+	}
+	return nil
+}
+
+// migrateAdoptDiscoveryTablesDown drops the three tables, including any data in
+// them; the pre-rollback backup keeps a copy.
+func migrateAdoptDiscoveryTablesDown(ctx context.Context, tx sqlTx) error {
+	for _, table := range []string{"scheduled_scans", "credentials", "scan_profiles"} {
+		if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
+			return fmt.Errorf("failed to drop %s: %w", table, err)
+		}
 	}
 	return nil
 }

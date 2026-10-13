@@ -3,88 +3,105 @@ package backup
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/paularlott/cli"
+
+	_ "modernc.org/sqlite"
 )
 
 func Command() *cli.Command {
 	return &cli.Command{
 		Name:  "backup",
-		Usage: "Backup the rackd database",
+		Usage: "Back up the rackd database (safe while the server is running)",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory (default: from config)", DefaultValue: "./data"},
+			dataDirFlag(),
 			&cli.StringFlag{Name: "output", Usage: "Output file path (default: rackd-backup-<timestamp>.db)"},
 		},
+		Commands: []*cli.Command{
+			verifyCommand(),
+			restoreCommand(),
+		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
-			cfg := config.Load()
-			dataDir := cmd.GetString("data-dir")
-			if dataDir == "" {
-				dataDir = cfg.DataDir
+			dbPath := filepath.Join(resolveDataDir(cmd), "rackd.db")
+			dst := cmd.GetString("output")
+			if dst == "" {
+				dst = fmt.Sprintf("rackd-backup-%s.db", time.Now().UTC().Format("20060102-150405"))
 			}
-
-			srcPath := filepath.Join(dataDir, "rackd.db")
-			if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-				return fmt.Errorf("database not found at %s", srcPath)
-			}
-
-			dstPath := cmd.GetString("output")
-			if dstPath == "" {
-				dstPath = fmt.Sprintf("rackd-backup-%s.db", time.Now().Format("20060102-150405"))
-			}
-
-			src, err := os.Open(srcPath)
+			info, err := storage.BackupFile(ctx, dbPath, dst)
 			if err != nil {
-				return fmt.Errorf("failed to open database: %w", err)
-			}
-			defer func() { _ = src.Close() }()
-
-			dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-			if err != nil {
-				return fmt.Errorf("failed to create backup file: %w", err)
-			}
-			defer func() { _ = dst.Close() }()
-
-			n, err := io.Copy(dst, src)
-			if err != nil {
-				_ = os.Remove(dstPath)
 				return fmt.Errorf("backup failed: %w", err)
 			}
-
-			// Also copy WAL and SHM files if they exist
-			for _, suffix := range []string{"-wal", "-shm"} {
-				walSrc := srcPath + suffix
-				if _, err := os.Stat(walSrc); err == nil {
-					walDst := dstPath + suffix
-					if err := copyFile(walSrc, walDst); err != nil {
-						fmt.Fprintf(os.Stderr, "Warning: failed to copy %s: %v\n", suffix, err)
-					}
-				}
-			}
-
-			fmt.Printf("Backup created: %s (%.1f MB)\n", dstPath, float64(n)/1024/1024)
+			fmt.Printf("Backup created: %s (%.1f MB, %d migrations, verified)\n", dst, float64(info.SizeBytes)/1024/1024, info.Migrations)
 			return nil
 		},
 	}
 }
 
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
+func dataDirFlag() cli.Flag {
+	return &cli.StringFlag{Name: "data-dir", Usage: "Data directory (default: from config)", DefaultValue: "./data"}
+}
 
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
+func resolveDataDir(cmd *cli.Command) string {
+	if dataDir := cmd.GetString("data-dir"); dataDir != "" {
+		return dataDir
 	}
-	defer func() { _ = out.Close() }()
+	return config.Load().DataDir
+}
 
-	_, err = io.Copy(out, in)
-	return err
+func verifyCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "verify",
+		Usage: "Check a backup's integrity and migration history",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "file", Usage: "Backup file to verify", Required: true},
+		},
+		Run: func(ctx context.Context, cmd *cli.Command) error {
+			info, err := storage.VerifyBackup(ctx, cmd.GetString("file"))
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Backup OK: %s\n", info.Path)
+			fmt.Printf("  Size:             %.1f MB\n", float64(info.SizeBytes)/1024/1024)
+			fmt.Printf("  Migrations:       %d (latest %s)\n", info.Migrations, info.LatestMigration)
+			if len(info.UnknownMigrations) > 0 {
+				fmt.Printf("  Newer migrations: %s (made by a newer rackd; upgrade before restoring)\n", strings.Join(info.UnknownMigrations, ", "))
+			}
+			return nil
+		},
+	}
+}
+
+func restoreCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "restore",
+		Usage: "Replace the database with a backup (stop the server first)",
+		Flags: []cli.Flag{
+			dataDirFlag(),
+			&cli.StringFlag{Name: "file", Usage: "Backup file to restore", Required: true},
+			&cli.BoolFlag{Name: "yes", Usage: "Confirm replacing the current database"},
+		},
+		Run: func(ctx context.Context, cmd *cli.Command) error {
+			dbPath := filepath.Join(resolveDataDir(cmd), "rackd.db")
+			file := cmd.GetString("file")
+			if !cmd.GetBool("yes") {
+				fmt.Printf("This replaces %s with %s.\nThe current database is kept alongside it. Re-run with --yes to continue.\n", dbPath, file)
+				return nil
+			}
+			movedTo, err := storage.RestoreDatabase(ctx, file, dbPath)
+			if err != nil {
+				return fmt.Errorf("restore failed: %w", err)
+			}
+			fmt.Printf("Restored %s from %s\n", dbPath, file)
+			if movedTo != "" {
+				fmt.Printf("Previous database saved as %s\n", movedTo)
+			}
+			fmt.Println("Any pending migrations run on the next server start.")
+			return nil
+		},
+	}
 }

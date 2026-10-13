@@ -16,23 +16,28 @@ The database consists of 12 core tables organized into logical groups:
 - **Infrastructure**: `datacenters`, `networks`, `network_pools`
 - **Devices**: `devices`, `addresses`, `tags`, `domains`
 - **Relationships**: `device_relationships`
-- **Discovery**: `discovered_devices`, `discovery_scans`, `discovery_rules`
-- **System**: `schema_migrations`, `pool_tags`
+- **Discovery**: `discovered_devices`, `discovery_scans`, `discovery_rules`, `scan_profiles`, `scheduled_scans`, `credentials`
+- **System**: `xdal_migrations`, `schema_migrations` (legacy), `pool_tags`
 
 ## Tables
 
-### schema_migrations
+### xdal_migrations
 
-Tracks applied database migrations.
+Tracks applied migrations, written by [xdal/pkg/migrate](https://github.com/martinsuchenak/xdal). Rackd's own schema uses the `core` namespace; extensions use their own.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| version | TEXT | PRIMARY KEY | Migration version (timestamp format) |
+| namespace | TEXT | PRIMARY KEY (with version) | History namespace (`core` for Rackd) |
+| version | TEXT | PRIMARY KEY (with namespace) | Migration version (timestamp format) |
 | name | TEXT | NOT NULL | Migration name |
-| applied_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | When migration was applied |
-| checksum | TEXT | NOT NULL | Migration checksum for integrity |
-| execution_time_ms | INTEGER | | Migration execution time in milliseconds |
-| success | INTEGER | NOT NULL, DEFAULT 1 | Success flag (1=success, 0=failure) |
+| checksum | TEXT | NOT NULL | Fingerprint used to detect renamed or edited migrations |
+| applied_at | TIMESTAMP | NOT NULL | When the migration was applied (UTC) |
+| duration_ms | INTEGER | NOT NULL | Execution time in milliseconds |
+| dirty | BOOLEAN | NOT NULL | Set while a migration that cannot run in a transaction is in progress |
+
+### schema_migrations
+
+Legacy migration table written by Rackd v0.0.21 and earlier. Newer versions copy its rows into `xdal_migrations` on first start and no longer write to it; it is kept so an older binary can still open the database.
 
 ### datacenters
 

@@ -369,3 +369,8 @@ func NewStorage(dataDir string) (Storage, error) {
 func NewExtendedStorage(dataDir string) (ExtendedStorage, error) {
 	return NewSQLiteStorage(dataDir)
 }
+
+// NewExtendedStorageWithOptions creates a new extended storage instance with options.
+func NewExtendedStorageWithOptions(dataDir string, opts StorageOptions) (ExtendedStorage, error) {
+	return NewSQLiteStorageWithOptions(dataDir, opts)
+}
