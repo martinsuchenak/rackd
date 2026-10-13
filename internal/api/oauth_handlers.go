@@ -34,6 +34,8 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_redirect_uri", "redirect_uri must be an absolute https URI (http is only allowed for loopback hosts)")
 		case errors.Is(err, service.ErrOAuthScopeNotAllowed):
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", "scope must not contain '*'; register explicit scopes")
+		case errors.Is(err, service.ErrOAuthScopeRequired):
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_client_metadata", "scope is required; register the explicit scopes the client needs")
 		default:
 			log.Error("OAuth client registration failed", "error", err)
 			h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Registration failed")
@@ -174,6 +176,10 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		body.CodeChallengeMethod,
 	)
 	if err != nil {
+		if errors.Is(err, service.ErrOAuthScopeRequired) {
+			redirectWithError(w, r, body.RedirectURI, "invalid_scope", "None of the requested scopes are permitted for this user", body.State)
+			return
+		}
 		log.Error("Failed to create authorization code", "error", err)
 		redirectWithError(w, r, body.RedirectURI, "server_error", "Failed to create authorization code", body.State)
 		return

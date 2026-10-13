@@ -8,6 +8,7 @@ export async function registerOAuthClient(
     clientName?: string;
     redirectURI?: string;
     clientURI?: string;
+    scope?: string;
   },
 ): Promise<{ client_id: string; client_name: string }> {
   const clientName = values?.clientName || uniqueName('e2e-oauth-client');
@@ -19,6 +20,8 @@ export async function registerOAuthClient(
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       token_endpoint_auth_method: 'client_secret_post',
+      // Registration requires explicit scopes; an empty scope is rejected.
+      scope: values?.scope || 'devices:list devices:read',
       client_uri: values?.clientURI || `https://${clientName}.example.test`,
     },
   });
