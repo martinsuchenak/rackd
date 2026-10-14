@@ -233,7 +233,7 @@ CREATE INDEX idx_devices_datacenter ON devices(datacenter_id);
 -- Address indexes
 CREATE INDEX idx_addresses_device ON addresses(device_id);
 CREATE INDEX idx_addresses_ip ON addresses(ip);
-CREATE INDEX idx_addresses_network ON addresses(network_id);
+CREATE INDEX idx_addresses_network_ip ON addresses(network_id, ip);
 CREATE INDEX idx_addresses_pool ON addresses(pool_id);
 
 -- Tag indexes

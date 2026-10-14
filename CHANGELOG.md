@@ -31,6 +31,13 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   spec use the new paths. See
   [Versioning and Deprecation](docs/api.md#versioning-and-deprecation).
 
+### Changed
+
+- The dashboard computes network utilization with one grouped query instead of two
+  queries per network. A new migration (`20261014120000`) replaces the `network_id`
+  index on `addresses` with a `(network_id, ip)` index, so utilization counts read
+  only the index. This also speeds up `GET /api/v1/networks/{id}/utilization`.
+
 ### Deprecated
 
 - The unversioned `/api/...` paths. They still work as aliases of `/api/v1/...` and

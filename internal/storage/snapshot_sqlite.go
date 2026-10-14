@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -220,23 +221,34 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 		}
 	}
 
-	// Network utilization summary
+	// Network utilization summary: one grouped count for all networks, instead
+	// of a GetNetworkUtilization call (two queries) per network.
 	networks, _ := s.ListNetworks(ctx, nil)
+	usedByNetwork, err := s.countUsedIPsByNetwork(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var totalIPs, usedIPs int
 	for _, net := range networks {
-		util, err := s.GetNetworkUtilization(ctx, net.ID)
-		if err == nil && util != nil {
-			stats.NetworkUtilization = append(stats.NetworkUtilization, model.NetworkUtilizationSummary{
-				NetworkID:   net.ID,
-				NetworkName: net.Name,
-				Subnet:      net.Subnet,
-				TotalIPs:    util.TotalIPs,
-				UsedIPs:     util.UsedIPs,
-				Utilization: util.Utilization,
-			})
-			totalIPs += util.TotalIPs
-			usedIPs += util.UsedIPs
+		size, err := calculateCIDRSize(net.Subnet)
+		if err != nil {
+			continue
 		}
+		used := usedByNetwork[net.ID]
+		var utilization float64
+		if size > 0 {
+			utilization = float64(used) / float64(size) * 100
+		}
+		stats.NetworkUtilization = append(stats.NetworkUtilization, model.NetworkUtilizationSummary{
+			NetworkID:   net.ID,
+			NetworkName: net.Name,
+			Subnet:      net.Subnet,
+			TotalIPs:    size,
+			UsedIPs:     used,
+			Utilization: utilization,
+		})
+		totalIPs += size
+		usedIPs += used
 	}
 
 	// Calculate overall utilization
@@ -245,6 +257,27 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 	}
 
 	return stats, nil
+}
+
+// countUsedIPsByNetwork returns the number of distinct addresses in each network,
+// keyed by network ID.
+func (s *SQLiteStorage) countUsedIPsByNetwork(ctx context.Context) (map[string]int, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT network_id, COUNT(DISTINCT ip) FROM addresses WHERE network_id IS NOT NULL GROUP BY network_id`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count used IPs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	used := map[string]int{}
+	for rows.Next() {
+		var networkID string
+		var n int
+		if err := rows.Scan(&networkID, &n); err != nil {
+			return nil, fmt.Errorf("failed to count used IPs: %w", err)
+		}
+		used[networkID] = n
+	}
+	return used, rows.Err()
 }
 
 // scanSnapshots helper function

@@ -232,6 +232,12 @@ var migrations = []*Migration{
 		Up:      migrateAdoptDiscoveryTablesUp,
 		Down:    migrateAdoptDiscoveryTablesDown,
 	},
+	{
+		Version: "20261014120000",
+		Name:    "index_addresses_by_network_and_ip",
+		Up:      migrateAddressNetworkIPIndexUp,
+		Down:    migrateAddressNetworkIPIndexDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -2940,6 +2946,34 @@ func migrateAdoptDiscoveryTablesDown(ctx context.Context, tx sqlTx) error {
 	for _, table := range []string{"scheduled_scans", "credentials", "scan_profiles"} {
 		if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
 			return fmt.Errorf("failed to drop %s: %w", table, err)
+		}
+	}
+	return nil
+}
+
+// migrateAddressNetworkIPIndexUp replaces the network_id index on addresses with
+// a (network_id, ip) index. Utilization counts (COUNT(DISTINCT ip) per network)
+// then read only the index, and every query that used the old index can use the
+// new one.
+func migrateAddressNetworkIPIndexUp(ctx context.Context, tx sqlTx) error {
+	for _, stmt := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_addresses_network_ip ON addresses(network_id, ip)`,
+		`DROP INDEX IF EXISTS idx_addresses_network`,
+	} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("failed to update address indexes: %w", err)
+		}
+	}
+	return nil
+}
+
+func migrateAddressNetworkIPIndexDown(ctx context.Context, tx sqlTx) error {
+	for _, stmt := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_addresses_network ON addresses(network_id)`,
+		`DROP INDEX IF EXISTS idx_addresses_network_ip`,
+	} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("failed to restore address indexes: %w", err)
 		}
 	}
 	return nil
