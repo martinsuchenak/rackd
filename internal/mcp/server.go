@@ -12,14 +12,22 @@ import (
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
-const baseInstructions = `rackd is a network infrastructure management system.
+// instructionsFor returns the server instructions, naming DNS management only
+// when the DNS service (which needs an encryption key) is available.
+func instructionsFor(dns bool) string {
+	areas := "circuits, NAT mappings, reservations, webhooks,\ncustom fields, discovery scans, conflict detection, "
+	if dns {
+		areas += "DNS management, "
+	}
+	return `rackd is a network infrastructure management system.
 Use the native tools for common operations (search, device CRUD, network/datacenter lookup, IP allocation).
-Use tool_search to discover additional tools for: circuits, NAT mappings, reservations, webhooks,
-custom fields, discovery scans, conflict detection, DNS management, and audit logs.`
+Use tool_search to discover additional tools for: ` + areas + `and audit logs.`
+}
 
 type Server struct {
 	mcpServer    *mcp.Server
-	instructions []string // extension lines appended to baseInstructions
+	base         string   // instructions for core's tools
+	instructions []string // extension lines appended to base
 	svc          *service.Services
 	store        storage.ExtendedStorage
 	requireAuth  bool
@@ -39,10 +47,13 @@ func NewServer(services *service.Services, store storage.ExtendedStorage, requir
 		store:       store,
 		requireAuth: requireAuth,
 	}
-	s.mcpServer.SetInstructions(baseInstructions)
+	s.base = instructionsFor(s.hasDNS())
+	s.mcpServer.SetInstructions(s.base)
 	s.registerTools()
 	return s
 }
+
+func (s *Server) hasDNS() bool { return s.svc != nil && s.svc.DNS != nil }
 
 func (s *Server) Inner() *mcp.Server {
 	return s.mcpServer
@@ -60,7 +71,11 @@ func (s *Server) registerTools() {
 	s.registerDiscoveryTools()
 	s.registerConflictTools()
 	s.registerAuditTools()
-	s.registerDNSTools()
+	// The DNS service needs an encryption key; without one its tools would
+	// dereference a nil service.
+	if s.hasDNS() {
+		s.registerDNSTools()
+	}
 }
 
 func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
