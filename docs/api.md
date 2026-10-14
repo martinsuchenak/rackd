@@ -77,12 +77,19 @@ All errors return a consistent JSON structure:
 - `201` - Created
 - `204` - No Content (successful deletion)
 - `400` - Bad Request (validation errors)
-- `404` - Not Found
+- `401` - Unauthorized (missing or invalid credentials)
+- `403` - Forbidden (authenticated, but the role lacks the permission)
+- `404` - Not Found (unknown resource, or unknown endpoint)
+- `405` - Method Not Allowed (the endpoint exists; the `Allow` header lists its methods)
 - `409` - Conflict (resource already exists or no available IPs)
+- `429` - Too Many Requests (rate limited)
 - `500` - Internal Server Error
 
 ### Common Error Codes
 
+- `NOT_FOUND` - No such endpoint, or the resource does not exist
+- `METHOD_NOT_ALLOWED` - The endpoint does not accept this method
+- `UNAUTHORIZED` - Missing or invalid credentials
 - `VALIDATION_ERROR` - Request validation failed
 - `INVALID_INPUT` - Invalid JSON or request format
 - `DEVICE_NOT_FOUND` - Device does not exist

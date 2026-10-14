@@ -71,6 +71,8 @@ func TestRegisteredRoutesVersioning(t *testing.T) {
 		{"GET", "/api/v1/no-such-endpoint", http.StatusNotFound, false},
 		{"GET", "/api/no-such-endpoint", http.StatusNotFound, false},
 		{"POST", "/api/v1/dashboard", http.StatusMethodNotAllowed, false},
+		{"POST", "/api/v1/no-such-endpoint", http.StatusNotFound, false},
+		{"DELETE", "/api/v1/dashboard/trend", http.StatusMethodNotAllowed, false},
 	} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, authReq(httptest.NewRequest(tc.method, tc.path, nil)))
@@ -80,8 +82,17 @@ func TestRegisteredRoutesVersioning(t *testing.T) {
 		if got := rec.Header().Get("Deprecation") != ""; got != tc.deprecated {
 			t.Errorf("%s %s deprecated = %v, want %v", tc.method, tc.path, got, tc.deprecated)
 		}
-		if rec.Code == http.StatusNotFound && rec.Header().Get("Content-Type") != "application/json" {
-			t.Errorf("%s %s 404 is not JSON: %q", tc.method, tc.path, rec.Body.String())
+		if rec.Code >= 400 && rec.Header().Get("Content-Type") != "application/json" {
+			t.Errorf("%s %s error is not JSON: %q", tc.method, tc.path, rec.Body.String())
 		}
+		if rec.Code == http.StatusMethodNotAllowed && rec.Header().Get("Allow") != "GET, HEAD" {
+			t.Errorf("%s %s Allow = %q, want \"GET, HEAD\"", tc.method, tc.path, rec.Header().Get("Allow"))
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, authReq(httptest.NewRequest("PATCH", "/api/v1/datacenters/dc-1", nil)))
+	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET, HEAD, PUT, DELETE" {
+		t.Errorf("PATCH datacenter = %d, Allow %q", rec.Code, rec.Header().Get("Allow"))
 	}
 }

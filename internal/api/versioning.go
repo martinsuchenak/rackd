@@ -43,3 +43,36 @@ func deprecatedAlias(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+// apiFallbackMethods get a catch-all pattern under /api/. A single method-less
+// "/api/" pattern would conflict with the web UI's "GET /".
+var apiFallbackMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
+// registerAPIFallback answers requests under /api/ that match no route with a
+// JSON 405 when the path exists for other methods, and a JSON 404 otherwise,
+// instead of letting them fall through to the web UI.
+func (h *Handler) registerAPIFallback(mux *http.ServeMux) {
+	isFallback := func(pattern string) bool { return strings.HasSuffix(pattern, " /api/") }
+	fallback := func(w http.ResponseWriter, r *http.Request) {
+		var allowed []string
+		for _, method := range apiFallbackMethods {
+			probe := r.WithContext(r.Context())
+			probe.Method = method
+			if _, pattern := mux.Handler(probe); pattern != "" && !isFallback(pattern) {
+				allowed = append(allowed, method)
+				if method == http.MethodGet {
+					allowed = append(allowed, http.MethodHead)
+				}
+			}
+		}
+		if len(allowed) == 0 {
+			h.writeError(w, http.StatusNotFound, "NOT_FOUND", "no such API endpoint")
+			return
+		}
+		w.Header().Set("Allow", strings.Join(allowed, ", "))
+		h.writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed for this API endpoint")
+	}
+	for _, method := range apiFallbackMethods {
+		mux.HandleFunc(method+" /api/", fallback)
+	}
+}

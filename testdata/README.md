@@ -112,7 +112,7 @@ Set `RACKD_API_URL` to override the default `http://localhost:8080`.
 ./build/rackd import devices     --file testdata/devices.json
 
 # Additional features (API only)
-curl -s -X POST http://localhost:8080/api/circuits \
+curl -s -X POST http://localhost:8080/api/v1/circuits \
   -H "Content-Type: application/json" -d @testdata/circuits.json
 ```
 

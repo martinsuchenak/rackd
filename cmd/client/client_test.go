@@ -77,22 +77,43 @@ func TestClient_DoRequest(t *testing.T) {
 	}
 }
 
-func TestClient_DoRequestDetectsPreV1Server(t *testing.T) {
+func TestClient_DoRequestDetectsNonV1Responses(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte("<!doctype html>"))
+		switch r.URL.Path {
+		case "/api/v1/devices": // a pre-v1 server: GET falls through to the web UI
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<!doctype html>"))
+		case "/api/v1/down": // a proxy error page
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusBadGateway)
+		case "/api/v1/wrong-method": // a v1 server's own 405
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			_, _ = w.Write([]byte(`{"code":"METHOD_NOT_ALLOWED","error":"method not allowed"}`))
+		default:
+			w.Header().Set("Content-Type", "text/html")
+		}
 	}))
 	defer server.Close()
-
 	client := NewClient(&Config{ServerURL: server.URL, Timeout: "5s"})
-	if _, err := client.DoRequest("GET", "/api/v1/devices", nil); !errors.Is(err, ErrServerTooOld) {
-		t.Errorf("err = %v, want ErrServerTooOld", err)
+
+	for _, method := range []string{"GET", "POST"} {
+		if _, err := client.DoRequest(method, "/api/v1/devices", nil); !errors.Is(err, ErrNotV1Response) {
+			t.Errorf("%s against a pre-v1 server: err = %v, want ErrNotV1Response", method, err)
+		}
 	}
-	resp, err := client.DoRequest("GET", "/login", nil)
-	if err != nil {
-		t.Fatalf("non-API path: %v", err)
+	for _, path := range []string{"/api/v1/down", "/api/v1/wrong-method", "/login"} {
+		resp, err := client.DoRequest("POST", path, nil)
+		if err != nil {
+			t.Errorf("%s: %v, want the response passed through", path, err)
+			continue
+		}
+		_ = resp.Body.Close()
 	}
-	_ = resp.Body.Close()
 }
 
 func TestHandleError(t *testing.T) {
