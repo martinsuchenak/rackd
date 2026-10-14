@@ -9,6 +9,29 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Upgrading from v0.0.21
+
+- The first start writes a verified snapshot of the database to
+  `<data-dir>/backups/` before migrating, and up to five are kept. If that directory
+  cannot be written (a full disk or read-only storage), the server does not start
+  until you set `PRE_MIGRATION_BACKUP=false`.
+- `rackd backup --output` no longer overwrites an existing file. Scripts that write
+  to a fixed path need `--overwrite`.
+- `rackd backup` now reads the database through SQLite instead of copying the file.
+  While the server is stopped, the user running it needs write access to the data
+  directory, because SQLite creates a `-shm` file there. Read access to `rackd.db`
+  alone is no longer enough.
+- Migration history is now recorded in `xdal_migrations`. `schema_migrations` is
+  kept but no longer updated, so anything that reads the schema version from it
+  sees v0.0.21's history.
+- Creating a DNS provider of type `powerdns` or `bind` now returns 400. These types
+  never worked; existing ones can still be edited and deleted.
+- v0.0.21 can still open an upgraded database. To go back completely, restore the
+  pre-migration snapshot with `rackd backup restore` before reinstalling v0.0.21.
+- Releases now also publish `*.sbom.json` and `*.sigstore.json` files next to each
+  archive. Download scripts that match assets by platform name alone may need a
+  tighter pattern, such as `*_linux_amd64.tar.gz`.
+
 ### Added
 
 - Signed releases.
@@ -47,6 +70,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   refuses to run while the server has the database open, and refuses backups from a
   newer Rackd.
 - `rackd migrate run --no-backup` skips the pre-migration snapshot.
+- `rackd backup --overwrite` replaces an existing output file, for scripts that
+  write to a fixed path. The new backup is written and verified next to it first,
+  so a failed backup leaves the previous file in place.
 - A CI workflow for pull requests and pushes to `main`:
   - Go: formatting, `go mod tidy`, vet, golangci-lint and the full test suite.
   - A separate job runs the tests with the race detector.
@@ -101,7 +127,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - `rackd backup` copied the live database file and its WAL file separately, so a
   backup taken while the server was writing could be inconsistent. It now uses
   SQLite's `VACUUM INTO`, which produces one self-contained file. The backup is
-  verified, written with mode `0600`, and never overwrites an existing file.
+  verified, written with mode `0600`, and does not overwrite an existing file unless
+  `--overwrite` is given.
 - Rolling back a migration now fully reverses it. Previously these Down steps left
   changes behind:
   - Device `hostname`, the device status columns, relationship `notes` and DNS

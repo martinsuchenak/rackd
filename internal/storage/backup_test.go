@@ -66,6 +66,54 @@ func TestBackupWhileWriting(t *testing.T) {
 	}
 }
 
+func TestBackupOverwrite(t *testing.T) {
+	path, closeDB := migratedFileDB(t)
+	defer closeDB()
+	ctx := context.Background()
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "latest.db")
+
+	if err := os.WriteFile(dst, []byte("previous"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BackupFileOverwrite(ctx, filepath.Join(dir, "missing.db"), dst); err == nil {
+		t.Fatal("backup of a missing database should fail")
+	}
+	if got, _ := os.ReadFile(dst); string(got) != "previous" {
+		t.Error("a failed backup must leave the previous file in place")
+	}
+
+	info, err := BackupFileOverwrite(ctx, path, dst)
+	if err != nil {
+		t.Fatalf("overwrite: %v", err)
+	}
+	if info.Path != dst || info.Migrations != len(migrations) {
+		t.Errorf("info = %+v", info)
+	}
+	if _, err := VerifyBackup(ctx, dst); err != nil {
+		t.Errorf("replaced backup does not verify: %v", err)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Errorf("temporary files left behind: %v", entries)
+	}
+
+	if _, err := BackupFileOverwrite(ctx, path, dir); err == nil {
+		t.Error("overwrite should refuse a directory")
+	}
+
+	link := filepath.Join(t.TempDir(), "link.db")
+	if err := os.Symlink(dst, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := BackupFileOverwrite(ctx, path, link); err != nil {
+		t.Fatalf("overwrite through symlink: %v", err)
+	}
+	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Error("overwrite should keep the symlink and replace its target")
+	}
+}
+
 func TestVerifyRejectsBadFiles(t *testing.T) {
 	ctx := context.Background()
 	junk := filepath.Join(t.TempDir(), "junk.db")

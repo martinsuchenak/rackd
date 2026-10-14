@@ -62,6 +62,33 @@ func BackupFile(ctx context.Context, dbPath, dst string) (*BackupInfo, error) {
 	return BackupDatabase(ctx, db, dst)
 }
 
+// BackupFileOverwrite works like BackupFile but replaces dst if it exists. The
+// snapshot is written and verified next to dst first, so a failed backup leaves
+// the previous file in place.
+func BackupFileOverwrite(ctx context.Context, dbPath, dst string) (*BackupInfo, error) {
+	target := dst
+	if fi, err := os.Stat(dst); err == nil {
+		if !fi.Mode().IsRegular() {
+			return nil, fmt.Errorf("backup path is not a regular file: %s", dst)
+		}
+		// Replace the file a symlink points to, not the link itself.
+		if target, err = filepath.EvalSymlinks(dst); err != nil {
+			return nil, err
+		}
+	}
+	tmp := fmt.Sprintf("%s.tmp-%s", target, time.Now().UTC().Format(backupTimestampFormat))
+	info, err := BackupFile(ctx, dbPath, tmp)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Rename(tmp, target); err != nil {
+		_ = os.Remove(tmp)
+		return nil, fmt.Errorf("failed to replace %s: %w", dst, err)
+	}
+	info.Path = dst
+	return info, nil
+}
+
 // vacuumInto writes a single-file snapshot of db to dst with mode 0600.
 func vacuumInto(ctx context.Context, db *sql.DB, dst string) error {
 	if _, err := db.ExecContext(ctx, "VACUUM INTO ?", dst); err != nil {

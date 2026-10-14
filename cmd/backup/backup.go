@@ -21,6 +21,7 @@ func Command() *cli.Command {
 		Flags: []cli.Flag{
 			dataDirFlag(),
 			&cli.StringFlag{Name: "output", Usage: "Output file path (default: rackd-backup-<timestamp>.db)"},
+			&cli.BoolFlag{Name: "overwrite", Usage: "Replace the output file if it exists (only after the new backup is verified)"},
 		},
 		Commands: []*cli.Command{
 			verifyCommand(),
@@ -32,7 +33,11 @@ func Command() *cli.Command {
 			if dst == "" {
 				dst = fmt.Sprintf("rackd-backup-%s.db", time.Now().UTC().Format("20060102-150405"))
 			}
-			info, err := storage.BackupFile(ctx, dbPath, dst)
+			backup := storage.BackupFile
+			if cmd.GetBool("overwrite") {
+				backup = storage.BackupFileOverwrite
+			}
+			info, err := backup(ctx, dbPath, dst)
 			if err != nil {
 				return fmt.Errorf("backup failed: %w", err)
 			}
