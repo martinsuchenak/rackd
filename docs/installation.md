@@ -22,7 +22,7 @@ This guide covers different methods to install and run Rackd.
 Releases are published as archives on [GitHub Releases](https://github.com/martinsuchenak/rackd/releases), named `rackd_<version>_<os>_<arch>.tar.gz` (`.zip` for Windows) for `linux`, `darwin` and `windows` on `amd64` and `arm64`.
 
 ```bash
-VERSION=0.0.21
+VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/martinsuchenak/rackd/releases/latest | sed 's#.*/v##')   # latest release, e.g. 0.0.22
 OS=linux        # linux or darwin
 ARCH=amd64      # amd64 or arm64
 
@@ -97,15 +97,20 @@ No pre-built image is published; build it from the repository:
 ```bash
 git clone https://github.com/martinsuchenak/rackd.git
 cd rackd
-docker build -t rackd:local .
+docker build -t rackd:local \
+  --build-arg VERSION="$(git describe --tags --always)" \
+  --build-arg COMMIT="$(git rev-parse --short HEAD)" .
 docker run -d --name rackd -p 8080:8080 -v rackd-data:/data rackd:local
 ```
 
 Or use the repository's `docker-compose.yml`, which builds the same image:
 
 ```bash
-docker compose up -d
+RACKD_VERSION="$(git describe --tags --always)" RACKD_COMMIT="$(git rev-parse --short HEAD)" \
+  docker compose up -d --build
 ```
+
+Without the build arguments the image still works, but `rackd version` reports `dev`.
 
 Settings are environment variables without a prefix (for example `LOG_LEVEL`, `DATA_DIR`, `ENCRYPTION_KEY`); see [Configuration](configuration.md). The image's health check uses `/healthz`.
 

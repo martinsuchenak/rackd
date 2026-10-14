@@ -2,7 +2,13 @@ version: '3.8'
 
 services:
   rackd:
-    build: .
+    build:
+      context: .
+      # Set RACKD_VERSION and RACKD_COMMIT so `rackd version` reports the build, e.g.
+      # RACKD_VERSION=$(git describe --tags --always) RACKD_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+      args:
+        VERSION: ${RACKD_VERSION:-dev}
+        COMMIT: ${RACKD_COMMIT:-unknown}
     ports:
       - "8080:8080"
     volumes:
