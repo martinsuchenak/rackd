@@ -207,7 +207,9 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 					DeviceIDs:   deviceIDs,
 					DeviceNames: deviceNames,
 				}
-				_ = s.conflictService.store.CreateConflict(ctx, conflict)
+				if err := s.conflictService.store.CreateConflict(ctx, conflict); err == nil {
+					publishEvent(model.EventTypeConflictDetected, conflict)
+				}
 			}
 		}
 	}
@@ -257,6 +259,7 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	if err != nil {
 		return err
 	}
+	publishEvent(model.EventTypeDeviceCreated, deviceSnapshot(device))
 
 	// Check for IP conflicts after creation
 	s.checkForIPConflicts(ctx, device)
@@ -312,6 +315,7 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 	if err != nil {
 		return err
 	}
+	publishEvent(model.EventTypeDeviceUpdated, deviceSnapshot(device))
 
 	// Check for IP conflicts after update
 	s.checkForIPConflicts(ctx, device)
@@ -326,12 +330,14 @@ func (s *DeviceService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	deleted := s.deletedDevice(ctx, id)
 	if err := s.store.DeleteDevice(enrichAuditCtx(ctx), id); err != nil {
 		if errors.Is(err, storage.ErrDeviceNotFound) {
 			return ErrNotFound
 		}
 		return err
 	}
+	publishEvent(model.EventTypeDeviceDeleted, deleted)
 	return nil
 }
 

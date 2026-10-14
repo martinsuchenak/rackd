@@ -616,6 +616,14 @@ func (s *serviceTestStorage) GetDiscoveryRule(_ context.Context, id string) (*mo
 	return &cloned, nil
 }
 
+func (s *serviceTestStorage) GetDevice(_ context.Context, id string) (*model.Device, error) {
+	if d, ok := s.devices[id]; ok {
+		c := *d
+		return &c, nil
+	}
+	return nil, storage.ErrDeviceNotFound
+}
+
 func (s *serviceTestStorage) DeleteDevice(_ context.Context, id string) error {
 	if s.deleteDeviceErr != nil {
 		return s.deleteDeviceErr

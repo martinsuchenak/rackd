@@ -241,6 +241,9 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		return nil, err
 	}
 
+	// A promoted device is a new device too, so both events are published.
+	publishEvent(model.EventTypeDeviceCreated, deviceSnapshot(device))
+	publishEvent(model.EventTypeDevicePromoted, deviceSnapshot(device))
 	return device, nil
 }
 

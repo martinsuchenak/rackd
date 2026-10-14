@@ -17,6 +17,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/ui"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/internal/worker"
 	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/redis/go-redis/v9"
@@ -104,6 +105,13 @@ func Run(ctx context.Context, opts Options) error {
 			log.Info("DNS sync disabled (interval set to 0)")
 		}
 	}
+
+	// Webhook delivery: subscribed webhooks receive the events services publish.
+	// It starts after the webhook secret encryptor is set, and is deferred
+	// before the extensions so it stops after them.
+	webhookWorker := webhook.NewWorker(store, webhook.DefaultDeliveryConfig())
+	webhookWorker.Start()
+	defer webhookWorker.Stop()
 
 	// OAuth setup (conditional) - must be before RegisterRoutes
 	if cfg.MCPOAuthEnabled {

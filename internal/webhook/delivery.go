@@ -1,13 +1,8 @@
 package webhook
 
 import (
-	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -64,26 +59,24 @@ func NewDeliveryService(store storage.WebhookStorage, config DeliveryConfig) *De
 
 // Deliver sends a webhook to a specific endpoint
 func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, event model.Event) (*model.WebhookDelivery, error) {
-	payload, err := ToJSON(event)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize event: %w", err)
-	}
-
 	delivery := &model.WebhookDelivery{
+		ID:            uuid.New().String(),
 		WebhookID:     webhook.ID,
 		EventType:     event.Type,
-		Payload:       payload,
 		Status:        model.DeliveryStatusPending,
 		AttemptNumber: 1,
 		CreatedAt:     time.Now().UTC(),
 	}
+	body, err := NewMessage(event, delivery.ID)
+	if err != nil {
+		return nil, err
+	}
+	delivery.Payload = string(body)
 
 	// Attempt delivery
 	startTime := time.Now()
-	err = s.sendHTTPRequest(ctx, webhook, event.Type, payload)
-	duration := time.Since(startTime)
-
-	delivery.Duration = duration.Milliseconds()
+	delivery.ResponseCode, err = s.send(ctx, webhook, delivery)
+	delivery.Duration = time.Since(startTime).Milliseconds()
 
 	if err != nil {
 		delivery.Error = err.Error()
@@ -96,7 +89,6 @@ func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, e
 		}
 	} else {
 		delivery.Status = model.DeliveryStatusSuccess
-		delivery.ResponseCode = 200
 	}
 
 	// Store delivery record
@@ -107,40 +99,14 @@ func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, e
 	return delivery, err
 }
 
-// sendHTTPRequest sends the webhook payload via HTTP
-func (s *DeliveryService) sendHTTPRequest(ctx context.Context, webhook *model.Webhook, eventType model.EventType, payload string) error {
-	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewBufferString(payload))
+// send posts a delivery's stored body, timestamped and signed now. Retries
+// resend the same body and delivery ID.
+func (s *DeliveryService) send(ctx context.Context, webhook *model.Webhook, delivery *model.WebhookDelivery) (int, error) {
+	req, err := NewRequest(ctx, webhook, delivery.EventType, delivery.ID, []byte(delivery.Payload), time.Now())
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return 0, err
 	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Rackd-Webhook/1.0")
-	req.Header.Set("X-Event-Type", string(eventType))
-	req.Header.Set("X-Delivery-ID", uuid.New().String())
-
-	// Add HMAC signature if secret is configured
-	if webhook.Secret != "" {
-		signature := ComputeHMAC(payload, webhook.Secret)
-		req.Header.Set("X-Signature-256", "sha256="+signature)
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Drain the body without loading it fully into memory: a hostile target
-	// could otherwise return an arbitrarily large response (× concurrency × retries).
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
-
-	// Consider 2xx responses as success
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return nil
-	}
-
-	return fmt.Errorf("webhook returned status %d", resp.StatusCode)
+	return Send(s.client, req)
 }
 
 // calculateBackoff calculates the backoff duration for a given attempt
@@ -191,7 +157,7 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 
 		// Attempt delivery
 		startTime := time.Now()
-		err = s.sendHTTPRequest(ctx, webhook, delivery.EventType, delivery.Payload)
+		delivery.ResponseCode, err = s.send(ctx, webhook, &delivery)
 		duration := time.Since(startTime)
 
 		delivery.Duration = duration.Milliseconds()
@@ -211,14 +177,12 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 			failCount++
 		} else {
 			delivery.Status = model.DeliveryStatusSuccess
-			delivery.ResponseCode = 200
 			delivery.Error = ""
 			successCount++
 		}
 
 		if updateErr := s.store.UpdateDelivery(ctx, &delivery); updateErr != nil {
-			// Log but continue processing
-			fmt.Printf("failed to update delivery %s: %v\n", delivery.ID, updateErr)
+			log.Error("Failed to update webhook delivery", "delivery_id", delivery.ID, "error", updateErr)
 		}
 	}
 
@@ -226,13 +190,6 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 }
 
 // CleanupOldDeliveries removes old delivery records
-func (s *DeliveryService) CleanupOldDeliveries() error {
-	return s.store.DeleteOldDeliveries(context.Background(), s.config.RetentionDays)
-}
-
-// ComputeHMAC computes an HMAC-SHA256 signature for the payload
-func ComputeHMAC(payload, secret string) string {
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(payload))
-	return hex.EncodeToString(h.Sum(nil))
+func (s *DeliveryService) CleanupOldDeliveries(ctx context.Context) error {
+	return s.store.DeleteOldDeliveries(ctx, s.config.RetentionDays)
 }

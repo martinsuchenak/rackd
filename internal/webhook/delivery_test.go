@@ -34,7 +34,7 @@ func TestDeliveryServiceDeliverSuccessAndRetryFailure(t *testing.T) {
 
 		service := NewDeliveryService(store, DeliveryConfig{MaxRetries: 2, RetryBackoff: time.Second, HTTPTimeout: 2 * time.Second, RetentionDays: 1})
 		service.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if req.Header.Get("X-Signature-256") == "" {
+			if req.Header.Get(HeaderSignature) == "" {
 				t.Fatal("expected HMAC signature header")
 			}
 			return &http.Response{
@@ -162,7 +162,7 @@ func TestDeliveryServiceProcessPendingRetriesAndCleanup(t *testing.T) {
 		t.Fatalf("expected inactive webhook delivery to be abandoned, got %+v", gotAbandoned)
 	}
 
-	if err := service.CleanupOldDeliveries(); err != nil {
+	if err := service.CleanupOldDeliveries(context.Background()); err != nil {
 		t.Fatalf("CleanupOldDeliveries failed: %v", err)
 	}
 }
