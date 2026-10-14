@@ -47,7 +47,7 @@ if [ -n "$TOKEN" ]; then
     # Verify it works
     STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -H "Authorization: Bearer $TOKEN" \
-        "$API_URL/api/auth/me")
+        "$API_URL/api/v1/auth/me")
     if [ "$STATUS" != "200" ]; then
         echo "❌ Token authentication failed (HTTP $STATUS)"
         exit 1
@@ -56,7 +56,7 @@ if [ -n "$TOKEN" ]; then
     WRITE_ARGS=(-H "Authorization: Bearer $TOKEN")
 else
     echo "🔐 Logging in as '$USERNAME'..."
-    LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "$API_URL/api/auth/login" \
+    LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "$API_URL/api/v1/auth/login" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}")
 
@@ -128,20 +128,20 @@ echo "================================================"
 echo ""
 echo "� Datacenters..."
 while IFS= read -r dc; do
-    resp=$(api_post "/api/datacenters" "$dc")
+    resp=$(api_post "/api/v1/datacenters" "$dc")
     echo "  ✓ $(echo "$resp" | jq -r '.name // .error')"
 done < <(jq -c '.[]' "$SCRIPT_DIR/datacenters.json")
 
 echo ""
 echo "🌐 Networks (bulk)..."
-api_post_file "/api/networks/bulk" "$SCRIPT_DIR/networks.json" \
+api_post_file "/api/v1/networks/bulk" "$SCRIPT_DIR/networks.json" \
     | jq -r '"  ✓ Total: \(.total), Success: \(.success), Failed: \(.failed)"'
 
 echo ""
 echo "🏊 Network pools..."
 while IFS= read -r pool; do
     network_id=$(echo "$pool" | jq -r '.network_id')
-    resp=$(api_post "/api/networks/$network_id/pools" "$pool")
+    resp=$(api_post "/api/v1/networks/$network_id/pools" "$pool")
     if echo "$resp" | jq -e '.error' > /dev/null 2>&1; then
         echo "    ⚠ pool $(echo "$pool" | jq -r '.name'): $(echo "$resp" | jq -r '.error')"
     fi
@@ -150,12 +150,12 @@ echo "  ✓ $(jq length "$SCRIPT_DIR/pools.json") pools imported"
 
 echo ""
 echo "� Devices (bulk)..."
-api_post_file "/api/devices/bulk" "$SCRIPT_DIR/devices.json" \
+api_post_file "/api/v1/devices/bulk" "$SCRIPT_DIR/devices.json" \
     | jq -r '"  ✓ Total: \(.total), Success: \(.success), Failed: \(.failed)"'
 
 echo ""
 echo "💻 Extra devices (varied statuses)..."
-api_post_file "/api/devices/bulk" "$SCRIPT_DIR/devices_extra.json" \
+api_post_file "/api/v1/devices/bulk" "$SCRIPT_DIR/devices_extra.json" \
     | jq -r '"  ✓ Total: \(.total), Success: \(.success), Failed: \(.failed)"'
 
 echo ""
@@ -163,7 +163,7 @@ echo "� Relationships..."
 ok=0; fail=0
 while IFS= read -r rel; do
     parent_id=$(echo "$rel" | jq -r '.parent_id')
-    resp=$(api_post "/api/devices/$parent_id/relationships" "$rel")
+    resp=$(api_post "/api/v1/devices/$parent_id/relationships" "$rel")
     if echo "$resp" | jq -e '.error' > /dev/null 2>&1; then
         fail=$((fail + 1))
     else
@@ -176,43 +176,43 @@ echo "  ✓ $(jq length "$SCRIPT_DIR/relationships.json") relationships: $ok ok,
 
 echo ""
 echo "� Circuits..."
-import_array "circuits" "/api/circuits" "$SCRIPT_DIR/circuits.json"
+import_array "circuits" "/api/v1/circuits" "$SCRIPT_DIR/circuits.json"
 
 echo ""
 echo "🔀 NAT mappings..."
-import_array "NAT mappings" "/api/nat" "$SCRIPT_DIR/nat.json"
+import_array "NAT mappings" "/api/v1/nat" "$SCRIPT_DIR/nat.json"
 
 echo ""
 echo "� IP reservations..."
-import_array "reservations" "/api/reservations" "$SCRIPT_DIR/reservations.json"
+import_array "reservations" "/api/v1/reservations" "$SCRIPT_DIR/reservations.json"
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 echo ""
 echo "🔧 Custom field definitions..."
-import_array "custom fields" "/api/custom-fields" "$SCRIPT_DIR/custom_fields.json"
+import_array "custom fields" "/api/v1/custom-fields" "$SCRIPT_DIR/custom_fields.json"
 
 echo ""
 echo "� Credentials..."
-import_array "credentials" "/api/credentials" "$SCRIPT_DIR/credentials.json"
+import_array "credentials" "/api/v1/credentials" "$SCRIPT_DIR/credentials.json"
 
 echo ""
 echo "🔔 Webhooks..."
-import_array "webhooks" "/api/webhooks" "$SCRIPT_DIR/webhooks.json"
+import_array "webhooks" "/api/v1/webhooks" "$SCRIPT_DIR/webhooks.json"
 
 # ── Discovery ─────────────────────────────────────────────────────────────────
 
 echo ""
 echo "� Scan profiles..."
-import_array "scan profiles" "/api/scan-profiles" "$SCRIPT_DIR/scan_profiles.json"
+import_array "scan profiles" "/api/v1/scan-profiles" "$SCRIPT_DIR/scan_profiles.json"
 
 echo ""
 echo "📅 Scheduled scans..."
-import_array "scheduled scans" "/api/scheduled-scans" "$SCRIPT_DIR/scheduled_scans.json"
+import_array "scheduled scans" "/api/v1/scheduled-scans" "$SCRIPT_DIR/scheduled_scans.json"
 
 echo ""
 echo "🔎 Discovery rules..."
-import_array "discovery rules" "/api/discovery/rules" "$SCRIPT_DIR/discovery_rules.json"
+import_array "discovery rules" "/api/v1/discovery/rules" "$SCRIPT_DIR/discovery_rules.json"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 
@@ -221,8 +221,8 @@ echo "================================================"
 echo "✅ Done!"
 echo ""
 echo "🔍 Quick checks:"
-echo "  curl -b $COOKIE_JAR $API_URL/api/circuits | jq length"
-echo "  curl -b $COOKIE_JAR $API_URL/api/nat | jq length"
-echo "  curl -b $COOKIE_JAR $API_URL/api/custom-fields | jq length"
-echo "  curl -b $COOKIE_JAR $API_URL/api/credentials | jq length"
-echo "  curl -b $COOKIE_JAR $API_URL/api/webhooks | jq length"
+echo "  curl -b $COOKIE_JAR $API_URL/api/v1/circuits | jq length"
+echo "  curl -b $COOKIE_JAR $API_URL/api/v1/nat | jq length"
+echo "  curl -b $COOKIE_JAR $API_URL/api/v1/custom-fields | jq length"
+echo "  curl -b $COOKIE_JAR $API_URL/api/v1/credentials | jq length"
+echo "  curl -b $COOKIE_JAR $API_URL/api/v1/webhooks | jq length"

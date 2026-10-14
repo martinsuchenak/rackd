@@ -12,8 +12,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 ### Upgrading from v0.1.0
 
 - Upgrade the server before the CLI. The CLI now calls `/api/v1/...`, which v0.1.0
-  servers do not serve; against one it fails with "the rackd server does not serve
-  /api/v1".
+  servers do not serve; against one it fails with "the server did not answer like a
+  rackd /api/v1 server".
 - Scripts and integrations that call `/api/...` keep working until the removal date,
   but should move to `/api/v1/...`.
 
@@ -33,8 +33,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
-- A GET request to an unknown API path returned the web UI's `index.html` with
-  status 200. It now returns a JSON 404.
+- Requests to an unknown API path fell through to the web UI: a GET returned
+  `index.html` with status 200, and other methods a plain-text 405. They now return a
+  JSON 404, or a JSON 405 with an `Allow` header when the path exists but the method
+  is wrong.
 - The Nomad job's health check probed `/api/datacenters`, which requires
   authentication, so the service never became healthy. It now uses `/healthz`.
 

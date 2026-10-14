@@ -367,10 +367,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Metrics route (requires auth)
 	mux.HandleFunc("GET /metrics", wrapAuth(h.metricsHandler))
 
-	// Unknown API paths get a JSON 404 instead of the UI's index.html.
-	mux.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request) {
-		h.writeError(w, http.StatusNotFound, "NOT_FOUND", "no such API endpoint")
-	})
+	// Unmatched API requests get JSON errors instead of the UI's index.html.
+	h.registerAPIFallback(mux)
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {
