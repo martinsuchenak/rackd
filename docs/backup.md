@@ -12,7 +12,12 @@ rackd backup --data-dir /var/lib/rackd
 
 # Snapshot to a specific file (the command refuses to overwrite an existing file)
 rackd backup --data-dir /var/lib/rackd --output /backup/rackd-$(date +%Y%m%d-%H%M%S).db
+
+# Replace a fixed file; the old one is kept until the new backup is verified
+rackd backup --data-dir /var/lib/rackd --output /backup/rackd-latest.db --overwrite
 ```
+
+The command reads the database through SQLite. While the server is stopped, the user running it needs write access to the data directory, because SQLite creates a `-shm` file there.
 
 Do not copy `rackd.db` with `cp` while the server runs: in WAL mode the main file and the `-wal` file change independently, and a plain copy can be inconsistent.
 

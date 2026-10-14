@@ -1007,7 +1007,8 @@ rackd backup [options]
 
 **Options:**
 - `--data-dir <dir>` - Data directory (default: ./data)
-- `--output <file>` - Output file (default: rackd-backup-<timestamp>.db); an existing file is never overwritten
+- `--output <file>` - Output file (default: rackd-backup-<timestamp>.db); an existing file is not overwritten unless `--overwrite` is given
+- `--overwrite` - Replace the output file if it exists. The new backup is verified before it replaces the old one
 
 **Examples:**
 
@@ -1017,6 +1018,9 @@ rackd backup
 
 # Create backup with specific filename
 rackd backup --output /backups/rackd-$(date +%Y%m%d).db
+
+# Replace the same file on every run
+rackd backup --output /backups/rackd-latest.db --overwrite
 ```
 
 #### backup verify
