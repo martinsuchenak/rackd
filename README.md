@@ -4,7 +4,12 @@
 
 Rackd is a lightweight, self-contained infrastructure management tool for tracking devices, networks, IP addresses, and datacenter resources. Built with Go and SQLite, it requires no external dependencies and runs as a single binary.
 
-> ⚠️ **Warning:** This project is under active development and should not be used in production environments.
+> **Status:** Rackd is pre-1.0.
+>
+> - The REST API under `/api/v1` stays backward compatible; see [Versioning and Deprecation](docs/api.md#versioning-and-deprecation).
+> - Upgrades back up the database before migrating, and can be rolled back; see [Backup and Restore](docs/backup.md).
+> - Only the latest release gets security fixes; see [Security](SECURITY.md).
+> - The extension API (`pkg/extension`) may change in any release until 1.0.
 
 ## Features
 
