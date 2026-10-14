@@ -67,7 +67,7 @@ rackd network add \
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/networks \
+curl -X POST http://localhost:8080/api/v1/networks \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Production LAN",
@@ -98,13 +98,13 @@ rackd network list --output json
 **API:**
 ```bash
 # List all networks
-curl http://localhost:8080/api/networks
+curl http://localhost:8080/api/v1/networks
 
 # Filter by datacenter
-curl "http://localhost:8080/api/networks?datacenter_id=dc-east-1"
+curl "http://localhost:8080/api/v1/networks?datacenter_id=dc-east-1"
 
 # Filter by VLAN
-curl "http://localhost:8080/api/networks?vlan_id=100"
+curl "http://localhost:8080/api/v1/networks?vlan_id=100"
 ```
 
 ### Getting Network Details
@@ -116,14 +116,14 @@ rackd network get <network-id>
 
 **API:**
 ```bash
-curl http://localhost:8080/api/networks/<network-id>
+curl http://localhost:8080/api/v1/networks/<network-id>
 ```
 
 ### Updating Networks
 
 **API:**
 ```bash
-curl -X PATCH http://localhost:8080/api/networks/<network-id> \
+curl -X PATCH http://localhost:8080/api/v1/networks/<network-id> \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated description",
@@ -140,7 +140,7 @@ rackd network delete <network-id>
 
 **API:**
 ```bash
-curl -X DELETE http://localhost:8080/api/networks/<network-id>
+curl -X DELETE http://localhost:8080/api/v1/networks/<network-id>
 ```
 
 ## IP Pool Management
@@ -160,7 +160,7 @@ rackd network pool add \
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/networks/<network-id>/pools \
+curl -X POST http://localhost:8080/api/v1/networks/<network-id>/pools \
   -H "Content-Type: application/json" \
   -d '{
     "name": "DHCP Pool",
@@ -180,19 +180,19 @@ rackd network pool list --network <network-id>
 
 **API:**
 ```bash
-curl http://localhost:8080/api/networks/<network-id>/pools
+curl http://localhost:8080/api/v1/networks/<network-id>/pools
 ```
 
 ### Managing Individual Pools
 
 **Get Pool Details:**
 ```bash
-curl http://localhost:8080/api/pools/<pool-id>
+curl http://localhost:8080/api/v1/pools/<pool-id>
 ```
 
 **Update Pool:**
 ```bash
-curl -X PATCH http://localhost:8080/api/pools/<pool-id> \
+curl -X PATCH http://localhost:8080/api/v1/pools/<pool-id> \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated pool description",
@@ -202,7 +202,7 @@ curl -X PATCH http://localhost:8080/api/pools/<pool-id> \
 
 **Delete Pool:**
 ```bash
-curl -X DELETE http://localhost:8080/api/pools/<pool-id>
+curl -X DELETE http://localhost:8080/api/v1/pools/<pool-id>
 ```
 
 ## IP Allocation
@@ -211,7 +211,7 @@ curl -X DELETE http://localhost:8080/api/pools/<pool-id>
 
 **API:**
 ```bash
-curl http://localhost:8080/api/pools/<pool-id>/next-ip
+curl http://localhost:8080/api/v1/pools/<pool-id>/next-ip
 ```
 
 Response:
@@ -233,7 +233,7 @@ Get utilization statistics for a network:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/networks/<network-id>/utilization
+curl http://localhost:8080/api/v1/networks/<network-id>/utilization
 ```
 
 Response:
@@ -267,7 +267,7 @@ Get visual representation of IP allocation within a pool:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/pools/<pool-id>/heatmap
+curl http://localhost:8080/api/v1/pools/<pool-id>/heatmap
 ```
 
 Response format:
@@ -304,7 +304,7 @@ Get all devices that have IP addresses within a network:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/networks/<network-id>/devices
+curl http://localhost:8080/api/v1/networks/<network-id>/devices
 ```
 
 ## Validation Rules
@@ -364,7 +364,7 @@ rackd network pool add \
 
 4. **Monitor utilization:**
 ```bash
-curl http://localhost:8080/api/networks/<network-id>/utilization
+curl http://localhost:8080/api/v1/networks/<network-id>/utilization
 ```
 
 ### Multi-VLAN Environment
@@ -462,20 +462,20 @@ See [Discovery Documentation](discovery.md) for more details on network scanning
 
 For complete API documentation, see the [OpenAPI specification](../api/openapi.yaml). Key endpoints:
 
-- `GET /api/networks` - List networks
-- `POST /api/networks` - Create network
-- `GET /api/networks/{id}` - Get network details
-- `PATCH /api/networks/{id}` - Update network
-- `DELETE /api/networks/{id}` - Delete network
-- `GET /api/networks/{id}/devices` - List network devices
-- `GET /api/networks/{id}/utilization` - Get utilization stats
-- `GET /api/networks/{id}/pools` - List network pools
-- `POST /api/networks/{id}/pools` - Create pool
-- `GET /api/pools/{id}` - Get pool details
-- `PATCH /api/pools/{id}` - Update pool
-- `DELETE /api/pools/{id}` - Delete pool
-- `GET /api/pools/{id}/next-ip` - Get next available IP
-- `GET /api/pools/{id}/heatmap` - Get pool heatmap
+- `GET /api/v1/networks` - List networks
+- `POST /api/v1/networks` - Create network
+- `GET /api/v1/networks/{id}` - Get network details
+- `PATCH /api/v1/networks/{id}` - Update network
+- `DELETE /api/v1/networks/{id}` - Delete network
+- `GET /api/v1/networks/{id}/devices` - List network devices
+- `GET /api/v1/networks/{id}/utilization` - Get utilization stats
+- `GET /api/v1/networks/{id}/pools` - List network pools
+- `POST /api/v1/networks/{id}/pools` - Create pool
+- `GET /api/v1/pools/{id}` - Get pool details
+- `PATCH /api/v1/pools/{id}` - Update pool
+- `DELETE /api/v1/pools/{id}` - Delete pool
+- `GET /api/v1/pools/{id}/next-ip` - Get next available IP
+- `GET /api/v1/pools/{id}/heatmap` - Get pool heatmap
 
 ## CLI Reference
 

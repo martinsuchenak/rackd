@@ -42,29 +42,29 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 		}
 
 		switch {
-		case r.URL.Path == "/api/roles" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/roles" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"id": "role-1", "name": "operator"},
 			})
-		case r.URL.Path == "/api/permissions" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/permissions" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"id": "perm-1", "resource": "devices", "action": "read"},
 			})
-		case r.URL.Path == "/api/roles" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/roles" && r.Method == http.MethodPost:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id": "role-2", "name": "dns-operator",
 			})
-		case r.URL.Path == "/api/roles/role-2" && r.Method == http.MethodDelete:
+		case r.URL.Path == "/api/v1/roles/role-2" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/api/users/grant-role" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/users/grant-role" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusCreated)
-		case r.URL.Path == "/api/users/revoke-role" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/users/revoke-role" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -74,7 +74,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 
 	c := client.NewClient(&client.Config{ServerURL: server.URL, Timeout: "5s"})
 
-	resp, err := c.DoRequest("GET", "/api/roles", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/roles", nil)
 	if err != nil {
 		t.Fatalf("list roles request failed: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("GET", "/api/permissions?resource=devices&action=read", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/permissions?resource=devices&action=read", nil)
 	if err != nil {
 		t.Fatalf("list permissions request failed: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("POST", "/api/roles", map[string]any{
+	resp, err = c.DoRequest("POST", "/api/v1/roles", map[string]any{
 		"name":        "dns-operator",
 		"description": "DNS operator",
 	})
@@ -104,7 +104,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("POST", "/api/users/grant-role", map[string]any{
+	resp, err = c.DoRequest("POST", "/api/v1/users/grant-role", map[string]any{
 		"user_id": "user-1",
 		"role_id": "role-2",
 	})
@@ -116,7 +116,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("POST", "/api/users/revoke-role", map[string]any{
+	resp, err = c.DoRequest("POST", "/api/v1/users/revoke-role", map[string]any{
 		"user_id": "user-1",
 		"role_id": "role-2",
 	})
@@ -128,7 +128,7 @@ func TestMockRoleAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("DELETE", "/api/roles/role-2", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/roles/role-2", nil)
 	if err != nil {
 		t.Fatalf("delete role request failed: %v", err)
 	}

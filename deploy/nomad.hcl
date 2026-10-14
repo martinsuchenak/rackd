@@ -58,7 +58,7 @@ job "rackd" {
 
         check {
           type     = "http"
-          path     = "/api/datacenters"
+          path     = "/healthz"
           interval = "30s"
           timeout  = "5s"
         }

@@ -61,49 +61,49 @@ func TestMockDNSAPIIntegration(t *testing.T) {
 		}
 
 		switch {
-		case r.URL.Path == "/api/dns/providers" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/dns/providers" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"id": "provider-1", "name": "bind-main"},
 			})
-		case r.URL.Path == "/api/dns/providers/provider-1" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/dns/providers/provider-1" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "provider-1", "name": "bind-main"})
-		case r.URL.Path == "/api/dns/providers" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/dns/providers" && r.Method == http.MethodPost:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "provider-2", "name": "technitium-main"})
-		case r.URL.Path == "/api/dns/providers/provider-2" && r.Method == http.MethodPut:
+		case r.URL.Path == "/api/v1/dns/providers/provider-2" && r.Method == http.MethodPut:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "provider-2", "name": "technitium-updated"})
-		case r.URL.Path == "/api/dns/providers/provider-2" && r.Method == http.MethodDelete:
+		case r.URL.Path == "/api/v1/dns/providers/provider-2" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/api/dns/providers/provider-2/test" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/dns/providers/provider-2/test" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/api/dns/zones" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/dns/zones" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"id": "zone-1", "name": "example.test"},
 			})
-		case r.URL.Path == "/api/dns/zones/zone-1" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/dns/zones/zone-1" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "zone-1", "name": "example.test"})
-		case r.URL.Path == "/api/dns/zones" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/dns/zones" && r.Method == http.MethodPost:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "zone-2", "name": "example.test"})
-		case r.URL.Path == "/api/dns/zones/zone-2" && r.Method == http.MethodPut:
+		case r.URL.Path == "/api/v1/dns/zones/zone-2" && r.Method == http.MethodPut:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "zone-2", "name": "updated.example.test"})
-		case r.URL.Path == "/api/dns/zones/zone-2" && r.Method == http.MethodDelete:
+		case r.URL.Path == "/api/v1/dns/zones/zone-2" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/api/dns/zones/zone-1/records" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/dns/zones/zone-1/records" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
@@ -123,18 +123,18 @@ func TestMockDNSAPIIntegration(t *testing.T) {
 		body   any
 		status int
 	}{
-		{"GET", "/api/dns/providers", nil, http.StatusOK},
-		{"GET", "/api/dns/providers/provider-1", nil, http.StatusOK},
-		{"POST", "/api/dns/providers", map[string]any{"name": "technitium-main", "type": "technitium", "endpoint": "https://dns.example", "token": "secret"}, http.StatusCreated},
-		{"PUT", "/api/dns/providers/provider-2", map[string]any{"description": "updated"}, http.StatusOK},
-		{"DELETE", "/api/dns/providers/provider-2", nil, http.StatusNoContent},
-		{"POST", "/api/dns/providers/provider-2/test", nil, http.StatusNoContent},
-		{"GET", "/api/dns/zones", nil, http.StatusOK},
-		{"GET", "/api/dns/zones/zone-1", nil, http.StatusOK},
-		{"POST", "/api/dns/zones", map[string]any{"name": "example.test", "provider_id": "provider-1"}, http.StatusCreated},
-		{"PUT", "/api/dns/zones/zone-2", map[string]any{"name": "updated.example.test"}, http.StatusOK},
-		{"DELETE", "/api/dns/zones/zone-2", nil, http.StatusNoContent},
-		{"GET", "/api/dns/zones/zone-1/records", nil, http.StatusOK},
+		{"GET", "/api/v1/dns/providers", nil, http.StatusOK},
+		{"GET", "/api/v1/dns/providers/provider-1", nil, http.StatusOK},
+		{"POST", "/api/v1/dns/providers", map[string]any{"name": "technitium-main", "type": "technitium", "endpoint": "https://dns.example", "token": "secret"}, http.StatusCreated},
+		{"PUT", "/api/v1/dns/providers/provider-2", map[string]any{"description": "updated"}, http.StatusOK},
+		{"DELETE", "/api/v1/dns/providers/provider-2", nil, http.StatusNoContent},
+		{"POST", "/api/v1/dns/providers/provider-2/test", nil, http.StatusNoContent},
+		{"GET", "/api/v1/dns/zones", nil, http.StatusOK},
+		{"GET", "/api/v1/dns/zones/zone-1", nil, http.StatusOK},
+		{"POST", "/api/v1/dns/zones", map[string]any{"name": "example.test", "provider_id": "provider-1"}, http.StatusCreated},
+		{"PUT", "/api/v1/dns/zones/zone-2", map[string]any{"name": "updated.example.test"}, http.StatusOK},
+		{"DELETE", "/api/v1/dns/zones/zone-2", nil, http.StatusNoContent},
+		{"GET", "/api/v1/dns/zones/zone-1/records", nil, http.StatusOK},
 	}
 
 	for _, tc := range requests {

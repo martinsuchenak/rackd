@@ -57,7 +57,7 @@ services:
       - API_AUTH_TOKEN=${API_AUTH_TOKEN}
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/datacenters"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/v1/datacenters"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -346,7 +346,7 @@ Configure log rotation in `/etc/logrotate.d/rackd`:
 Rackd provides a health check endpoint:
 
 ```bash
-curl http://localhost:8080/api/datacenters
+curl http://localhost:8080/api/v1/datacenters
 ```
 
 ### Prometheus Metrics
@@ -367,7 +367,7 @@ services:
 ```bash
 #!/bin/bash
 # monitor-rackd.sh
-URL="http://localhost:8080/api/datacenters"
+URL="http://localhost:8080/api/v1/datacenters"
 TIMEOUT=5
 
 if curl -f -s --max-time $TIMEOUT $URL > /dev/null; then
@@ -387,7 +387,7 @@ Configure external monitoring with services like:
 - StatusCake
 
 Monitor these endpoints:
-- `/api/datacenters` - API health
+- `/api/v1/datacenters` - API health
 - `/` - Web UI availability
 
 ## Troubleshooting

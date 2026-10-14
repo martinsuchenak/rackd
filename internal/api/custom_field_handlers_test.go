@@ -18,7 +18,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("ListCustomFields_Empty", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/custom-fields", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/custom-fields", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -43,7 +43,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 			"required": false,
 			"description": "Asset tag identifier"
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -74,7 +74,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 			"type": "number",
 			"required": true
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -103,7 +103,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 			"options": ["production", "staging", "development"],
 			"required": false
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -131,7 +131,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 			"type": "boolean",
 			"required": false
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -151,7 +151,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_MissingName", func(t *testing.T) {
 		body := `{"key": "test", "type": "text"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -163,7 +163,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_MissingKey", func(t *testing.T) {
 		body := `{"name": "Test", "type": "text"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -175,7 +175,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_InvalidType", func(t *testing.T) {
 		body := `{"name": "Test", "key": "test", "type": "invalid"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -187,7 +187,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_SelectWithoutOptions", func(t *testing.T) {
 		body := `{"name": "Test Select", "key": "test_select", "type": "select"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -199,7 +199,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_InvalidKey", func(t *testing.T) {
 		body := `{"name": "Test", "key": "invalid-key!", "type": "text"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -211,7 +211,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("CreateCustomField_Unauthenticated", func(t *testing.T) {
 		body := `{"name": "Test", "key": "test", "type": "text"}`
-		req := httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body))
+		req := httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -225,7 +225,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	var fieldID string
 	t.Run("CreateAndGet", func(t *testing.T) {
 		body := `{"name": "Get Test", "key": "get_test", "type": "text"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -234,7 +234,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		fieldID = resp["id"].(string)
 
-		req = authReq(httptest.NewRequest("GET", "/api/custom-fields/"+fieldID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/custom-fields/"+fieldID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -252,7 +252,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	})
 
 	t.Run("GetCustomField_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/custom-fields/non-existent-id", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/custom-fields/non-existent-id", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -263,7 +263,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("UpdateCustomField", func(t *testing.T) {
 		body := `{"name": "Updated Name", "description": "Updated description"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/custom-fields/"+fieldID, bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/custom-fields/"+fieldID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -286,7 +286,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 
 	t.Run("UpdateCustomField_NotFound", func(t *testing.T) {
 		body := `{"name": "Test"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/custom-fields/non-existent-id", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/custom-fields/non-existent-id", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -297,7 +297,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	})
 
 	t.Run("ListCustomFields", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/custom-fields", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/custom-fields", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -316,7 +316,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	})
 
 	t.Run("ListCustomFields_FilterByType", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/custom-fields?type=text", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/custom-fields?type=text", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -337,7 +337,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	})
 
 	t.Run("GetCustomFieldTypes", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/custom-fields/types", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/custom-fields/types", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -357,7 +357,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	t.Run("DeleteCustomField", func(t *testing.T) {
 		// Create a field to delete
 		body := `{"name": "To Delete", "key": "to_delete", "type": "text"}`
-		req := authReq(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -367,7 +367,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 		deleteID := resp["id"].(string)
 
 		// Delete it
-		req = authReq(httptest.NewRequest("DELETE", "/api/custom-fields/"+deleteID, nil))
+		req = authReq(httptest.NewRequest("DELETE", "/api/v1/custom-fields/"+deleteID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -376,7 +376,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 		}
 
 		// Verify it's gone
-		req = authReq(httptest.NewRequest("GET", "/api/custom-fields/"+deleteID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/custom-fields/"+deleteID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -386,7 +386,7 @@ func TestCustomFieldHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteCustomField_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/custom-fields/non-existent-id", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/custom-fields/non-existent-id", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -398,14 +398,14 @@ func TestCustomFieldHandlers(t *testing.T) {
 	t.Run("CustomField_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := createAPIUserForStore(t, store, "limited-custom-field-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/custom-fields", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/custom-fields", nil), limitedToken)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req = authReqWithToken(httptest.NewRequest("POST", "/api/custom-fields", bytes.NewBufferString(`{"name":"Limited","key":"limited","type":"text"}`)), limitedToken)
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/v1/custom-fields", bytes.NewBufferString(`{"name":"Limited","key":"limited","type":"text"}`)), limitedToken)
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)

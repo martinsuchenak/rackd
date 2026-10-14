@@ -30,7 +30,7 @@ func TestAuditHandlers_SourceFilterAndDetailEndpoints(t *testing.T) {
 		t.Fatalf("failed to seed audit log: %v", err)
 	}
 
-	w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/audit?source=cli", nil)))
+	w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/audit?source=cli", nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
@@ -46,12 +46,12 @@ func TestAuditHandlers_SourceFilterAndDetailEndpoints(t *testing.T) {
 		t.Fatal("expected audit logs in list response")
 	}
 
-	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/audit/"+logs[0].ID, nil)))
+	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/audit/"+logs[0].ID, nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected detail status 200, got %d", w.Code)
 	}
 
-	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/audit/export?source=cli&format=csv", nil)))
+	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/audit/export?source=cli&format=csv", nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected export status 200, got %d", w.Code)
 	}

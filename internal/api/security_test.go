@@ -30,7 +30,7 @@ func TestCSRFBlocksSessionPOSTWithoutHeader(t *testing.T) {
 
 	// POST without X-Requested-With header should be blocked
 	body, _ := json.Marshal(map[string]any{"name": "csrf-test"})
-	req := httptest.NewRequest(http.MethodPost, "/api/datacenters", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/datacenters", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
 	// Deliberately NOT setting X-Requested-With
@@ -51,7 +51,7 @@ func TestCSRFBlocksSessionPUTWithoutHeader(t *testing.T) {
 	ts.createAdminUser(t, "admin", "securepassword123")
 	cookie := ts.loginUser(t, "admin", "securepassword123")
 
-	req := httptest.NewRequest(http.MethodPut, "/api/datacenters/fake-id", strings.NewReader(`{"name":"x"}`))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/datacenters/fake-id", strings.NewReader(`{"name":"x"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
 
@@ -68,7 +68,7 @@ func TestCSRFBlocksSessionDELETEWithoutHeader(t *testing.T) {
 	ts.createAdminUser(t, "admin", "securepassword123")
 	cookie := ts.loginUser(t, "admin", "securepassword123")
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/datacenters/fake-id", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/datacenters/fake-id", nil)
 	req.AddCookie(cookie)
 
 	w := httptest.NewRecorder()
@@ -85,7 +85,7 @@ func TestCSRFAllowsGETWithoutHeader(t *testing.T) {
 	cookie := ts.loginUser(t, "admin", "securepassword123")
 
 	// GET should work without X-Requested-With
-	req := httptest.NewRequest(http.MethodGet, "/api/datacenters", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/datacenters", nil)
 	req.AddCookie(cookie)
 
 	w := httptest.NewRecorder()
@@ -103,7 +103,7 @@ func TestCSRFNotRequiredForAPIKey(t *testing.T) {
 
 	// API key auth should not require X-Requested-With
 	body, _ := json.Marshal(map[string]any{"name": "apikey-dc"})
-	req := httptest.NewRequest(http.MethodPost, "/api/datacenters", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/datacenters", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	// No X-Requested-With header
@@ -133,7 +133,7 @@ func TestSQLInjectionInDeviceName(t *testing.T) {
 
 	for _, payload := range payloads {
 		t.Run("create_"+payload[:min(len(payload), 20)], func(t *testing.T) {
-			w := ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+			w := ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 				"name": payload,
 			}, token)
 			// Should either succeed (treating it as a literal string) or fail validation
@@ -145,7 +145,7 @@ func TestSQLInjectionInDeviceName(t *testing.T) {
 	}
 
 	// Verify the database is still functional
-	w := ts.doRequest(t, http.MethodGet, "/api/devices", nil, token)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/devices", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("database corrupted after SQL injection attempts: status %d", w.Code)
 	}
@@ -165,7 +165,7 @@ func TestSQLInjectionInSearchQuery(t *testing.T) {
 
 	for _, payload := range payloads {
 		t.Run(payload[:min(len(payload), 20)], func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/api/search", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/search", nil)
 			q := req.URL.Query()
 			q.Set("q", payload)
 			req.URL.RawQuery = q.Encode()
@@ -191,10 +191,10 @@ func TestSQLInjectionInListFilters(t *testing.T) {
 		param string
 		value string
 	}{
-		{"/api/devices", "tags", "' OR 1=1--"},
-		{"/api/devices", "datacenter_id", "' UNION SELECT * FROM users--"},
-		{"/api/networks", "datacenter_id", "'; DROP TABLE networks;--"},
-		{"/api/devices", "limit", "1;DROP TABLE devices"},
+		{"/api/v1/devices", "tags", "' OR 1=1--"},
+		{"/api/v1/devices", "datacenter_id", "' UNION SELECT * FROM users--"},
+		{"/api/v1/networks", "datacenter_id", "'; DROP TABLE networks;--"},
+		{"/api/v1/devices", "limit", "1;DROP TABLE devices"},
 	}
 
 	for _, tt := range tests {
@@ -231,7 +231,7 @@ func TestXSSPayloadInDeviceFields(t *testing.T) {
 
 	for _, payload := range xssPayloads {
 		t.Run(payload[:min(len(payload), 20)], func(t *testing.T) {
-			w := ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+			w := ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 				"name":        payload,
 				"description": payload,
 				"os":          payload,
@@ -267,13 +267,13 @@ func TestAuthBypassAttempts(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodGet, "/api/devices"},
-		{http.MethodPost, "/api/devices"},
-		{http.MethodGet, "/api/networks"},
-		{http.MethodGet, "/api/users"},
-		{http.MethodGet, "/api/audit"},
-		{http.MethodGet, "/api/keys"},
-		{http.MethodGet, "/api/search?q=test"},
+		{http.MethodGet, "/api/v1/devices"},
+		{http.MethodPost, "/api/v1/devices"},
+		{http.MethodGet, "/api/v1/networks"},
+		{http.MethodGet, "/api/v1/users"},
+		{http.MethodGet, "/api/v1/audit"},
+		{http.MethodGet, "/api/v1/keys"},
+		{http.MethodGet, "/api/v1/search?q=test"},
 	}
 
 	for _, ep := range protectedEndpoints {
@@ -323,7 +323,7 @@ func TestExpiredAPIKeyRejected(t *testing.T) {
 		t.Fatalf("failed to create expired key: %v", err)
 	}
 
-	w := ts.doRequest(t, http.MethodGet, "/api/devices", nil, rawToken)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/devices", nil, rawToken)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expired key: expected 401, got %d", w.Code)
 	}
@@ -344,7 +344,7 @@ func TestLegacyAPIKeyWithoutUserRejected(t *testing.T) {
 		t.Fatalf("failed to create legacy key: %v", err)
 	}
 
-	w := ts.doRequest(t, http.MethodGet, "/api/devices", nil, rawToken)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/devices", nil, rawToken)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("legacy key: expected 401, got %d: %s", w.Code, w.Body.String())
 	}
@@ -381,23 +381,23 @@ func TestOAuthClientManagementRequiresAdmin(t *testing.T) {
 	viewerID := ts.createReadOnlyUser(t, "viewer", "securepassword123")
 	viewerToken := ts.createAPIKeyForUser(t, viewerID)
 
-	w := ts.doRequest(t, http.MethodGet, "/api/oauth/clients", nil, viewerToken)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/oauth/clients", nil, viewerToken)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("viewer listing OAuth clients: expected 403, got %d: %s", w.Code, w.Body.String())
 	}
 
-	w = ts.doRequest(t, http.MethodDelete, "/api/oauth/clients/"+client.ID, nil, viewerToken)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/oauth/clients/"+client.ID, nil, viewerToken)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("viewer deleting OAuth client: expected 403, got %d: %s", w.Code, w.Body.String())
 	}
 
 	// Admin can list and delete
-	w = ts.doRequest(t, http.MethodGet, "/api/oauth/clients", nil, adminToken)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/oauth/clients", nil, adminToken)
 	if w.Code != http.StatusOK {
 		t.Errorf("admin listing OAuth clients: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	w = ts.doRequest(t, http.MethodDelete, "/api/oauth/clients/"+client.ID, nil, adminToken)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/oauth/clients/"+client.ID, nil, adminToken)
 	if w.Code != http.StatusNoContent {
 		t.Errorf("admin deleting OAuth client: expected 204, got %d: %s", w.Code, w.Body.String())
 	}
@@ -411,7 +411,7 @@ func TestUserCannotDeleteOtherUsersAPIKey(t *testing.T) {
 	adminToken := ts.createAPIKeyForUser(t, adminID)
 
 	// Create user B via admin
-	w := ts.doRequest(t, http.MethodPost, "/api/users", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/users", map[string]any{
 		"username":  "userB",
 		"password":  "securepassword789",
 		"email":     "userb@test.local",
@@ -425,7 +425,7 @@ func TestUserCannotDeleteOtherUsersAPIKey(t *testing.T) {
 	userBID := userB["id"].(string)
 
 	// Create API key for user B (via admin)
-	w = ts.doRequest(t, http.MethodPost, "/api/keys", map[string]any{
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/keys", map[string]any{
 		"name":    "userB-key",
 		"user_id": userBID,
 	}, adminToken)
@@ -447,7 +447,7 @@ func TestUserCannotDeleteOtherUsersAPIKey(t *testing.T) {
 	userAToken := ts.createAPIKeyForUser(t, userA.ID)
 
 	// User A tries to delete User B's API key
-	w = ts.doRequest(t, http.MethodDelete, "/api/keys/"+userBKeyID, nil, userAToken)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/keys/"+userBKeyID, nil, userAToken)
 	if w.Code == http.StatusNoContent {
 		t.Error("user A should NOT be able to delete user B's API key")
 	}
@@ -466,7 +466,7 @@ func TestRequestBodySizeLimit(t *testing.T) {
 		largeBody[i] = 'A'
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/devices", bytes.NewReader(largeBody))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/devices", bytes.NewReader(largeBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -500,7 +500,7 @@ func TestInvalidJSONBody(t *testing.T) {
 
 	for _, body := range invalidBodies {
 		t.Run(body[:min(len(body), 15)], func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/api/devices", strings.NewReader(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/devices", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+token)
 
@@ -528,7 +528,7 @@ func TestInvalidResourceIDs(t *testing.T) {
 
 	for _, id := range invalidIDs {
 		t.Run(id[:min(len(id), 20)], func(t *testing.T) {
-			w := ts.doRequest(t, http.MethodGet, "/api/devices/"+id, nil, token)
+			w := ts.doRequest(t, http.MethodGet, "/api/v1/devices/"+id, nil, token)
 			// Should be 404 or 400, never 500
 			if w.Code == http.StatusInternalServerError {
 				t.Errorf("invalid ID caused 500: id=%q", id)
@@ -564,7 +564,7 @@ func TestLoginWithInvalidCredentials(t *testing.T) {
 				"username": tt.username,
 				"password": tt.password,
 			})
-			req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -587,7 +587,7 @@ func TestLoginResponseDoesNotLeakPasswordHash(t *testing.T) {
 
 	// Successful login
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "securepassword123"})
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	ts.mux.ServeHTTP(w, req)
@@ -608,7 +608,7 @@ func TestSessionCookieAttributes(t *testing.T) {
 	ts.createAdminUser(t, "admin", "securepassword123")
 
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "securepassword123"})
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	ts.mux.ServeHTTP(w, req)
@@ -644,7 +644,7 @@ func TestInvalidSessionCookieRejected(t *testing.T) {
 		Value: "completely-fake-session-token",
 	}
 
-	w := ts.doSessionRequest(t, http.MethodGet, "/api/auth/me", nil, fakeCookie)
+	w := ts.doSessionRequest(t, http.MethodGet, "/api/v1/auth/me", nil, fakeCookie)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("fake session cookie: expected 401, got %d", w.Code)
 	}
@@ -660,7 +660,7 @@ func TestNonAdminCannotCreateAdmin(t *testing.T) {
 	adminToken := ts.createAPIKeyForUser(t, adminID)
 
 	// Create non-admin user
-	w := ts.doRequest(t, http.MethodPost, "/api/users", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/users", map[string]any{
 		"username":  "regular",
 		"password":  "securepassword456",
 		"email":     "regular@test.local",
@@ -675,7 +675,7 @@ func TestNonAdminCannotCreateAdmin(t *testing.T) {
 	regularToken := ts.createAPIKeyForUser(t, regularID)
 
 	// Non-admin tries to create an admin user
-	w = ts.doRequest(t, http.MethodPost, "/api/users", map[string]any{
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/users", map[string]any{
 		"username":  "hacker-admin",
 		"password":  "securepassword789",
 		"email":     "hacker@test.local",
@@ -694,7 +694,7 @@ func TestNonAdminCannotEscalateOwnRole(t *testing.T) {
 	adminToken := ts.createAPIKeyForUser(t, adminID)
 
 	// Get admin role ID
-	w := ts.doRequest(t, http.MethodGet, "/api/roles", nil, adminToken)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/roles", nil, adminToken)
 	var roles []map[string]any
 	parseJSON(t, w, &roles)
 	var adminRoleID string
@@ -717,7 +717,7 @@ func TestNonAdminCannotEscalateOwnRole(t *testing.T) {
 
 	// Non-admin tries to grant themselves admin role
 	if adminRoleID != "" {
-		w = ts.doRequest(t, http.MethodPost, "/api/users/grant-role", map[string]any{
+		w = ts.doRequest(t, http.MethodPost, "/api/v1/users/grant-role", map[string]any{
 			"user_id": regular.ID,
 			"role_id": adminRoleID,
 		}, regularToken)

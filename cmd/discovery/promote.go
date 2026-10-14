@@ -28,7 +28,7 @@ func PromoteCommand() *cli.Command {
 				"name": name,
 			}
 
-			resp, err := c.DoRequest("POST", "/api/discovery/devices/"+discoveredID+"/promote", reqBody)
+			resp, err := c.DoRequest("POST", "/api/v1/discovery/devices/"+discoveredID+"/promote", reqBody)
 			if err != nil {
 				return err
 			}

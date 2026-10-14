@@ -100,13 +100,13 @@ Rackd supports multiple authentication methods:
 
 ```bash
 # Login
-TOKEN=$(curl -X POST http://localhost:8080/api/auth/login \
+TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"securepass"}' \
   | jq -r '.token')
 
 # Use session token
-curl http://localhost:8080/api/devices \
+curl http://localhost:8080/api/v1/devices \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -114,7 +114,7 @@ curl http://localhost:8080/api/devices \
 
 ```bash
 # Use API key
-curl http://localhost:8080/api/devices \
+curl http://localhost:8080/api/v1/devices \
   -H "Authorization: Bearer <api-key>"
 ```
 
@@ -170,7 +170,7 @@ rackd user password --id <user-id>
 
 ### 2. Login
 
-1. Client sends POST to `/api/auth/login` with username and password
+1. Client sends POST to `/api/v1/auth/login` with username and password
 2. Server verifies password (bcrypt)
 3. Server creates session token
 4. Server returns session token and user info

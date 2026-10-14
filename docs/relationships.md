@@ -61,7 +61,7 @@ Document device relationships for audit trails and regulatory compliance.
 ### Create Relationship
 ```bash
 # Server in rack
-curl -X POST http://localhost:8080/api/relationships \
+curl -X POST http://localhost:8080/api/v1/relationships \
   -H "Content-Type: application/json" \
   -d '{
     "source_device_id": "rack-01",
@@ -70,7 +70,7 @@ curl -X POST http://localhost:8080/api/relationships \
   }'
 
 # Network connection
-curl -X POST http://localhost:8080/api/relationships \
+curl -X POST http://localhost:8080/api/v1/relationships \
   -H "Content-Type: application/json" \
   -d '{
     "source_device_id": "server-web-01",
@@ -82,10 +82,10 @@ curl -X POST http://localhost:8080/api/relationships \
 ### Query Relationships
 ```bash
 # Get all relationships for a device
-curl http://localhost:8080/api/devices/server-web-01/relationships
+curl http://localhost:8080/api/v1/devices/server-web-01/relationships
 
 # Get specific relationship type
-curl http://localhost:8080/api/devices/server-web-01/relationships?type=connected_to
+curl http://localhost:8080/api/v1/devices/server-web-01/relationships?type=connected_to
 ```
 
 ## CLI Examples

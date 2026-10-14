@@ -154,7 +154,7 @@ func RunWithAdvancedFeatures(
 	uiBuilder := api.NewUIConfigBuilder()
 
 	// UI config endpoint
-	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager, store))
+	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
 
 	// Static UI
 	ui.RegisterRoutes(mux)
@@ -293,7 +293,7 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	uiBuilder := api.NewUIConfigBuilder()
 
 	// UI config endpoint
-	mux.HandleFunc("GET /api/config", uiBuilder.HandlerWithSession(sessionManager, store))
+	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
 
 	// Static UI
 	ui.RegisterRoutes(mux)

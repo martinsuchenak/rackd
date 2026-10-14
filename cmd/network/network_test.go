@@ -188,27 +188,27 @@ func TestNetworkJSONOutput(t *testing.T) {
 func TestMockNetworkAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/networks" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/networks" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "net1", "name": "test-network", "subnet": "10.0.0.0/24"},
 			})
-		case r.URL.Path == "/api/networks/net1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/networks/net1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "net1", "name": "test-network", "subnet": "10.0.0.0/24",
 			})
-		case r.URL.Path == "/api/networks" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/networks" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "new-net", "name": "new-network",
 			})
-		case r.URL.Path == "/api/networks/net1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/networks/net1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
-		case strings.HasPrefix(r.URL.Path, "/api/networks/net1/pools"):
+		case strings.HasPrefix(r.URL.Path, "/api/v1/networks/net1/pools"):
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
@@ -222,7 +222,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/networks", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/networks", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/networks/net1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/networks/net1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 	}
 
 	// Test create
-	resp, err = c.DoRequest("POST", "/api/networks", map[string]string{"name": "new-network", "subnet": "172.16.0.0/16"})
+	resp, err = c.DoRequest("POST", "/api/v1/networks", map[string]string{"name": "new-network", "subnet": "172.16.0.0/16"})
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/networks/net1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/networks/net1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestMockNetworkAPIIntegration(t *testing.T) {
 	}
 
 	// Test pool list
-	resp, err = c.DoRequest("GET", "/api/networks/net1/pools", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/networks/net1/pools", nil)
 	if err != nil {
 		t.Fatalf("pool list request failed: %v", err)
 	}

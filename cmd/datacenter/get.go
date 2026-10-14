@@ -23,7 +23,7 @@ func GetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 			dcID := cmd.GetString("id")
 
-			resp, err := c.DoRequest("GET", "/api/datacenters/"+dcID, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/datacenters/"+dcID, nil)
 			if err != nil {
 				return err
 			}

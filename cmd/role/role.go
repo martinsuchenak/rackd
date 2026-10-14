@@ -48,7 +48,7 @@ func ListRolesCommand() *cli.Command {
 				queryParams = fmt.Sprintf("?name=%s", name)
 			}
 
-			resp, err := c.DoRequest("GET", "/api/roles"+queryParams, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/roles"+queryParams, nil)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func ListPermissionsCommand() *cli.Command {
 				queryParams += fmt.Sprintf("action=%s", action)
 			}
 
-			resp, err := c.DoRequest("GET", "/api/permissions"+queryParams, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/permissions"+queryParams, nil)
 			if err != nil {
 				return err
 			}
@@ -171,7 +171,7 @@ func CreateRoleCommand() *cli.Command {
 				Description: cmd.GetString("description"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/roles", req)
+			resp, err := c.DoRequest("POST", "/api/v1/roles", req)
 			if err != nil {
 				return err
 			}
@@ -208,7 +208,7 @@ func DeleteRoleCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("DELETE", "/api/roles/"+id, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/roles/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -249,7 +249,7 @@ func AssignRoleCommand() *cli.Command {
 				RoleID: cmd.GetString("role-id"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/users/grant-role", req)
+			resp, err := c.DoRequest("POST", "/api/v1/users/grant-role", req)
 			if err != nil {
 				return err
 			}
@@ -290,7 +290,7 @@ func RevokeRoleCommand() *cli.Command {
 				RoleID: cmd.GetString("role-id"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/users/revoke-role", req)
+			resp, err := c.DoRequest("POST", "/api/v1/users/revoke-role", req)
 			if err != nil {
 				return err
 			}

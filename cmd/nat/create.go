@@ -65,7 +65,7 @@ func CreateCommand() *cli.Command {
 				data["tags"] = tagList
 			}
 
-			resp, err := c.DoRequest("POST", "/api/nat", data)
+			resp, err := c.DoRequest("POST", "/api/v1/nat", data)
 			if err != nil {
 				return err
 			}

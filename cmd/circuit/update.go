@@ -83,7 +83,7 @@ func UpdateCommand() *cli.Command {
 				return nil
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/circuits/"+cmd.GetString("id"), updates)
+			resp, err := c.DoRequest("PUT", "/api/v1/circuits/"+cmd.GetString("id"), updates)
 			if err != nil {
 				return err
 			}

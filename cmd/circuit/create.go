@@ -64,7 +64,7 @@ func CreateCommand() *cli.Command {
 				req["description"] = v
 			}
 
-			resp, err := c.DoRequest("POST", "/api/circuits", req)
+			resp, err := c.DoRequest("POST", "/api/v1/circuits", req)
 			if err != nil {
 				return err
 			}

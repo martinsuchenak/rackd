@@ -24,7 +24,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			path := "/api/webhooks"
+			path := "/api/v1/webhooks"
 			if cmd.GetBool("active") {
 				path += "?active=true"
 			}

@@ -17,7 +17,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetwork", func(t *testing.T) {
 		body := `{"name":"Net1","subnet":"10.0.0.0/24","vlan_id":100}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -29,7 +29,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetwork_MissingName", func(t *testing.T) {
 		body := `{"subnet":"10.0.0.0/24"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -40,7 +40,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetwork_MissingSubnet", func(t *testing.T) {
 		body := `{"name":"Net"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -50,7 +50,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateNetwork_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString("invalid")))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -61,7 +61,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetwork_Unauthenticated", func(t *testing.T) {
 		body := `{"name":"Net-noauth","subnet":"10.0.0.0/24"}`
-		req := httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(body))
+		req := httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -72,7 +72,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("ListNetworks", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -82,7 +82,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("ListNetworks_WithFilters", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks?name=Net1&vlan_id=100", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks?name=Net1&vlan_id=100", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -92,7 +92,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetwork_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/nonexistent", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -104,7 +104,7 @@ func TestNetworkHandlers(t *testing.T) {
 	var netID string
 	t.Run("CreateAndGet", func(t *testing.T) {
 		body := `{"name":"Net2","subnet":"192.168.0.0/24","vlan_id":200}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -113,7 +113,7 @@ func TestNetworkHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		netID = resp["id"].(string)
 
-		req = authReq(httptest.NewRequest("GET", "/api/networks/"+netID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/networks/"+netID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -124,7 +124,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("UpdateNetwork", func(t *testing.T) {
 		body := `{"name":"Net2-Updated","vlan_id":201}`
-		req := authReq(httptest.NewRequest("PUT", "/api/networks/"+netID, bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/networks/"+netID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -136,7 +136,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("UpdateNetwork_NotFound", func(t *testing.T) {
 		body := `{"name":"Updated"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/networks/nonexistent", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/networks/nonexistent", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -146,7 +146,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("UpdateNetwork_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("PUT", "/api/networks/"+netID, bytes.NewBufferString("invalid")))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/networks/"+netID, bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -156,7 +156,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkDevices", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/"+netID+"/devices", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/"+netID+"/devices", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -166,7 +166,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkDevices_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/nonexistent/devices", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/nonexistent/devices", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -176,7 +176,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkUtilization", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/"+netID+"/utilization", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/"+netID+"/utilization", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -186,7 +186,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkUtilization_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/nonexistent/utilization", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/nonexistent/utilization", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -196,7 +196,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("ListNetworkPools_Empty", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/"+netID+"/pools", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/"+netID+"/pools", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -206,7 +206,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("ListNetworkPools_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/networks/nonexistent/pools", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/networks/nonexistent/pools", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -218,7 +218,7 @@ func TestNetworkHandlers(t *testing.T) {
 	var poolID string
 	t.Run("CreateNetworkPool", func(t *testing.T) {
 		body := `{"name":"Pool1","start_ip":"192.168.0.10","end_ip":"192.168.0.50"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks/"+netID+"/pools", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks/"+netID+"/pools", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -234,7 +234,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetworkPool_MissingName", func(t *testing.T) {
 		body := `{"start_ip":"192.168.0.10","end_ip":"192.168.0.50"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks/"+netID+"/pools", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks/"+netID+"/pools", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -245,7 +245,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetworkPool_MissingIPs", func(t *testing.T) {
 		body := `{"name":"Pool"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks/"+netID+"/pools", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks/"+netID+"/pools", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -256,7 +256,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("CreateNetworkPool_NetworkNotFound", func(t *testing.T) {
 		body := `{"name":"Pool","start_ip":"10.0.0.1","end_ip":"10.0.0.10"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks/nonexistent/pools", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks/nonexistent/pools", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -266,7 +266,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateNetworkPool_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/networks/"+netID+"/pools", bytes.NewBufferString("invalid")))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks/"+netID+"/pools", bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -276,7 +276,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkPool", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/"+poolID, nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/"+poolID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -286,7 +286,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNetworkPool_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/nonexistent", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -297,7 +297,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("UpdateNetworkPool", func(t *testing.T) {
 		body := `{"name":"Pool1-Updated","tags":["prod","web"]}`
-		req := authReq(httptest.NewRequest("PUT", "/api/pools/"+poolID, bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/pools/"+poolID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -309,7 +309,7 @@ func TestNetworkHandlers(t *testing.T) {
 
 	t.Run("UpdateNetworkPool_NotFound", func(t *testing.T) {
 		body := `{"name":"Updated"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/pools/nonexistent", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/pools/nonexistent", bytes.NewBufferString(body)))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -319,7 +319,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("UpdateNetworkPool_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("PUT", "/api/pools/"+poolID, bytes.NewBufferString("invalid")))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/pools/"+poolID, bytes.NewBufferString("invalid")))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -329,7 +329,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNextIP", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/"+poolID+"/next-ip", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/"+poolID+"/next-ip", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -339,7 +339,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNextIP_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/nonexistent/next-ip", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/nonexistent/next-ip", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -349,7 +349,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetPoolHeatmap", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/"+poolID+"/heatmap", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/"+poolID+"/heatmap", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -359,7 +359,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("GetPoolHeatmap_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/pools/nonexistent/heatmap", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/pools/nonexistent/heatmap", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -369,7 +369,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteNetworkPool", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/pools/"+poolID, nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/pools/"+poolID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -379,7 +379,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteNetworkPool_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/pools/nonexistent", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/pools/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -389,7 +389,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteNetwork", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/networks/"+netID, nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/networks/"+netID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -399,7 +399,7 @@ func TestNetworkHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteNetwork_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/networks/nonexistent", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/networks/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

@@ -33,7 +33,7 @@ func DeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err := c.DoRequest("DELETE", "/api/reservations/"+reservationID, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/reservations/"+reservationID, nil)
 			if err != nil {
 				return err
 			}

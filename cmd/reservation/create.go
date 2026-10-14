@@ -53,7 +53,7 @@ func CreateCommand() *cli.Command {
 				return err
 			}
 
-			resp, err := c.DoRequest("POST", "/api/reservations", bytes.NewReader(body))
+			resp, err := c.DoRequest("POST", "/api/v1/reservations", bytes.NewReader(body))
 			if err != nil {
 				return err
 			}

@@ -39,7 +39,7 @@ func DevicesCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/devices", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/devices", nil)
 			if err != nil {
 				return err
 			}
@@ -94,7 +94,7 @@ func NetworksCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/networks", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/networks", nil)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func DatacentersCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/datacenters", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/datacenters", nil)
 			if err != nil {
 				return err
 			}
@@ -214,7 +214,7 @@ func AllCommand() *cli.Command {
 			var datacenters []model.Datacenter
 
 			// Get devices
-			resp, err := c.DoRequest("GET", "/api/devices", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/devices", nil)
 			if err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ func AllCommand() *cli.Command {
 			_ = resp.Body.Close()
 
 			// Get networks
-			resp, err = c.DoRequest("GET", "/api/networks", nil)
+			resp, err = c.DoRequest("GET", "/api/v1/networks", nil)
 			if err != nil {
 				return err
 			}
@@ -238,7 +238,7 @@ func AllCommand() *cli.Command {
 			_ = resp.Body.Close()
 
 			// Get datacenters
-			resp, err = c.DoRequest("GET", "/api/datacenters", nil)
+			resp, err = c.DoRequest("GET", "/api/v1/datacenters", nil)
 			if err != nil {
 				return err
 			}

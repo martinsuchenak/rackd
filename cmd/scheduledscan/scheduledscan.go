@@ -38,7 +38,7 @@ func listCommand() *cli.Command {
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
 
-			path := "/api/scheduled-scans"
+			path := "/api/v1/scheduled-scans"
 			if nid := cmd.GetString("network"); nid != "" {
 				path += "?" + url.Values{"network_id": {nid}}.Encode()
 			}
@@ -94,7 +94,7 @@ func getCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("GET", "/api/scheduled-scans/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("GET", "/api/v1/scheduled-scans/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}
@@ -145,7 +145,7 @@ func createCommand() *cli.Command {
 				body["description"] = desc
 			}
 
-			resp, err := c.DoRequest("POST", "/api/scheduled-scans", body)
+			resp, err := c.DoRequest("POST", "/api/v1/scheduled-scans", body)
 			if err != nil {
 				return err
 			}
@@ -182,7 +182,7 @@ func updateCommand() *cli.Command {
 			c := client.NewClient(client.LoadConfig())
 
 			// Fetch current
-			resp, err := c.DoRequest("GET", "/api/scheduled-scans/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("GET", "/api/v1/scheduled-scans/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}
@@ -218,7 +218,7 @@ func updateCommand() *cli.Command {
 				body["description"] = v
 			}
 
-			resp2, err := c.DoRequest("PUT", "/api/scheduled-scans/"+cmd.GetString("id"), body)
+			resp2, err := c.DoRequest("PUT", "/api/v1/scheduled-scans/"+cmd.GetString("id"), body)
 			if err != nil {
 				return err
 			}
@@ -242,7 +242,7 @@ func deleteCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("DELETE", "/api/scheduled-scans/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/scheduled-scans/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}

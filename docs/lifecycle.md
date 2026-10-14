@@ -36,7 +36,7 @@ The device model includes status-related fields:
 ### List Devices by Status
 
 ```http
-GET /api/devices?status=active
+GET /api/v1/devices?status=active
 ```
 
 Filter devices by status:
@@ -48,7 +48,7 @@ Filter devices by status:
 ### Get Status Counts
 
 ```http
-GET /api/devices/status-counts
+GET /api/v1/devices/status-counts
 ```
 
 **Response:**
@@ -64,7 +64,7 @@ GET /api/devices/status-counts
 ### Update Device Status
 
 ```http
-PUT /api/devices/{id}
+PUT /api/v1/devices/{id}
 ```
 
 ```json
@@ -81,7 +81,7 @@ Status changes are automatically tracked:
 ### Schedule Decommission
 
 ```http
-PUT /api/devices/{id}
+PUT /api/v1/devices/{id}
 ```
 
 ```json
@@ -228,7 +228,7 @@ Get overview of infrastructure state:
 
 ```bash
 # Via API
-curl /api/devices/status-counts
+curl /api/v1/devices/status-counts
 
 # Via dashboard
 # View "Device Status" widget

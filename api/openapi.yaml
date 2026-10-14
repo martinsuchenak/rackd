@@ -1,7 +1,12 @@
 openapi: 3.1.0
 info:
   title: Rackd API
-  description: Infrastructure management API for devices, networks, datacenters, and discovery
+  description: |
+    Infrastructure management API for devices, networks, datacenters, and discovery.
+
+    Every path is under `/api/v1`. Within v1, changes are backward compatible; breaking
+    changes go into a new version. The unversioned `/api/...` paths are deprecated aliases
+    and are removed in the first release on or after 14 April 2027. See docs/api.md.
   version: 1.0.0
   contact:
     name: Rackd
@@ -1163,7 +1168,7 @@ components:
 
 paths:
   # ── Datacenters ──
-  /api/datacenters:
+  /api/v1/datacenters:
     get:
       operationId: listDatacenters
       tags: [Datacenters]
@@ -1204,7 +1209,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/datacenters/{id}:
+  /api/v1/datacenters/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1249,7 +1254,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/datacenters/{id}/devices:
+  /api/v1/datacenters/{id}/devices:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1272,7 +1277,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Networks ──
-  /api/networks:
+  /api/v1/networks:
     get:
       operationId: listNetworks
       tags: [Networks]
@@ -1319,7 +1324,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/networks/{id}:
+  /api/v1/networks/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1364,7 +1369,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/networks/{id}/devices:
+  /api/v1/networks/{id}/devices:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1386,7 +1391,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/networks/{id}/utilization:
+  /api/v1/networks/{id}/utilization:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1403,7 +1408,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/networks/{id}/pools:
+  /api/v1/networks/{id}/pools:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1446,7 +1451,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Pools ──
-  /api/pools/{id}:
+  /api/v1/pools/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1491,7 +1496,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/pools/{id}/next-ip:
+  /api/v1/pools/{id}/next-ip:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1508,7 +1513,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/pools/{id}/heatmap:
+  /api/v1/pools/{id}/heatmap:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1525,7 +1530,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/pools/{id}/reservations:
+  /api/v1/pools/{id}/reservations:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1548,7 +1553,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Devices ──
-  /api/devices:
+  /api/v1/devices:
     get:
       operationId: listDevices
       tags: [Devices]
@@ -1596,7 +1601,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/status-counts:
+  /api/v1/devices/status-counts:
     get:
       operationId: getDeviceStatusCounts
       tags: [Devices]
@@ -1610,7 +1615,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/search:
+  /api/v1/devices/search:
     get:
       operationId: searchDevices
       tags: [Devices]
@@ -1636,7 +1641,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/{id}:
+  /api/v1/devices/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1682,7 +1687,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Dashboard ──
-  /api/dashboard:
+  /api/v1/dashboard:
     get:
       operationId: getDashboard
       tags: [Dashboard]
@@ -1696,7 +1701,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dashboard/trend:
+  /api/v1/dashboard/trend:
     get:
       operationId: getDashboardTrend
       tags: [Dashboard]
@@ -1716,7 +1721,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Relationships ──
-  /api/relationships:
+  /api/v1/relationships:
     get:
       operationId: listRelationships
       tags: [Relationships]
@@ -1738,7 +1743,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/{id}/relationships:
+  /api/v1/devices/{id}/relationships:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -1777,7 +1782,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/{id}/related:
+  /api/v1/devices/{id}/related:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1796,7 +1801,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/{id}/relationships/{child_id}/{type}:
+  /api/v1/devices/{id}/relationships/{child_id}/{type}:
     parameters:
       - $ref: '#/components/parameters/idPath'
       - name: child_id
@@ -1837,7 +1842,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Discovery ──
-  /api/discovery/networks/{id}/scan:
+  /api/v1/discovery/networks/{id}/scan:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -1860,7 +1865,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/scans:
+  /api/v1/discovery/scans:
     get:
       operationId: listDiscoveryScans
       tags: [Discovery]
@@ -1885,7 +1890,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/scans/{id}:
+  /api/v1/discovery/scans/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -1910,7 +1915,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/scans/{id}/cancel:
+  /api/v1/discovery/scans/{id}/cancel:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -1927,7 +1932,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/devices:
+  /api/v1/discovery/devices:
     get:
       operationId: listDiscoveredDevices
       tags: [Discovery]
@@ -1959,7 +1964,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/devices/{id}:
+  /api/v1/discovery/devices/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     delete:
@@ -1971,7 +1976,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/devices/{id}/promote:
+  /api/v1/discovery/devices/{id}/promote:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -1994,7 +1999,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/rules:
+  /api/v1/discovery/rules:
     get:
       operationId: listDiscoveryRules
       tags: [Discovery]
@@ -2032,7 +2037,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/discovery/rules/{id}:
+  /api/v1/discovery/rules/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2078,7 +2083,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Credentials ──
-  /api/credentials:
+  /api/v1/credentials:
     get:
       operationId: listCredentials
       tags: [Credentials]
@@ -2116,7 +2121,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/credentials/{id}:
+  /api/v1/credentials/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2162,7 +2167,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Scan Profiles ──
-  /api/scan-profiles:
+  /api/v1/scan-profiles:
     get:
       operationId: listScanProfiles
       tags: [Scan Profiles]
@@ -2200,7 +2205,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/scan-profiles/{id}:
+  /api/v1/scan-profiles/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2246,7 +2251,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Scheduled Scans ──
-  /api/scheduled-scans:
+  /api/v1/scheduled-scans:
     get:
       operationId: listScheduledScans
       tags: [Scheduled Scans]
@@ -2284,7 +2289,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/scheduled-scans/{id}:
+  /api/v1/scheduled-scans/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2330,7 +2335,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── API Keys ──
-  /api/keys:
+  /api/v1/keys:
     get:
       operationId: listAPIKeys
       tags: [API Keys]
@@ -2368,7 +2373,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/keys/{id}:
+  /api/v1/keys/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2394,7 +2399,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Bulk Operations ──
-  /api/devices/bulk:
+  /api/v1/devices/bulk:
     post:
       operationId: bulkCreateDevices
       tags: [Bulk Operations]
@@ -2457,7 +2462,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/bulk/tags:
+  /api/v1/devices/bulk/tags:
     post:
       operationId: bulkAddDeviceTags
       tags: [Bulk Operations]
@@ -2497,7 +2502,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/networks/bulk:
+  /api/v1/networks/bulk:
     post:
       operationId: bulkCreateNetworks
       tags: [Bulk Operations]
@@ -2540,7 +2545,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Search ──
-  /api/search:
+  /api/v1/search:
     get:
       operationId: search
       tags: [Search]
@@ -2563,7 +2568,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Audit ──
-  /api/audit:
+  /api/v1/audit:
     get:
       operationId: listAuditLogs
       tags: [Audit]
@@ -2604,7 +2609,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/audit/export:
+  /api/v1/audit/export:
     get:
       operationId: exportAuditLogs
       tags: [Audit]
@@ -2649,7 +2654,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/audit/{id}:
+  /api/v1/audit/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2668,7 +2673,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Logs ──
-  /api/logs:
+  /api/v1/logs:
     get:
       operationId: listLogs
       tags: [Logs]
@@ -2703,7 +2708,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/logs/export:
+  /api/v1/logs/export:
     get:
       operationId: exportLogs
       tags: [Logs]
@@ -2742,7 +2747,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/logs/{id}:
+  /api/v1/logs/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2761,7 +2766,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Auth ──
-  /api/config:
+  /api/v1/config:
     get:
       operationId: getUIConfig
       tags: [Auth]
@@ -2778,7 +2783,7 @@ paths:
                 $ref: '#/components/schemas/UIConfig'
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       operationId: login
       tags: [Auth]
@@ -2800,7 +2805,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       operationId: logout
       tags: [Auth]
@@ -2809,7 +2814,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       operationId: getCurrentUser
       tags: [Auth]
@@ -2824,7 +2829,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Users ──
-  /api/users:
+  /api/v1/users:
     get:
       operationId: listUsers
       tags: [Users]
@@ -2864,7 +2869,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/{id}:
+  /api/v1/users/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -2912,7 +2917,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/{id}/password:
+  /api/v1/users/{id}/password:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -2932,7 +2937,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/{id}/reset-password:
+  /api/v1/users/{id}/reset-password:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -2952,7 +2957,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/grant-role:
+  /api/v1/users/grant-role:
     post:
       operationId: grantUserRole
       tags: [Users]
@@ -2969,7 +2974,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/revoke-role:
+  /api/v1/users/revoke-role:
     post:
       operationId: revokeUserRole
       tags: [Users]
@@ -2986,7 +2991,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/{id}/roles:
+  /api/v1/users/{id}/roles:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3006,7 +3011,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/users/{id}/permissions:
+  /api/v1/users/{id}/permissions:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3027,7 +3032,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Roles ──
-  /api/roles:
+  /api/v1/roles:
     get:
       operationId: listRoles
       tags: [Roles]
@@ -3067,7 +3072,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/roles/{id}:
+  /api/v1/roles/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3115,7 +3120,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/roles/{id}/permissions:
+  /api/v1/roles/{id}/permissions:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3135,7 +3140,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/permissions:
+  /api/v1/permissions:
     get:
       operationId: listPermissions
       tags: [Roles]
@@ -3304,7 +3309,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/oauth/clients:
+  /api/v1/oauth/clients:
     get:
       operationId: listOAuthClients
       tags: [OAuth]
@@ -3324,7 +3329,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/oauth/clients/{id}:
+  /api/v1/oauth/clients/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     delete:
@@ -3338,7 +3343,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Conflicts ──
-  /api/conflicts:
+  /api/v1/conflicts:
     get:
       operationId: listConflicts
       tags: [Conflicts]
@@ -3363,7 +3368,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/conflicts/summary:
+  /api/v1/conflicts/summary:
     get:
       operationId: getConflictsSummary
       tags: [Conflicts]
@@ -3377,7 +3382,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/conflicts/detect:
+  /api/v1/conflicts/detect:
     post:
       operationId: detectConflicts
       tags: [Conflicts]
@@ -3397,7 +3402,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/conflicts/{id}:
+  /api/v1/conflicts/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3422,7 +3427,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/conflicts/{id}/resolve:
+  /api/v1/conflicts/{id}/resolve:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -3446,7 +3451,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/devices/{id}/conflicts:
+  /api/v1/devices/{id}/conflicts:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3466,7 +3471,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Reservations ──
-  /api/reservations:
+  /api/v1/reservations:
     get:
       operationId: listReservations
       tags: [Reservations]
@@ -3507,7 +3512,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/reservations/{id}:
+  /api/v1/reservations/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3552,7 +3557,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/reservations/{id}/release:
+  /api/v1/reservations/{id}/release:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -3565,7 +3570,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Webhooks ──
-  /api/webhooks:
+  /api/v1/webhooks:
     get:
       operationId: listWebhooks
       tags: [Webhooks]
@@ -3603,7 +3608,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/webhooks/events:
+  /api/v1/webhooks/events:
     get:
       operationId: listWebhookEvents
       tags: [Webhooks]
@@ -3618,7 +3623,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/webhooks/{id}:
+  /api/v1/webhooks/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3663,7 +3668,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/webhooks/{id}/ping:
+  /api/v1/webhooks/{id}/ping:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -3680,7 +3685,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/webhooks/{id}/deliveries:
+  /api/v1/webhooks/{id}/deliveries:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3702,7 +3707,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/webhooks/{id}/deliveries/{deliveryId}:
+  /api/v1/webhooks/{id}/deliveries/{deliveryId}:
     parameters:
       - $ref: '#/components/parameters/idPath'
       - name: deliveryId
@@ -3724,7 +3729,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Custom Fields ──
-  /api/custom-fields:
+  /api/v1/custom-fields:
     get:
       operationId: listCustomFields
       tags: [Custom Fields]
@@ -3765,7 +3770,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/custom-fields/types:
+  /api/v1/custom-fields/types:
     get:
       operationId: listCustomFieldTypes
       tags: [Custom Fields]
@@ -3780,7 +3785,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/custom-fields/{id}:
+  /api/v1/custom-fields/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3826,7 +3831,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── Circuits ──
-  /api/circuits:
+  /api/v1/circuits:
     get:
       operationId: listCircuits
       tags: [Circuits]
@@ -3864,7 +3869,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/circuits/{id}:
+  /api/v1/circuits/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3910,7 +3915,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── NAT ──
-  /api/nat:
+  /api/v1/nat:
     get:
       operationId: listNATRules
       tags: [NAT]
@@ -3948,7 +3953,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/nat/{id}:
+  /api/v1/nat/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -3994,7 +3999,7 @@ paths:
         '500': { $ref: '#/components/responses/InternalError' }
 
   # ── DNS ──
-  /api/dns/providers:
+  /api/v1/dns/providers:
     get:
       operationId: listDNSProviders
       tags: [DNS]
@@ -4032,7 +4037,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/providers/{id}:
+  /api/v1/dns/providers/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -4077,7 +4082,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/providers/{id}/test:
+  /api/v1/dns/providers/{id}/test:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -4098,7 +4103,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/providers/{id}/zones:
+  /api/v1/dns/providers/{id}/zones:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -4120,7 +4125,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/zones:
+  /api/v1/dns/zones:
     get:
       operationId: listDNSZones
       tags: [DNS]
@@ -4161,7 +4166,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/zones/{id}:
+  /api/v1/dns/zones/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -4206,7 +4211,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/zones/{id}/sync:
+  /api/v1/dns/zones/{id}/sync:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -4223,7 +4228,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/zones/{id}/import:
+  /api/v1/dns/zones/{id}/import:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -4246,7 +4251,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/zones/{id}/records:
+  /api/v1/dns/zones/{id}/records:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -4271,7 +4276,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/records/{id}:
+  /api/v1/dns/records/{id}:
     parameters:
       - $ref: '#/components/parameters/idPath'
     get:
@@ -4316,7 +4321,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/records/{id}/link:
+  /api/v1/dns/records/{id}/link:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:
@@ -4343,7 +4348,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
 
-  /api/dns/records/{id}/promote:
+  /api/v1/dns/records/{id}/promote:
     parameters:
       - $ref: '#/components/parameters/idPath'
     post:

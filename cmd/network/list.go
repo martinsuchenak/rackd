@@ -32,7 +32,7 @@ func ListCommand() *cli.Command {
 				params.Set("vlan_id", fmt.Sprintf("%d", vlan))
 			}
 
-			path := "/api/networks"
+			path := "/api/v1/networks"
 			if len(params) > 0 {
 				path += "?" + params.Encode()
 			}

@@ -37,7 +37,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/keys", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/keys", nil)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func CreateCommand() *cli.Command {
 				req["expires_at"] = t
 			}
 
-			resp, err := c.DoRequest("POST", "/api/keys", req)
+			resp, err := c.DoRequest("POST", "/api/v1/keys", req)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func DeleteCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("DELETE", fmt.Sprintf("/api/keys/%s", id), nil)
+			resp, err := c.DoRequest("DELETE", fmt.Sprintf("/api/v1/keys/%s", id), nil)
 			if err != nil {
 				return err
 			}

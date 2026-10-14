@@ -267,8 +267,8 @@ Logs are output in key-value format:
 
 ```
 2026-02-03T12:00:00Z INFO Starting server addr=:8080
-2026-02-03T12:00:01Z DEBUG HTTP request started method=GET path=/api/devices
-2026-02-03T12:00:01Z DEBUG HTTP request completed method=GET path=/api/devices status=200 duration_ms=45
+2026-02-03T12:00:01Z DEBUG HTTP request started method=GET path=/api/v1/devices
+2026-02-03T12:00:01Z DEBUG HTTP request completed method=GET path=/api/v1/devices status=200 duration_ms=45
 ```
 
 ### HTTP Request Logging
@@ -283,8 +283,8 @@ All HTTP requests are logged with:
 
 Example:
 ```
-DEBUG HTTP request started method=GET path=/api/devices query=datacenter_id=123 remote_addr=192.168.1.100:54321
-DEBUG HTTP request completed method=GET path=/api/devices status=200 duration_ms=45
+DEBUG HTTP request started method=GET path=/api/v1/devices query=datacenter_id=123 remote_addr=192.168.1.100:54321
+DEBUG HTTP request completed method=GET path=/api/v1/devices status=200 duration_ms=45
 ```
 
 ## Monitoring Best Practices

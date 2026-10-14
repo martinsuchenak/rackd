@@ -41,7 +41,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	// Test search — inject system caller so service layer RBAC allows access
-	req := httptest.NewRequest("GET", "/api/search?q=Production", nil)
+	req := httptest.NewRequest("GET", "/api/v1/search?q=Production", nil)
 	req = req.WithContext(service.SystemContext(req.Context(), "test"))
 	w := httptest.NewRecorder()
 

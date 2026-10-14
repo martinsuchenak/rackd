@@ -206,7 +206,7 @@ echo $RACKD_TOKEN
 export RACKD_TOKEN=your-secret-token
 
 # Or pass in request
-curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/devices
+curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/v1/devices
 ```
 
 #### Token Mismatch
@@ -340,7 +340,7 @@ rackd device list --timeout 60s
 
 # Check network connectivity
 ping localhost
-curl http://localhost:8080/api/config
+curl http://localhost:8080/api/v1/config
 ```
 
 ## Discovery Issues
@@ -362,7 +362,7 @@ export RACKD_DISCOVERY_ENABLED=true
 rackd discovery list
 
 # Cancel stuck scan
-curl -X DELETE http://localhost:8080/api/discovery/scans/<scan-id>
+curl -X DELETE http://localhost:8080/api/v1/discovery/scans/<scan-id>
 
 # Check logs for errors
 journalctl -u rackd | grep discovery
@@ -474,7 +474,7 @@ task build:local
 
 ```bash
 # Check API is accessible
-curl http://localhost:8080/api/config
+curl http://localhost:8080/api/v1/config
 
 # Check authentication
 # If API requires token, UI needs it too

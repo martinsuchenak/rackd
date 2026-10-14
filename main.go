@@ -41,7 +41,7 @@ var (
 
 func init() {
 	// Publish ldflags-injected build info for the internal packages
-	// (e.g. the /api/config UI endpoint).
+	// (e.g. the /api/v1/config UI endpoint).
 	buildversion.Version = version
 	buildversion.Commit = commit
 	buildversion.Date = date

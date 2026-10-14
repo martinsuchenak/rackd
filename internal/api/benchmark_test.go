@@ -281,7 +281,7 @@ func BenchmarkHTTPListDevices(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := env.authReq(httptest.NewRequest("GET", "/api/devices?limit=50", nil))
+		req := env.authReq(httptest.NewRequest("GET", "/api/v1/devices?limit=50", nil))
 		w := httptest.NewRecorder()
 		env.mux.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -297,7 +297,7 @@ func BenchmarkHTTPGetDevice(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := env.authReq(httptest.NewRequest("GET", "/api/devices/"+ids[i%len(ids)], nil))
+		req := env.authReq(httptest.NewRequest("GET", "/api/v1/devices/"+ids[i%len(ids)], nil))
 		w := httptest.NewRecorder()
 		env.mux.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -317,7 +317,7 @@ func BenchmarkHTTPCreateDevice(b *testing.B) {
 			"hostname": fmt.Sprintf("h-%d.local", i),
 			"status":   "active",
 		})
-		req := env.authReq(httptest.NewRequest("POST", "/api/devices", bytes.NewReader(body)))
+		req := env.authReq(httptest.NewRequest("POST", "/api/v1/devices", bytes.NewReader(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		env.mux.ServeHTTP(w, req)
@@ -336,7 +336,7 @@ func BenchmarkHTTPSearchGlobal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		q := queries[i%len(queries)]
-		req := env.authReq(httptest.NewRequest("GET", "/api/search?q="+q, nil))
+		req := env.authReq(httptest.NewRequest("GET", "/api/v1/search?q="+q, nil))
 		w := httptest.NewRecorder()
 		env.mux.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -386,7 +386,7 @@ func BenchmarkMiddlewareChain(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := env.authReq(httptest.NewRequest("GET", "/api/devices?limit=10", nil))
+		req := env.authReq(httptest.NewRequest("GET", "/api/v1/devices?limit=10", nil))
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {

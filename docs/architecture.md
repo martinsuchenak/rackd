@@ -286,8 +286,8 @@ Optional: Promote to Inventory
 
 **Example**:
 ```go
-mux.HandleFunc("GET /api/devices/{id}", handler)
-mux.HandleFunc("PUT /api/devices/{id}", handler)
+mux.HandleFunc("GET /api/v1/devices/{id}", handler)
+mux.HandleFunc("PUT /api/v1/devices/{id}", handler)
 ```
 
 ## Security Architecture

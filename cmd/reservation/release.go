@@ -22,7 +22,7 @@ func ReleaseCommand() *cli.Command {
 			c := client.NewClient(cfg)
 			reservationID := cmd.GetString("id")
 
-			resp, err := c.DoRequest("POST", "/api/reservations/"+reservationID+"/release", nil)
+			resp, err := c.DoRequest("POST", "/api/v1/reservations/"+reservationID+"/release", nil)
 			if err != nil {
 				return err
 			}

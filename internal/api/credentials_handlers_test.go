@@ -16,7 +16,7 @@ func TestCredentialHandlers(t *testing.T) {
 
 	t.Run("CreateGetUpdateDeleteCredential", func(t *testing.T) {
 		body := `{"name":"phase2-ssh","type":"ssh_key","ssh_username":"admin","ssh_key_id":"key-1"}`
-		req := authReq(httptest.NewRequest("POST", "/api/credentials", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/credentials", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusCreated {
@@ -28,45 +28,45 @@ func TestCredentialHandlers(t *testing.T) {
 			t.Fatalf("failed to decode credential: %v", err)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/credentials/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/credentials/"+created.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/credentials/"+created.ID, bytes.NewBufferString(`{"name":"phase2-ssh-updated","type":"ssh_key","ssh_username":"root","ssh_key_id":"key-2"}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/credentials/"+created.ID, bytes.NewBufferString(`{"name":"phase2-ssh-updated","type":"ssh_key","ssh_username":"root","ssh_key_id":"key-2"}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/credentials/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/credentials/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d", w.Code)
 		}
 	})
 
 	t.Run("CreateCredential_InvalidJSON", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/credentials", bytes.NewBufferString("{"))))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/credentials", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 	})
 
 	t.Run("Credential_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/credentials/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/credentials/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/credentials/nonexistent", bytes.NewBufferString(`{"name":"missing","type":"ssh_key","ssh_username":"root","ssh_key_id":"key-2"}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/credentials/nonexistent", bytes.NewBufferString(`{"name":"missing","type":"ssh_key","ssh_username":"root","ssh_key_id":"key-2"}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/credentials/nonexistent", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/credentials/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
@@ -75,13 +75,13 @@ func TestCredentialHandlers(t *testing.T) {
 	t.Run("Credential_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := env.createAPIUser(t, "limited-credential-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/credentials", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/credentials", nil), limitedToken)
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/credentials", bytes.NewBufferString(`{"name":"limited-ssh","type":"ssh_key","ssh_username":"admin","ssh_key_id":"key-1"}`)), limitedToken)
+		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/credentials", bytes.NewBufferString(`{"name":"limited-ssh","type":"ssh_key","ssh_username":"admin","ssh_key_id":"key-1"}`)), limitedToken)
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusForbidden {

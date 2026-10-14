@@ -37,7 +37,7 @@ func poolListCommand() *cli.Command {
 			c := client.NewClient(cfg)
 			networkID := cmd.GetString("network")
 
-			resp, err := c.DoRequest("GET", "/api/networks/"+networkID+"/pools", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/networks/"+networkID+"/pools", nil)
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,7 @@ func poolAddCommand() *cli.Command {
 				Description: cmd.GetString("description"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/networks/"+networkID+"/pools", pool)
+			resp, err := c.DoRequest("POST", "/api/v1/networks/"+networkID+"/pools", pool)
 			if err != nil {
 				return err
 			}

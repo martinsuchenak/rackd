@@ -26,7 +26,7 @@ func ResolveCommand() *cli.Command {
 			conflictID := cmd.GetString("id")
 
 			// First, get the conflict to determine its type
-			resp, err := c.DoRequest("GET", "/api/conflicts/"+conflictID, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/conflicts/"+conflictID, nil)
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func ResolveCommand() *cli.Command {
 			}
 
 			// Resolve the conflict
-			resp2, err := c.DoRequest("POST", "/api/conflicts/resolve", resolution)
+			resp2, err := c.DoRequest("POST", "/api/v1/conflicts/resolve", resolution)
 			if err != nil {
 				return err
 			}

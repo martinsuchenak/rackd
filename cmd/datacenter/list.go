@@ -20,7 +20,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/datacenters", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/datacenters", nil)
 			if err != nil {
 				return err
 			}

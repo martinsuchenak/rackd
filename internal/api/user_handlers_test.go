@@ -15,12 +15,12 @@ func TestUserHandlers(t *testing.T) {
 	defer env.close()
 
 	t.Run("ListAndGetUsers", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/users", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/users", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/users/test-user-id", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/users/test-user-id", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
@@ -28,7 +28,7 @@ func TestUserHandlers(t *testing.T) {
 
 	t.Run("CreateAndUpdateUser", func(t *testing.T) {
 		body := `{"username":"phase2-user","email":"phase2@example.com","password":"testpass123","full_name":"Phase Two"}`
-		req := authReq(httptest.NewRequest("POST", "/api/users", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/users", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusCreated {
@@ -40,7 +40,7 @@ func TestUserHandlers(t *testing.T) {
 			t.Fatalf("failed to decode user response: %v", err)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/users/"+created.ID, bytes.NewBufferString(`{"full_name":"Updated User"}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/users/"+created.ID, bytes.NewBufferString(`{"full_name":"Updated User"}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusOK {
@@ -49,7 +49,7 @@ func TestUserHandlers(t *testing.T) {
 	})
 
 	t.Run("UpdateUser_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("PUT", "/api/users/test-user-id", bytes.NewBufferString("{")))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/users/test-user-id", bytes.NewBufferString("{")))
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
@@ -57,7 +57,7 @@ func TestUserHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateUser_DuplicateUsername", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/users", bytes.NewBufferString(`{"username":"testuser","email":"dupe@example.com","password":"testpass123"}`)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/users", bytes.NewBufferString(`{"username":"testuser","email":"dupe@example.com","password":"testpass123"}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusConflict {
@@ -66,14 +66,14 @@ func TestUserHandlers(t *testing.T) {
 	})
 
 	t.Run("GetUser_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/users/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/users/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 	})
 
 	t.Run("UpdateUser_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("PUT", "/api/users/nonexistent", bytes.NewBufferString(`{"full_name":"Missing"}`)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/users/nonexistent", bytes.NewBufferString(`{"full_name":"Missing"}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusNotFound {
@@ -82,14 +82,14 @@ func TestUserHandlers(t *testing.T) {
 	})
 
 	t.Run("ChangeAndResetPassword", func(t *testing.T) {
-		changeReq := authReq(httptest.NewRequest("POST", "/api/users/test-user-id/password", bytes.NewBufferString(`{"old_password":"test-password","new_password":"new-password-123"}`)))
+		changeReq := authReq(httptest.NewRequest("POST", "/api/v1/users/test-user-id/password", bytes.NewBufferString(`{"old_password":"test-password","new_password":"new-password-123"}`)))
 		changeReq.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, changeReq)
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReq(httptest.NewRequest("POST", "/api/users", bytes.NewBufferString(`{"username":"reset-target","email":"reset@example.com","password":"testpass123"}`)))
+		createReq := authReq(httptest.NewRequest("POST", "/api/v1/users", bytes.NewBufferString(`{"username":"reset-target","email":"reset@example.com","password":"testpass123"}`)))
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusCreated {
@@ -100,7 +100,7 @@ func TestUserHandlers(t *testing.T) {
 			t.Fatalf("failed to decode reset target: %v", err)
 		}
 
-		resetReq := authReq(httptest.NewRequest("POST", "/api/users/"+created.ID+"/reset-password", bytes.NewBufferString(`{"new_password":"reset-password-123"}`)))
+		resetReq := authReq(httptest.NewRequest("POST", "/api/v1/users/"+created.ID+"/reset-password", bytes.NewBufferString(`{"new_password":"reset-password-123"}`)))
 		resetReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, resetReq)
 		if w.Code != http.StatusNoContent {
@@ -109,7 +109,7 @@ func TestUserHandlers(t *testing.T) {
 	})
 
 	t.Run("ResetPassword_ForbiddenWithoutPermission", func(t *testing.T) {
-		targetReq := authReq(httptest.NewRequest("POST", "/api/users", bytes.NewBufferString(`{"username":"limited-reset-target","email":"limited-reset@example.com","password":"testpass123"}`)))
+		targetReq := authReq(httptest.NewRequest("POST", "/api/v1/users", bytes.NewBufferString(`{"username":"limited-reset-target","email":"limited-reset@example.com","password":"testpass123"}`)))
 		targetReq.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, targetReq)
 		if w.Code != http.StatusCreated {
@@ -122,7 +122,7 @@ func TestUserHandlers(t *testing.T) {
 		}
 
 		_, limitedToken := env.createAPIUser(t, "limited-user-phase2")
-		resetReq := authReqWithToken(httptest.NewRequest("POST", "/api/users/"+target.ID+"/reset-password", bytes.NewBufferString(`{"new_password":"reset-password-123"}`)), limitedToken)
+		resetReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/users/"+target.ID+"/reset-password", bytes.NewBufferString(`{"new_password":"reset-password-123"}`)), limitedToken)
 		resetReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, resetReq)
 		if w.Code != http.StatusForbidden {

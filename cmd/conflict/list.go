@@ -31,7 +31,7 @@ func ListCommand() *cli.Command {
 				params.Set("status", s)
 			}
 
-			path := "/api/conflicts"
+			path := "/api/v1/conflicts"
 			if len(params) > 0 {
 				path += "?" + params.Encode()
 			}

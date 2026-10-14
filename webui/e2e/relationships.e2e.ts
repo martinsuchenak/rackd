@@ -31,7 +31,7 @@ test('@inventory @relationships device detail supports relationship note edit an
 
   const parentID = getIDByName('devices', parentName);
   const childID = getIDByName('devices', childName);
-  const addResponse = await page.request.post(`/api/devices/${parentID}/relationships`, {
+  const addResponse = await page.request.post(`/api/v1/devices/${parentID}/relationships`, {
     headers: {
       'X-Requested-With': 'XMLHttpRequest',
     },

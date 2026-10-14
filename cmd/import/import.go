@@ -91,7 +91,7 @@ func DevicesCommand() *cli.Command {
 			}
 
 			// Use bulk create endpoint
-			resp, err := c.DoRequest("POST", "/api/devices/bulk", devicePtrs)
+			resp, err := c.DoRequest("POST", "/api/v1/devices/bulk", devicePtrs)
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
@@ -193,7 +193,7 @@ func NetworksCommand() *cli.Command {
 			}
 
 			// Use bulk create endpoint
-			resp, err := c.DoRequest("POST", "/api/networks/bulk", networkPtrs)
+			resp, err := c.DoRequest("POST", "/api/v1/networks/bulk", networkPtrs)
 			if err != nil {
 				return fmt.Errorf("bulk import failed: %w", err)
 			}
@@ -290,7 +290,7 @@ func DatacentersCommand() *cli.Command {
 			result := importdata.ImportResult{Total: len(datacenters)}
 
 			for _, datacenter := range datacenters {
-				resp, err := c.DoRequest("POST", "/api/datacenters", datacenter)
+				resp, err := c.DoRequest("POST", "/api/v1/datacenters", datacenter)
 				if err != nil {
 					result.Failed++
 					result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", datacenter.Name, err))

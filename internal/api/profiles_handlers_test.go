@@ -16,7 +16,7 @@ func TestProfileHandlers(t *testing.T) {
 
 	t.Run("CreateGetUpdateDeleteProfile", func(t *testing.T) {
 		body := `{"name":"phase2-profile","scan_type":"quick","timeout_sec":30,"max_workers":10}`
-		req := authReq(httptest.NewRequest("POST", "/api/scan-profiles", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/scan-profiles", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusCreated {
@@ -28,45 +28,45 @@ func TestProfileHandlers(t *testing.T) {
 			t.Fatalf("failed to decode profile: %v", err)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/scan-profiles/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/scan-profiles/"+created.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/scan-profiles/"+created.ID, bytes.NewBufferString(`{"name":"phase2-profile-updated","scan_type":"quick","timeout_sec":45,"max_workers":10}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/scan-profiles/"+created.ID, bytes.NewBufferString(`{"name":"phase2-profile-updated","scan_type":"quick","timeout_sec":45,"max_workers":10}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/scan-profiles/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/scan-profiles/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d", w.Code)
 		}
 	})
 
 	t.Run("CreateProfile_InvalidJSON", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/scan-profiles", bytes.NewBufferString("{"))))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/scan-profiles", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 	})
 
 	t.Run("Profile_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/scan-profiles/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/scan-profiles/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/scan-profiles/nonexistent", bytes.NewBufferString(`{"name":"missing","scan_type":"quick","timeout_sec":30,"max_workers":10}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/scan-profiles/nonexistent", bytes.NewBufferString(`{"name":"missing","scan_type":"quick","timeout_sec":30,"max_workers":10}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/scan-profiles/nonexistent", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/scan-profiles/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
@@ -75,13 +75,13 @@ func TestProfileHandlers(t *testing.T) {
 	t.Run("Profile_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := env.createAPIUser(t, "limited-profile-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/scan-profiles", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/scan-profiles", nil), limitedToken)
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/scan-profiles", bytes.NewBufferString(`{"name":"limited","scan_type":"quick","timeout_sec":30,"max_workers":10}`)), limitedToken)
+		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/scan-profiles", bytes.NewBufferString(`{"name":"limited","scan_type":"quick","timeout_sec":30,"max_workers":10}`)), limitedToken)
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusForbidden {

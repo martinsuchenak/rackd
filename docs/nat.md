@@ -38,7 +38,7 @@ Each NAT mapping contains:
 ### List NAT Mappings
 
 ```http
-GET /api/nat
+GET /api/v1/nat
 ```
 
 Query parameters:
@@ -70,13 +70,13 @@ Query parameters:
 ### Get NAT Mapping
 
 ```http
-GET /api/nat/{id}
+GET /api/v1/nat/{id}
 ```
 
 ### Create NAT Mapping
 
 ```http
-POST /api/nat
+POST /api/v1/nat
 ```
 
 **Request body:**
@@ -99,7 +99,7 @@ Required fields: `name`, `external_ip`, `external_port`, `internal_ip`, `interna
 ### Update NAT Mapping
 
 ```http
-PUT /api/nat/{id}
+PUT /api/v1/nat/{id}
 ```
 
 All fields are optional for partial updates.
@@ -107,7 +107,7 @@ All fields are optional for partial updates.
 ### Delete NAT Mapping
 
 ```http
-DELETE /api/nat/{id}
+DELETE /api/v1/nat/{id}
 ```
 
 ## CLI Commands

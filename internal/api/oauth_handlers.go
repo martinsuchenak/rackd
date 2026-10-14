@@ -292,7 +292,7 @@ func (h *Handler) oauthRevoke(w http.ResponseWriter, r *http.Request) {
 }
 
 // oauthListClients lists registered OAuth clients (admin only).
-// GET /api/oauth/clients
+// GET /api/v1/oauth/clients
 func (h *Handler) oauthListClients(w http.ResponseWriter, r *http.Request) {
 	clients, err := h.svc.OAuth.ListClients(r.Context())
 	if err != nil {
@@ -303,7 +303,7 @@ func (h *Handler) oauthListClients(w http.ResponseWriter, r *http.Request) {
 }
 
 // oauthDeleteClient deletes an OAuth client (admin only).
-// DELETE /api/oauth/clients/{id}
+// DELETE /api/v1/oauth/clients/{id}
 func (h *Handler) oauthDeleteClient(w http.ResponseWriter, r *http.Request) {
 	clientID := r.PathValue("id")
 	if err := h.svc.OAuth.DeleteClient(r.Context(), clientID); err != nil {

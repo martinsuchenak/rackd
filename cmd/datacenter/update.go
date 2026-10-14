@@ -37,7 +37,7 @@ func UpdateCommand() *cli.Command {
 				updates["location"] = v
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/datacenters/"+dcID, updates)
+			resp, err := c.DoRequest("PUT", "/api/v1/datacenters/"+dcID, updates)
 			if err != nil {
 				return err
 			}

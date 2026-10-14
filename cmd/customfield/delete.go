@@ -25,7 +25,7 @@ func DeleteCommand() *cli.Command {
 			id := cmd.GetString("id")
 
 			// Get the field first to show what will be deleted
-			resp, err := c.DoRequest("GET", "/api/custom-fields/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/custom-fields/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -54,7 +54,7 @@ func DeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err = c.DoRequest("DELETE", "/api/custom-fields/"+id, nil)
+			resp, err = c.DoRequest("DELETE", "/api/v1/custom-fields/"+id, nil)
 			if err != nil {
 				return err
 			}

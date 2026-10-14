@@ -18,7 +18,7 @@ func TestDashboardHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("GetDashboardStats_Empty", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/dashboard", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/dashboard", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -38,7 +38,7 @@ func TestDashboardHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDashboardStats_WithParams", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/dashboard?stale_days=14&recent_limit=5", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/dashboard?stale_days=14&recent_limit=5", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -57,7 +57,7 @@ func TestDashboardHandlers(t *testing.T) {
 	})
 
 	t.Run("GetDashboardStats_Unauthenticated", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/dashboard", nil)
+		req := httptest.NewRequest("GET", "/api/v1/dashboard", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -67,7 +67,7 @@ func TestDashboardHandlers(t *testing.T) {
 	})
 
 	t.Run("GetUtilizationTrend_MissingResourceID", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/dashboard/trend", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/dashboard/trend", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -79,7 +79,7 @@ func TestDashboardHandlers(t *testing.T) {
 	t.Run("GetUtilizationTrend_NetworkType", func(t *testing.T) {
 		// Create a network first
 		networkBody := `{"name":"Test Network","subnet":"192.168.1.0/24"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(networkBody)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(networkBody)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -88,7 +88,7 @@ func TestDashboardHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &network)
 
 		// Get trend for the network
-		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=network&resource_id="+network.ID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/dashboard/trend?type=network&resource_id="+network.ID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -110,7 +110,7 @@ func TestDashboardHandlers(t *testing.T) {
 	t.Run("GetUtilizationTrend_PoolType", func(t *testing.T) {
 		// Create a network and pool first
 		networkBody := `{"name":"Test Network 2","subnet":"192.168.2.0/24"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(networkBody)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(networkBody)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -120,7 +120,7 @@ func TestDashboardHandlers(t *testing.T) {
 
 		// Create pool
 		poolBody := `{"network_id":"` + network.ID + `","name":"Test Pool","start_ip":"192.168.2.100","end_ip":"192.168.2.200"}`
-		req = authReq(httptest.NewRequest("POST", "/api/networks/"+network.ID+"/pools", bytes.NewBufferString(poolBody)))
+		req = authReq(httptest.NewRequest("POST", "/api/v1/networks/"+network.ID+"/pools", bytes.NewBufferString(poolBody)))
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -129,7 +129,7 @@ func TestDashboardHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &pool)
 
 		// Get trend for the pool
-		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=pool&resource_id="+pool.ID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/dashboard/trend?type=pool&resource_id="+pool.ID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -146,7 +146,7 @@ func TestDashboardHandlers(t *testing.T) {
 	t.Run("GetUtilizationTrend_WithDaysParam", func(t *testing.T) {
 		// Create a network first
 		networkBody := `{"name":"Test Network 3","subnet":"192.168.3.0/24"}`
-		req := authReq(httptest.NewRequest("POST", "/api/networks", bytes.NewBufferString(networkBody)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/networks", bytes.NewBufferString(networkBody)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -155,7 +155,7 @@ func TestDashboardHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &network)
 
 		// Get trend with days parameter
-		req = authReq(httptest.NewRequest("GET", "/api/dashboard/trend?type=network&resource_id="+network.ID+"&days=7", nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/dashboard/trend?type=network&resource_id="+network.ID+"&days=7", nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -165,7 +165,7 @@ func TestDashboardHandlers(t *testing.T) {
 	})
 
 	t.Run("GetUtilizationTrend_Unauthenticated", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/dashboard/trend?resource_id=test", nil)
+		req := httptest.NewRequest("GET", "/api/v1/dashboard/trend?resource_id=test", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

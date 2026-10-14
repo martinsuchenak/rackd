@@ -257,31 +257,31 @@ func TestOutputFormats_Table(t *testing.T) {
 func TestMockAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/devices" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/devices" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "1", "name": "test-device"},
 			})
-		case r.URL.Path == "/api/devices/1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/devices/1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "1", "name": "test-device", "make_model": "Dell",
 			})
-		case r.URL.Path == "/api/devices" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/devices" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "new-id", "name": "new-device",
 			})
-		case r.URL.Path == "/api/devices/1" && r.Method == "PUT":
+		case r.URL.Path == "/api/v1/devices/1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "1", "name": "updated-device",
 			})
-		case r.URL.Path == "/api/devices/1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/devices/1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -293,7 +293,7 @@ func TestMockAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/devices", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/devices", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestMockAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/devices/1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/devices/1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestMockAPIIntegration(t *testing.T) {
 	}
 
 	// Test create
-	resp, err = c.DoRequest("POST", "/api/devices", map[string]string{"name": "new-device"})
+	resp, err = c.DoRequest("POST", "/api/v1/devices", map[string]string{"name": "new-device"})
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestMockAPIIntegration(t *testing.T) {
 	}
 
 	// Test update
-	resp, err = c.DoRequest("PUT", "/api/devices/1", map[string]string{"name": "updated-device"})
+	resp, err = c.DoRequest("PUT", "/api/v1/devices/1", map[string]string{"name": "updated-device"})
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestMockAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/devices/1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/devices/1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

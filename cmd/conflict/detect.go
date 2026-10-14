@@ -30,7 +30,7 @@ func DetectCommand() *cli.Command {
 				params.Set("type", conflictType)
 			}
 
-			path := "/api/conflicts/detect"
+			path := "/api/v1/conflicts/detect"
 			if len(params) > 0 {
 				path += "?" + params.Encode()
 			}

@@ -32,7 +32,7 @@ func listCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("GET", "/api/oauth/clients", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/oauth/clients", nil)
 			if err != nil {
 				return err
 			}
@@ -85,7 +85,7 @@ func deleteCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("DELETE", "/api/oauth/clients/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/oauth/clients/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}

@@ -30,7 +30,7 @@ func SyncCommand() *cli.Command {
 				req["force"] = true
 			}
 
-			resp, err := c.DoRequest("POST", "/api/dns/zones/"+zoneID+"/sync", req)
+			resp, err := c.DoRequest("POST", "/api/v1/dns/zones/"+zoneID+"/sync", req)
 			if err != nil {
 				return err
 			}

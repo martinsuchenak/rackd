@@ -24,7 +24,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			path := "/api/custom-fields"
+			path := "/api/v1/custom-fields"
 			if cmd.GetString("type") != "" {
 				path += "?type=" + cmd.GetString("type")
 			}

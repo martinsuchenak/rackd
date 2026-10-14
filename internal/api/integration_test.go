@@ -132,7 +132,7 @@ func (ts *testServer) createAPIKeyForUser(t *testing.T, userID string) string {
 func (ts *testServer) loginUser(t *testing.T, username, password string) *http.Cookie {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"username": username, "password": password})
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	ts.mux.ServeHTTP(w, req)
@@ -213,7 +213,7 @@ func TestDeviceCRUDFullStack(t *testing.T) {
 		"os":         "Ubuntu 22.04",
 		"tags":       []string{"prod", "web"},
 	}
-	w := ts.doRequest(t, http.MethodPost, "/api/devices", createBody, token)
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/devices", createBody, token)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("CREATE: expected 201, got %d: %s", w.Code, w.Body.String())
 	}
@@ -227,7 +227,7 @@ func TestDeviceCRUDFullStack(t *testing.T) {
 	}
 
 	// READ
-	w = ts.doRequest(t, http.MethodGet, "/api/devices/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices/"+created.ID, nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("READ: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -241,7 +241,7 @@ func TestDeviceCRUDFullStack(t *testing.T) {
 	}
 
 	// LIST
-	w = ts.doRequest(t, http.MethodGet, "/api/devices", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("LIST: expected 200, got %d", w.Code)
 	}
@@ -256,7 +256,7 @@ func TestDeviceCRUDFullStack(t *testing.T) {
 		"name": "test-server-01-updated",
 		"os":   "Ubuntu 24.04",
 	}
-	w = ts.doRequest(t, http.MethodPut, "/api/devices/"+created.ID, updateBody, token)
+	w = ts.doRequest(t, http.MethodPut, "/api/v1/devices/"+created.ID, updateBody, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("UPDATE: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -267,13 +267,13 @@ func TestDeviceCRUDFullStack(t *testing.T) {
 	}
 
 	// DELETE
-	w = ts.doRequest(t, http.MethodDelete, "/api/devices/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/devices/"+created.ID, nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE: expected 204, got %d: %s", w.Code, w.Body.String())
 	}
 
 	// Verify deleted
-	w = ts.doRequest(t, http.MethodGet, "/api/devices/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices/"+created.ID, nil, token)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("GET after DELETE: expected 404, got %d", w.Code)
 	}
@@ -286,7 +286,7 @@ func TestNetworkCRUDFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// CREATE
-	w := ts.doRequest(t, http.MethodPost, "/api/networks", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/networks", map[string]any{
 		"name":   "test-network",
 		"subnet": "10.0.0.0/24",
 	}, token)
@@ -300,13 +300,13 @@ func TestNetworkCRUDFullStack(t *testing.T) {
 	}
 
 	// READ
-	w = ts.doRequest(t, http.MethodGet, "/api/networks/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/networks/"+created.ID, nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("READ: expected 200, got %d", w.Code)
 	}
 
 	// UPDATE
-	w = ts.doRequest(t, http.MethodPut, "/api/networks/"+created.ID, map[string]any{
+	w = ts.doRequest(t, http.MethodPut, "/api/v1/networks/"+created.ID, map[string]any{
 		"name": "updated-network",
 	}, token)
 	if w.Code != http.StatusOK {
@@ -314,7 +314,7 @@ func TestNetworkCRUDFullStack(t *testing.T) {
 	}
 
 	// DELETE
-	w = ts.doRequest(t, http.MethodDelete, "/api/networks/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/networks/"+created.ID, nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE: expected 204, got %d", w.Code)
 	}
@@ -327,7 +327,7 @@ func TestDatacenterCRUDFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// CREATE
-	w := ts.doRequest(t, http.MethodPost, "/api/datacenters", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/datacenters", map[string]any{
 		"name":     "DC-East",
 		"location": "New York",
 	}, token)
@@ -338,13 +338,13 @@ func TestDatacenterCRUDFullStack(t *testing.T) {
 	parseJSON(t, w, &created)
 
 	// READ
-	w = ts.doRequest(t, http.MethodGet, "/api/datacenters/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/datacenters/"+created.ID, nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("READ: expected 200, got %d", w.Code)
 	}
 
 	// UPDATE
-	w = ts.doRequest(t, http.MethodPut, "/api/datacenters/"+created.ID, map[string]any{
+	w = ts.doRequest(t, http.MethodPut, "/api/v1/datacenters/"+created.ID, map[string]any{
 		"name":     "DC-East-Updated",
 		"location": "New Jersey",
 	}, token)
@@ -353,7 +353,7 @@ func TestDatacenterCRUDFullStack(t *testing.T) {
 	}
 
 	// DELETE
-	w = ts.doRequest(t, http.MethodDelete, "/api/datacenters/"+created.ID, nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/datacenters/"+created.ID, nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE: expected 204, got %d", w.Code)
 	}
@@ -368,9 +368,9 @@ func TestSessionAuthFullStack(t *testing.T) {
 	cookie := ts.loginUser(t, "admin", "securepassword123")
 
 	// Authenticated GET
-	w := ts.doSessionRequest(t, http.MethodGet, "/api/auth/me", nil, cookie)
+	w := ts.doSessionRequest(t, http.MethodGet, "/api/v1/auth/me", nil, cookie)
 	if w.Code != http.StatusOK {
-		t.Fatalf("GET /api/auth/me: expected 200, got %d: %s", w.Code, w.Body.String())
+		t.Fatalf("GET /api/v1/auth/me: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 	var me map[string]any
 	parseJSON(t, w, &me)
@@ -379,7 +379,7 @@ func TestSessionAuthFullStack(t *testing.T) {
 	}
 
 	// Authenticated POST (create datacenter via session)
-	w = ts.doSessionRequest(t, http.MethodPost, "/api/datacenters", map[string]any{
+	w = ts.doSessionRequest(t, http.MethodPost, "/api/v1/datacenters", map[string]any{
 		"name": "Session-DC",
 	}, cookie)
 	if w.Code != http.StatusCreated {
@@ -387,13 +387,13 @@ func TestSessionAuthFullStack(t *testing.T) {
 	}
 
 	// Logout
-	w = ts.doSessionRequest(t, http.MethodPost, "/api/auth/logout", nil, cookie)
+	w = ts.doSessionRequest(t, http.MethodPost, "/api/v1/auth/logout", nil, cookie)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("logout: expected 204, got %d", w.Code)
 	}
 
 	// Verify session is invalidated
-	w = ts.doSessionRequest(t, http.MethodGet, "/api/auth/me", nil, cookie)
+	w = ts.doSessionRequest(t, http.MethodGet, "/api/v1/auth/me", nil, cookie)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("GET after logout: expected 401, got %d", w.Code)
 	}
@@ -406,19 +406,19 @@ func TestAPIKeyAuthFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// Valid token
-	w := ts.doRequest(t, http.MethodGet, "/api/datacenters", nil, token)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/datacenters", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("valid token: expected 200, got %d", w.Code)
 	}
 
 	// Invalid token
-	w = ts.doRequest(t, http.MethodGet, "/api/datacenters", nil, "invalid-token-xyz")
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/datacenters", nil, "invalid-token-xyz")
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("invalid token: expected 401, got %d", w.Code)
 	}
 
 	// No token
-	w = ts.doRequest(t, http.MethodGet, "/api/datacenters", nil, "")
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/datacenters", nil, "")
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("no token: expected 401, got %d", w.Code)
 	}
@@ -436,7 +436,7 @@ func TestRBACEnforcement(t *testing.T) {
 	viewerToken := ts.createAPIKeyForUser(t, viewerID)
 
 	// Admin can create
-	w := ts.doRequest(t, http.MethodPost, "/api/datacenters", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/datacenters", map[string]any{
 		"name": "Admin-DC",
 	}, adminToken)
 	if w.Code != http.StatusCreated {
@@ -446,13 +446,13 @@ func TestRBACEnforcement(t *testing.T) {
 	parseJSON(t, w, &dc)
 
 	// Viewer can read
-	w = ts.doRequest(t, http.MethodGet, "/api/datacenters/"+dc.ID, nil, viewerToken)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/datacenters/"+dc.ID, nil, viewerToken)
 	if w.Code != http.StatusOK {
 		t.Fatalf("viewer read: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
 	// Viewer cannot create
-	w = ts.doRequest(t, http.MethodPost, "/api/datacenters", map[string]any{
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/datacenters", map[string]any{
 		"name": "Viewer-DC",
 	}, viewerToken)
 	if w.Code != http.StatusForbidden {
@@ -460,7 +460,7 @@ func TestRBACEnforcement(t *testing.T) {
 	}
 
 	// Viewer cannot delete
-	w = ts.doRequest(t, http.MethodDelete, "/api/datacenters/"+dc.ID, nil, viewerToken)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/datacenters/"+dc.ID, nil, viewerToken)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("viewer delete: expected 403, got %d: %s", w.Code, w.Body.String())
 	}
@@ -473,14 +473,14 @@ func TestDeviceWithRelationshipsFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// Create two devices
-	w := ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{"name": "parent-device"}, token)
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{"name": "parent-device"}, token)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create parent: expected 201, got %d: %s", w.Code, w.Body.String())
 	}
 	var parent model.Device
 	parseJSON(t, w, &parent)
 
-	w = ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{"name": "child-device"}, token)
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{"name": "child-device"}, token)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create child: expected 201, got %d: %s", w.Code, w.Body.String())
 	}
@@ -488,7 +488,7 @@ func TestDeviceWithRelationshipsFullStack(t *testing.T) {
 	parseJSON(t, w, &child)
 
 	// Add relationship
-	w = ts.doRequest(t, http.MethodPost, "/api/devices/"+parent.ID+"/relationships", map[string]any{
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/devices/"+parent.ID+"/relationships", map[string]any{
 		"child_id": child.ID,
 		"type":     "contains",
 	}, token)
@@ -497,7 +497,7 @@ func TestDeviceWithRelationshipsFullStack(t *testing.T) {
 	}
 
 	// Get relationships
-	w = ts.doRequest(t, http.MethodGet, "/api/devices/"+parent.ID+"/relationships", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices/"+parent.ID+"/relationships", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("get relationships: expected 200, got %d", w.Code)
 	}
@@ -508,7 +508,7 @@ func TestDeviceWithRelationshipsFullStack(t *testing.T) {
 	}
 
 	// Remove relationship
-	w = ts.doRequest(t, http.MethodDelete, "/api/devices/"+parent.ID+"/relationships/"+child.ID+"/contains", nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/devices/"+parent.ID+"/relationships/"+child.ID+"/contains", nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("remove relationship: expected 204, got %d: %s", w.Code, w.Body.String())
 	}
@@ -521,13 +521,13 @@ func TestSearchFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// Create a device to search for
-	ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+	ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 		"name": "searchable-server",
 		"os":   "CentOS 9",
 	}, token)
 
 	// Search
-	w := ts.doRequest(t, http.MethodGet, "/api/search?q=searchable", nil, token)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/search?q=searchable", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("search: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -541,13 +541,13 @@ func TestDeviceSearchEndpoint(t *testing.T) {
 	userID := ts.createAdminUser(t, "admin", "securepassword123")
 	token := ts.createAPIKeyForUser(t, userID)
 
-	ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+	ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 		"name": "searchable-server",
 		"os":   "CentOS 9",
 	}, token)
 
 	// Search returns a bare device array
-	w := ts.doRequest(t, http.MethodGet, "/api/devices/search?q=searchable", nil, token)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/devices/search?q=searchable", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("device search: expected 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -558,7 +558,7 @@ func TestDeviceSearchEndpoint(t *testing.T) {
 	}
 
 	// Missing query is a 400
-	w = ts.doRequest(t, http.MethodGet, "/api/devices/search", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices/search", nil, token)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("missing q: expected 400, got %d", w.Code)
 	}
@@ -572,13 +572,13 @@ func TestPaginationFullStack(t *testing.T) {
 
 	// Create 5 devices
 	for i := 0; i < 5; i++ {
-		ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+		ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 			"name": "device-" + string(rune('A'+i)),
 		}, token)
 	}
 
 	// Request with limit=2
-	w := ts.doRequest(t, http.MethodGet, "/api/devices?limit=2", nil, token)
+	w := ts.doRequest(t, http.MethodGet, "/api/v1/devices?limit=2", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("paginated list: expected 200, got %d", w.Code)
 	}
@@ -589,7 +589,7 @@ func TestPaginationFullStack(t *testing.T) {
 	}
 
 	// Request with offset=3
-	w = ts.doRequest(t, http.MethodGet, "/api/devices?limit=2&offset=3", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/devices?limit=2&offset=3", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("paginated list offset: expected 200, got %d", w.Code)
 	}
@@ -624,7 +624,7 @@ func TestCircuitCRUDFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// CREATE — note: circuit_id is the provider's identifier, not the DB id
-	w := ts.doRequest(t, http.MethodPost, "/api/circuits", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/circuits", map[string]any{
 		"name":       "CKT-001",
 		"circuit_id": "CKT-001-ID",
 		"provider":   "Acme ISP",
@@ -639,13 +639,13 @@ func TestCircuitCRUDFullStack(t *testing.T) {
 		circuitID := circuit["id"].(string)
 
 		// READ
-		w = ts.doRequest(t, http.MethodGet, "/api/circuits/"+circuitID, nil, token)
+		w = ts.doRequest(t, http.MethodGet, "/api/v1/circuits/"+circuitID, nil, token)
 		if w.Code != http.StatusOK {
 			t.Fatalf("READ circuit: expected 200, got %d", w.Code)
 		}
 
 		// DELETE
-		w = ts.doRequest(t, http.MethodDelete, "/api/circuits/"+circuitID, nil, token)
+		w = ts.doRequest(t, http.MethodDelete, "/api/v1/circuits/"+circuitID, nil, token)
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("DELETE circuit: expected 204, got %d: %s", w.Code, w.Body.String())
 		}
@@ -661,7 +661,7 @@ func TestCustomFieldsFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, userID)
 
 	// Create custom field definition
-	w := ts.doRequest(t, http.MethodPost, "/api/custom-fields", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/custom-fields", map[string]any{
 		"name":    "Environment",
 		"key":     "environment",
 		"type":    "select",
@@ -675,7 +675,7 @@ func TestCustomFieldsFullStack(t *testing.T) {
 	cfID := cf["id"].(string)
 
 	// Create device with custom field value
-	w = ts.doRequest(t, http.MethodPost, "/api/devices", map[string]any{
+	w = ts.doRequest(t, http.MethodPost, "/api/v1/devices", map[string]any{
 		"name": "cf-test-device",
 		"custom_fields": []map[string]any{
 			{"field_id": cfID, "value": "production"},
@@ -686,13 +686,13 @@ func TestCustomFieldsFullStack(t *testing.T) {
 	}
 
 	// List custom fields
-	w = ts.doRequest(t, http.MethodGet, "/api/custom-fields", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/custom-fields", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("LIST custom fields: expected 200, got %d", w.Code)
 	}
 
 	// Delete custom field
-	w = ts.doRequest(t, http.MethodDelete, "/api/custom-fields/"+cfID, nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/custom-fields/"+cfID, nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE custom field: expected 204, got %d: %s", w.Code, w.Body.String())
 	}
@@ -705,7 +705,7 @@ func TestUserManagementFullStack(t *testing.T) {
 	token := ts.createAPIKeyForUser(t, adminID)
 
 	// Create user
-	w := ts.doRequest(t, http.MethodPost, "/api/users", map[string]any{
+	w := ts.doRequest(t, http.MethodPost, "/api/v1/users", map[string]any{
 		"username":  "newuser",
 		"password":  "securepassword456",
 		"email":     "newuser@test.local",
@@ -719,19 +719,19 @@ func TestUserManagementFullStack(t *testing.T) {
 	newUserID := user["id"].(string)
 
 	// List users
-	w = ts.doRequest(t, http.MethodGet, "/api/users", nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/users", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("LIST users: expected 200, got %d", w.Code)
 	}
 
 	// Get user
-	w = ts.doRequest(t, http.MethodGet, "/api/users/"+newUserID, nil, token)
+	w = ts.doRequest(t, http.MethodGet, "/api/v1/users/"+newUserID, nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET user: expected 200, got %d", w.Code)
 	}
 
 	// Delete user
-	w = ts.doRequest(t, http.MethodDelete, "/api/users/"+newUserID, nil, token)
+	w = ts.doRequest(t, http.MethodDelete, "/api/v1/users/"+newUserID, nil, token)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE user: expected 204, got %d: %s", w.Code, w.Body.String())
 	}

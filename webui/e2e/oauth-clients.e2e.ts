@@ -25,7 +25,7 @@ test('@oauth oauth clients list supports registered client delete flow', async (
 test('@oauth oauth clients page stays usable when the API responds with HTML', async ({ page }) => {
   await login(page);
 
-  await page.route('**/api/oauth/clients', async (route) => {
+  await page.route('**/api/v1/oauth/clients', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/html; charset=utf-8',

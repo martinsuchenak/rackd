@@ -39,7 +39,7 @@ func CreateCommand() *cli.Command {
 				req["options"] = options
 			}
 
-			resp, err := c.DoRequest("POST", "/api/custom-fields", req)
+			resp, err := c.DoRequest("POST", "/api/v1/custom-fields", req)
 			if err != nil {
 				return err
 			}

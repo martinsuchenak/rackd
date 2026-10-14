@@ -23,7 +23,7 @@ func GetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("GET", "/api/custom-fields/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/custom-fields/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -57,7 +57,7 @@ func TypesCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/custom-fields/types", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/custom-fields/types", nil)
 			if err != nil {
 				return err
 			}

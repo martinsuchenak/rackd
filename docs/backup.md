@@ -159,10 +159,10 @@ curl -fsS http://localhost:8080/readyz
 4. **Start Services**
    ```bash
    # Start Rackd
-   ./rackd-linux-amd64 server
+   rackd server
    
    # Verify functionality
-   curl http://localhost:8080/api/health
+   curl http://localhost:8080/readyz
    ```
 
 ### Recovery Testing

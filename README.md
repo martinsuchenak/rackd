@@ -40,7 +40,7 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 
 - **Web UI**: Modern, responsive interface built with Alpine.js and TailwindCSS
 - **CLI Tool**: Full-featured command-line interface for automation
-- **REST API**: Complete HTTP API for integrations
+- **REST API**: Versioned HTTP API under `/api/v1`, with a [deprecation policy](docs/api.md#versioning-and-deprecation)
 - **Monitoring & Metrics**: Prometheus-compatible metrics and health checks
 
 ## Quick Start

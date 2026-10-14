@@ -31,7 +31,7 @@ func AddCommand() *cli.Command {
 				Location:    cmd.GetString("location"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/datacenters", dc)
+			resp, err := c.DoRequest("POST", "/api/v1/datacenters", dc)
 			if err != nil {
 				return err
 			}

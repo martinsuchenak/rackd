@@ -71,7 +71,7 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 	b.SetEdition("oss")
 
 	handler := b.Handler(nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/config", nil)
 	w := httptest.NewRecorder()
 
 	handler(w, req)

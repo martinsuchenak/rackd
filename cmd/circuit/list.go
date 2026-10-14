@@ -24,7 +24,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			url := "/api/circuits"
+			url := "/api/v1/circuits"
 			params := ""
 			if provider := cmd.GetString("provider"); provider != "" {
 				params += "&provider=" + provider

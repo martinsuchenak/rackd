@@ -36,7 +36,7 @@ func DeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err := c.DoRequest("DELETE", "/api/datacenters/"+dcID, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/datacenters/"+dcID, nil)
 			if err != nil {
 				return err
 			}

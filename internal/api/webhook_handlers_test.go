@@ -18,7 +18,7 @@ func TestWebhookHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("ListWebhooks_Empty", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -44,7 +44,7 @@ func TestWebhookHandlers(t *testing.T) {
 			"active": true,
 			"description": "Test webhook"
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -70,7 +70,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("CreateWebhook_MissingName", func(t *testing.T) {
 		body := `{"url": "https://example.com/webhook", "events": ["device.created"]}`
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -82,7 +82,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("CreateWebhook_MissingURL", func(t *testing.T) {
 		body := `{"name": "test", "events": ["device.created"]}`
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -94,7 +94,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("CreateWebhook_MissingEvents", func(t *testing.T) {
 		body := `{"name": "test", "url": "https://example.com/webhook"}`
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -105,7 +105,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateWebhook_InvalidJSON", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString("invalid")))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString("invalid")))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -117,7 +117,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("CreateWebhook_Unauthenticated", func(t *testing.T) {
 		body := `{"name": "test", "url": "https://example.com/webhook", "events": ["device.created"]}`
-		req := httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body))
+		req := httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -131,7 +131,7 @@ func TestWebhookHandlers(t *testing.T) {
 	var webhookID string
 	t.Run("CreateAndGet", func(t *testing.T) {
 		body := `{"name": "test-webhook-2", "url": "https://example.com/webhook2", "events": ["device.created"]}`
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -140,7 +140,7 @@ func TestWebhookHandlers(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		webhookID = resp["id"].(string)
 
-		req = authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/webhooks/"+webhookID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -156,7 +156,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("GetWebhook_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks/nonexistent", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -167,7 +167,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("UpdateWebhook", func(t *testing.T) {
 		body := `{"name": "updated-webhook", "active": false}`
-		req := authReq(httptest.NewRequest("PUT", "/api/webhooks/"+webhookID, bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/webhooks/"+webhookID, bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -188,7 +188,7 @@ func TestWebhookHandlers(t *testing.T) {
 
 	t.Run("UpdateWebhook_NotFound", func(t *testing.T) {
 		body := `{"name": "Updated"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/webhooks/nonexistent", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/webhooks/nonexistent", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -199,7 +199,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("ListWebhooks_WithActiveFilter", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks?active=false", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks?active=false", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -217,7 +217,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("PingWebhook", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks/"+webhookID+"/ping", nil))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks/"+webhookID+"/ping", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -228,7 +228,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("PingWebhook_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/webhooks/nonexistent/ping", nil))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/webhooks/nonexistent/ping", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -238,7 +238,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("ListWebhookDeliveries", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID+"/deliveries", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks/"+webhookID+"/deliveries", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -248,7 +248,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("ListWebhookDeliveries_WithFilters", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID+"/deliveries?status=success&event_type=device.created", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks/"+webhookID+"/deliveries?status=success&event_type=device.created", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -258,7 +258,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("GetWebhookDelivery_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID+"/deliveries/nonexistent", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks/"+webhookID+"/deliveries/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -268,7 +268,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("GetEventTypes", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/webhooks/events", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/webhooks/events", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -286,7 +286,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteWebhook", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/webhooks/"+webhookID, nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/webhooks/"+webhookID, nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -295,7 +295,7 @@ func TestWebhookHandlers(t *testing.T) {
 		}
 
 		// Verify deletion
-		req = authReq(httptest.NewRequest("GET", "/api/webhooks/"+webhookID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/webhooks/"+webhookID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -305,7 +305,7 @@ func TestWebhookHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteWebhook_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/webhooks/nonexistent", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/webhooks/nonexistent", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -317,14 +317,14 @@ func TestWebhookHandlers(t *testing.T) {
 	t.Run("Webhook_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := createAPIUserForStore(t, store, "limited-webhook-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/webhooks", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/webhooks", nil), limitedToken)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req = authReqWithToken(httptest.NewRequest("POST", "/api/webhooks", bytes.NewBufferString(`{"name":"limited","url":"https://example.com/hook","events":["device.created"]}`)), limitedToken)
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/v1/webhooks", bytes.NewBufferString(`{"name":"limited","url":"https://example.com/hook","events":["device.created"]}`)), limitedToken)
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)

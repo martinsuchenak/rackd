@@ -190,7 +190,7 @@ rackd server --listen-addr :8080
 
 API requests:
 ```bash
-curl -X POST http://localhost:8080/api/devices \
+curl -X POST http://localhost:8080/api/v1/devices \
   -H "Authorization: Bearer token" \
   -H "Content-Type: application/json" \
   -d '{"name": "web-01"}'
