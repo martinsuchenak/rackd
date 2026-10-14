@@ -16,6 +16,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   rackd /api/v1 server".
 - Scripts and integrations that call `/api/...` keep working until the removal date,
   but should move to `/api/v1/...`.
+- This release adds a database migration, and v0.1.0 refuses to start on a database
+  migrated by a newer Rackd. To go back to v0.1.0, first run
+  `rackd migrate rollback --to 20261013120000 --yes` with this release, or restore
+  the pre-migration snapshot from `<data-dir>/backups/`.
 - The `route` label on `http_request_duration_milliseconds` is now the route pattern,
   such as `GET /api/v1/devices/{id}`, instead of the raw method and path. Update
   dashboards and alerts that filter on old label values. The duration metrics are
@@ -45,6 +49,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - An API key's `last_used_at` is updated at most once a minute, instead of on every
   request, so it is accurate to about a minute. Each API-key request used to add a
   database write.
+- The dashboard computes network utilization with one grouped query instead of two
+  queries per network. A new migration (`20261014120000`) replaces the `network_id`
+  index on `addresses` with a `(network_id, ip)` index, so utilization counts read
+  only the index. This also speeds up `GET /api/v1/networks/{id}/utilization`.
 
 ### Deprecated
 
