@@ -9,6 +9,9 @@ rackd.registerComponent('helloCounter', () => ({
   increment() {
     this.count++;
   },
+  wave() {
+    rackd.toast.success('Hello from the hello extension');
+  },
 }));
 
 rackd.registerPage('/hello', (el, ctx) => {
@@ -18,6 +21,7 @@ rackd.registerPage('/hello', (el, ctx) => {
     <p class="hello-text">You are at <code data-hello="path"></code>.</p>
     <div x-data="helloCounter">
       <button type="button" class="hello-button" @click="increment">Clicked <span x-text="count"></span> times</button>
+      <button type="button" class="hello-button" @click="wave">Wave</button>
     </div>`;
   el.querySelector('[data-hello="path"]').textContent = ctx.path;
 

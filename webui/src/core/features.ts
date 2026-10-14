@@ -87,6 +87,11 @@ function findCoreFeature(routePath: string): FeatureDefinition | undefined {
     ?? featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
 }
 
+/** Whether one of core's pages owns the route. */
+export function isCoreRoute(route: string): boolean {
+  return findCoreFeature(normalizePath(route)) !== undefined;
+}
+
 // Core's routes come first, so an extension page cannot take one over.
 export function getPageTitle(route: string, extensionPages: PageInfo[] = []): string {
   const routePath = normalizePath(route);

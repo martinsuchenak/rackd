@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -63,14 +64,18 @@ func (s *Site) RegisterRoutes(mux *http.ServeMux) {
 	})
 }
 
-// RegisterRoutes serves the built-in UI.
-func RegisterRoutes(mux *http.ServeMux) {
-	site, _ := New(nil)
-	site.RegisterRoutes(mux)
-}
-
 // ExtensionPrefix is where an extension's UI files are served.
 func ExtensionPrefix(name string) string { return "/ext/" + name + "/" }
+
+// ExtensionURL is the URL of one of an extension's UI files, escaped so a name
+// like "chunk#1.js" isn't read as a fragment.
+func ExtensionURL(name, file string) string {
+	segments := strings.Split(file, "/")
+	for i, s := range segments {
+		segments[i] = url.PathEscape(s)
+	}
+	return ExtensionPrefix(name) + strings.Join(segments, "/")
+}
 
 // RegisterExtensionAssets serves an extension's UI files under
 // ExtensionPrefix(name). Unknown files and directories are 404s, so a typo in

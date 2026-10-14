@@ -9,8 +9,12 @@ import (
 )
 
 func TestRegisterRoutes(t *testing.T) {
+	site, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	mux := http.NewServeMux()
-	RegisterRoutes(mux)
+	site.RegisterRoutes(mux)
 
 	tests := []struct {
 		path     string
@@ -86,8 +90,9 @@ func TestSiteServesAReplacementUI(t *testing.T) {
 func TestRegisterExtensionAssets(t *testing.T) {
 	mux := http.NewServeMux()
 	RegisterExtensionAssets(mux, "notes", fstest.MapFS{
-		"ui/index.js":  {Data: []byte("export {};")},
-		"ui/notes.css": {Data: []byte("p{}")},
+		"ui/index.js":   {Data: []byte("export {};")},
+		"ui/notes.css":  {Data: []byte("p{}")},
+		"ui/chunk#1.js": {Data: []byte("export {};")},
 	})
 	tests := []struct {
 		path        string
@@ -96,6 +101,7 @@ func TestRegisterExtensionAssets(t *testing.T) {
 	}{
 		{"/ext/notes/ui/index.js", http.StatusOK, "application/javascript"},
 		{"/ext/notes/ui/notes.css", http.StatusOK, "text/css"},
+		{ExtensionURL("notes", "ui/chunk#1.js"), http.StatusOK, "application/javascript"},
 		// Not index.html: a wrong script path must fail, not load HTML.
 		{"/ext/notes/ui/missing.js", http.StatusNotFound, ""},
 		{"/ext/notes/ui", http.StatusNotFound, ""},

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { findExtensionPage, registerPage, resetExtensionRegistry } from '../src/core/extensions';
-import { canAccessRoute, getPageTitle } from '../src/core/features';
+import { canAccessRoute, getPageTitle, isCoreRoute } from '../src/core/features';
 import type { PageInfo, Permission } from '../src/core/types';
 
 const pages: PageInfo[] = [
@@ -41,6 +41,10 @@ describe('core/extensions', () => {
     const clash: PageInfo[] = [{ path: '/users', title: 'Not Users' }];
     expect(getPageTitle('/users', clash)).toBe('User Management');
     expect(canAccessRoute('/users', [], clash)).toBe(false);
+    // The page directive asks isCoreRoute before drawing an extension page.
+    expect(isCoreRoute('/users')).toBe(true);
+    expect(isCoreRoute('/devices/detail?id=1')).toBe(true);
+    expect(isCoreRoute('/notes')).toBe(false);
   });
 
   test('registerPage rejects relative and duplicate paths', () => {

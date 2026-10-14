@@ -192,13 +192,13 @@ rackd.registerSlot('device-detail', (el, ctx) => {
 | --- | --- |
 | `registerPage(path, mount)` | Draws a page declared in `UI.Pages`. `mount(el, {path, query})` draws into `el` and can return a cleanup function. It runs again when the route changes. |
 | `registerSlot(slot, mount)` | Adds content to a slot in core's pages: `dashboard`, `device-detail`, `network-detail` or `datacenter-detail`. `mount(el, {slot, data})` gets the device, network or datacenter shown, and runs again when the page reloads it. |
-| `registerComponent(name, factory)` | Registers an Alpine component for markup the module draws. The UI uses Alpine's CSP build, so expressions can only read and call the component's properties. Prefix names with the feature's name. |
+| `registerComponent(name, factory)` | Registers an Alpine component for markup the module draws. The UI uses Alpine's CSP build, so expressions can only read and call the component's properties. Prefix names with the feature's name; a name core or another feature already uses throws. |
 | `request(method, path, body?)` | Calls the API as the signed-in user, with JSON in and out. |
 | `can(resource, action)` | Whether the user has a permission. |
 | `navigate(path)` | Opens a route without reloading. |
 | `toast` | `success`, `error`, `info` and `warning` notifications. |
 
-Modules run once, before the UI starts, and only for a signed-in user. Register everything at the top level of the module. A module that fails to load, or a mount that throws, is logged in the browser console; the user sees a notification or "This page could not be loaded", and the rest of the UI keeps working.
+Modules run once, before the UI starts, and only for a signed-in user. Register everything at the top level of the module. The UI waits up to 10 seconds for the modules; one that fails, takes longer, or has a mount that throws is logged in the browser console, the user sees a notification or "This page could not be loaded", and the rest of the UI keeps working.
 
 Core's stylesheet only has the utility classes core uses, so ship your own CSS. If you use Tailwind, build it from your own sources. Core's theme variables, such as `--sidebar-primary`, are available. Build the module with any bundler that outputs an ES module, and leave Alpine out of the bundle: use `registerComponent`.
 

@@ -27,6 +27,8 @@ test.describe('Extension UI @extensions', () => {
     await counter.click();
     await counter.click();
     await expect(counter).toHaveText('Clicked 2 times');
+    await page.getByRole('button', { name: 'Wave' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Hello from the hello extension' })).toBeVisible();
 
     // Routes below the page belong to it, and leaving it clears it.
     await page.goto('/hello/sub?x=1');
