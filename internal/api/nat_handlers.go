@@ -16,6 +16,7 @@ func (h *Handler) listNATMappings(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		NetworkID:    r.URL.Query().Get("network_id"),
 	}
+	filter.Pagination = parseOptionalPagination(r)
 	if protocol := r.URL.Query().Get("protocol"); protocol != "" {
 		filter.Protocol = model.NATProtocol(protocol)
 	}

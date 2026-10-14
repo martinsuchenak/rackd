@@ -15,6 +15,7 @@ func getUserIDFromContext(r *http.Request) string {
 
 func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	filter := &model.RoleFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if name := r.URL.Query().Get("name"); name != "" {
 		filter.Name = name
 	}
@@ -143,6 +144,7 @@ func (h *Handler) getRolePermissions(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 	filter := &model.PermissionFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if resource := r.URL.Query().Get("resource"); resource != "" {
 		filter.Resource = resource
 	}

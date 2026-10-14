@@ -11,6 +11,7 @@ func (h *Handler) listDatacenters(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DatacenterFilter{
 		Name: r.URL.Query().Get("name"),
 	}
+	filter.Pagination = parseOptionalPagination(r)
 
 	dcs, err := h.svc.Datacenters.List(r.Context(), filter)
 	if err != nil {

@@ -486,6 +486,16 @@ func parsePagination(r *http.Request) model.Pagination {
 	return p
 }
 
+// parseOptionalPagination returns the page asked for with ?limit= and ?offset=,
+// or no page (every result) when neither is given.
+func parseOptionalPagination(r *http.Request) model.Pagination {
+	q := r.URL.Query()
+	if q.Get("limit") == "" && q.Get("offset") == "" {
+		return model.Pagination{}
+	}
+	return parsePagination(r)
+}
+
 // badRequest writes a standardized 400 error. Use for all request validation failures.
 func (h *Handler) badRequest(w http.ResponseWriter, message string) {
 	h.writeError(w, http.StatusBadRequest, "INVALID_INPUT", message)

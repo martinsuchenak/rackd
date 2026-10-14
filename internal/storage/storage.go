@@ -357,6 +357,8 @@ type ExtendedStorage interface {
 	NATStorage
 	DNSStorage
 	SSHHostKeyStorage
+	// CountInventory counts devices, networks and datacenters without loading them.
+	CountInventory(ctx context.Context) (InventoryCounts, error)
 	Close() error
 	DB() *sql.DB
 }

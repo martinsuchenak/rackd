@@ -121,7 +121,14 @@ Validation errors include detailed field-level information:
 
 ## Pagination
 
-Currently, the API returns all results without pagination. Future versions may implement cursor-based pagination for large datasets.
+List endpoints return every result unless you ask for a page:
+
+| Parameter | Meaning |
+| --- | --- |
+| `limit` | Results per page, at most 1000 |
+| `offset` | Results to skip |
+
+Device lists (`GET /api/v1/devices`), audit logs, application logs and webhook deliveries can grow large, so they always return a page: 100 results unless `limit` says otherwise.
 
 ## Filtering
 

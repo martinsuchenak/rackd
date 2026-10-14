@@ -26,6 +26,7 @@ func normalizeCustomFieldDefinitions(defs []model.CustomFieldDefinition) {
 // listCustomFieldDefinitions returns all custom field definitions
 func (h *Handler) listCustomFieldDefinitions(w http.ResponseWriter, r *http.Request) {
 	filter := &model.CustomFieldDefinitionFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if typeStr := r.URL.Query().Get("type"); typeStr != "" {
 		filter.Type = typeStr
 	}

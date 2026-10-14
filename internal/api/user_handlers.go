@@ -16,6 +16,7 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		Username: username,
 		Email:    email,
 	}
+	filter.Pagination = parseOptionalPagination(r)
 
 	users, err := h.svc.Users.List(r.Context(), filter)
 	if err != nil {

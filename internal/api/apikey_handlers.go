@@ -12,6 +12,7 @@ import (
 func (h *Handler) listAPIKeys(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	filter := &model.APIKeyFilter{Name: name}
+	filter.Pagination = parseOptionalPagination(r)
 
 	keys, err := h.svc.APIKeys.List(r.Context(), filter)
 	if err != nil {

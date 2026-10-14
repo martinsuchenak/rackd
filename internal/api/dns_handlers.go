@@ -12,6 +12,7 @@ import (
 // listDNSProviders returns all DNS providers
 func (h *Handler) listDNSProviders(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DNSProviderFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if t := r.URL.Query().Get("type"); t != "" {
 		filter.Type = model.DNSProviderType(t)
 	}
@@ -124,6 +125,7 @@ func (h *Handler) listDNSProviderZones(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DNSZoneFilter{
 		ProviderID: id,
 	}
+	filter.Pagination = parseOptionalPagination(r)
 
 	zones, err := h.svc.DNS.ListZones(r.Context(), filter)
 	if err != nil {
@@ -143,6 +145,7 @@ func (h *Handler) listDNSProviderZones(w http.ResponseWriter, r *http.Request) {
 // listDNSZones returns all DNS zones
 func (h *Handler) listDNSZones(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DNSZoneFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if pid := r.URL.Query().Get("provider_id"); pid != "" {
 		filter.ProviderID = pid
 	}
@@ -279,6 +282,7 @@ func (h *Handler) listDNSZoneRecords(w http.ResponseWriter, r *http.Request) {
 	filter := &model.DNSRecordFilter{
 		ZoneID: id,
 	}
+	filter.Pagination = parseOptionalPagination(r)
 	if did := r.URL.Query().Get("device_id"); did != "" {
 		filter.DeviceID = &did
 	}
