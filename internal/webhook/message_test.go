@@ -183,3 +183,37 @@ func waitUntil(t *testing.T, cond func() bool) {
 	}
 	t.Fatal("condition not met within 3s")
 }
+
+func TestDeliveryInterruptedByShutdownIsKeptForRetry(t *testing.T) {
+	store := newWebhookTestStore(t)
+	defer func() { _ = store.Close() }()
+
+	arrived := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The server only notices the client hanging up once the body is read.
+		_, _ = io.Copy(io.Discard, r.Body)
+		close(arrived)
+		<-r.Context().Done() // hold the request until the client gives up
+	}))
+	defer srv.Close()
+	webhook := &model.Webhook{Name: "slow", URL: srv.URL, Active: true, Events: []model.EventType{model.EventTypeDeviceCreated}}
+	if err := store.CreateWebhook(context.Background(), webhook); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewDeliveryService(store, DefaultDeliveryConfig())
+	svc.client = srv.Client()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-arrived
+		cancel() // shutdown while the request is in flight
+	}()
+	delivery, err := svc.Deliver(ctx, webhook, model.Event{Type: model.EventTypeDeviceCreated, Payload: "x"})
+	if err == nil || delivery.Status != model.DeliveryStatusRetrying {
+		t.Fatalf("delivery = %+v, %v", delivery, err)
+	}
+	stored, err := store.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
+	if err != nil || len(stored) != 1 || stored[0].Status != model.DeliveryStatusRetrying {
+		t.Errorf("stored deliveries = %+v, %v; the interrupted delivery must be kept for retry", stored, err)
+	}
+}

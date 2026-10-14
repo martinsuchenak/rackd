@@ -41,7 +41,7 @@ Events are published after the change is stored. `data` is the record as it was 
 | `network.updated` | A network is updated | Network |
 | `network.deleted` | A network is deleted, including by bulk delete | Network, as it was |
 | `discovery.started` | A discovery scan starts running | Scan |
-| `discovery.completed` | A discovery scan finishes | Scan |
+| `discovery.completed` | A discovery scan completes; failed and cancelled scans publish nothing | Scan |
 | `discovery.device_found` | A scan finds a host it hasn't seen before | Discovered device |
 | `conflict.detected` | Conflict detection records a new conflict | Conflict |
 | `conflict.resolved` | A conflict is resolved | Conflict |
@@ -136,7 +136,7 @@ Any response other than 2xx, a timeout (30 seconds) or a connection error counts
 - Up to 5 attempts in all.
 - About 20 seconds, 40 seconds, 80 seconds and 160 seconds apart. Retries are checked every 30 seconds, so each wait can be up to 30 seconds longer.
 - After the last attempt the delivery is marked `failed`. Deliveries to a webhook that was deleted or deactivated in the meantime are marked `abandoned`.
-- Deliveries in progress when the server shuts down are retried after it starts again.
+- Deliveries in progress when the server shuts down are retried after it starts again. Delivery is best-effort across a crash: an event published moments before the process is killed may not be delivered.
 - Delivery records are kept for 30 days. `GET /api/v1/webhooks/{id}/deliveries` lists them.
 
 ### Security & SSRF Protection

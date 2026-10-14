@@ -91,8 +91,9 @@ func (s *DeliveryService) Deliver(ctx context.Context, webhook *model.Webhook, e
 		delivery.Status = model.DeliveryStatusSuccess
 	}
 
-	// Store delivery record
-	if storeErr := s.store.CreateDelivery(ctx, delivery); storeErr != nil {
+	// Store the record even when ctx was cancelled (the worker is stopping):
+	// a failed attempt must be recorded to be retried after the next start.
+	if storeErr := s.store.CreateDelivery(context.WithoutCancel(ctx), delivery); storeErr != nil {
 		return delivery, fmt.Errorf("delivery succeeded but failed to store record: %w", storeErr)
 	}
 
@@ -181,7 +182,7 @@ func (s *DeliveryService) ProcessPendingRetries(ctx context.Context) (int, int, 
 			successCount++
 		}
 
-		if updateErr := s.store.UpdateDelivery(ctx, &delivery); updateErr != nil {
+		if updateErr := s.store.UpdateDelivery(context.WithoutCancel(ctx), &delivery); updateErr != nil {
 			log.Error("Failed to update webhook delivery", "delivery_id", delivery.ID, "error", updateErr)
 		}
 	}
