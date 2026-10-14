@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"io"
 	"net"
 	"testing"
@@ -289,5 +290,42 @@ func TestCleanupCompletedScans(t *testing.T) {
 	}
 	if _, ok := scanner.scans["running-scan"]; !ok {
 		t.Error("Expected running-scan to be kept")
+	}
+}
+
+func TestScanPublishesStartedAndCompleted(t *testing.T) {
+	scanner, store := newTestUnifiedScanner(t)
+	defer func() { _ = store.Close() }()
+	ctx := context.Background()
+
+	events := make(chan model.Event, 16)
+	unsubscribe := webhook.Subscribe(func(e model.Event) {
+		if e.Type == model.EventTypeDiscoveryStarted || e.Type == model.EventTypeDiscoveryCompleted {
+			events <- e
+		}
+	})
+	defer unsubscribe()
+
+	network := &model.Network{ID: "net-events", Name: "Events", Subnet: "192.0.2.1/32"} // TEST-NET-1, nothing answers
+	_ = store.CreateNetwork(ctx, network)
+	scan, err := scanner.Scan(ctx, network, model.ScanTypeQuick)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := map[model.EventType]*model.DiscoveryScan{}
+	timeout := time.After(10 * time.Second)
+	for len(got) < 2 {
+		select {
+		case e := <-events:
+			if s, ok := e.Payload.(*model.DiscoveryScan); ok && s.ID == scan.ID {
+				got[e.Type] = s
+			}
+		case <-timeout:
+			t.Fatalf("events received: %v", got)
+		}
+	}
+	if got[model.EventTypeDiscoveryStarted].Status != model.ScanStatusRunning || got[model.EventTypeDiscoveryCompleted].Status != model.ScanStatusCompleted {
+		t.Errorf("statuses: started %s, completed %s", got[model.EventTypeDiscoveryStarted].Status, got[model.EventTypeDiscoveryCompleted].Status)
 	}
 }

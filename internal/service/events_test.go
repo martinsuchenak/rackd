@@ -92,6 +92,25 @@ func TestServicesPublishEvents(t *testing.T) {
 	}
 	expect("failed delete")
 
+	// Promotion publishes device.created and device.promoted.
+	scanned := &model.Network{Name: "scanned", Subnet: "10.8.0.0/24"}
+	if err := store.CreateNetwork(ctx, scanned); err != nil {
+		t.Fatal(err)
+	}
+	discovered := &model.DiscoveredDevice{NetworkID: scanned.ID, IP: "10.8.0.5", Hostname: "found.example.test", Status: "online"}
+	if err := store.CreateDiscoveredDevice(ctx, discovered); err != nil {
+		t.Fatal(err)
+	}
+	promoted, err := svc.Discovery.PromoteDevice(ctx, discovered.ID, &model.Device{Name: "found"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range expect("promote", model.EventTypeDeviceCreated, model.EventTypeDevicePromoted) {
+		if p := e.Payload.(*model.Device); p.ID != promoted.ID || p.Hostname != "found.example.test" {
+			t.Errorf("%s payload = %+v", e.Type, p)
+		}
+	}
+
 	// Networks.
 	network := &model.Network{Name: "lan", Subnet: "10.9.0.0/24"}
 	if err := svc.Networks.Create(ctx, network); err != nil {
