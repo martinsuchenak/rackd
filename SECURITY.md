@@ -12,14 +12,7 @@ Report it privately through [GitHub security advisories](https://github.com/mart
 
 Include the affected version, how to reproduce the issue, and its impact as you understand it.
 
-## What to expect
-
-| Step | Target |
-|------|--------|
-| Acknowledge the report | 3 business days |
-| Initial assessment and severity | 10 business days |
-| Fix released for critical and high severity issues | 30 days |
-| Fix released for medium and low severity issues | Next planned release |
+## Disclosure
 
 You are credited in the advisory and release notes unless you ask not to be. Please give us a chance to release a fix before disclosing the issue publicly.
 

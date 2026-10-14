@@ -20,7 +20,7 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
     is pinned to a commit SHA.
   - [Verifying a release](docs/installation.md#verifying-a-release) shows the
     `cosign verify-blob` and `gh attestation verify` commands.
-- `SECURITY.md`: supported versions, private reporting, and response targets.
+- `SECURITY.md`: supported versions, private reporting, and disclosure.
 - CI runs `govulncheck`. Dependabot proposes weekly updates for Go modules, the web
   UI (Bun), GitHub Actions and the Docker base images, with minor and patch updates
   grouped.
