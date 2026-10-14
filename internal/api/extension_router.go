@@ -32,6 +32,10 @@ func (r *ExtensionRouter) Handle(pattern string, handler http.HandlerFunc, opts 
 		return
 	}
 	o := extension.ApplyOptions(opts)
+	if o.Public && o.Permission != nil {
+		r.errs = append(r.errs, fmt.Errorf("route %q is Public but requires %s, which needs a caller", pattern, o.Permission))
+		return
+	}
 
 	final := handler
 	if perm := o.Permission; perm != nil {

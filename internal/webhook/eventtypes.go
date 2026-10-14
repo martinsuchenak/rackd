@@ -11,6 +11,8 @@ import (
 type EventTypeInfo struct {
 	Type  model.EventType
 	Label string
+	// Owner is the extension that declared the type, or empty for core's.
+	Owner string
 }
 
 var eventTypes = struct {
@@ -20,7 +22,10 @@ var eventTypes = struct {
 }{byType: map[model.EventType]bool{}}
 
 func init() {
-	for _, t := range []EventTypeInfo{
+	for _, t := range []struct {
+		Type  model.EventType
+		Label string
+	}{
 		{model.EventTypeDeviceCreated, "Device Created"},
 		{model.EventTypeDeviceUpdated, "Device Updated"},
 		{model.EventTypeDeviceDeleted, "Device Deleted"},
@@ -41,29 +46,41 @@ func init() {
 	}
 }
 
-// RegisterEventType adds an event type that webhooks can subscribe to. Core's
-// types are registered at start-up; extensions add theirs from their manifest.
+// RegisterEventType adds one of core's event types.
 func RegisterEventType(t model.EventType, label string) error {
+	return RegisterExtensionEventType("", t, label)
+}
+
+// RegisterExtensionEventType adds an event type declared by the named
+// extension. A type can't be claimed by two owners, so an extension can't
+// declare (and then publish) one of core's types. Registering the same type,
+// label and owner again is a no-op, so a process that builds more than one
+// server (tests) can register a feature twice.
+func RegisterExtensionEventType(owner string, t model.EventType, label string) error {
 	if t == "" {
 		return fmt.Errorf("event type is empty")
 	}
-	eventTypes.Lock()
-	defer eventTypes.Unlock()
 	if label == "" {
 		label = string(t)
 	}
+	eventTypes.Lock()
+	defer eventTypes.Unlock()
 	if eventTypes.byType[t] {
-		// Registering the same type and label again is a no-op, so a process
-		// that builds more than one server (tests) can register a feature twice.
 		for _, e := range eventTypes.list {
-			if e.Type == t && e.Label == label {
-				return nil
+			if e.Type == t {
+				if e.Owner == owner && e.Label == label {
+					return nil
+				}
+				by := e.Owner
+				if by == "" {
+					by = "core"
+				}
+				return fmt.Errorf("event type %q is already registered by %s", t, by)
 			}
 		}
-		return fmt.Errorf("event type %q is already registered", t)
 	}
 	eventTypes.byType[t] = true
-	eventTypes.list = append(eventTypes.list, EventTypeInfo{Type: t, Label: label})
+	eventTypes.list = append(eventTypes.list, EventTypeInfo{Type: t, Label: label, Owner: owner})
 	return nil
 }
 

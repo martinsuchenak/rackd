@@ -134,9 +134,6 @@ func Run(ctx context.Context, opts Options) error {
 		api.WithServices(services),
 	)
 	handler.RegisterRoutes(mux)
-	if err := runtime.RegisterRoutes(handler, mux); err != nil {
-		return err
-	}
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)
 	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
@@ -159,6 +156,12 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	runtime.ConfigureUI(uiBuilder)
 	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
+
+	// Extension routes go last, so a clash with any core route is reported as
+	// an error rather than a ServeMux panic in core's registration.
+	if err := runtime.RegisterRoutes(handler, mux); err != nil {
+		return err
+	}
 
 	// Static UI
 	ui.RegisterRoutes(mux)

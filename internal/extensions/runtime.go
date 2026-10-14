@@ -37,9 +37,15 @@ type Runtime struct {
 	store    Store
 	svc      *service.Services
 
+	db xdal.DBInterface // shared by every feature's Host
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	mu           sync.Mutex
+	stopping     bool
+	unsubscribes []func()
 }
 
 // New validates the features' manifests and returns their runtime.
@@ -48,7 +54,11 @@ func New(features []extension.Feature, store Store, svc *service.Services) (*Run
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Runtime{features: features, store: store, svc: svc, ctx: ctx, cancel: cancel}, nil
+	rt := &Runtime{features: features, store: store, svc: svc, ctx: ctx, cancel: cancel}
+	if store != nil {
+		rt.db = noClose{store.XDAL()}
+	}
+	return rt, nil
 }
 
 // Validate checks that the features' manifests are well formed and that no two
@@ -98,7 +108,7 @@ func (rt *Runtime) Prepare(ctx context.Context) error {
 			grants = append(grants, storage.PermissionGrant{Resource: p.Resource, Action: p.Action, DefaultRoles: p.DefaultRoles})
 		}
 		for _, e := range m.Events {
-			if err := webhook.RegisterEventType(model.EventType(e.Type), e.Label); err != nil {
+			if err := webhook.RegisterExtensionEventType(m.Name, model.EventType(e.Type), e.Label); err != nil {
 				return fmt.Errorf("extension %s: %w", m.Name, err)
 			}
 		}
@@ -170,6 +180,14 @@ func (rt *Runtime) Start() error {
 // Stop cancels the features' context and waits up to timeout for their
 // background work to return.
 func (rt *Runtime) Stop(timeout time.Duration) {
+	rt.mu.Lock()
+	rt.stopping = true
+	unsubscribes := rt.unsubscribes
+	rt.unsubscribes = nil
+	rt.mu.Unlock()
+	for _, unsubscribe := range unsubscribes {
+		unsubscribe()
+	}
 	rt.cancel()
 	done := make(chan struct{})
 	go func() {
@@ -181,6 +199,27 @@ func (rt *Runtime) Stop(timeout time.Duration) {
 	case <-time.After(timeout):
 		log.Warn("Extension background work did not stop in time", "timeout", timeout)
 	}
+}
+
+// track starts background work unless the runtime is stopping, so wg.Add never
+// races Stop's wg.Wait.
+func (rt *Runtime) track() bool {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	if rt.stopping {
+		return false
+	}
+	rt.wg.Add(1)
+	return true
+}
+
+func (rt *Runtime) subscribe(fn func(model.Event)) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	if rt.stopping {
+		return
+	}
+	rt.unsubscribes = append(rt.unsubscribes, webhook.Subscribe(fn))
 }
 
 func (rt *Runtime) host(name string) extension.Host {
