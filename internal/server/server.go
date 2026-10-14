@@ -113,6 +113,15 @@ func Run(ctx context.Context, opts Options) error {
 	webhookWorker.Start()
 	defer webhookWorker.Stop()
 
+	// Utilization snapshots feed the dashboard's trend chart.
+	if cfg.SnapshotInterval > 0 {
+		snapshotWorker := worker.NewSnapshotWorker(store, cfg)
+		snapshotWorker.Start()
+		defer snapshotWorker.Stop()
+	} else {
+		log.Info("Utilization snapshots disabled (interval set to 0)")
+	}
+
 	// OAuth setup (conditional) - must be before RegisterRoutes
 	if cfg.MCPOAuthEnabled {
 		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)

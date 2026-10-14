@@ -78,7 +78,7 @@ These are only used on first startup when no users exist.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SNAPSHOT_INTERVAL` | duration | `1h` | Interval between network utilization snapshots |
+| `SNAPSHOT_INTERVAL` | duration | `1h` | Interval between network and pool utilization snapshots, which feed the dashboard trend chart; `0` disables them |
 | `SNAPSHOT_RETENTION_DAYS` | int | `90` | Days to retain utilization snapshots |
 
 ## DNS
