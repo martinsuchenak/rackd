@@ -28,7 +28,7 @@ RUN CGO_ENABLED=0 go build \
     -o /app/build/rackd .
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata
 

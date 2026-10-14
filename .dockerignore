@@ -8,10 +8,9 @@ webui/dist
 webui/playwright-report
 webui/test-results
 internal/ui/assets
-coverage.out
-*.out
-*.db
-*.db-wal
-*.db-shm
+**/*.out
+**/*.db
+**/*.db-wal
+**/*.db-shm
 rackd
 rackd-*

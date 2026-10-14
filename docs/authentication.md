@@ -65,11 +65,13 @@ Include the key as a Bearer token:
 curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8080/api/devices
 ```
 
-For the CLI, set in `~/.rackd/config.yaml`:
+For the CLI, set it in `~/.config/rackd/config.json` (or `$XDG_CONFIG_HOME/rackd/config.json`):
 
-```yaml
-api_url: http://localhost:8080
-api_token: YOUR_API_KEY
+```json
+{
+  "server_url": "http://localhost:8080",
+  "token": "YOUR_API_KEY"
+}
 ```
 
 Or via environment variable:

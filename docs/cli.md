@@ -12,26 +12,30 @@ The Rackd CLI provides full access to all functionality via command-line command
 rackd [global options] command [command options] [arguments...]
 ```
 
-### Global Flags
+### CLI Settings
 
-| Flag | Environment Variable | Default | Description |
-|------|---------------------|---------|-------------|
-| `--api-url` | `RACKD_SERVER_URL` | `http://localhost:8080` | API server URL |
-| `--api-token` | `RACKD_TOKEN` | - | API authentication token |
-| `--timeout` | `RACKD_TIMEOUT` | `30s` | Request timeout |
-| `--output` | `RACKD_OUTPUT` | `table` | Output format (table, json, yaml) |
-| `--help, -h` | - | - | Show help |
-| `--version, -v` | - | - | Show version |
+| Setting | Config file key | Environment variable | Default |
+|---------|-----------------|----------------------|---------|
+| Server URL | `server_url` | `RACKD_SERVER_URL` | `http://localhost:8080` |
+| API token | `token` | `RACKD_TOKEN` | - |
+| Verify TLS certificates | `verify_ssl` | `RACKD_VERIFY_SSL` | `true` |
+| Request timeout | `timeout` | - | `30s` |
+| Output format (table, json, yaml) | `output` | - | `table` |
+
+The config file is `$XDG_CONFIG_HOME/rackd/config.json` (by default `~/.config/rackd/config.json`). Environment variables override it. `--help`/`-h` is the only global flag; output and other options are per-command flags.
 
 ### Configuration File
 
-The CLI reads configuration from `~/.rackd/config.yaml`:
+The CLI reads `$XDG_CONFIG_HOME/rackd/config.json` (by default `~/.config/rackd/config.json`):
 
-```yaml
-api_url: http://localhost:8080
-api_token: your-secret-token
-timeout: 30s
-output: table
+```json
+{
+  "server_url": "http://localhost:8080",
+  "token": "your-secret-token",
+  "timeout": "30s",
+  "output": "table",
+  "verify_ssl": true
+}
 ```
 
 ## Commands
