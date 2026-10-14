@@ -156,62 +156,47 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 		return
 	}
 
-	// Check each IP address for duplicates
+	checked := map[string]bool{}
 	for _, addr := range device.Addresses {
-		if addr.IP == "" {
+		if addr.IP == "" || checked[addr.IP] {
 			continue
 		}
+		checked[addr.IP] = true
 
-		// Look for existing devices with this IP
+		// An IP that has had a conflict before (active, resolved or ignored)
+		// is left to that record, so ignored conflicts stay ignored.
 		conflicts, err := s.store.GetConflictsByIP(ctx, addr.IP)
 		if err != nil {
+			log.Warn("Duplicate-IP check failed", "ip", addr.IP, "error", err)
+			continue
+		}
+		if len(conflicts) > 0 {
 			continue
 		}
 
-		// Check if we already have a conflict for this IP
-		hasConflict := false
-		for _, c := range conflicts {
-			if c.Status == model.ConflictStatusActive {
-				hasConflict = true
-				break
-			}
+		holders, err := s.store.DevicesWithIP(ctx, addr.IP)
+		if err != nil {
+			log.Warn("Duplicate-IP check failed", "ip", addr.IP, "error", err)
+			continue
 		}
-
-		// If no active conflict exists and we found multiple devices with this IP, create one
-		if !hasConflict && len(conflicts) == 0 {
-			// Find all devices with this IP (including the current one)
-			allDevices, err := s.store.ListDevices(ctx, &model.DeviceFilter{})
-			if err != nil {
-				continue
-			}
-
-			var deviceIDs []string
-			var deviceNames []string
-			for _, d := range allDevices {
-				for _, a := range d.Addresses {
-					if a.IP == addr.IP {
-						deviceIDs = append(deviceIDs, d.ID)
-						deviceNames = append(deviceNames, d.Name)
-						break
-					}
-				}
-			}
-
-			// Only create conflict if multiple devices have this IP
-			if len(deviceIDs) > 1 {
-				conflict := &model.Conflict{
-					Type:        model.ConflictTypeDuplicateIP,
-					Status:      model.ConflictStatusActive,
-					Description: "IP address assigned to multiple devices",
-					IPAddress:   addr.IP,
-					DeviceIDs:   deviceIDs,
-					DeviceNames: deviceNames,
-				}
-				if err := s.conflictService.store.CreateConflict(ctx, conflict); err == nil {
-					publishEvent(model.EventTypeConflictDetected, conflict)
-				}
-			}
+		if len(holders) < 2 {
+			continue
 		}
+		conflict := &model.Conflict{
+			Type:        model.ConflictTypeDuplicateIP,
+			Status:      model.ConflictStatusActive,
+			Description: "IP address assigned to multiple devices",
+			IPAddress:   addr.IP,
+		}
+		for _, d := range holders {
+			conflict.DeviceIDs = append(conflict.DeviceIDs, d.ID)
+			conflict.DeviceNames = append(conflict.DeviceNames, d.Name)
+		}
+		if err := s.conflictService.store.CreateConflict(ctx, conflict); err != nil {
+			log.Warn("Failed to record duplicate-IP conflict", "ip", addr.IP, "error", err)
+			continue
+		}
+		publishEvent(model.EventTypeConflictDetected, conflict)
 	}
 }
 

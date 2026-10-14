@@ -92,6 +92,11 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Creating or updating a device never checked for duplicate IPs, although the
+  conflicts guide said it did: the check was never connected. It now runs, and looks
+  up the devices holding each IP with one indexed query. The old check, had it run,
+  compared only against the first 100 devices by name. The conflicts guide now says
+  which detection is automatic and which needs an explicit run.
 - Webhooks never delivered events: nothing published them, and the delivery worker
   was never started. Device, network, discovery and conflict changes now publish the
   documented events (bulk operations publish one per item), and the worker runs with

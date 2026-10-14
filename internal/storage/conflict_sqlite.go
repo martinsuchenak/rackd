@@ -537,3 +537,33 @@ func nullTimePtr(t interface{}) sql.NullTime {
 	}
 	return sql.NullTime{}
 }
+
+// DeviceRef identifies a device by ID and name.
+type DeviceRef struct {
+	ID   string
+	Name string
+}
+
+// DevicesWithIP returns the devices that have ip among their addresses, by
+// name, with one indexed lookup.
+func (s *SQLiteStorage) DevicesWithIP(ctx context.Context, ip string) ([]DeviceRef, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT d.id, d.name
+		FROM addresses a
+		JOIN devices d ON d.id = a.device_id
+		WHERE a.ip = ?
+		ORDER BY d.name, d.id`, ip)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find devices with IP %s: %w", ip, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []DeviceRef
+	for rows.Next() {
+		var d DeviceRef
+		if err := rows.Scan(&d.ID, &d.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
