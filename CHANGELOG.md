@@ -33,6 +33,11 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- The server's SQLite database uses a pool of 8 connections instead of one, so
+  reads no longer queue behind each other or behind writes. Writes still run one at
+  a time: transactions start with `BEGIN IMMEDIATE`, and a connection waits up to 5
+  seconds for the write lock. With the load tool's defaults (10,000 devices, 50
+  clients), throughput doubled.
 - The dashboard computes network utilization with one grouped query instead of two
   queries per network. A new migration (`20261014120000`) replaces the `network_id`
   index on `addresses` with a `(network_id, ip)` index, so utilization counts read

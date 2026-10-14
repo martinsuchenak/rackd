@@ -6,7 +6,7 @@ Rackd uses SQLite as its embedded database with a comprehensive schema for manag
 
 - **Engine**: SQLite with WAL (Write-Ahead Logging) mode
 - **Foreign Keys**: Enabled (`PRAGMA foreign_keys=1`)
-- **Connection Pool**: Single writer (SQLite limitation)
+- **Connection Pool**: 8 connections; reads run concurrently, writes one at a time
 - **File Location**: `{dataDir}/rackd.db` or `:memory:` for testing
 
 ## Schema Overview
@@ -325,8 +325,10 @@ devices
 ## Performance Considerations
 
 ### Connection Pool
-- Single writer connection (SQLite limitation)
-- WAL mode for better read concurrency
+- A file database gets a pool of 8 connections. In WAL mode, SQLite runs reads concurrently with each other and with one write.
+- Writes still run one at a time. A connection waits up to 5 seconds (`busy_timeout`) for the write lock before failing with "database is locked".
+- Transactions start with `BEGIN IMMEDIATE`, so a transaction that reads and then writes takes the write lock first, instead of failing to upgrade its lock while another connection writes.
+- An in-memory database (`:memory:`) is private to one connection, so it keeps a single connection.
 - Connection lifetime: 1 hour
 
 ### Query Optimization
