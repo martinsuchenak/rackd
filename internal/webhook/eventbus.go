@@ -14,25 +14,50 @@ type EventHandler func(event model.Event)
 
 // EventBus manages event publishing and subscription
 type EventBus struct {
-	handlers []EventHandler
+	handlers []subscription
+	nextID   int
 	mu       sync.RWMutex
 }
 
-// NewEventBus creates a new event bus
+type subscription struct {
+	id int
+	fn EventHandler
+}
+
 func NewEventBus() *EventBus {
-	return &EventBus{
-		handlers: make([]EventHandler, 0),
+	return &EventBus{}
+}
+
+// Subscribe calls handler for every event published, until the returned
+// function is called.
+func (b *EventBus) Subscribe(handler EventHandler) (unsubscribe func()) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.nextID++
+	id := b.nextID
+	b.handlers = append(b.handlers, subscription{id: id, fn: handler})
+	return func() {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		for i, s := range b.handlers {
+			if s.id == id {
+				b.handlers = append(b.handlers[:i:i], b.handlers[i+1:]...)
+				return
+			}
+		}
 	}
 }
 
-// Subscribe registers a handler to receive all events
-func (b *EventBus) Subscribe(handler EventHandler) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.handlers = append(b.handlers, handler)
+func (b *EventBus) snapshot() []EventHandler {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	handlers := make([]EventHandler, len(b.handlers))
+	for i, s := range b.handlers {
+		handlers[i] = s.fn
+	}
+	return handlers
 }
 
-// Publish sends an event to all subscribers
 func (b *EventBus) Publish(eventType model.EventType, payload interface{}) {
 	event := model.Event{
 		ID:        uuid.New().String(),
@@ -41,10 +66,7 @@ func (b *EventBus) Publish(eventType model.EventType, payload interface{}) {
 		Payload:   payload,
 	}
 
-	b.mu.RLock()
-	handlers := make([]EventHandler, len(b.handlers))
-	copy(handlers, b.handlers)
-	b.mu.RUnlock()
+	handlers := b.snapshot()
 
 	// Call handlers asynchronously
 	for _, handler := range handlers {
@@ -61,10 +83,7 @@ func (b *EventBus) PublishSync(eventType model.EventType, payload interface{}) {
 		Payload:   payload,
 	}
 
-	b.mu.RLock()
-	handlers := make([]EventHandler, len(b.handlers))
-	copy(handlers, b.handlers)
-	b.mu.RUnlock()
+	handlers := b.snapshot()
 
 	for _, handler := range handlers {
 		handler(event)
@@ -94,6 +113,6 @@ func Publish(eventType model.EventType, payload interface{}) {
 }
 
 // Subscribe registers a handler with the global event bus
-func Subscribe(handler EventHandler) {
-	globalEventBus.Subscribe(handler)
+func Subscribe(handler EventHandler) (unsubscribe func()) {
+	return globalEventBus.Subscribe(handler)
 }

@@ -402,3 +402,67 @@ func waitFor(t *testing.T, cond func() bool) {
 	}
 	t.Fatal("condition not met within 2s")
 }
+
+type claimsCoreEvent struct{}
+
+func (claimsCoreEvent) Manifest() extension.Manifest {
+	return extension.Manifest{Name: "claims", Events: []extension.EventType{{Type: "device.created", Label: "Device Created"}}}
+}
+
+func TestRuntimeRefusesCoreEventTypes(t *testing.T) {
+	store, err := storage.NewSQLiteStorageWithPath(filepath.Join(t.TempDir(), "rackd.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	rt, err := New([]extension.Feature{claimsCoreEvent{}}, store, service.NewServices(store, nil, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Prepare(context.Background()); err == nil || !strings.Contains(err.Error(), "already registered by core") {
+		t.Errorf("Prepare = %v, want a core event type clash", err)
+	}
+}
+
+func TestRuntimeStopEndsWorkAndSubscriptions(t *testing.T) {
+	f := newFixture(t, filepath.Join(t.TempDir(), "rackd.db"), &sample{})
+	h := f.rt.host("sample")
+
+	var calls atomic.Int32
+	h.Events().Subscribe(func(e model.Event) {
+		if e.Type == "thing.created" {
+			calls.Add(1)
+		}
+	})
+	h.Events().Publish("thing.created", nil)
+	waitFor(t, func() bool { return calls.Load() == 1 })
+
+	f.rt.Stop(time.Second)
+	h.Events().Publish("thing.created", nil)
+	var started atomic.Bool
+	h.Go("late", func(context.Context) { started.Store(true) })
+	time.Sleep(50 * time.Millisecond)
+	if calls.Load() != 1 {
+		t.Errorf("subscription still active after Stop (%d calls)", calls.Load())
+	}
+	if started.Load() {
+		t.Error("background work started after Stop")
+	}
+}
+
+type publicWithPermission struct{}
+
+func (publicWithPermission) Manifest() extension.Manifest {
+	return extension.Manifest{Name: "public-perm"}
+}
+
+func (publicWithPermission) RegisterRoutes(r extension.Router, host extension.Host) {
+	r.Handle("GET /public-perm", func(http.ResponseWriter, *http.Request) {}, extension.Public(), extension.Require("x", "y"))
+}
+
+func TestRouterRejectsPublicWithPermission(t *testing.T) {
+	f := newFixture(t, filepath.Join(t.TempDir(), "rackd.db"), publicWithPermission{})
+	if err := f.rt.RegisterRoutes(f.handler, f.mux); err == nil || !strings.Contains(err.Error(), "is Public but requires") {
+		t.Errorf("RegisterRoutes = %v", err)
+	}
+}

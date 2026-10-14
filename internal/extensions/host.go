@@ -34,12 +34,15 @@ func (h *host) Audit(ctx context.Context, action, resource, resourceID string, d
 	h.rt.store.RecordAudit(service.WithAuditContext(ctx), action, resource, resourceID, details)
 }
 
-func (h *host) DB() xdal.DBInterface { return noClose{h.rt.store.XDAL()} }
+func (h *host) DB() xdal.DBInterface { return h.rt.db }
 
 func (h *host) Logger() *slog.Logger { return h.logger }
 
 func (h *host) Go(name string, fn func(ctx context.Context)) {
-	h.rt.wg.Add(1)
+	if !h.rt.track() {
+		h.logger.Warn("Not starting background work during shutdown", "work", name)
+		return
+	}
 	go func() {
 		defer h.rt.wg.Done()
 		defer func() {
@@ -69,7 +72,8 @@ func (e events) Publish(eventType string, payload any) {
 	webhook.Publish(t, payload)
 }
 
-func (e events) Subscribe(fn func(model.Event)) { webhook.Subscribe(fn) }
+// Subscribe adds fn until the runtime stops.
+func (e events) Subscribe(fn func(model.Event)) { e.h.rt.subscribe(fn) }
 
 // noClose stops a feature from closing core's database connection.
 type noClose struct{ xdal.DBInterface }

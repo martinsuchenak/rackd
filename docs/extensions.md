@@ -65,12 +65,14 @@ func (f *Feature) Manifest() extension.Manifest {
 }
 ```
 
-- **Permissions** are added to RBAC when the server starts. A new permission is granted to its `DefaultRoles` once, when it is first added; later changes administrators make are kept.
-- **Events** become event types that webhooks can subscribe to. Publishing an undeclared type is logged and dropped.
+- **Permissions** are added to RBAC when the server starts. A new permission is granted to its `DefaultRoles` once, when it is first added; later changes administrators make are kept. A route or tool can also require one of core's permissions; don't declare those, since an existing permission's `DefaultRoles` are not applied.
+- **Events** become event types that webhooks can subscribe to. A feature can't declare one of core's types or another feature's. Publishing an undeclared type is logged and dropped.
 - **UI** entries are reported in `/api/v1/config` as `pages` and `nav_items`.
 - **Instructions** is one line added to the MCP server instructions.
 
 Rackd refuses to start when two features share a name, a declared permission, an event type, a route, a tool name or a command name, or when one clashes with core.
+
+Removing a feature from the binary leaves its tables, its migration records and its permissions in the database, so adding it back restores everything.
 
 ### Migrations
 
@@ -109,7 +111,7 @@ func (f *Feature) RegisterRoutes(r extension.Router, host extension.Host) {
 ```
 
 - Patterns are `net/http` patterns relative to `/api/v1`. Extension routes have no deprecated `/api/...` alias.
-- Routes require an authenticated user (session cookie or API key) unless `Public()` is given, and the body is limited to 1 MiB. `extension.CallerFrom(r.Context())` returns the caller.
+- Routes require an authenticated user (session cookie or API key) unless `Public()` is given, and the body is limited to 1 MiB. `extension.CallerFrom(r.Context())` returns the caller. A public route has no caller, so `Public()` can't be combined with `Require`.
 - `Require(resource, action)` checks the caller's permission before the handler runs.
 - `WriteJSON`, `WriteError` and `DecodeJSON` produce Rackd's standard responses. `WriteError` maps `ErrNotFound`, `ErrAlreadyExists`, `ErrValidation`, `ErrForbidden` and `ErrUnauthenticated` to their statuses; wrap them for detail: `fmt.Errorf("%w: body is required", extension.ErrValidation)`.
 
@@ -121,9 +123,9 @@ func (f *Feature) RegisterRoutes(r extension.Router, host extension.Host) {
 | `DB()` | The database, for the feature's own tables. |
 | `Audit(ctx, action, resource, id, details)` | Records a change to the feature's data in Rackd's audit log, attributed to the caller. Core data changed through `Core()` is audited already. |
 | `Authorize(ctx, resource, action)` | A permission check inside a handler or tool. |
-| `Events()` | `Publish` a declared event type; `Subscribe` to all events. |
+| `Events()` | `Publish` a declared event type; `Subscribe` to all events until shutdown. |
 | `Logger()` | A `*slog.Logger` that writes through Rackd's logs, tagged with the feature's name. |
-| `Go(name, fn)` | Runs background work until shutdown; shutdown waits for it. |
+| `Go(name, fn)` | Runs background work until shutdown; shutdown waits up to 10 seconds for it. Work started once shutdown has begun is not run. |
 
 Background work runs without a user. Use `extension.SystemContext(ctx, "my-feature-job")` for calls into `Core()` from it.
 
