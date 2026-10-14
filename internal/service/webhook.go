@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	wh "github.com/martinsuchenak/rackd/internal/webhook"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type WebhookService struct {

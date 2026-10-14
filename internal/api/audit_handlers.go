@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // listAuditLogs handles GET /api/v1/audit

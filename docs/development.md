@@ -183,19 +183,19 @@ Rackd follows a consistent "one file per resource" pattern across all layers. Un
 │  Storage Layer (internal/storage/)                              │
 │  One file per resource - Database operations                    │
 ├─────────────────────────────────────────────────────────────────┤
-│  Model Layer (internal/model/)                                  │
+│  Model Layer (pkg/model/)                                  │
 │  One file per resource - Data structures, DTOs                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### File Organization by Layer
 
-#### Model Layer (`internal/model/`)
+#### Model Layer (`pkg/model/`)
 
 Each resource has its own file defining data structures:
 
 ```
-internal/model/
+pkg/model/
 ├── device.go           # Device, DeviceFilter, DeviceResponse
 ├── network.go          # Network, NetworkFilter, Pool
 ├── datacenter.go       # Datacenter, DatacenterFilter
@@ -426,7 +426,7 @@ Check browser console for CSP violations during development. Any blocked resourc
 
 Follow this checklist to add a new resource type:
 
-1. **Model** (`internal/model/widget.go`)
+1. **Model** (`pkg/model/widget.go`)
    ```go
    type Widget struct {
        ID          string    `json:"id"`

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func getUserIDFromContext(r *http.Request) string {

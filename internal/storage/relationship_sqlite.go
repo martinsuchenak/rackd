@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // Relationship operations

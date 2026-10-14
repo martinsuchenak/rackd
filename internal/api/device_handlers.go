@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func (h *Handler) listDevices(w http.ResponseWriter, r *http.Request) {

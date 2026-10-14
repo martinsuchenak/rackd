@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // CreateSnapshot stores a new utilization snapshot

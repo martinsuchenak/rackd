@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestUserService_UpdateSelfAllowsUsernameChangeWithoutUsersUpdatePermission(t *testing.T) {

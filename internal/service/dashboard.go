@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type DashboardService struct {

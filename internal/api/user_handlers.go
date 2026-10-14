@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {

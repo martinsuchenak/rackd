@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/martinsuchenak/rackd/internal/model"
+import "github.com/martinsuchenak/rackd/pkg/model"
 
 // appendPagination adds LIMIT and OFFSET clauses to a query.
 // If p is nil, default pagination is applied.

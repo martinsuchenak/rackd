@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestNATService_CreateRejectsInvalidInputAndDefaultsProtocol(t *testing.T) {

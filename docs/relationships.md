@@ -120,4 +120,4 @@ Relationships are handled by the relationship service and stored in the relation
 - Cascade deletion when devices are removed
 - Circular dependency detection for `depends_on` relationships
 
-See the relationship handlers in `internal/handlers/relationship.go` and the relationship model in `internal/models/relationship.go` for implementation details.
+See the relationship handlers in `internal/api/relationship_handlers.go` and the relationship model in `pkg/model/relationship.go` for implementation details.

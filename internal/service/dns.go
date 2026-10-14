@@ -13,9 +13,9 @@ import (
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/dns"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	wh "github.com/martinsuchenak/rackd/internal/webhook"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // unsupportedProviderMessage is returned for provider types without a working integration.

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestAuditWorkerStopsAndDrainsOnClose(t *testing.T) {

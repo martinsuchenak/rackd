@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	corestorage "github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	_ "modernc.org/sqlite"
 )
 

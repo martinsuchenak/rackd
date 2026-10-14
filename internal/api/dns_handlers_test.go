@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/credentials"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestDNSHandlers(t *testing.T) {

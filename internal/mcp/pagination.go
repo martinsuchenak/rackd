@@ -1,7 +1,7 @@
 package mcp
 
 import (
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	"github.com/paularlott/mcp"
 )
 

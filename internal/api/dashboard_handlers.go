@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // getDashboardStats returns aggregated dashboard statistics

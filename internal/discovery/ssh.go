@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/credentials"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	"golang.org/x/crypto/ssh"
 )
 

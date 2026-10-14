@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // ValidationError represents a validation failure

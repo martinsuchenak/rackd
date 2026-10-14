@@ -3,8 +3,8 @@ package service
 import (
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestBulkService_DelegatesOperationsAfterPermissionChecks(t *testing.T) {

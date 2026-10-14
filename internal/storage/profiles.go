@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 var ErrProfileNotFound = errors.New("scan profile not found")

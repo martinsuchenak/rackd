@@ -53,6 +53,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   queries per network. A new migration (`20261014120000`) replaces the `network_id`
   index on `addresses` with a `(network_id, ip)` index, so utilization counts read
   only the index. This also speeds up `GET /api/v1/networks/{id}/utilization`.
+- The domain types moved from `internal/model` to the public `pkg/model`, so
+  extensions can use the same types as core. They are unstable until 1.0.
 
 ### Deprecated
 
