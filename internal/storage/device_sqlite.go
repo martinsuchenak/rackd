@@ -50,26 +50,11 @@ func (s *SQLiteStorage) GetDevice(ctx context.Context, id string) (*model.Device
 		device.StatusChangedBy = statusChangedBy.String
 	}
 
-	// Get addresses
-	addresses, err := s.getDeviceAddresses(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get device addresses: %w", err)
+	one := []model.Device{*device}
+	if err := s.loadDeviceRelations(ctx, one); err != nil {
+		return nil, err
 	}
-	device.Addresses = addresses
-
-	// Get tags
-	tags, err := s.getDeviceTags(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get device tags: %w", err)
-	}
-	device.Tags = tags
-
-	// Get domains
-	domains, err := s.getDeviceDomains(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get device domains: %w", err)
-	}
-	device.Domains = domains
+	device.Addresses, device.Tags, device.Domains = one[0].Addresses, one[0].Tags, one[0].Domains
 
 	// Get custom fields with definitions to get typed values
 	customFieldsWithDefs, err := s.GetCustomFieldValuesWithDefinitions(ctx, id)
@@ -87,94 +72,92 @@ func (s *SQLiteStorage) GetDevice(ctx context.Context, id string) (*model.Device
 	return device, nil
 }
 
-// getDeviceAddresses retrieves all addresses for a device
-func (s *SQLiteStorage) getDeviceAddresses(ctx context.Context, deviceID string) ([]model.Address, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, ip, port, type, label, network_id, switch_port, pool_id
-		FROM addresses WHERE device_id = ?
-	`, deviceID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
+// relationChunk caps the device IDs in one IN (...) query, well below
+// SQLite's default limit of 32766 bound parameters.
+const relationChunk = 500
 
-	var addresses []model.Address
-	for rows.Next() {
-		var addr model.Address
-		var networkID, switchPort, poolID sql.NullString
-		var port sql.NullInt64
-		if err := rows.Scan(&addr.ID, &addr.IP, &port, &addr.Type, &addr.Label, &networkID, &switchPort, &poolID); err != nil {
-			return nil, err
+// loadDeviceRelations fills Addresses, Tags and Domains for every device with
+// three queries per chunk of devices, instead of three queries per device.
+func (s *SQLiteStorage) loadDeviceRelations(ctx context.Context, devices []model.Device) error {
+	index := make(map[string][]int, len(devices))
+	for i := range devices {
+		index[devices[i].ID] = append(index[devices[i].ID], i)
+		devices[i].Addresses = []model.Address{}
+		devices[i].Tags = []string{}
+		devices[i].Domains = []string{}
+	}
+
+	for start := 0; start < len(devices); start += relationChunk {
+		chunk := devices[start:min(start+relationChunk, len(devices))]
+		in := strings.TrimSuffix(strings.Repeat("?,", len(chunk)), ",")
+		args := make([]any, len(chunk))
+		for i := range chunk {
+			args[i] = chunk[i].ID
 		}
-		if port.Valid {
-			p := int(port.Int64)
-			addr.Port = &p
-		}
-		if networkID.Valid {
+
+		err := s.eachRow(ctx, `SELECT device_id, id, ip, port, type, label, network_id, switch_port, pool_id
+			FROM addresses WHERE device_id IN (`+in+`)`, args, func(rows *sql.Rows) error {
+			var deviceID string
+			var addr model.Address
+			var networkID, switchPort, poolID sql.NullString
+			var port sql.NullInt64
+			if err := rows.Scan(&deviceID, &addr.ID, &addr.IP, &port, &addr.Type, &addr.Label, &networkID, &switchPort, &poolID); err != nil {
+				return err
+			}
+			if port.Valid {
+				p := int(port.Int64)
+				addr.Port = &p
+			}
 			addr.NetworkID = networkID.String
-		}
-		if switchPort.Valid {
 			addr.SwitchPort = switchPort.String
-		}
-		if poolID.Valid {
 			addr.PoolID = poolID.String
+			for _, i := range index[deviceID] {
+				devices[i].Addresses = append(devices[i].Addresses, addr)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get device addresses: %w", err)
 		}
-		addresses = append(addresses, addr)
-	}
 
-	if addresses == nil {
-		addresses = []model.Address{}
+		for _, rel := range []struct {
+			query string
+			add   func(d *model.Device, v string)
+		}{
+			{`SELECT device_id, tag FROM tags WHERE device_id IN (` + in + `)`, func(d *model.Device, v string) { d.Tags = append(d.Tags, v) }},
+			{`SELECT device_id, domain FROM domains WHERE device_id IN (` + in + `)`, func(d *model.Device, v string) { d.Domains = append(d.Domains, v) }},
+		} {
+			err := s.eachRow(ctx, rel.query, args, func(rows *sql.Rows) error {
+				var deviceID, value string
+				if err := rows.Scan(&deviceID, &value); err != nil {
+					return err
+				}
+				for _, i := range index[deviceID] {
+					rel.add(&devices[i], value)
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("failed to get device tags and domains: %w", err)
+			}
+		}
 	}
-
-	return addresses, rows.Err()
+	return nil
 }
 
-// getDeviceTags retrieves all tags for a device
-func (s *SQLiteStorage) getDeviceTags(ctx context.Context, deviceID string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT tag FROM tags WHERE device_id = ?`, deviceID)
+// eachRow runs query and calls scan for every row.
+func (s *SQLiteStorage) eachRow(ctx context.Context, query string, args []any, scan func(*sql.Rows) error) error {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { _ = rows.Close() }()
-
-	var tags []string
 	for rows.Next() {
-		var tag string
-		if err := rows.Scan(&tag); err != nil {
-			return nil, err
+		if err := scan(rows); err != nil {
+			return err
 		}
-		tags = append(tags, tag)
 	}
-
-	if tags == nil {
-		tags = []string{}
-	}
-
-	return tags, rows.Err()
-}
-
-// getDeviceDomains retrieves all domains for a device
-func (s *SQLiteStorage) getDeviceDomains(ctx context.Context, deviceID string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT domain FROM domains WHERE device_id = ?`, deviceID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var domains []string
-	for rows.Next() {
-		var domain string
-		if err := rows.Scan(&domain); err != nil {
-			return nil, err
-		}
-		domains = append(domains, domain)
-	}
-
-	if domains == nil {
-		domains = []string{}
-	}
-
-	return domains, rows.Err()
+	return rows.Err()
 }
 
 // CreateDevice creates a new device with its addresses, tags, and domains
@@ -580,25 +563,8 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 		return nil, err
 	}
 
-	// Load addresses, tags, and domains for each device
-	for i := range devices {
-		addresses, err := s.getDeviceAddresses(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get addresses for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Addresses = addresses
-
-		tags, err := s.getDeviceTags(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tags for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Tags = tags
-
-		domains, err := s.getDeviceDomains(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get domains for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Domains = domains
+	if err := s.loadDeviceRelations(ctx, devices); err != nil {
+		return nil, err
 	}
 
 	if devices == nil {
@@ -688,25 +654,8 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 		return nil, err
 	}
 
-	// Load addresses, tags, and domains for each device
-	for i := range devices {
-		addresses, err := s.getDeviceAddresses(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get addresses for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Addresses = addresses
-
-		tags, err := s.getDeviceTags(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tags for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Tags = tags
-
-		domains, err := s.getDeviceDomains(ctx, devices[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get domains for device %s: %w", devices[i].ID, err)
-		}
-		devices[i].Domains = domains
+	if err := s.loadDeviceRelations(ctx, devices); err != nil {
+		return nil, err
 	}
 
 	if devices == nil {
