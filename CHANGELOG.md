@@ -38,6 +38,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   a time: transactions start with `BEGIN IMMEDIATE`, and a connection waits up to 5
   seconds for the write lock. With the load tool's defaults (10,000 devices, 50
   clients), throughput doubled.
+- Device lists, searches and related-device lookups load addresses, tags and
+  domains for all devices in three queries per 500 devices, instead of three per
+  device. A page of 100 devices took about 300 queries. Under the load tool's
+  defaults the median page time fell from 3.1 s to 0.29 s.
 
 ### Deprecated
 
