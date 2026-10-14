@@ -28,6 +28,12 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   spec use the new paths. See
   [Versioning and Deprecation](docs/api.md#versioning-and-deprecation).
 
+### Changed
+
+- An API key's `last_used_at` is updated at most once a minute, instead of on every
+  request, so it is accurate to about a minute. Each API-key request used to add a
+  database write.
+
 ### Deprecated
 
 - The unversioned `/api/...` paths. They still work as aliases of `/api/v1/...` and

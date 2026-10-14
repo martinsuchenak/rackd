@@ -116,6 +116,22 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// lastUsedInterval is how stale an API key's last_used_at may get before a
+// request updates it. Updating it on every request would add a database write
+// to every API call.
+const lastUsedInterval = time.Minute
+
+// shouldRecordKeyUse reports whether a request at now should update a key last
+// used at lastUsed. A last_used_at in the future (the clock moved back) counts as
+// stale, so updates don't stop until the clock catches up.
+func shouldRecordKeyUse(lastUsed *time.Time, now time.Time) bool {
+	if lastUsed == nil {
+		return true
+	}
+	age := now.Sub(*lastUsed)
+	return age >= lastUsedInterval || age < 0
+}
+
 // API key authentication errors
 var (
 	ErrAuthInvalidToken = fmt.Errorf("invalid token")
@@ -146,10 +162,12 @@ func AuthenticateAPIKey(ctx context.Context, store storage.ExtendedStorage, toke
 		return nil, ErrAuthExpiredKey
 	}
 
-	// Update last used (async, don't block request)
-	go func() {
-		_ = store.UpdateAPIKeyLastUsed(context.Background(), key.ID, time.Now())
-	}()
+	// Record use, at most once per lastUsedInterval (async, don't block request)
+	if now := time.Now(); shouldRecordKeyUse(key.LastUsedAt, now) {
+		go func() {
+			_ = store.UpdateAPIKeyLastUsed(context.Background(), key.ID, now)
+		}()
+	}
 
 	// API keys must be associated with a user to enforce RBAC
 	if key.UserID == "" {
