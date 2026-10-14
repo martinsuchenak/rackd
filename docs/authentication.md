@@ -13,7 +13,7 @@ All API endpoints require authentication. There is no anonymous access mode. On 
 The Web UI uses session-based authentication with secure cookies.
 
 ```
-POST /api/auth/login
+POST /api/v1/auth/login
 Content-Type: application/json
 
 {"username": "admin", "password": "your-password"}
@@ -28,8 +28,8 @@ Session properties:
 - Stored in SQLite or Valkey (`SESSION_STORE_TYPE`)
 
 Related endpoints:
-- `POST /api/auth/logout` — destroy session
-- `GET /api/auth/me` — get current user info and permissions
+- `POST /api/v1/auth/logout` — destroy session
+- `GET /api/v1/auth/me` — get current user info and permissions
 
 ### 2. API Keys (REST API and MCP)
 
@@ -48,7 +48,7 @@ rackd apikey create --name "temp-key" --user-id USER_ID --expires "2026-12-31"
 Or via the API:
 
 ```
-POST /api/keys
+POST /api/v1/keys
 Authorization: Bearer EXISTING_KEY
 Content-Type: application/json
 
@@ -62,7 +62,7 @@ The key value is returned only once on creation. Store it securely.
 Include the key as a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8080/api/devices
+curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8080/api/v1/devices
 ```
 
 For the CLI, set it in `~/.config/rackd/config.json` (or `$XDG_CONFIG_HOME/rackd/config.json`):
@@ -96,10 +96,10 @@ rackd apikey generate          # Generate a random key offline
 ```
 
 API endpoints:
-- `GET /api/keys` — list keys (key values are never returned)
-- `POST /api/keys` — create key (returns key value once)
-- `GET /api/keys/{id}` — get key metadata
-- `DELETE /api/keys/{id}` — delete key
+- `GET /api/v1/keys` — list keys (key values are never returned)
+- `POST /api/v1/keys` — create key (returns key value once)
+- `GET /api/v1/keys/{id}` — get key metadata
+- `DELETE /api/v1/keys/{id}` — delete key
 
 ### 3. OAuth 2.1 with PKCE (MCP)
 
@@ -122,8 +122,8 @@ OAuth endpoints:
 - `POST /mcp-oauth/revoke` — token revocation
 
 Client management:
-- `GET /api/oauth/clients` — list registered OAuth clients
-- `DELETE /api/oauth/clients/{id}` — delete a client
+- `GET /api/v1/oauth/clients` — list registered OAuth clients
+- `DELETE /api/v1/oauth/clients/{id}` — delete a client
 
 Token properties:
 - Access token TTL: 1 hour (configurable via `MCP_OAUTH_ACCESS_TOKEN_TTL`)
@@ -140,22 +140,22 @@ Built-in roles:
 - `viewer` — read-only access
 
 Manage roles and permissions:
-- `GET /api/roles` — list roles
-- `GET /api/permissions` — list all permissions
-- `POST /api/users/grant-role` — assign role to user
-- `POST /api/users/revoke-role` — remove role from user
-- `GET /api/users/{id}/permissions` — get effective permissions
+- `GET /api/v1/roles` — list roles
+- `GET /api/v1/permissions` — list all permissions
+- `POST /api/v1/users/grant-role` — assign role to user
+- `POST /api/v1/users/revoke-role` — remove role from user
+- `GET /api/v1/users/{id}/permissions` — get effective permissions
 
 ## User Management
 
 ```
-GET    /api/users              — list users
-POST   /api/users              — create user
-GET    /api/users/{id}         — get user
-PUT    /api/users/{id}         — update user
-DELETE /api/users/{id}         — delete user
-POST   /api/users/{id}/password       — change password (requires current password)
-POST   /api/users/{id}/reset-password — admin password reset
+GET    /api/v1/users              — list users
+POST   /api/v1/users              — create user
+GET    /api/v1/users/{id}         — get user
+PUT    /api/v1/users/{id}         — update user
+DELETE /api/v1/users/{id}         — delete user
+POST   /api/v1/users/{id}/password       — change password (requires current password)
+POST   /api/v1/users/{id}/reset-password — admin password reset
 ```
 
 Password requirements:

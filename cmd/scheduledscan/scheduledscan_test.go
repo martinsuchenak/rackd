@@ -40,7 +40,7 @@ func TestSubcommandRunFunctions(t *testing.T) {
 func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/scheduled-scans" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/scheduled-scans" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
@@ -49,26 +49,26 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 					"profile_id": "sp1", "cron_expression": "0 2 * * *", "enabled": true,
 				},
 			})
-		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/scheduled-scans/ss1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss1", "name": "nightly-scan", "network_id": "net1",
 				"profile_id": "sp1", "cron_expression": "0 2 * * *", "enabled": true,
 			})
-		case r.URL.Path == "/api/scheduled-scans" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/scheduled-scans" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss-new", "name": "new-scan",
 			})
-		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "PUT":
+		case r.URL.Path == "/api/v1/scheduled-scans/ss1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "ss1", "name": "updated-scan",
 			})
-		case r.URL.Path == "/api/scheduled-scans/ss1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/scheduled-scans/ss1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -80,7 +80,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/scheduled-scans", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/scheduled-scans", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	}
 
 	// Test list with network filter
-	resp, err = c.DoRequest("GET", "/api/scheduled-scans?network_id=net1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/scheduled-scans?network_id=net1", nil)
 	if err != nil {
 		t.Fatalf("filtered list request failed: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/scheduled-scans/ss1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/scheduled-scans/ss1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	}
 
 	// Test create
-	resp, err = c.DoRequest("POST", "/api/scheduled-scans", map[string]interface{}{
+	resp, err = c.DoRequest("POST", "/api/v1/scheduled-scans", map[string]interface{}{
 		"name": "new-scan", "network_id": "net1", "profile_id": "sp1",
 		"cron_expression": "0 3 * * *", "enabled": true,
 	})
@@ -119,7 +119,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	}
 
 	// Test update
-	resp, err = c.DoRequest("PUT", "/api/scheduled-scans/ss1", map[string]interface{}{
+	resp, err = c.DoRequest("PUT", "/api/v1/scheduled-scans/ss1", map[string]interface{}{
 		"name": "updated-scan",
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func TestMockScheduledScanAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/scheduled-scans/ss1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/scheduled-scans/ss1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

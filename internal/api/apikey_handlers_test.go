@@ -13,12 +13,12 @@ func TestAPIKeyHandlers(t *testing.T) {
 	defer env.close()
 
 	t.Run("ListCreateGetDeleteAPIKey", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/keys", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/keys", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		createReq := authReq(httptest.NewRequest("POST", "/api/keys", bytes.NewBufferString(`{"name":"phase2-key","description":"phase 2"}`)))
+		createReq := authReq(httptest.NewRequest("POST", "/api/v1/keys", bytes.NewBufferString(`{"name":"phase2-key","description":"phase 2"}`)))
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusCreated {
@@ -36,31 +36,31 @@ func TestAPIKeyHandlers(t *testing.T) {
 			t.Fatal("expected plaintext API key in create response")
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/keys/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/keys/"+created.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/keys/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/keys/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d", w.Code)
 		}
 	})
 
 	t.Run("CreateAPIKey_InvalidJSON", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/keys", bytes.NewBufferString("{"))))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/keys", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 	})
 
 	t.Run("APIKey_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/keys/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/keys/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/keys/nonexistent", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/keys/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
@@ -69,13 +69,13 @@ func TestAPIKeyHandlers(t *testing.T) {
 	t.Run("APIKey_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := env.createAPIUser(t, "limited-apikey-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/keys", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/keys", nil), limitedToken)
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/keys", bytes.NewBufferString(`{"name":"limited-key"}`)), limitedToken)
+		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/keys", bytes.NewBufferString(`{"name":"limited-key"}`)), limitedToken)
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusForbidden {

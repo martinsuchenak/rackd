@@ -37,7 +37,7 @@ func listCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("GET", "/api/scan-profiles", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/scan-profiles", nil)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func getCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("GET", "/api/scan-profiles/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("GET", "/api/v1/scan-profiles/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func createCommand() *cli.Command {
 				body["ports"] = parsePorts(ports)
 			}
 
-			resp, err := c.DoRequest("POST", "/api/scan-profiles", body)
+			resp, err := c.DoRequest("POST", "/api/v1/scan-profiles", body)
 			if err != nil {
 				return err
 			}
@@ -179,7 +179,7 @@ func updateCommand() *cli.Command {
 			c := client.NewClient(client.LoadConfig())
 
 			// Fetch current profile first
-			resp, err := c.DoRequest("GET", "/api/scan-profiles/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("GET", "/api/v1/scan-profiles/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}
@@ -219,7 +219,7 @@ func updateCommand() *cli.Command {
 				body["description"] = v
 			}
 
-			resp2, err := c.DoRequest("PUT", "/api/scan-profiles/"+cmd.GetString("id"), body)
+			resp2, err := c.DoRequest("PUT", "/api/v1/scan-profiles/"+cmd.GetString("id"), body)
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ func deleteCommand() *cli.Command {
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			c := client.NewClient(client.LoadConfig())
-			resp, err := c.DoRequest("DELETE", "/api/scan-profiles/"+cmd.GetString("id"), nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/scan-profiles/"+cmd.GetString("id"), nil)
 			if err != nil {
 				return err
 			}

@@ -18,7 +18,7 @@ func TestCircuitHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("CreateGetUpdateDeleteCircuit", func(t *testing.T) {
-		createReq := authReq(httptest.NewRequest("POST", "/api/circuits", bytes.NewBufferString(`{"name":"primary-wan","circuit_id":"CKT-100","provider":"ISP","type":"fiber"}`)))
+		createReq := authReq(httptest.NewRequest("POST", "/api/v1/circuits", bytes.NewBufferString(`{"name":"primary-wan","circuit_id":"CKT-100","provider":"ISP","type":"fiber"}`)))
 		createReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, createReq)
@@ -35,12 +35,12 @@ func TestCircuitHandlers(t *testing.T) {
 		}
 
 		w = httptest.NewRecorder()
-		mux.ServeHTTP(w, authReq(httptest.NewRequest("GET", "/api/circuits/"+created.ID, nil)))
+		mux.ServeHTTP(w, authReq(httptest.NewRequest("GET", "/api/v1/circuits/"+created.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/circuits/"+created.ID, bytes.NewBufferString(`{"name":"primary-wan-updated","status":"maintenance"}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/circuits/"+created.ID, bytes.NewBufferString(`{"name":"primary-wan-updated","status":"maintenance"}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, updateReq)
@@ -49,7 +49,7 @@ func TestCircuitHandlers(t *testing.T) {
 		}
 
 		w = httptest.NewRecorder()
-		mux.ServeHTTP(w, authReq(httptest.NewRequest("DELETE", "/api/circuits/"+created.ID, nil)))
+		mux.ServeHTTP(w, authReq(httptest.NewRequest("DELETE", "/api/v1/circuits/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 		}
@@ -57,12 +57,12 @@ func TestCircuitHandlers(t *testing.T) {
 
 	t.Run("Circuit_InvalidJSONAndValidation", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, authReq(httptest.NewRequest("POST", "/api/circuits", bytes.NewBufferString("{"))))
+		mux.ServeHTTP(w, authReq(httptest.NewRequest("POST", "/api/v1/circuits", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 
-		req := authReq(httptest.NewRequest("POST", "/api/circuits", bytes.NewBufferString(`{"name":"missing-provider","circuit_id":"CKT-101"}`)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/circuits", bytes.NewBufferString(`{"name":"missing-provider","circuit_id":"CKT-101"}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -70,7 +70,7 @@ func TestCircuitHandlers(t *testing.T) {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req = authReq(httptest.NewRequest("PUT", "/api/circuits/nonexistent", bytes.NewBufferString(`{"status":"invalid"}`)))
+		req = authReq(httptest.NewRequest("PUT", "/api/v1/circuits/nonexistent", bytes.NewBufferString(`{"status":"invalid"}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -81,12 +81,12 @@ func TestCircuitHandlers(t *testing.T) {
 
 	t.Run("Circuit_NotFound", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, authReq(httptest.NewRequest("GET", "/api/circuits/nonexistent", nil)))
+		mux.ServeHTTP(w, authReq(httptest.NewRequest("GET", "/api/v1/circuits/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req := authReq(httptest.NewRequest("DELETE", "/api/circuits/nonexistent", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/circuits/nonexistent", nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		if w.Code != http.StatusNotFound {
@@ -98,12 +98,12 @@ func TestCircuitHandlers(t *testing.T) {
 		_, limitedToken := createAPIUserForStore(t, store, "limited-circuit-user")
 
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, authReqWithToken(httptest.NewRequest("GET", "/api/circuits", nil), limitedToken))
+		mux.ServeHTTP(w, authReqWithToken(httptest.NewRequest("GET", "/api/v1/circuits", nil), limitedToken))
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req := authReqWithToken(httptest.NewRequest("POST", "/api/circuits", bytes.NewBufferString(`{"name":"limited","circuit_id":"CKT-200","provider":"ISP"}`)), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("POST", "/api/v1/circuits", bytes.NewBufferString(`{"name":"limited","circuit_id":"CKT-200","provider":"ISP"}`)), limitedToken)
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)

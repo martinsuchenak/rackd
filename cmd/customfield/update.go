@@ -48,7 +48,7 @@ func UpdateCommand() *cli.Command {
 			}
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("PUT", "/api/custom-fields/"+id, req)
+			resp, err := c.DoRequest("PUT", "/api/v1/custom-fields/"+id, req)
 			if err != nil {
 				return err
 			}

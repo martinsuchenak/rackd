@@ -23,7 +23,7 @@ func EventsCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/webhooks/events", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/webhooks/events", nil)
 			if err != nil {
 				return err
 			}

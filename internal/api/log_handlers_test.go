@@ -18,7 +18,7 @@ func TestLogHandlers_ListGetAndExport(t *testing.T) {
 	appLog.Init("console", "debug", io.Discard)
 	appLog.Info("phase2-log-entry", "component", "api-test")
 
-	w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/logs?source=api-test", nil)))
+	w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/logs?source=api-test", nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
@@ -35,7 +35,7 @@ func TestLogHandlers_ListGetAndExport(t *testing.T) {
 	}
 
 	id, _ := entries[0]["id"].(string)
-	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/logs/"+id, nil)))
+	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/logs/"+id, nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected detail status 200, got %d", w.Code)
 	}
@@ -43,7 +43,7 @@ func TestLogHandlers_ListGetAndExport(t *testing.T) {
 		t.Fatalf("expected detail response to include test entry, got %s", w.Body.String())
 	}
 
-	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/logs/export?source=api-test&format=csv", nil)))
+	w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/logs/export?source=api-test&format=csv", nil)))
 	if w.Code != 200 {
 		t.Fatalf("expected export status 200, got %d", w.Code)
 	}

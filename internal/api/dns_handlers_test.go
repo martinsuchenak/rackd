@@ -24,7 +24,7 @@ func TestDNSHandlers(t *testing.T) {
 
 	t.Run("UnimplementedProviderTypesRejected", func(t *testing.T) {
 		for _, typ := range []string{"powerdns", "bind"} {
-			req := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"planned-`+typ+`","type":"`+typ+`","endpoint":"https://203.0.113.10","token":"x"}`)))
+			req := authReq(httptest.NewRequest("POST", "/api/v1/dns/providers", bytes.NewBufferString(`{"name":"planned-`+typ+`","type":"`+typ+`","endpoint":"https://203.0.113.10","token":"x"}`)))
 			req.Header.Set("Content-Type", "application/json")
 			w := performRequest(env.mux, req)
 			if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "planned") {
@@ -44,7 +44,7 @@ func TestDNSHandlers(t *testing.T) {
 			t.Fatalf("failed to seed provider: %v", err)
 		}
 		put := func(body string) *httptest.ResponseRecorder {
-			req := authReq(httptest.NewRequest("PUT", "/api/dns/providers/"+legacy.ID, bytes.NewBufferString(body)))
+			req := authReq(httptest.NewRequest("PUT", "/api/v1/dns/providers/"+legacy.ID, bytes.NewBufferString(body)))
 			req.Header.Set("Content-Type", "application/json")
 			return performRequest(env.mux, req)
 		}
@@ -57,7 +57,7 @@ func TestDNSHandlers(t *testing.T) {
 	})
 
 	t.Run("ProviderAndZoneCRUD", func(t *testing.T) {
-		createProviderReq := authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString(`{"name":"phase2-dns","type":"technitium","endpoint":"https://203.0.113.10","token":"super-secret","description":"phase 2 provider"}`)))
+		createProviderReq := authReq(httptest.NewRequest("POST", "/api/v1/dns/providers", bytes.NewBufferString(`{"name":"phase2-dns","type":"technitium","endpoint":"https://203.0.113.10","token":"super-secret","description":"phase 2 provider"}`)))
 		createProviderReq.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, createProviderReq)
 		if w.Code != http.StatusCreated {
@@ -75,24 +75,24 @@ func TestDNSHandlers(t *testing.T) {
 			t.Fatal("provider token should not be exposed")
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/providers", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/providers", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/providers/"+provider.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/providers/"+provider.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		updateProviderReq := authReq(httptest.NewRequest("PUT", "/api/dns/providers/"+provider.ID, bytes.NewBufferString(`{"description":"updated provider"}`)))
+		updateProviderReq := authReq(httptest.NewRequest("PUT", "/api/v1/dns/providers/"+provider.ID, bytes.NewBufferString(`{"description":"updated provider"}`)))
 		updateProviderReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateProviderReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createZoneReq := authReq(httptest.NewRequest("POST", "/api/dns/zones", bytes.NewBufferString(`{"name":"example.test","provider_id":"`+provider.ID+`","network_id":"dns-net","auto_sync":false,"create_ptr":false,"ttl":300}`)))
+		createZoneReq := authReq(httptest.NewRequest("POST", "/api/v1/dns/zones", bytes.NewBufferString(`{"name":"example.test","provider_id":"`+provider.ID+`","network_id":"dns-net","auto_sync":false,"create_ptr":false,"ttl":300}`)))
 		createZoneReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createZoneReq)
 		if w.Code != http.StatusCreated {
@@ -104,34 +104,34 @@ func TestDNSHandlers(t *testing.T) {
 			t.Fatalf("failed to decode zone: %v", err)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/zones", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/zones", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/providers/"+provider.ID+"/zones", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/providers/"+provider.ID+"/zones", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/zones/"+zone.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/zones/"+zone.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		updateZoneReq := authReq(httptest.NewRequest("PUT", "/api/dns/zones/"+zone.ID, bytes.NewBufferString(`{"description":"updated zone","ttl":600}`)))
+		updateZoneReq := authReq(httptest.NewRequest("PUT", "/api/v1/dns/zones/"+zone.ID, bytes.NewBufferString(`{"description":"updated zone","ttl":600}`)))
 		updateZoneReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateZoneReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/dns/zones/"+zone.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/dns/zones/"+zone.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/dns/providers/"+provider.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/dns/providers/"+provider.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 		}
@@ -195,82 +195,82 @@ func TestDNSHandlers(t *testing.T) {
 			t.Fatalf("failed to seed promote record: %v", err)
 		}
 
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/zones/"+zone.ID+"/records", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/zones/"+zone.ID+"/records", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/records/"+record.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/records/"+record.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/dns/records/"+record.ID, bytes.NewBufferString(`{"ttl":600}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/dns/records/"+record.ID, bytes.NewBufferString(`{"ttl":600}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		linkReq := authReq(httptest.NewRequest("POST", "/api/dns/records/"+record.ID+"/link", bytes.NewBufferString(`{"device_id":"`+device.ID+`","address_id":"addr-1"}`)))
+		linkReq := authReq(httptest.NewRequest("POST", "/api/v1/dns/records/"+record.ID+"/link", bytes.NewBufferString(`{"device_id":"`+device.ID+`","address_id":"addr-1"}`)))
 		linkReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, linkReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		promoteReq := authReq(httptest.NewRequest("POST", "/api/dns/records/"+promoteRecord.ID+"/promote", bytes.NewBufferString(`{"name":"promoted-device"}`)))
+		promoteReq := authReq(httptest.NewRequest("POST", "/api/v1/dns/records/"+promoteRecord.ID+"/promote", bytes.NewBufferString(`{"name":"promoted-device"}`)))
 		promoteReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, promoteReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/dns/records/"+record.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/dns/records/"+record.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 
 	t.Run("DNS_InvalidJSONForbiddenAndNotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/dns/providers", bytes.NewBufferString("{"))))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/dns/providers", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/dns/zones", bytes.NewBufferString("{"))))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/dns/zones", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("PUT", "/api/dns/records/missing", bytes.NewBufferString("{"))))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("PUT", "/api/v1/dns/records/missing", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/providers/missing", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/providers/missing", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/zones/missing", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/zones/missing", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/dns/records/missing", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/dns/records/missing", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 
 		_, limitedToken := createAPIUserForStore(t, env.store, "limited-dns-user")
 
-		w = performRequest(env.mux, authReqWithToken(httptest.NewRequest("GET", "/api/dns/providers", nil), limitedToken))
+		w = performRequest(env.mux, authReqWithToken(httptest.NewRequest("GET", "/api/v1/dns/providers", nil), limitedToken))
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req := authReqWithToken(httptest.NewRequest("POST", "/api/dns/zones", bytes.NewBufferString(`{"name":"limited.example","provider_id":"missing"}`)), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("POST", "/api/v1/dns/zones", bytes.NewBufferString(`{"name":"limited.example","provider_id":"missing"}`)), limitedToken)
 		req.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
@@ -300,7 +300,7 @@ func TestDNSHandlers(t *testing.T) {
 			t.Fatalf("failed to create provider: %v", err)
 		}
 
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/dns/providers/"+provider.ID+"/test", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/dns/providers/"+provider.ID+"/test", nil)))
 		if w.Code != http.StatusBadGateway {
 			t.Fatalf("expected 502, got %d: %s", w.Code, w.Body.String())
 		}

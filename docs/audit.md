@@ -76,14 +76,14 @@ These endpoints are not audited:
 - Metrics (`/metrics`)
 - MCP server (`/mcp`)
 - Static files (`/static/`)
-- Search (`/api/search`)
+- Search (`/api/v1/search`)
 
 ## API Usage
 
 ### List Audit Logs
 
 ```bash
-GET /api/audit
+GET /api/v1/audit
 ```
 
 **Query Parameters:**
@@ -100,25 +100,25 @@ GET /api/audit
 
 ```bash
 # List recent changes
-curl http://localhost:8080/api/audit?limit=20
+curl http://localhost:8080/api/v1/audit?limit=20
 
 # Filter by resource
-curl "http://localhost:8080/api/audit?resource=device&limit=50"
+curl "http://localhost:8080/api/v1/audit?resource=device&limit=50"
 
 # Filter by specific device
-curl "http://localhost:8080/api/audit?resource=device&resource_id=dev-123"
+curl "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
 
 # Filter by user
-curl "http://localhost:8080/api/audit?user_id=key-456"
+curl "http://localhost:8080/api/v1/audit?user_id=key-456"
 
 # Filter by action
-curl "http://localhost:8080/api/audit?action=delete"
+curl "http://localhost:8080/api/v1/audit?action=delete"
 
 # Time range query
-curl "http://localhost:8080/api/audit?start_time=2026-02-01T00:00:00Z&end_time=2026-02-03T23:59:59Z"
+curl "http://localhost:8080/api/v1/audit?start_time=2026-02-01T00:00:00Z&end_time=2026-02-03T23:59:59Z"
 
 # Pagination
-curl "http://localhost:8080/api/audit?limit=50&offset=100"
+curl "http://localhost:8080/api/v1/audit?limit=50&offset=100"
 ```
 
 **Response:**
@@ -144,19 +144,19 @@ curl "http://localhost:8080/api/audit?limit=50&offset=100"
 ### Get Specific Audit Log
 
 ```bash
-GET /api/audit/{id}
+GET /api/v1/audit/{id}
 ```
 
 **Example:**
 
 ```bash
-curl http://localhost:8080/api/audit/550e8400-e29b-41d4-a716-446655440000
+curl http://localhost:8080/api/v1/audit/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### Export Audit Logs
 
 ```bash
-GET /api/audit/export
+GET /api/v1/audit/export
 ```
 
 **Query Parameters:**
@@ -171,16 +171,16 @@ GET /api/audit/export
 
 ```bash
 # Export to JSON
-curl "http://localhost:8080/api/audit/export?format=json" > audit.json
+curl "http://localhost:8080/api/v1/audit/export?format=json" > audit.json
 
 # Export to CSV
-curl "http://localhost:8080/api/audit/export?format=csv" > audit.csv
+curl "http://localhost:8080/api/v1/audit/export?format=csv" > audit.csv
 
 # Export specific resource
-curl "http://localhost:8080/api/audit/export?resource=device&format=json" > device-audit.json
+curl "http://localhost:8080/api/v1/audit/export?resource=device&format=json" > device-audit.json
 
 # Export time range
-curl "http://localhost:8080/api/audit/export?start_time=2026-02-01T00:00:00Z&format=csv" > february-audit.csv
+curl "http://localhost:8080/api/v1/audit/export?start_time=2026-02-01T00:00:00Z&format=csv" > february-audit.csv
 ```
 
 ## CLI Usage
@@ -260,7 +260,7 @@ Track all changes for compliance requirements:
 
 ```bash
 # Export last 90 days for audit
-curl "http://localhost:8080/api/audit/export?start_time=2025-11-04T00:00:00Z&format=csv" > compliance-audit.csv
+curl "http://localhost:8080/api/v1/audit/export?start_time=2025-11-04T00:00:00Z&format=csv" > compliance-audit.csv
 ```
 
 ### Security Investigation
@@ -269,13 +269,13 @@ Investigate suspicious activity:
 
 ```bash
 # Check all delete operations
-curl "http://localhost:8080/api/audit?action=delete&limit=100"
+curl "http://localhost:8080/api/v1/audit?action=delete&limit=100"
 
 # Check activity from specific IP
-curl "http://localhost:8080/api/audit" | jq '.[] | select(.ip_address=="192.168.1.100")'
+curl "http://localhost:8080/api/v1/audit" | jq '.[] | select(.ip_address=="192.168.1.100")'
 
 # Check failed operations
-curl "http://localhost:8080/api/audit" | jq '.[] | select(.status=="failure")'
+curl "http://localhost:8080/api/v1/audit" | jq '.[] | select(.status=="failure")'
 ```
 
 ### Change Tracking
@@ -284,10 +284,10 @@ Track changes to specific resources:
 
 ```bash
 # View device history
-curl "http://localhost:8080/api/audit?resource=device&resource_id=dev-123"
+curl "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
 
 # View network changes
-curl "http://localhost:8080/api/audit?resource=network&limit=50"
+curl "http://localhost:8080/api/v1/audit?resource=network&limit=50"
 ```
 
 ### User Activity
@@ -296,7 +296,7 @@ Monitor user actions:
 
 ```bash
 # View user activity
-curl "http://localhost:8080/api/audit?user_id=key-456"
+curl "http://localhost:8080/api/v1/audit?user_id=key-456"
 
 # Export user activity report
 rackd audit export --format csv --output user-activity.csv
@@ -373,7 +373,7 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 Check configuration:
 ```bash
 # Verify audit logging is enabled
-curl http://localhost:8080/api/config | jq .audit
+curl http://localhost:8080/api/v1/config | jq .audit
 
 # Check server logs
 rackd server
@@ -453,7 +453,7 @@ Protect audit log endpoints:
 export API_AUTH_TOKEN="your-secure-token"
 
 # Access audit logs with authentication
-curl -H "Authorization: Bearer your-secure-token" http://localhost:8080/api/audit
+curl -H "Authorization: Bearer your-secure-token" http://localhost:8080/api/v1/audit
 ```
 
 ### Audit Log Integrity

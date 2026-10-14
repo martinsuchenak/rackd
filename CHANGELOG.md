@@ -9,6 +9,35 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Upgrading from v0.1.0
+
+- Upgrade the server before the CLI. The CLI now calls `/api/v1/...`, which v0.1.0
+  servers do not serve; against one it fails with "the rackd server does not serve
+  /api/v1".
+- Scripts and integrations that call `/api/...` keep working until the removal date,
+  but should move to `/api/v1/...`.
+
+### Added
+
+- The API is versioned under `/api/v1`. Within v1, changes are backward compatible;
+  breaking changes go into a new version. The web UI, the CLI and the OpenAPI
+  spec use the new paths. See
+  [Versioning and Deprecation](docs/api.md#versioning-and-deprecation).
+
+### Deprecated
+
+- The unversioned `/api/...` paths. They still work as aliases of `/api/v1/...` and
+  are removed in the first release on or after 14 April 2027. Their responses carry
+  `Deprecation`, `Sunset` and `Link: rel="successor-version"` headers. To migrate,
+  insert `/v1` after `/api`.
+
+### Fixed
+
+- A GET request to an unknown API path returned the web UI's `index.html` with
+  status 200. It now returns a JSON 404.
+- The Nomad job's health check probed `/api/datacenters`, which requires
+  authentication, so the service never became healthy. It now uses `/healthz`.
+
 ## [0.1.0] - 2026-10-14
 
 ### Upgrading from v0.0.21

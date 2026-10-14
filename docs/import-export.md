@@ -237,17 +237,17 @@ rackd export all --output rackd-backup.json
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/devices/bulk` | Bulk create devices |
-| POST | `/api/networks/bulk` | Bulk create networks |
-| POST | `/api/datacenters` | Create datacenter |
+| POST | `/api/v1/devices/bulk` | Bulk create devices |
+| POST | `/api/v1/networks/bulk` | Bulk create networks |
+| POST | `/api/v1/datacenters` | Create datacenter |
 
 ### Export Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/devices` | List all devices |
-| GET | `/api/networks` | List all networks |
-| GET | `/api/datacenters` | List all datacenters |
+| GET | `/api/v1/devices` | List all devices |
+| GET | `/api/v1/networks` | List all networks |
+| GET | `/api/v1/datacenters` | List all datacenters |
 
 ## Migration Scenarios
 

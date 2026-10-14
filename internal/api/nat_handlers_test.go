@@ -18,7 +18,7 @@ func TestNATHandlers(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	t.Run("ListNATMappings_Empty", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/nat", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/nat", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -47,7 +47,7 @@ func TestNATHandlers(t *testing.T) {
 			"description": "HTTPS to internal web server",
 			"enabled": true
 		}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -86,7 +86,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_MissingName", func(t *testing.T) {
 		body := `{"external_ip": "203.0.113.10", "external_port": 443, "internal_ip": "192.168.1.10", "internal_port": 443}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -98,7 +98,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_MissingExternalIP", func(t *testing.T) {
 		body := `{"name": "test", "external_port": 443, "internal_ip": "192.168.1.10", "internal_port": 443}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -110,7 +110,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_MissingInternalIP", func(t *testing.T) {
 		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 443, "internal_port": 443}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -122,7 +122,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_InvalidPort", func(t *testing.T) {
 		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 99999, "internal_ip": "192.168.1.10", "internal_port": 443}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -134,7 +134,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_InvalidProtocol", func(t *testing.T) {
 		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 443, "internal_ip": "192.168.1.10", "internal_port": 443, "protocol": "invalid"} `
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -146,7 +146,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_DefaultProtocol", func(t *testing.T) {
 		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 443, "internal_ip": "192.168.1.10", "internal_port": 443}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -168,7 +168,7 @@ func TestNATHandlers(t *testing.T) {
 	t.Run("GetNATMapping", func(t *testing.T) {
 		// First create a mapping
 		body := `{"name": "Get Test", "external_ip": "203.0.113.20", "external_port": 80, "internal_ip": "192.168.1.20", "internal_port": 80, "protocol": "tcp"}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -183,7 +183,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		// Now get it
-		req = authReq(httptest.NewRequest("GET", "/api/nat/"+created.ID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/nat/"+created.ID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -205,7 +205,7 @@ func TestNATHandlers(t *testing.T) {
 	})
 
 	t.Run("GetNATMapping_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("GET", "/api/nat/non-existent-id", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/nat/non-existent-id", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -217,7 +217,7 @@ func TestNATHandlers(t *testing.T) {
 	t.Run("UpdateNATMapping", func(t *testing.T) {
 		// First create a mapping
 		body := `{"name": "Update Test", "external_ip": "203.0.113.30", "external_port": 8080, "internal_ip": "192.168.1.30", "internal_port": 80, "protocol": "tcp"}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -233,7 +233,7 @@ func TestNATHandlers(t *testing.T) {
 
 		// Update it
 		updateBody := `{"name": "Updated Name", "external_port": 8443, "enabled": false}`
-		req = authReq(httptest.NewRequest("PUT", "/api/nat/"+created.ID, bytes.NewBufferString(updateBody)))
+		req = authReq(httptest.NewRequest("PUT", "/api/v1/nat/"+created.ID, bytes.NewBufferString(updateBody)))
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -267,7 +267,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("UpdateNATMapping_NotFound", func(t *testing.T) {
 		body := `{"name": "test"}`
-		req := authReq(httptest.NewRequest("PUT", "/api/nat/non-existent-id", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("PUT", "/api/v1/nat/non-existent-id", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -280,7 +280,7 @@ func TestNATHandlers(t *testing.T) {
 	t.Run("DeleteNATMapping", func(t *testing.T) {
 		// First create a mapping
 		body := `{"name": "Delete Test", "external_ip": "203.0.113.40", "external_port": 9000, "internal_ip": "192.168.1.40", "internal_port": 9000, "protocol": "tcp"}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -295,7 +295,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		// Delete it
-		req = authReq(httptest.NewRequest("DELETE", "/api/nat/"+created.ID, nil))
+		req = authReq(httptest.NewRequest("DELETE", "/api/v1/nat/"+created.ID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -304,7 +304,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		// Verify deleted
-		req = authReq(httptest.NewRequest("GET", "/api/nat/"+created.ID, nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/nat/"+created.ID, nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -314,7 +314,7 @@ func TestNATHandlers(t *testing.T) {
 	})
 
 	t.Run("DeleteNATMapping_NotFound", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("DELETE", "/api/nat/non-existent-id", nil))
+		req := authReq(httptest.NewRequest("DELETE", "/api/v1/nat/non-existent-id", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -335,7 +335,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		for _, body := range mappings {
-			createReq := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+			createReq := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 			createReq.Header.Set("Content-Type", "application/json")
 			createW := httptest.NewRecorder()
 			mux.ServeHTTP(createW, createReq)
@@ -345,7 +345,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		// Filter by protocol - should get 2 TCP mappings (our unique ones)
-		req := authReq(httptest.NewRequest("GET", "/api/nat?protocol=tcp", nil))
+		req := authReq(httptest.NewRequest("GET", "/api/v1/nat?protocol=tcp", nil))
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -370,7 +370,7 @@ func TestNATHandlers(t *testing.T) {
 		}
 
 		// Filter by external IP - should get exactly 1
-		req = authReq(httptest.NewRequest("GET", "/api/nat?external_ip="+uniqueIPs[0], nil))
+		req = authReq(httptest.NewRequest("GET", "/api/v1/nat?external_ip="+uniqueIPs[0], nil))
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -391,7 +391,7 @@ func TestNATHandlers(t *testing.T) {
 
 	t.Run("CreateNATMapping_WithTags", func(t *testing.T) {
 		body := `{"name": "Tagged NAT", "external_ip": "203.0.113.50", "external_port": 443, "internal_ip": "192.168.1.50", "internal_port": 443, "protocol": "tcp", "tags": ["production", "web"]}`
-		req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
@@ -415,7 +415,7 @@ func TestNATHandlers(t *testing.T) {
 
 		for i, protocol := range protocols {
 			body := `{"name": "Protocol Test ` + string(rune('A'+i)) + `", "external_ip": "203.0.113.1` + string(rune('0'+i+1)) + `", "external_port": 443, "internal_ip": "192.168.1.1` + string(rune('0'+i+1)) + `", "internal_port": 443, "protocol": "` + string(protocol) + `"}`
-			req := authReq(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(body)))
+			req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 			mux.ServeHTTP(w, req)
@@ -438,14 +438,14 @@ func TestNATHandlers(t *testing.T) {
 	t.Run("NAT_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := createAPIUserForStore(t, store, "limited-nat-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/nat", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/nat", nil), limitedToken)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		req = authReqWithToken(httptest.NewRequest("POST", "/api/nat", bytes.NewBufferString(`{"name":"limited","external_ip":"203.0.113.50","external_port":443,"internal_ip":"192.168.1.50","internal_port":443}`)), limitedToken)
+		req = authReqWithToken(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(`{"name":"limited","external_ip":"203.0.113.50","external_port":443,"internal_ip":"192.168.1.50","internal_port":443}`)), limitedToken)
 		req.Header.Set("Content-Type", "application/json")
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)

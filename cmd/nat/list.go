@@ -25,7 +25,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			url := "/api/nat"
+			url := "/api/v1/nat"
 			params := ""
 			if externalIP := cmd.GetString("external-ip"); externalIP != "" {
 				params += "&external_ip=" + externalIP

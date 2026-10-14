@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -74,6 +75,24 @@ func TestClient_DoRequest(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
+}
+
+func TestClient_DoRequestDetectsPreV1Server(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<!doctype html>"))
+	}))
+	defer server.Close()
+
+	client := NewClient(&Config{ServerURL: server.URL, Timeout: "5s"})
+	if _, err := client.DoRequest("GET", "/api/v1/devices", nil); !errors.Is(err, ErrServerTooOld) {
+		t.Errorf("err = %v, want ErrServerTooOld", err)
+	}
+	resp, err := client.DoRequest("GET", "/login", nil)
+	if err != nil {
+		t.Fatalf("non-API path: %v", err)
+	}
+	_ = resp.Body.Close()
 }
 
 func TestHandleError(t *testing.T) {

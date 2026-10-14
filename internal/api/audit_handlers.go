@@ -7,7 +7,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/model"
 )
 
-// listAuditLogs handles GET /api/audit
+// listAuditLogs handles GET /api/v1/audit
 func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	pg := parsePagination(r)
 	filter := &model.AuditFilter{
@@ -39,7 +39,7 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, logs)
 }
 
-// getAuditLog handles GET /api/audit/{id}
+// getAuditLog handles GET /api/v1/audit/{id}
 func (h *Handler) getAuditLog(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
@@ -51,7 +51,7 @@ func (h *Handler) getAuditLog(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, log)
 }
 
-// exportAuditLogs handles GET /api/audit/export
+// exportAuditLogs handles GET /api/v1/audit/export
 func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 	format := r.URL.Query().Get("format")
 	if format == "" {

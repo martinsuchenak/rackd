@@ -57,7 +57,7 @@ Circuit management allows you to:
 ### List Circuits
 
 ```http
-GET /api/circuits
+GET /api/v1/circuits
 ```
 
 Query parameters:
@@ -87,13 +87,13 @@ Query parameters:
 ### Get Circuit
 
 ```http
-GET /api/circuits/{id}
+GET /api/v1/circuits/{id}
 ```
 
 ### Create Circuit
 
 ```http
-POST /api/circuits
+POST /api/v1/circuits
 ```
 
 **Request body:**
@@ -118,7 +118,7 @@ Required fields: `name`, `provider`, `type`, `status`
 ### Update Circuit
 
 ```http
-PUT /api/circuits/{id}
+PUT /api/v1/circuits/{id}
 ```
 
 All fields are optional for partial updates.
@@ -126,7 +126,7 @@ All fields are optional for partial updates.
 ### Delete Circuit
 
 ```http
-DELETE /api/circuits/{id}
+DELETE /api/v1/circuits/{id}
 ```
 
 ## CLI Commands

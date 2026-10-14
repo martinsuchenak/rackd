@@ -6,7 +6,7 @@ Rackd includes SQLite FTS5 (Full-Text Search) for fast, efficient searching acro
 
 ## Features
 
-- **Unified search endpoint** - Single `/api/search` endpoint returns all matching results
+- **Unified search endpoint** - Single `/api/v1/search` endpoint returns all matching results
 - **FTS5-powered search** for devices, networks, and datacenters
 - **Comprehensive device search** across:
   - Device fields (name, hostname, description, make/model, OS, location)
@@ -22,7 +22,7 @@ Rackd includes SQLite FTS5 (Full-Text Search) for fast, efficient searching acro
 
 ### Unified Search
 ```
-GET /api/search?q=<query>
+GET /api/v1/search?q=<query>
 ```
 
 Returns:
@@ -47,7 +47,7 @@ Returns:
 
 ## Web UI Integration
 
-The global search bar uses the unified `/api/search` endpoint to search across all entity types simultaneously. Results are displayed in a dropdown with keyboard navigation support.
+The global search bar uses the unified `/api/v1/search` endpoint to search across all entity types simultaneously. Results are displayed in a dropdown with keyboard navigation support.
 
 ## Implementation Details
 

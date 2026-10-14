@@ -38,7 +38,7 @@ func ListCommand() *cli.Command {
 				params.Set("reserved_by", reservedBy)
 			}
 
-			path := "/api/reservations"
+			path := "/api/v1/reservations"
 			if len(params) > 0 {
 				path += "?" + params.Encode()
 			}

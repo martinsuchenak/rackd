@@ -58,7 +58,7 @@ Conflicts are automatically detected when:
 ### List Conflicts
 
 ```http
-GET /api/conflicts
+GET /api/v1/conflicts
 ```
 
 Query parameters:
@@ -83,7 +83,7 @@ Query parameters:
 ### Get Conflict
 
 ```http
-GET /api/conflicts/{id}
+GET /api/v1/conflicts/{id}
 ```
 
 ### Detect Conflicts
@@ -91,7 +91,7 @@ GET /api/conflicts/{id}
 Trigger manual conflict detection scan:
 
 ```http
-POST /api/conflicts/detect
+POST /api/v1/conflicts/detect
 ```
 
 **Response:**
@@ -105,7 +105,7 @@ POST /api/conflicts/detect
 ### Resolve Conflict
 
 ```http
-POST /api/conflicts/{id}/resolve
+POST /api/v1/conflicts/{id}/resolve
 ```
 
 **Request body:**
@@ -120,7 +120,7 @@ POST /api/conflicts/{id}/resolve
 Mark a conflict as acceptable:
 
 ```http
-POST /api/conflicts/{id}/ignore
+POST /api/v1/conflicts/{id}/ignore
 ```
 
 **Request body:**
@@ -135,7 +135,7 @@ POST /api/conflicts/{id}/ignore
 Remove a resolved/ignored conflict record:
 
 ```http
-DELETE /api/conflicts/{id}
+DELETE /api/v1/conflicts/{id}
 ```
 
 ## CLI Commands

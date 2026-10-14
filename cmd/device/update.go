@@ -62,7 +62,7 @@ func UpdateCommand() *cli.Command {
 				updates["domains"] = strings.Split(v, ",")
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/devices/"+deviceID, updates)
+			resp, err := c.DoRequest("PUT", "/api/v1/devices/"+deviceID, updates)
 			if err != nil {
 				return err
 			}

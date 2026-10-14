@@ -22,7 +22,7 @@ func PingCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("POST", "/api/webhooks/"+id+"/ping", nil)
+			resp, err := c.DoRequest("POST", "/api/v1/webhooks/"+id+"/ping", nil)
 			if err != nil {
 				return err
 			}

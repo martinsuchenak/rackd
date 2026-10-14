@@ -40,7 +40,7 @@ IP reservations allow you to:
 ### List Reservations
 
 ```http
-GET /api/pools/{pool_id}/reservations
+GET /api/v1/pools/{pool_id}/reservations
 ```
 
 Query parameters:
@@ -66,13 +66,13 @@ Query parameters:
 ### Get Reservation
 
 ```http
-GET /api/pools/{pool_id}/reservations/{ip}
+GET /api/v1/pools/{pool_id}/reservations/{ip}
 ```
 
 ### Create Reservation
 
 ```http
-POST /api/pools/{pool_id}/reservations
+POST /api/v1/pools/{pool_id}/reservations
 ```
 
 **Request body:**
@@ -90,13 +90,13 @@ If `ip_address` is omitted, the next available IP is automatically assigned.
 ### Update Reservation
 
 ```http
-PUT /api/pools/{pool_id}/reservations/{ip}
+PUT /api/v1/pools/{pool_id}/reservations/{ip}
 ```
 
 ### Release Reservation
 
 ```http
-DELETE /api/pools/{pool_id}/reservations/{ip}
+DELETE /api/v1/pools/{pool_id}/reservations/{ip}
 ```
 
 Marks the reservation as `released` and frees the IP.
@@ -106,7 +106,7 @@ Marks the reservation as `released` and frees the IP.
 When creating a device with a reserved IP, the reservation is automatically claimed:
 
 ```http
-POST /api/devices
+POST /api/v1/devices
 ```
 
 ```json

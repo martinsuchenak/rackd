@@ -129,19 +129,19 @@ Note: Standard private intranet subnets (e.g. `10.x.x.x`, `192.168.x.x`) are **p
 ### List Webhooks
 
 ```http
-GET /api/webhooks
+GET /api/v1/webhooks
 ```
 
 ### Get Webhook
 
 ```http
-GET /api/webhooks/{id}
+GET /api/v1/webhooks/{id}
 ```
 
 ### Create Webhook
 
 ```http
-POST /api/webhooks
+POST /api/v1/webhooks
 ```
 
 **Request body:**
@@ -161,19 +161,19 @@ POST /api/webhooks
 ### Update Webhook
 
 ```http
-PUT /api/webhooks/{id}
+PUT /api/v1/webhooks/{id}
 ```
 
 ### Delete Webhook
 
 ```http
-DELETE /api/webhooks/{id}
+DELETE /api/v1/webhooks/{id}
 ```
 
 ### Ping Webhook
 
 ```http
-POST /api/webhooks/{id}/ping
+POST /api/v1/webhooks/{id}/ping
 ```
 
 Sends a test delivery to verify webhook configuration.
@@ -181,7 +181,7 @@ Sends a test delivery to verify webhook configuration.
 ### List Deliveries
 
 ```http
-GET /api/webhooks/{id}/deliveries
+GET /api/v1/webhooks/{id}/deliveries
 ```
 
 Returns delivery history with status and response details.

@@ -23,7 +23,7 @@ func GetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 			networkID := cmd.GetString("id")
 
-			resp, err := c.DoRequest("GET", "/api/networks/"+networkID, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/networks/"+networkID, nil)
 			if err != nil {
 				return err
 			}

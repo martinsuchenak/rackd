@@ -103,9 +103,9 @@ When `AUDIT_ENABLED=true`, Rackd logs all API operations including:
 Audit logs are retained for 90 days by default (`AUDIT_RETENTION_DAYS`).
 
 Query audit logs:
-- `GET /api/audit` — list with filters (action, resource, user, date range)
-- `GET /api/audit/export` — export as CSV
-- `GET /api/audit/{id}` — get single entry
+- `GET /api/v1/audit` — list with filters (action, resource, user, date range)
+- `GET /api/v1/audit/export` — export as CSV
+- `GET /api/v1/audit/{id}` — get single entry
 
 ## Rate Limiting
 

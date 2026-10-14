@@ -43,7 +43,7 @@ Custom fields provide flexibility to extend device records with organization-spe
 ### List Custom Field Definitions
 
 ```http
-GET /api/custom-fields
+GET /api/v1/custom-fields
 ```
 
 **Response:**
@@ -71,13 +71,13 @@ GET /api/custom-fields
 ### Get Custom Field Definition
 
 ```http
-GET /api/custom-fields/{id}
+GET /api/v1/custom-fields/{id}
 ```
 
 ### Get Available Field Types
 
 ```http
-GET /api/custom-fields/types
+GET /api/v1/custom-fields/types
 ```
 
 **Response:**
@@ -88,7 +88,7 @@ GET /api/custom-fields/types
 ### Create Custom Field Definition
 
 ```http
-POST /api/custom-fields
+POST /api/v1/custom-fields
 ```
 
 **Request body:**
@@ -116,7 +116,7 @@ For select fields:
 ### Update Custom Field Definition
 
 ```http
-PUT /api/custom-fields/{id}
+PUT /api/v1/custom-fields/{id}
 ```
 
 Note: Field type cannot be changed after creation.
@@ -124,7 +124,7 @@ Note: Field type cannot be changed after creation.
 ### Delete Custom Field Definition
 
 ```http
-DELETE /api/custom-fields/{id}
+DELETE /api/v1/custom-fields/{id}
 ```
 
 Warning: This will remove all values for this field from all devices.
@@ -134,7 +134,7 @@ Warning: This will remove all values for this field from all devices.
 ### Create Device with Custom Fields
 
 ```http
-POST /api/devices
+POST /api/v1/devices
 ```
 
 ```json
@@ -151,7 +151,7 @@ POST /api/devices
 ### Update Device Custom Fields
 
 ```http
-PUT /api/devices/{id}
+PUT /api/v1/devices/{id}
 ```
 
 ```json

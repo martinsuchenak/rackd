@@ -17,7 +17,7 @@ The dashboard provides at-a-glance visibility into:
 ### Get Dashboard Stats
 
 ```http
-GET /api/dashboard
+GET /api/v1/dashboard
 ```
 
 **Response:**
@@ -63,7 +63,7 @@ GET /api/dashboard
 ### Get Utilization Trend
 
 ```http
-GET /api/dashboard/trend
+GET /api/v1/dashboard/trend
 ```
 
 Query parameters:
@@ -220,14 +220,14 @@ Snapshots are stored in the `utilization_snapshots` table:
 
 ```bash
 # Get JSON output
-curl -H "Authorization: Bearer $TOKEN" /api/dashboard | jq
+curl -H "Authorization: Bearer $TOKEN" /api/v1/dashboard | jq
 ```
 
 ### Query Trends
 
 ```bash
 # Get 30-day trend
-curl "/api/dashboard/trend?days=30" | jq
+curl "/api/v1/dashboard/trend?days=30" | jq
 ```
 
 ## Use Cases
@@ -259,7 +259,7 @@ Generate reports from dashboard data:
 Dashboard data can feed external monitoring:
 ```bash
 # Export metrics for Prometheus/Grafana
-curl /api/dashboard | jq '{
+curl /api/v1/dashboard | jq '{
   devices: .total_devices,
   conflicts: .active_conflicts,
   utilization: .network_utilization

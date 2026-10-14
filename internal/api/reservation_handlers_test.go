@@ -25,7 +25,7 @@ func TestReservationHandlers(t *testing.T) {
 	}
 
 	t.Run("CreateListReleaseDeleteReservation", func(t *testing.T) {
-		createReq := authReq(httptest.NewRequest("POST", "/api/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","hostname":"reserved-host","expires_in_days":7}`)))
+		createReq := authReq(httptest.NewRequest("POST", "/api/v1/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","hostname":"reserved-host","expires_in_days":7}`)))
 		createReq.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, createReq)
 		if w.Code != http.StatusCreated {
@@ -37,24 +37,24 @@ func TestReservationHandlers(t *testing.T) {
 			t.Fatalf("failed to decode reservation: %v", err)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/reservations?pool_id=pool-phase2", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/reservations?pool_id=pool-phase2", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/reservations/"+created.ID+"/release", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/reservations/"+created.ID+"/release", nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/reservations/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/reservations/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d", w.Code)
 		}
 	})
 
 	t.Run("CreateReservation_BadExpiresDays", func(t *testing.T) {
-		req := authReq(httptest.NewRequest("POST", "/api/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","expires_in_days":366}`)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","expires_in_days":366}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusBadRequest {
@@ -63,24 +63,24 @@ func TestReservationHandlers(t *testing.T) {
 	})
 
 	t.Run("Reservation_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/reservations/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/reservations/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/reservations/nonexistent", bytes.NewBufferString(`{"hostname":"missing"}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/reservations/nonexistent", bytes.NewBufferString(`{"hostname":"missing"}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/reservations/nonexistent", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/reservations/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/reservations/nonexistent/release", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/reservations/nonexistent/release", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
@@ -89,13 +89,13 @@ func TestReservationHandlers(t *testing.T) {
 	t.Run("Reservation_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := env.createAPIUser(t, "limited-reservation-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/reservations", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/reservations", nil), limitedToken)
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","hostname":"limited-host"}`)), limitedToken)
+		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/reservations", bytes.NewBufferString(`{"pool_id":"pool-phase2","hostname":"limited-host"}`)), limitedToken)
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusForbidden {

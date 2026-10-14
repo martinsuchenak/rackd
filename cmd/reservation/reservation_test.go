@@ -207,35 +207,35 @@ func TestPrintReservationDetail(t *testing.T) {
 func TestMockReservationAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/reservations" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/reservations" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "res-1", "ip_address": "192.168.1.100", "status": "active"},
 			})
-		case r.URL.Path == "/api/reservations/res-1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/reservations/res-1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-1", "ip_address": "192.168.1.100", "status": "active",
 			})
-		case r.URL.Path == "/api/reservations" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/reservations" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-new", "ip_address": "192.168.1.102", "status": "active",
 			})
-		case r.URL.Path == "/api/reservations/res-1" && r.Method == "PUT":
+		case r.URL.Path == "/api/v1/reservations/res-1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "res-1", "ip_address": "192.168.1.100", "status": "active", "hostname": "updated",
 			})
-		case r.URL.Path == "/api/reservations/res-1/release" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/reservations/res-1/release" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation released successfully"})
-		case r.URL.Path == "/api/reservations/res-1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/reservations/res-1" && r.Method == "DELETE":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Reservation deleted successfully"})
@@ -249,7 +249,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/reservations", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/reservations", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/reservations/res-1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/reservations/res-1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	}
 
 	// Test create
-	resp, err = c.DoRequest("POST", "/api/reservations", map[string]string{"pool_id": "pool-1"})
+	resp, err = c.DoRequest("POST", "/api/v1/reservations", map[string]string{"pool_id": "pool-1"})
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	}
 
 	// Test update
-	resp, err = c.DoRequest("PUT", "/api/reservations/res-1", map[string]string{"hostname": "updated"})
+	resp, err = c.DoRequest("PUT", "/api/v1/reservations/res-1", map[string]string{"hostname": "updated"})
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -285,7 +285,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	}
 
 	// Test release
-	resp, err = c.DoRequest("POST", "/api/reservations/res-1/release", nil)
+	resp, err = c.DoRequest("POST", "/api/v1/reservations/res-1/release", nil)
 	if err != nil {
 		t.Fatalf("release request failed: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestMockReservationAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/reservations/res-1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/reservations/res-1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

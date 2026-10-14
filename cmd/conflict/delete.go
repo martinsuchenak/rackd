@@ -32,7 +32,7 @@ func DeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err := c.DoRequest("DELETE", "/api/conflicts/"+conflictID, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/conflicts/"+conflictID, nil)
 			if err != nil {
 				return err
 			}

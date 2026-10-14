@@ -36,7 +36,7 @@ func ListCommand() *cli.Command {
 				params.Set("limit", fmt.Sprintf("%d", limit))
 			}
 
-			path := "/api/discovery/devices"
+			path := "/api/v1/discovery/devices"
 			if len(params) > 0 {
 				path += "?" + params.Encode()
 			}

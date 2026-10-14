@@ -68,32 +68,32 @@ func TestParsePorts(t *testing.T) {
 func TestMockScanProfileAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/scan-profiles" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/scan-profiles" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "sp1", "name": "quick-scan", "scan_type": "quick"},
 			})
-		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/scan-profiles/sp1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp1", "name": "quick-scan", "scan_type": "quick",
 				"timeout_sec": 30, "max_workers": 10,
 			})
-		case r.URL.Path == "/api/scan-profiles" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/scan-profiles" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp-new", "name": "new-profile",
 			})
-		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "PUT":
+		case r.URL.Path == "/api/v1/scan-profiles/sp1" && r.Method == "PUT":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "sp1", "name": "updated-profile",
 			})
-		case r.URL.Path == "/api/scan-profiles/sp1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/scan-profiles/sp1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -105,7 +105,7 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/scan-profiles", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/scan-profiles", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/scan-profiles/sp1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/scan-profiles/sp1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 	}
 
 	// Test create
-	resp, err = c.DoRequest("POST", "/api/scan-profiles", map[string]interface{}{
+	resp, err = c.DoRequest("POST", "/api/v1/scan-profiles", map[string]interface{}{
 		"name": "new-profile", "scan_type": "full",
 	})
 	if err != nil {
@@ -134,7 +134,7 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 	}
 
 	// Test update
-	resp, err = c.DoRequest("PUT", "/api/scan-profiles/sp1", map[string]interface{}{
+	resp, err = c.DoRequest("PUT", "/api/v1/scan-profiles/sp1", map[string]interface{}{
 		"name": "updated-profile",
 	})
 	if err != nil {
@@ -145,7 +145,7 @@ func TestMockScanProfileAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/scan-profiles/sp1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/scan-profiles/sp1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

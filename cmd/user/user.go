@@ -48,7 +48,7 @@ func ListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			resp, err := c.DoRequest("GET", "/api/users", nil)
+			resp, err := c.DoRequest("GET", "/api/v1/users", nil)
 			if err != nil {
 				return err
 			}
@@ -156,7 +156,7 @@ func CreateCommand() *cli.Command {
 				"is_admin":  cmd.GetBool("admin"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/users", req)
+			resp, err := c.DoRequest("POST", "/api/v1/users", req)
 			if err != nil {
 				return err
 			}
@@ -282,7 +282,7 @@ func UpdateCommand() *cli.Command {
 
 			var user model.UserResponse
 			if len(req) > 0 {
-				resp, err := c.DoRequest("PUT", fmt.Sprintf("/api/users/%s", id), req)
+				resp, err := c.DoRequest("PUT", fmt.Sprintf("/api/v1/users/%s", id), req)
 				if err != nil {
 					return err
 				}
@@ -313,7 +313,7 @@ func UpdateCommand() *cli.Command {
 			}
 
 			if len(req) == 0 {
-				refetchResp, err := c.DoRequest("GET", fmt.Sprintf("/api/users/%s", id), nil)
+				refetchResp, err := c.DoRequest("GET", fmt.Sprintf("/api/v1/users/%s", id), nil)
 				if err != nil {
 					return err
 				}
@@ -343,7 +343,7 @@ func UpdateCommand() *cli.Command {
 }
 
 func assignRole(c *client.Client, userID, roleID string) error {
-	resp, err := c.DoRequest("POST", "/api/users/grant-role", model.GrantRoleRequest{
+	resp, err := c.DoRequest("POST", "/api/v1/users/grant-role", model.GrantRoleRequest{
 		UserID: userID,
 		RoleID: roleID,
 	})
@@ -360,7 +360,7 @@ func assignRole(c *client.Client, userID, roleID string) error {
 }
 
 func revokeRole(c *client.Client, userID, roleID string) error {
-	resp, err := c.DoRequest("POST", "/api/users/revoke-role", model.RevokeRoleRequest{
+	resp, err := c.DoRequest("POST", "/api/v1/users/revoke-role", model.RevokeRoleRequest{
 		UserID: userID,
 		RoleID: roleID,
 	})
@@ -388,7 +388,7 @@ func DeleteCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("DELETE", fmt.Sprintf("/api/users/%s", id), nil)
+			resp, err := c.DoRequest("DELETE", fmt.Sprintf("/api/v1/users/%s", id), nil)
 			if err != nil {
 				return err
 			}
@@ -463,7 +463,7 @@ func ChangePasswordCommand() *cli.Command {
 				"new_password": newPassword1,
 			}
 
-			resp, err := c.DoRequest("POST", fmt.Sprintf("/api/users/%s/password", id), req)
+			resp, err := c.DoRequest("POST", fmt.Sprintf("/api/v1/users/%s/password", id), req)
 			if err != nil {
 				return err
 			}

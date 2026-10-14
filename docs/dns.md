@@ -215,30 +215,30 @@ Example:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/dns/providers` | List providers |
-| GET | `/api/dns/providers/{id}` | Get provider |
-| POST | `/api/dns/providers` | Create provider |
-| PUT | `/api/dns/providers/{id}` | Update provider |
-| DELETE | `/api/dns/providers/{id}` | Delete provider |
-| POST | `/api/dns/providers/{id}/test` | Test connection |
+| GET | `/api/v1/dns/providers` | List providers |
+| GET | `/api/v1/dns/providers/{id}` | Get provider |
+| POST | `/api/v1/dns/providers` | Create provider |
+| PUT | `/api/v1/dns/providers/{id}` | Update provider |
+| DELETE | `/api/v1/dns/providers/{id}` | Delete provider |
+| POST | `/api/v1/dns/providers/{id}/test` | Test connection |
 
 ### DNS Zones
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/dns/zones` | List zones |
-| GET | `/api/dns/zones/{id}` | Get zone |
-| POST | `/api/dns/zones` | Create zone |
-| PUT | `/api/dns/zones/{id}` | Update zone |
-| DELETE | `/api/dns/zones/{id}` | Delete zone |
+| GET | `/api/v1/dns/zones` | List zones |
+| GET | `/api/v1/dns/zones/{id}` | Get zone |
+| POST | `/api/v1/dns/zones` | Create zone |
+| PUT | `/api/v1/dns/zones/{id}` | Update zone |
+| DELETE | `/api/v1/dns/zones/{id}` | Delete zone |
 
 ### DNS Records
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/dns/zones/{id}/records` | List records |
-| POST | `/api/dns/zones/{id}/sync` | Sync to provider |
-| POST | `/api/dns/zones/{id}/import` | Import from provider |
+| GET | `/api/v1/dns/zones/{id}/records` | List records |
+| POST | `/api/v1/dns/zones/{id}/sync` | Sync to provider |
+| POST | `/api/v1/dns/zones/{id}/import` | Import from provider |
 
 ## Troubleshooting
 

@@ -41,7 +41,7 @@ func providerListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			url := "/api/dns/providers"
+			url := "/api/v1/dns/providers"
 			params := ""
 			if providerType := cmd.GetString("type"); providerType != "" {
 				params += "&type=" + providerType
@@ -91,7 +91,7 @@ func providerGetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("GET", "/api/dns/providers/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/dns/providers/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -162,7 +162,7 @@ func providerCreateCommand() *cli.Command {
 				req["description"] = v
 			}
 
-			resp, err := c.DoRequest("POST", "/api/dns/providers", req)
+			resp, err := c.DoRequest("POST", "/api/v1/dns/providers", req)
 			if err != nil {
 				return err
 			}
@@ -244,7 +244,7 @@ func providerUpdateCommand() *cli.Command {
 				return nil
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/dns/providers/"+cmd.GetString("id"), updates)
+			resp, err := c.DoRequest("PUT", "/api/v1/dns/providers/"+cmd.GetString("id"), updates)
 			if err != nil {
 				return err
 			}
@@ -297,7 +297,7 @@ func providerDeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err := c.DoRequest("DELETE", "/api/dns/providers/"+id, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/dns/providers/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -325,7 +325,7 @@ func providerTestCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("POST", "/api/dns/providers/"+id+"/test", nil)
+			resp, err := c.DoRequest("POST", "/api/v1/dns/providers/"+id+"/test", nil)
 			if err != nil {
 				return err
 			}

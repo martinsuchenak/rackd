@@ -41,7 +41,7 @@ func zoneListCommand() *cli.Command {
 			cfg := client.LoadConfig()
 			c := client.NewClient(cfg)
 
-			url := "/api/dns/zones"
+			url := "/api/v1/dns/zones"
 			params := ""
 			if provider := cmd.GetString("provider"); provider != "" {
 				params += "&provider_id=" + provider
@@ -94,7 +94,7 @@ func zoneGetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("GET", "/api/dns/zones/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/dns/zones/"+id, nil)
 			if err != nil {
 				return err
 			}
@@ -160,7 +160,7 @@ func zoneCreateCommand() *cli.Command {
 				req["default_ttl"] = v
 			}
 
-			resp, err := c.DoRequest("POST", "/api/dns/zones", req)
+			resp, err := c.DoRequest("POST", "/api/v1/dns/zones", req)
 			if err != nil {
 				return err
 			}
@@ -240,7 +240,7 @@ func zoneUpdateCommand() *cli.Command {
 				return nil
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/dns/zones/"+cmd.GetString("id"), updates)
+			resp, err := c.DoRequest("PUT", "/api/v1/dns/zones/"+cmd.GetString("id"), updates)
 			if err != nil {
 				return err
 			}
@@ -293,7 +293,7 @@ func zoneDeleteCommand() *cli.Command {
 				}
 			}
 
-			resp, err := c.DoRequest("DELETE", "/api/dns/zones/"+id, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/dns/zones/"+id, nil)
 			if err != nil {
 				return err
 			}

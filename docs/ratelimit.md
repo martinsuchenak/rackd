@@ -104,7 +104,7 @@ Content-Type: application/json
 ### Checking Rate Limit Status
 
 ```bash
-curl -i http://localhost:8080/api/devices
+curl -i http://localhost:8080/api/v1/devices
 
 HTTP/1.1 200 OK
 X-RateLimit-Limit: 100
@@ -117,7 +117,7 @@ X-RateLimit-Reset: 2026-02-03T16:45:00Z
 ```bash
 # Make requests until rate limited
 for i in {1..150}; do
-  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/devices
+  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/v1/devices
 done
 
 # Output:
@@ -134,8 +134,8 @@ done
 
 ```bash
 # Different API keys have separate rate limits
-curl -H "Authorization: Bearer key1" http://localhost:8080/api/devices
-curl -H "Authorization: Bearer key2" http://localhost:8080/api/devices
+curl -H "Authorization: Bearer key1" http://localhost:8080/api/v1/devices
+curl -H "Authorization: Bearer key2" http://localhost:8080/api/v1/devices
 ```
 
 ## Best Practices
@@ -159,7 +159,7 @@ curl -H "Authorization: Bearer key2" http://localhost:8080/api/devices
 Rate limit events are logged at DEBUG level:
 
 ```
-level=debug msg="Rate limit exceeded" client=192.168.1.100 path=/api/devices
+level=debug msg="Rate limit exceeded" client=192.168.1.100 path=/api/v1/devices
 ```
 
 To see rate limit logs:
@@ -191,7 +191,7 @@ For multi-instance deployments, consider using a reverse proxy (nginx, Caddy) or
 Check configuration:
 ```bash
 # Verify rate limiting is enabled
-curl http://localhost:8080/api/config | jq .rate_limit
+curl http://localhost:8080/api/v1/config | jq .rate_limit
 
 # Check server logs for rate limit configuration
 rackd server

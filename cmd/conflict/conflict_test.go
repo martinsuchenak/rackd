@@ -182,19 +182,19 @@ func TestConflictJSONOutput(t *testing.T) {
 func TestMockConflictAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/conflicts" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/conflicts" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 				{"id": "conflict-1", "type": "duplicate_ip", "status": "active", "description": "IP 10.0.0.1 conflict"},
 			})
-		case r.URL.Path == "/api/conflicts/conflict-1" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/conflicts/conflict-1" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id": "conflict-1", "type": "duplicate_ip", "status": "active", "description": "IP 10.0.0.1 conflict",
 			})
-		case r.URL.Path == "/api/conflicts/detect" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/conflicts/detect" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -202,11 +202,11 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 					{"id": "detected-1", "type": "duplicate_ip", "status": "active"},
 				},
 			})
-		case r.URL.Path == "/api/conflicts/resolve" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/conflicts/resolve" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
-		case r.URL.Path == "/api/conflicts/conflict-1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/conflicts/conflict-1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -218,7 +218,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/conflicts", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/conflicts", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -227,7 +227,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	}
 
 	// Test get
-	resp, err = c.DoRequest("GET", "/api/conflicts/conflict-1", nil)
+	resp, err = c.DoRequest("GET", "/api/v1/conflicts/conflict-1", nil)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	}
 
 	// Test detect
-	resp, err = c.DoRequest("POST", "/api/conflicts/detect", nil)
+	resp, err = c.DoRequest("POST", "/api/v1/conflicts/detect", nil)
 	if err != nil {
 		t.Fatalf("detect request failed: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	}
 
 	// Test resolve
-	resp, err = c.DoRequest("POST", "/api/conflicts/resolve", map[string]string{"conflict_id": "conflict-1", "notes": "resolved"})
+	resp, err = c.DoRequest("POST", "/api/v1/conflicts/resolve", map[string]string{"conflict_id": "conflict-1", "notes": "resolved"})
 	if err != nil {
 		t.Fatalf("resolve request failed: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/conflicts/conflict-1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/conflicts/conflict-1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

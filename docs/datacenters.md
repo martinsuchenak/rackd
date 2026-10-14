@@ -42,7 +42,7 @@ rackd datacenter add --name "Edge DC" --output json
 **API:**
 ```bash
 # Create datacenter
-curl -X POST http://localhost:8080/api/datacenters \
+curl -X POST http://localhost:8080/api/v1/datacenters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Primary DC",
@@ -80,10 +80,10 @@ rackd datacenter list --output yaml
 **API:**
 ```bash
 # List all datacenters
-curl http://localhost:8080/api/datacenters
+curl http://localhost:8080/api/v1/datacenters
 
 # Filter by name
-curl "http://localhost:8080/api/datacenters?name=Primary"
+curl "http://localhost:8080/api/v1/datacenters?name=Primary"
 ```
 
 **Response:**
@@ -114,7 +114,7 @@ rackd datacenter get --id dc-123e4567-e89b-12d3-a456-426614174000 --output json
 **API:**
 ```bash
 # Get specific datacenter
-curl http://localhost:8080/api/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
+curl http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
 ```
 
 ### Update Datacenter
@@ -130,7 +130,7 @@ rackd datacenter update --id dc-123e4567-e89b-12d3-a456-426614174000 \
 **API:**
 ```bash
 # Update datacenter (partial update)
-curl -X PUT http://localhost:8080/api/datacenters/dc-123e4567-e89b-12d3-a456-426614174000 \
+curl -X PUT http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Updated DC Name",
@@ -149,7 +149,7 @@ rackd datacenter delete --id dc-123e4567-e89b-12d3-a456-426614174000
 **API:**
 ```bash
 # Delete datacenter
-curl -X DELETE http://localhost:8080/api/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
+curl -X DELETE http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
 ```
 
 ## Device Associations
@@ -161,7 +161,7 @@ Devices can be associated with datacenters through the `datacenter_id` field. Th
 **API:**
 ```bash
 # Get all devices in a datacenter
-curl http://localhost:8080/api/datacenters/dc-123e4567-e89b-12d3-a456-426614174000/devices
+curl http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000/devices
 ```
 
 **Response:**
@@ -197,7 +197,7 @@ rackd device update --id dev-456e7890-e89b-12d3-a456-426614174001 \
 **API:**
 ```bash
 # Create device with datacenter
-curl -X POST http://localhost:8080/api/devices \
+curl -X POST http://localhost:8080/api/v1/devices \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -214,7 +214,7 @@ Filter datacenters by name using partial matching:
 **API:**
 ```bash
 # Find datacenters with "Primary" in the name
-curl "http://localhost:8080/api/datacenters?name=Primary"
+curl "http://localhost:8080/api/v1/datacenters?name=Primary"
 ```
 
 The filter supports partial matching, so searching for "DC" would match "Primary DC", "Secondary DC", etc.

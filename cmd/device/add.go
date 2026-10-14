@@ -49,7 +49,7 @@ func AddCommand() *cli.Command {
 				device = parseDeviceFlags(cmd)
 			}
 
-			resp, err := c.DoRequest("POST", "/api/devices", device)
+			resp, err := c.DoRequest("POST", "/api/v1/devices", device)
 			if err != nil {
 				return err
 			}

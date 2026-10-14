@@ -28,7 +28,7 @@ func RecordsCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			zoneID := cmd.GetString("zone")
-			url := "/api/dns/zones/" + zoneID + "/records"
+			url := "/api/v1/dns/zones/" + zoneID + "/records"
 			params := ""
 
 			if recordType := cmd.GetString("type"); recordType != "" {

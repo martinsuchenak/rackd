@@ -40,7 +40,7 @@ func TestSubcommandRunFunctions(t *testing.T) {
 func TestMockOAuthAPIIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/api/oauth/clients" && r.Method == "GET":
+		case r.URL.Path == "/api/v1/oauth/clients" && r.Method == "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
@@ -52,7 +52,7 @@ func TestMockOAuthAPIIntegration(t *testing.T) {
 					"created_at":      "2026-01-01T00:00:00Z",
 				},
 			})
-		case r.URL.Path == "/api/oauth/clients/client-1" && r.Method == "DELETE":
+		case r.URL.Path == "/api/v1/oauth/clients/client-1" && r.Method == "DELETE":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -64,7 +64,7 @@ func TestMockOAuthAPIIntegration(t *testing.T) {
 	c := client.NewClient(cfg)
 
 	// Test list
-	resp, err := c.DoRequest("GET", "/api/oauth/clients", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/oauth/clients", nil)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestMockOAuthAPIIntegration(t *testing.T) {
 	}
 
 	// Test delete
-	resp, err = c.DoRequest("DELETE", "/api/oauth/clients/client-1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/oauth/clients/client-1", nil)
 	if err != nil {
 		t.Fatalf("delete request failed: %v", err)
 	}

@@ -22,7 +22,7 @@ func GetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("GET", "/api/webhooks/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/webhooks/"+id, nil)
 			if err != nil {
 				return err
 			}

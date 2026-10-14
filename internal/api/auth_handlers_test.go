@@ -71,7 +71,7 @@ func TestLoginReturnsPermissions(t *testing.T) {
 
 	// Test login
 	loginBody := `{"username":"testuser","password":"testpassword123"}`
-	resp, err := http.Post(server.URL+"/api/auth/login", "application/json", bytes.NewBufferString(loginBody))
+	resp, err := http.Post(server.URL+"/api/v1/auth/login", "application/json", bytes.NewBufferString(loginBody))
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}

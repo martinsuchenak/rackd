@@ -52,7 +52,7 @@ func UpdateCommand() *cli.Command {
 				return err
 			}
 
-			resp, err := c.DoRequest("PUT", "/api/reservations/"+reservationID, bytes.NewReader(body))
+			resp, err := c.DoRequest("PUT", "/api/v1/reservations/"+reservationID, bytes.NewReader(body))
 			if err != nil {
 				return err
 			}

@@ -57,29 +57,29 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 		}
 
 		switch {
-		case r.URL.Path == "/api/users" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/users" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"id": "u1", "username": "alice", "email": "alice@example.com"},
 			})
-		case r.URL.Path == "/api/users/u1" && r.Method == http.MethodGet:
+		case r.URL.Path == "/api/v1/users/u1" && r.Method == http.MethodGet:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id": "u1", "username": "alice", "email": "alice@example.com",
 			})
-		case r.URL.Path == "/api/users/u1" && r.Method == http.MethodPut:
+		case r.URL.Path == "/api/v1/users/u1" && r.Method == http.MethodPut:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id": "u1", "username": "alice-renamed", "email": "alice@example.com",
 			})
-		case r.URL.Path == "/api/users/u1" && r.Method == http.MethodDelete:
+		case r.URL.Path == "/api/v1/users/u1" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
-		case r.URL.Path == "/api/users/grant-role" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/users/grant-role" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusCreated)
-		case r.URL.Path == "/api/users/revoke-role" && r.Method == http.MethodPost:
+		case r.URL.Path == "/api/v1/users/revoke-role" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -89,7 +89,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 
 	c := client.NewClient(&client.Config{ServerURL: server.URL, Timeout: "5s"})
 
-	resp, err := c.DoRequest("GET", "/api/users", nil)
+	resp, err := c.DoRequest("GET", "/api/v1/users", nil)
 	if err != nil {
 		t.Fatalf("list users request failed: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	resp, err = c.DoRequest("PUT", "/api/users/u1", map[string]any{
+	resp, err = c.DoRequest("PUT", "/api/v1/users/u1", map[string]any{
 		"username":  "alice-renamed",
 		"full_name": "Alice Renamed",
 	})
@@ -118,7 +118,7 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 		t.Fatalf("revokeRole returned error: %v", err)
 	}
 
-	resp, err = c.DoRequest("DELETE", "/api/users/u1", nil)
+	resp, err = c.DoRequest("DELETE", "/api/v1/users/u1", nil)
 	if err != nil {
 		t.Fatalf("delete user request failed: %v", err)
 	}
@@ -134,10 +134,10 @@ func TestUserRoleHelpersAndUserAPIIntegration(t *testing.T) {
 	foundGrant := false
 	foundRevoke := false
 	for i, path := range seenPaths {
-		if path == "/api/users/grant-role" && seenMethods[i] == http.MethodPost {
+		if path == "/api/v1/users/grant-role" && seenMethods[i] == http.MethodPost {
 			foundGrant = true
 		}
-		if path == "/api/users/revoke-role" && seenMethods[i] == http.MethodPost {
+		if path == "/api/v1/users/revoke-role" && seenMethods[i] == http.MethodPost {
 			foundRevoke = true
 		}
 	}

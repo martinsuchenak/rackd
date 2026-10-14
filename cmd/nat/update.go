@@ -83,7 +83,7 @@ func UpdateCommand() *cli.Command {
 			}
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("PUT", "/api/nat/"+id, data)
+			resp, err := c.DoRequest("PUT", "/api/v1/nat/"+id, data)
 			if err != nil {
 				return err
 			}

@@ -20,7 +20,7 @@ func DeleteCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("DELETE", "/api/nat/"+id, nil)
+			resp, err := c.DoRequest("DELETE", "/api/v1/nat/"+id, nil)
 			if err != nil {
 				return err
 			}

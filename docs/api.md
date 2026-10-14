@@ -5,8 +5,41 @@ The Rackd REST API provides programmatic access to all infrastructure management
 ## Base URL
 
 ```
-http://localhost:8080/api
+http://localhost:8080/api/v1
 ```
+
+Health checks (`/healthz`, `/readyz`), metrics (`/metrics`), MCP (`/mcp`) and the OAuth endpoints (`/mcp-oauth/*`, `/.well-known/*`) are not versioned.
+
+## Versioning and Deprecation
+
+The API version is part of the path. Within `/api/v1`, changes are backward compatible:
+
+- Rackd may add endpoints, optional request fields, query parameters and response fields.
+- Rackd may add enum values and error codes. Clients should ignore unknown response fields and handle unknown enum values.
+
+A breaking change goes into a new version, `/api/v2`. Breaking means removing or renaming an endpoint or field, changing a field's type, making an optional field required, or changing what a status code means.
+
+When something is deprecated:
+
+- It is listed under **Deprecated** in the [changelog](../CHANGELOG.md) and marked `deprecated: true` in [`api/openapi.yaml`](../api/openapi.yaml).
+- Its responses carry a `Deprecation` header ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) and, once a removal date is set, a `Sunset` header ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)). A `Link` header with `rel="successor-version"` points to the replacement.
+- It keeps working for at least six months and two minor releases after the release that deprecates it.
+
+When `/api/v2` ships, `/api/v1` stays supported for at least twelve months.
+
+### Unversioned Paths
+
+Releases up to v0.1.0 served the API under `/api/...`, without a version. Those paths still work as aliases of `/api/v1/...`, but they are deprecated and are removed in the first release on or after 14 April 2027. To migrate, insert `/v1` after `/api`.
+
+Responses on the old paths carry these headers:
+
+```http
+Deprecation: @1791936000
+Sunset: Wed, 14 Apr 2027 00:00:00 GMT
+Link: </api/v1/devices>; rel="successor-version"
+```
+
+`@1791936000` is 14 October 2026, when the unversioned paths were deprecated.
 
 ## Authentication
 
@@ -174,7 +207,7 @@ Many list endpoints support query parameters for filtering results. Common filte
 ### List Datacenters
 
 ```http
-GET /api/datacenters
+GET /api/v1/datacenters
 ```
 
 **Query Parameters:**
@@ -197,7 +230,7 @@ GET /api/datacenters
 ### Create Datacenter
 
 ```http
-POST /api/datacenters
+POST /api/v1/datacenters
 ```
 
 **Request Body:**
@@ -224,7 +257,7 @@ POST /api/datacenters
 ### Get Datacenter
 
 ```http
-GET /api/datacenters/{id}
+GET /api/v1/datacenters/{id}
 ```
 
 **Response:** `200 OK`
@@ -242,7 +275,7 @@ GET /api/datacenters/{id}
 ### Update Datacenter
 
 ```http
-PUT /api/datacenters/{id}
+PUT /api/v1/datacenters/{id}
 ```
 
 **Request Body:**
@@ -259,7 +292,7 @@ PUT /api/datacenters/{id}
 ### Delete Datacenter
 
 ```http
-DELETE /api/datacenters/{id}
+DELETE /api/v1/datacenters/{id}
 ```
 
 **Response:** `204 No Content`
@@ -267,7 +300,7 @@ DELETE /api/datacenters/{id}
 ### List Datacenter Devices
 
 ```http
-GET /api/datacenters/{id}/devices
+GET /api/v1/datacenters/{id}/devices
 ```
 
 **Response:** `200 OK` (returns array of devices)
@@ -277,7 +310,7 @@ GET /api/datacenters/{id}/devices
 ### List Networks
 
 ```http
-GET /api/networks
+GET /api/v1/networks
 ```
 
 **Query Parameters:**
@@ -290,7 +323,7 @@ GET /api/networks
 ### Create Network
 
 ```http
-POST /api/networks
+POST /api/v1/networks
 ```
 
 **Request Body:**
@@ -309,7 +342,7 @@ POST /api/networks
 ### Get Network
 
 ```http
-GET /api/networks/{id}
+GET /api/v1/networks/{id}
 ```
 
 **Response:** `200 OK` (returns network details)
@@ -317,7 +350,7 @@ GET /api/networks/{id}
 ### Update Network
 
 ```http
-PUT /api/networks/{id}
+PUT /api/v1/networks/{id}
 ```
 
 **Request Body:** (same as create, all fields optional)
@@ -327,7 +360,7 @@ PUT /api/networks/{id}
 ### Delete Network
 
 ```http
-DELETE /api/networks/{id}
+DELETE /api/v1/networks/{id}
 ```
 
 **Response:** `204 No Content`
@@ -335,7 +368,7 @@ DELETE /api/networks/{id}
 ### List Network Devices
 
 ```http
-GET /api/networks/{id}/devices
+GET /api/v1/networks/{id}/devices
 ```
 
 **Response:** `200 OK` (returns array of devices in network)
@@ -343,7 +376,7 @@ GET /api/networks/{id}/devices
 ### Get Network Utilization
 
 ```http
-GET /api/networks/{id}/utilization
+GET /api/v1/networks/{id}/utilization
 ```
 
 **Response:** `200 OK`
@@ -362,7 +395,7 @@ GET /api/networks/{id}/utilization
 ### List Network Pools
 
 ```http
-GET /api/networks/{id}/pools
+GET /api/v1/networks/{id}/pools
 ```
 
 **Query Parameters:**
@@ -373,7 +406,7 @@ GET /api/networks/{id}/pools
 ### Create Network Pool
 
 ```http
-POST /api/networks/{id}/pools
+POST /api/v1/networks/{id}/pools
 ```
 
 **Request Body:**
@@ -392,7 +425,7 @@ POST /api/networks/{id}/pools
 ### Get Pool
 
 ```http
-GET /api/pools/{id}
+GET /api/v1/pools/{id}
 ```
 
 **Response:** `200 OK` (returns pool details)
@@ -400,7 +433,7 @@ GET /api/pools/{id}
 ### Update Pool
 
 ```http
-PUT /api/pools/{id}
+PUT /api/v1/pools/{id}
 ```
 
 **Request Body:** (same as create, all fields optional)
@@ -410,7 +443,7 @@ PUT /api/pools/{id}
 ### Delete Pool
 
 ```http
-DELETE /api/pools/{id}
+DELETE /api/v1/pools/{id}
 ```
 
 **Response:** `204 No Content`
@@ -418,7 +451,7 @@ DELETE /api/pools/{id}
 ### Get Next Available IP
 
 ```http
-GET /api/pools/{id}/next-ip
+GET /api/v1/pools/{id}/next-ip
 ```
 
 **Response:** `200 OK`
@@ -433,7 +466,7 @@ GET /api/pools/{id}/next-ip
 ### Get Pool Heatmap
 
 ```http
-GET /api/pools/{id}/heatmap
+GET /api/v1/pools/{id}/heatmap
 ```
 
 **Response:** `200 OK`
@@ -460,7 +493,7 @@ GET /api/pools/{id}/heatmap
 ### List Devices
 
 ```http
-GET /api/devices
+GET /api/v1/devices
 ```
 
 **Query Parameters:**
@@ -473,7 +506,7 @@ GET /api/devices
 ### Create Device
 
 ```http
-POST /api/devices
+POST /api/v1/devices
 ```
 
 **Request Body:**
@@ -506,7 +539,7 @@ POST /api/devices
 ### Get Device
 
 ```http
-GET /api/devices/{id}
+GET /api/v1/devices/{id}
 ```
 
 **Response:** `200 OK` (returns device details)
@@ -514,7 +547,7 @@ GET /api/devices/{id}
 ### Update Device
 
 ```http
-PUT /api/devices/{id}
+PUT /api/v1/devices/{id}
 ```
 
 **Request Body:** (partial updates supported)
@@ -530,7 +563,7 @@ PUT /api/devices/{id}
 ### Delete Device
 
 ```http
-DELETE /api/devices/{id}
+DELETE /api/v1/devices/{id}
 ```
 
 **Response:** `204 No Content`
@@ -538,7 +571,7 @@ DELETE /api/devices/{id}
 ### Search Devices
 
 ```http
-GET /api/devices/search?q=web
+GET /api/v1/devices/search?q=web
 ```
 
 **Query Parameters:**
@@ -553,7 +586,7 @@ Searches across device names, descriptions, IP addresses, tags, and domains.
 ### Get Device Relationships
 
 ```http
-GET /api/devices/{id}/relationships
+GET /api/v1/devices/{id}/relationships
 ```
 
 **Response:** `200 OK`
@@ -571,7 +604,7 @@ GET /api/devices/{id}/relationships
 ### Add Device Relationship
 
 ```http
-POST /api/devices/{id}/relationships
+POST /api/v1/devices/{id}/relationships
 ```
 
 **Request Body:**
@@ -597,7 +630,7 @@ POST /api/devices/{id}/relationships
 ### Get Related Devices
 
 ```http
-GET /api/devices/{id}/related
+GET /api/v1/devices/{id}/related
 ```
 
 **Query Parameters:**
@@ -608,7 +641,7 @@ GET /api/devices/{id}/related
 ### Remove Device Relationship
 
 ```http
-DELETE /api/devices/{id}/relationships/{child_id}/{type}
+DELETE /api/v1/devices/{id}/relationships/{child_id}/{type}
 ```
 
 **Response:** `204 No Content`
@@ -618,7 +651,7 @@ DELETE /api/devices/{id}/relationships/{child_id}/{type}
 ### Start Network Scan
 
 ```http
-POST /api/discovery/networks/{id}/scan
+POST /api/v1/discovery/networks/{id}/scan
 ```
 
 **Request Body:**
@@ -652,7 +685,7 @@ POST /api/discovery/networks/{id}/scan
 ### List Discovery Scans
 
 ```http
-GET /api/discovery/scans
+GET /api/v1/discovery/scans
 ```
 
 **Query Parameters:**
@@ -663,7 +696,7 @@ GET /api/discovery/scans
 ### Get Discovery Scan
 
 ```http
-GET /api/discovery/scans/{id}
+GET /api/v1/discovery/scans/{id}
 ```
 
 **Response:** `200 OK` (returns scan details with progress)
@@ -671,7 +704,7 @@ GET /api/discovery/scans/{id}
 ### Cancel Discovery Scan
 
 ```http
-POST /api/discovery/scans/{id}/cancel
+POST /api/v1/discovery/scans/{id}/cancel
 ```
 
 **Response:** `204 No Content`
@@ -679,7 +712,7 @@ POST /api/discovery/scans/{id}/cancel
 ### Delete Discovery Scan
 
 ```http
-DELETE /api/discovery/scans/{id}
+DELETE /api/v1/discovery/scans/{id}
 ```
 
 **Response:** `204 No Content`
@@ -687,7 +720,7 @@ DELETE /api/discovery/scans/{id}
 ### List Discovered Devices
 
 ```http
-GET /api/discovery/devices?network_id={network_id}
+GET /api/v1/discovery/devices?network_id={network_id}
 ```
 
 **Query Parameters:**
@@ -726,7 +759,7 @@ GET /api/discovery/devices?network_id={network_id}
 ### Delete Discovered Device
 
 ```http
-DELETE /api/discovery/devices/{id}
+DELETE /api/v1/discovery/devices/{id}
 ```
 
 **Response:** `204 No Content`
@@ -734,7 +767,7 @@ DELETE /api/discovery/devices/{id}
 ### Delete All Discovered Devices by Network
 
 ```http
-DELETE /api/discovery/devices?network_id={network_id}
+DELETE /api/v1/discovery/devices?network_id={network_id}
 ```
 
 **Response:** `204 No Content`
@@ -742,7 +775,7 @@ DELETE /api/discovery/devices?network_id={network_id}
 ### Promote Discovered Device
 
 ```http
-POST /api/discovery/devices/{id}/promote
+POST /api/v1/discovery/devices/{id}/promote
 ```
 
 **Request Body:**
@@ -759,7 +792,7 @@ POST /api/discovery/devices/{id}/promote
 ### List Discovery Rules
 
 ```http
-GET /api/discovery/rules
+GET /api/v1/discovery/rules
 ```
 
 **Response:** `200 OK`
@@ -781,7 +814,7 @@ GET /api/discovery/rules
 ### Create Discovery Rule
 
 ```http
-POST /api/discovery/rules
+POST /api/v1/discovery/rules
 ```
 
 **Request Body:**
@@ -800,7 +833,7 @@ POST /api/discovery/rules
 ### Get Discovery Rule
 
 ```http
-GET /api/discovery/rules/{id}
+GET /api/v1/discovery/rules/{id}
 ```
 
 **Response:** `200 OK` (returns rule details)
@@ -808,7 +841,7 @@ GET /api/discovery/rules/{id}
 ### Update Discovery Rule
 
 ```http
-PUT /api/discovery/rules/{id}
+PUT /api/v1/discovery/rules/{id}
 ```
 
 **Request Body:** (same as create, all fields optional)
@@ -818,7 +851,7 @@ PUT /api/discovery/rules/{id}
 ### Delete Discovery Rule
 
 ```http
-DELETE /api/discovery/rules/{id}
+DELETE /api/v1/discovery/rules/{id}
 ```
 
 **Response:** `204 No Content`
@@ -829,7 +862,7 @@ DELETE /api/discovery/rules/{id}
 
 1. **Create a datacenter:**
 ```bash
-curl -X POST http://localhost:8080/api/datacenters \
+curl -X POST http://localhost:8080/api/v1/datacenters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Primary DC",
@@ -840,7 +873,7 @@ curl -X POST http://localhost:8080/api/datacenters \
 
 2. **Create a network:**
 ```bash
-curl -X POST http://localhost:8080/api/networks \
+curl -X POST http://localhost:8080/api/v1/networks \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Production Network",
@@ -853,7 +886,7 @@ curl -X POST http://localhost:8080/api/networks \
 
 3. **Create an IP pool:**
 ```bash
-curl -X POST http://localhost:8080/api/networks/net1-uuid/pools \
+curl -X POST http://localhost:8080/api/v1/networks/net1-uuid/pools \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Server Pool",
@@ -865,7 +898,7 @@ curl -X POST http://localhost:8080/api/networks/net1-uuid/pools \
 
 4. **Create a device:**
 ```bash
-curl -X POST http://localhost:8080/api/devices \
+curl -X POST http://localhost:8080/api/v1/devices \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -888,24 +921,24 @@ curl -X POST http://localhost:8080/api/devices \
 
 1. **Start a network scan:**
 ```bash
-curl -X POST http://localhost:8080/api/discovery/networks/net1-uuid/scan \
+curl -X POST http://localhost:8080/api/v1/discovery/networks/net1-uuid/scan \
   -H "Content-Type: application/json" \
   -d '{"scan_type": "full"}'
 ```
 
 2. **Check scan progress:**
 ```bash
-curl http://localhost:8080/api/discovery/scans/scan-uuid
+curl http://localhost:8080/api/v1/discovery/scans/scan-uuid
 ```
 
 3. **List discovered devices:**
 ```bash
-curl "http://localhost:8080/api/discovery/devices?network_id=net1-uuid"
+curl "http://localhost:8080/api/v1/discovery/devices?network_id=net1-uuid"
 ```
 
 4. **Promote a discovered device:**
 ```bash
-curl -X POST http://localhost:8080/api/discovery/devices/discovered-uuid/promote \
+curl -X POST http://localhost:8080/api/v1/discovery/devices/discovered-uuid/promote \
   -H "Content-Type: application/json" \
   -d '{
     "name": "discovered-server",

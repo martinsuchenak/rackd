@@ -51,7 +51,7 @@ func CreateCommand() *cli.Command {
 				return err
 			}
 
-			resp, err := c.DoRequest("POST", "/api/webhooks", bytes.NewBuffer(jsonBody))
+			resp, err := c.DoRequest("POST", "/api/v1/webhooks", bytes.NewBuffer(jsonBody))
 			if err != nil {
 				return err
 			}

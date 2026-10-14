@@ -69,7 +69,7 @@ func UpdateCommand() *cli.Command {
 			}
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("PUT", "/api/webhooks/"+id, bytes.NewBuffer(jsonBody))
+			resp, err := c.DoRequest("PUT", "/api/v1/webhooks/"+id, bytes.NewBuffer(jsonBody))
 			if err != nil {
 				return err
 			}

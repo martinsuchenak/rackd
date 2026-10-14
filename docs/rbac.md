@@ -329,23 +329,23 @@ rackd role delete --id role-456
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/roles` | List roles |
-| GET | `/api/roles/{id}` | Get role details |
-| POST | `/api/roles` | Create role |
-| DELETE | `/api/roles/{id}` | Delete role |
+| GET | `/api/v1/roles` | List roles |
+| GET | `/api/v1/roles/{id}` | Get role details |
+| POST | `/api/v1/roles` | Create role |
+| DELETE | `/api/v1/roles/{id}` | Delete role |
 
 ### Permissions
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/permissions` | List permissions |
+| GET | `/api/v1/permissions` | List permissions |
 
 ### User Role Assignment
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/users/grant-role` | Assign role to user |
-| POST | `/api/users/revoke-role` | Revoke role from user |
+| POST | `/api/v1/users/grant-role` | Assign role to user |
+| POST | `/api/v1/users/revoke-role` | Revoke role from user |
 
 ## Permission Checking
 

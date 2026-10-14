@@ -36,7 +36,7 @@ func ScanCommand() *cli.Command {
 				"scan_type": scanType,
 			}
 
-			resp, err := c.DoRequest("POST", "/api/discovery/networks/"+networkID+"/scan", reqBody)
+			resp, err := c.DoRequest("POST", "/api/v1/discovery/networks/"+networkID+"/scan", reqBody)
 			if err != nil {
 				return err
 			}

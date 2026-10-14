@@ -20,7 +20,7 @@ func TestScheduledScanHandlers(t *testing.T) {
 		t.Fatalf("failed to seed network: %v", err)
 	}
 
-	profileReq := authReq(httptest.NewRequest("POST", "/api/scan-profiles", bytes.NewBufferString(`{"name":"scheduled-profile","scan_type":"quick","timeout_sec":30,"max_workers":10}`)))
+	profileReq := authReq(httptest.NewRequest("POST", "/api/v1/scan-profiles", bytes.NewBufferString(`{"name":"scheduled-profile","scan_type":"quick","timeout_sec":30,"max_workers":10}`)))
 	profileReq.Header.Set("Content-Type", "application/json")
 	profileResp := performRequest(env.mux, profileReq)
 	if profileResp.Code != http.StatusCreated {
@@ -33,7 +33,7 @@ func TestScheduledScanHandlers(t *testing.T) {
 
 	t.Run("CreateGetUpdateDeleteScheduledScan", func(t *testing.T) {
 		body := `{"name":"nightly","network_id":"sched-net","profile_id":"` + profile.ID + `","cron_expression":"0 2 * * *","enabled":true}`
-		req := authReq(httptest.NewRequest("POST", "/api/scheduled-scans", bytes.NewBufferString(body)))
+		req := authReq(httptest.NewRequest("POST", "/api/v1/scheduled-scans", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusCreated {
@@ -45,45 +45,45 @@ func TestScheduledScanHandlers(t *testing.T) {
 			t.Fatalf("failed to decode scheduled scan: %v", err)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/scheduled-scans/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/scheduled-scans/"+created.ID, nil)))
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/scheduled-scans/"+created.ID, bytes.NewBufferString(`{"name":"nightly-updated","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 3 * * *","enabled":false}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/scheduled-scans/"+created.ID, bytes.NewBufferString(`{"name":"nightly-updated","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 3 * * *","enabled":false}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/scheduled-scans/"+created.ID, nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/scheduled-scans/"+created.ID, nil)))
 		if w.Code != http.StatusNoContent {
 			t.Fatalf("expected 204, got %d", w.Code)
 		}
 	})
 
 	t.Run("CreateScheduledScan_InvalidJSON", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/scheduled-scans", bytes.NewBufferString("{"))))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/scheduled-scans", bytes.NewBufferString("{"))))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 	})
 
 	t.Run("ScheduledScan_NotFound", func(t *testing.T) {
-		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/scheduled-scans/nonexistent", nil)))
+		w := performRequest(env.mux, authReq(httptest.NewRequest("GET", "/api/v1/scheduled-scans/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		updateReq := authReq(httptest.NewRequest("PUT", "/api/scheduled-scans/nonexistent", bytes.NewBufferString(`{"name":"missing","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 4 * * *","enabled":true}`)))
+		updateReq := authReq(httptest.NewRequest("PUT", "/api/v1/scheduled-scans/nonexistent", bytes.NewBufferString(`{"name":"missing","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 4 * * *","enabled":true}`)))
 		updateReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, updateReq)
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
 
-		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/scheduled-scans/nonexistent", nil)))
+		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/scheduled-scans/nonexistent", nil)))
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", w.Code)
 		}
@@ -92,13 +92,13 @@ func TestScheduledScanHandlers(t *testing.T) {
 	t.Run("ScheduledScan_ForbiddenWithoutPermission", func(t *testing.T) {
 		_, limitedToken := env.createAPIUser(t, "limited-scheduled-user")
 
-		req := authReqWithToken(httptest.NewRequest("GET", "/api/scheduled-scans", nil), limitedToken)
+		req := authReqWithToken(httptest.NewRequest("GET", "/api/v1/scheduled-scans", nil), limitedToken)
 		w := performRequest(env.mux, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
 		}
 
-		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/scheduled-scans", bytes.NewBufferString(`{"name":"limited","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 2 * * *","enabled":true}`)), limitedToken)
+		createReq := authReqWithToken(httptest.NewRequest("POST", "/api/v1/scheduled-scans", bytes.NewBufferString(`{"name":"limited","network_id":"sched-net","profile_id":"`+profile.ID+`","cron_expression":"0 2 * * *","enabled":true}`)), limitedToken)
 		createReq.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, createReq)
 		if w.Code != http.StatusForbidden {

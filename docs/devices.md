@@ -68,7 +68,7 @@ rackd device add --input device.json
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/devices \
+curl -X POST http://localhost:8080/api/v1/devices \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -120,19 +120,19 @@ rackd device list --output yaml
 **API:**
 ```bash
 # Get device by ID
-curl http://localhost:8080/api/devices/device-123
+curl http://localhost:8080/api/v1/devices/device-123
 
 # List all devices
-curl http://localhost:8080/api/devices
+curl http://localhost:8080/api/v1/devices
 
 # Filter by tags
-curl "http://localhost:8080/api/devices?tags=production,web"
+curl "http://localhost:8080/api/v1/devices?tags=production,web"
 
 # Filter by datacenter
-curl "http://localhost:8080/api/devices?datacenter_id=dc-east-1"
+curl "http://localhost:8080/api/v1/devices?datacenter_id=dc-east-1"
 
 # Search devices
-curl "http://localhost:8080/api/devices/search?q=web+server"
+curl "http://localhost:8080/api/v1/devices/search?q=web+server"
 ```
 
 ### Update Device
@@ -150,7 +150,7 @@ rackd device update --id "device-123" --input updates.json
 
 **API:**
 ```bash
-curl -X PATCH http://localhost:8080/api/devices/device-123 \
+curl -X PATCH http://localhost:8080/api/v1/devices/device-123 \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated production web server",
@@ -175,7 +175,7 @@ rackd device delete --id "device-123"
 
 **API:**
 ```bash
-curl -X DELETE http://localhost:8080/api/devices/device-123
+curl -X DELETE http://localhost:8080/api/v1/devices/device-123
 ```
 
 ## Addresses
@@ -269,7 +269,7 @@ Devices can have relationships with other devices:
 **API:**
 ```bash
 # Add relationship
-curl -X POST http://localhost:8080/api/devices/rack-01/relationships \
+curl -X POST http://localhost:8080/api/v1/devices/rack-01/relationships \
   -H "Content-Type: application/json" \
   -d '{
     "child_id": "server-01",
@@ -277,13 +277,13 @@ curl -X POST http://localhost:8080/api/devices/rack-01/relationships \
   }'
 
 # Get device relationships
-curl http://localhost:8080/api/devices/server-01/relationships
+curl http://localhost:8080/api/v1/devices/server-01/relationships
 
 # Get related devices
-curl "http://localhost:8080/api/devices/server-01/related?type=depends_on"
+curl "http://localhost:8080/api/v1/devices/server-01/related?type=depends_on"
 
 # Remove relationship
-curl -X DELETE http://localhost:8080/api/devices/rack-01/relationships/server-01/contains
+curl -X DELETE http://localhost:8080/api/v1/devices/rack-01/relationships/server-01/contains
 ```
 
 ## Search and Filtering
@@ -312,10 +312,10 @@ rackd device list --query "Dell PowerEdge"
 **API:**
 ```bash
 # Multiple filters
-curl "http://localhost:8080/api/devices?tags=production,web&datacenter_id=dc-east-1&network_id=prod-network"
+curl "http://localhost:8080/api/v1/devices?tags=production,web&datacenter_id=dc-east-1&network_id=prod-network"
 
 # Search query
-curl "http://localhost:8080/api/devices/search?q=Dell+PowerEdge"
+curl "http://localhost:8080/api/v1/devices/search?q=Dell+PowerEdge"
 ```
 
 ## Web UI Examples

@@ -35,7 +35,7 @@ func AddCommand() *cli.Command {
 				DatacenterID: cmd.GetString("datacenter"),
 			}
 
-			resp, err := c.DoRequest("POST", "/api/networks", network)
+			resp, err := c.DoRequest("POST", "/api/v1/networks", network)
 			if err != nil {
 				return err
 			}

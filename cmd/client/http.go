@@ -4,9 +4,16 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"strings"
 )
+
+// ErrServerTooOld is returned when the server answers an /api/v1 request with
+// its web UI, which is what releases before the versioned API do.
+var ErrServerTooOld = errors.New("the rackd server does not serve /api/v1; upgrade it to the same version as this CLI")
 
 type Client struct {
 	serverURL  string
@@ -50,5 +57,15 @@ func (c *Client) DoRequest(method, path string, body interface{}) (*http.Respons
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 
-	return c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(path, "/api/v1/") {
+		if mediaType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); mediaType == "text/html" {
+			_ = resp.Body.Close()
+			return nil, ErrServerTooOld
+		}
+	}
+	return resp, nil
 }

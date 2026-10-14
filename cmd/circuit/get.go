@@ -22,7 +22,7 @@ func GetCommand() *cli.Command {
 			c := client.NewClient(cfg)
 
 			id := cmd.GetString("id")
-			resp, err := c.DoRequest("GET", "/api/circuits/"+id, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/circuits/"+id, nil)
 			if err != nil {
 				return err
 			}

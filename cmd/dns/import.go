@@ -30,7 +30,7 @@ func ImportCommand() *cli.Command {
 				req["delete_missing"] = true
 			}
 
-			resp, err := c.DoRequest("POST", "/api/dns/zones/"+zoneID+"/import", req)
+			resp, err := c.DoRequest("POST", "/api/v1/dns/zones/"+zoneID+"/import", req)
 			if err != nil {
 				return err
 			}
