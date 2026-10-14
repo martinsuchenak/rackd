@@ -73,16 +73,10 @@ func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteSt
 		dbPath = filepath.Join(dataDir, "rackd.db")
 	}
 
-	// Open database with SQLite pragma settings
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
+	db, err := openDB(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, err
 	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(1) // SQLite only supports one writer
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(time.Hour)
 
 	// Test connection
 	if err := db.Ping(); err != nil {
@@ -137,6 +131,33 @@ func (s *SQLiteStorage) runMigrations(ctx context.Context, opts MigrationOptions
 	return nil
 }
 
+// maxOpenConns is the connection pool size for file databases. In WAL mode
+// SQLite runs readers concurrently with each other and with one writer.
+const maxOpenConns = 8
+
+// openDB opens a SQLite database with rackd's connection settings.
+//
+// Each connection waits up to busy_timeout for a lock instead of failing, and
+// transactions start with BEGIN IMMEDIATE (_txlock), so a transaction that
+// writes takes the write lock up front rather than failing to upgrade a read
+// lock while another connection writes. An in-memory database is private to a
+// connection, so it keeps a single one.
+func openDB(dbPath string) (*sql.DB, error) {
+	dsn := dbPath + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_txlock=immediate"
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	conns := maxOpenConns
+	if dbPath == ":memory:" {
+		conns = 1
+	}
+	db.SetMaxOpenConns(conns)
+	db.SetMaxIdleConns(conns)
+	db.SetConnMaxLifetime(time.Hour)
+	return db, nil
+}
+
 // NewSQLiteStorageWithPath creates a new SQLite storage instance with a specific database file path
 func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 	// Ensure parent directory exists
@@ -144,16 +165,10 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
-	// Open database with SQLite pragma settings
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
+	db, err := openDB(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, err
 	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(1) // SQLite only supports one writer
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(time.Hour)
 
 	// Test connection
 	if err := db.Ping(); err != nil {
