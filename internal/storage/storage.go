@@ -198,6 +198,7 @@ type ConflictStorage interface {
 	FindOverlappingSubnets(ctx context.Context) ([]model.Conflict, error)
 	GetConflictsByDeviceID(ctx context.Context, deviceID string) ([]model.Conflict, error)
 	GetConflictsByIP(ctx context.Context, ip string) ([]model.Conflict, error)
+	DevicesWithIP(ctx context.Context, ip string) ([]DeviceRef, error)
 	MarkConflictsResolvedForDevice(ctx context.Context, deviceID string, resolvedBy string) error
 }
 

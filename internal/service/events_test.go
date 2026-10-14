@@ -149,17 +149,15 @@ func TestServicesPublishEvents(t *testing.T) {
 		t.Errorf("bulk delete result %+v, payload %+v", res, got[0].Payload)
 	}
 
-	// IP conflicts: detection publishes new conflicts once; resolving publishes too.
+	// IP conflicts: a second device on an IP raises one automatically; explicit
+	// detection doesn't repeat it; resolving publishes too.
 	for _, name := range []string{"a", "b"} {
 		if err := svc.Devices.Create(ctx, &model.Device{Name: name, Addresses: []model.Address{{IP: "10.9.9.9", Type: "ipv4"}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	expect("devices sharing an IP", model.EventTypeDeviceCreated, model.EventTypeDeviceCreated)
-	if _, err := svc.Conflicts.DetectDuplicateIPs(ctx); err != nil {
-		t.Fatal(err)
-	}
-	conflict := expect("detect", model.EventTypeConflictDetected)[0].Payload.(model.Conflict)
+	got = expect("devices sharing an IP", model.EventTypeDeviceCreated, model.EventTypeDeviceCreated, model.EventTypeConflictDetected)
+	conflict := got[2].Payload.(*model.Conflict)
 	if _, err := svc.Conflicts.DetectDuplicateIPs(ctx); err != nil {
 		t.Fatal(err)
 	}

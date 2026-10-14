@@ -46,12 +46,11 @@ Rackd detects these conflicts automatically and provides tools for resolution.
 
 ## Automatic Detection
 
-Conflicts are automatically detected when:
-- A new device is created
-- A device's IP address is updated
-- A new network is added
-- A network's subnet is modified
-- An IP reservation is created
+Creating or updating a device checks each of its addresses. When another device already has the same IP, Rackd records a duplicate-IP conflict listing every device that holds it.
+
+- One device with the same IP on two of its addresses is not a conflict.
+- Once an IP has a conflict record, active, resolved or ignored, device writes don't add another for it, so an ignored conflict stays ignored.
+- Overlapping subnets, and duplicates created another way (such as a bulk import), are found by running detection explicitly; see Detect Conflicts below.
 
 ## API Endpoints
 

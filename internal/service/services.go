@@ -38,7 +38,7 @@ type Services struct {
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
-	return &Services{
+	svc := &Services{
 		store:         store,
 		Devices:       NewDeviceService(store),
 		Datacenters:   NewDatacenterService(store),
@@ -61,6 +61,9 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 		Circuits:      NewCircuitService(store),
 		NAT:           NewNATService(store),
 	}
+	// Device writes check their addresses for duplicate-IP conflicts.
+	svc.Devices.conflictService = svc.Conflicts
+	return svc
 }
 
 func (s *Services) SetCredentialsStorage(store credentials.Storage) {
