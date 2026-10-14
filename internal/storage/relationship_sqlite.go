@@ -119,10 +119,8 @@ func (s *SQLiteStorage) GetRelatedDevices(ctx context.Context, deviceID, relatio
 	}
 
 	// Fetch related data after closing rows
-	for i := range devices {
-		devices[i].Addresses, _ = s.getDeviceAddresses(ctx, devices[i].ID)
-		devices[i].Tags, _ = s.getDeviceTags(ctx, devices[i].ID)
-		devices[i].Domains, _ = s.getDeviceDomains(ctx, devices[i].ID)
+	if err := s.loadDeviceRelations(ctx, devices); err != nil {
+		return nil, err
 	}
 	return devices, nil
 }
