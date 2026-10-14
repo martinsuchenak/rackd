@@ -46,7 +46,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   API is unstable until 1.0. See [Extensions](docs/extensions.md).
 - `rackd migrate status` shows each extension's migrations, including extensions
   recorded in the database but not in the binary; `migrate run` applies them; and
-  `migrate rollback --namespace <name>` reverts them.
+  `migrate rollback --namespace <name>` reverts them. The status output now groups
+  migrations under a heading per namespace and ends with `Total: N pending` instead
+  of `Total: X migrations, N pending`; update scripts that parse it.
 - Event types are a registry instead of a fixed list, so extensions can add types
   that webhooks subscribe to.
 - `/api/v1/config` lists the extensions in the binary, with their pages and nav

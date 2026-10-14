@@ -22,7 +22,11 @@ func (s *SQLiteStorage) XDAL() xdal.DBInterface {
 // namespace of the migration tracking table. Like core's, they are backed up
 // first when the extension already has migrations applied.
 func (s *SQLiteStorage) RunExtensionMigrations(ctx context.Context, namespace string, steps []migrate.Migration) (MigrationResult, error) {
-	return runNamespaceMigrations(ctx, s.db, namespace, steps, s.migrateOpts)
+	res, err := runNamespaceMigrations(ctx, s.db, namespace, steps, s.migrateOpts)
+	if res.BackupPath != "" {
+		s.migrateOpts.BackupDir = "" // one backup covers this start-up
+	}
+	return res, err
 }
 
 // RunExtensionMigrationsOn applies an extension's migrations on db, for the
