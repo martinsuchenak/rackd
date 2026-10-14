@@ -23,6 +23,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Added
 
+- `tools/loadtest`, a load tool that seeds a server (by default 10,000 devices with
+  100,000 addresses) and reports per-operation latency percentiles and errors
+  under concurrent clients. See [Performance Testing](docs/performance.md).
 - The API is versioned under `/api/v1`. Within v1, changes are backward compatible;
   breaking changes go into a new version. The web UI, the CLI and the OpenAPI
   spec use the new paths. See
