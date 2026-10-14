@@ -16,6 +16,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   rackd /api/v1 server".
 - Scripts and integrations that call `/api/...` keep working until the removal date,
   but should move to `/api/v1/...`.
+- The `route` label on `http_request_duration_milliseconds` is now the route pattern,
+  such as `GET /api/v1/devices/{id}`, instead of the raw method and path. Update
+  dashboards and alerts that filter on old label values. The duration metrics are
+  now typed as gauges, since each value is a mean.
 
 ### Added
 
@@ -33,6 +37,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Request metrics were labelled with the raw path and method, so every device ID,
+  and every random path or method from any client, added a series that was kept
+  for the life of the process. Memory and `/metrics` output grew without bound. The
+  `route` label is now the matched route pattern (such as
+  `GET /api/v1/devices/{id}`). Requests that match no route share
+  `route="unmatched"`, and requests answered before routing (for example by the
+  rate limiter) share `route="unrouted"`. Label values in `/metrics` are escaped.
+- Duration metrics were stored in whole milliseconds, so sub-millisecond requests
+  counted as 0 and averages read low. They are now kept in nanoseconds and exported
+  as fractional milliseconds.
+- The monitoring guide's p95 panel used `histogram_quantile` on a metric that is an
+  average, not a histogram. It now shows the average per route.
 - Requests to an unknown API path fell through to the web UI: a GET returned
   `index.html` with status 200, and other methods a plain-text 405. They now return a
   JSON 404, or a JSON 405 with an `Allow` header when the path exists but the method

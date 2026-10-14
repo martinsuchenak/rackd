@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,7 +32,7 @@ type Metrics struct {
 }
 
 type histogram struct {
-	sum   atomic.Int64
+	sum   atomic.Int64 // nanoseconds
 	count atomic.Int64
 }
 
@@ -44,12 +45,13 @@ func Get() *Metrics {
 	return globalMetrics
 }
 
-// RecordHTTPRequest records an HTTP request
-func (m *Metrics) RecordHTTPRequest(method, path string, statusCode int, duration time.Duration) {
+// RecordHTTPRequest records an HTTP request. route must come from a bounded set,
+// such as the matched router pattern, because each value is kept for the life of
+// the process.
+func (m *Metrics) RecordHTTPRequest(route string, statusCode int, duration time.Duration) {
 	m.httpRequestsTotal.Add(1)
 
-	key := fmt.Sprintf("%s %s", method, path)
-	h := m.getOrCreateHistogram(&m.httpRequestDuration, key)
+	h := m.getOrCreateHistogram(&m.httpRequestDuration, route)
 	h.observe(duration)
 
 	counter := m.getOrCreateCounter(&m.httpRequestsByCode, statusCode)
@@ -108,17 +110,23 @@ func (m *Metrics) getOrCreateCounter(store *sync.Map, key int) *atomic.Int64 {
 	return actual.(*atomic.Int64)
 }
 
+// labelEscaper escapes a Prometheus label value.
+var labelEscaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`)
+
+func escapeLabel(v string) string { return labelEscaper.Replace(v) }
+
 func (h *histogram) observe(d time.Duration) {
-	h.sum.Add(d.Milliseconds())
+	h.sum.Add(d.Nanoseconds())
 	h.count.Add(1)
 }
 
+// avg returns the mean duration in milliseconds.
 func (h *histogram) avg() float64 {
 	count := h.count.Load()
 	if count == 0 {
 		return 0
 	}
-	return float64(h.sum.Load()) / float64(count)
+	return float64(h.sum.Load()) / float64(count) / float64(time.Millisecond)
 }
 
 // Export exports metrics in Prometheus text format
@@ -130,11 +138,11 @@ func (m *Metrics) Export() string {
 	out += "# TYPE http_requests_total counter\n"
 	out += fmt.Sprintf("http_requests_total %d\n", m.httpRequestsTotal.Load())
 
-	out += "# HELP http_request_duration_milliseconds HTTP request duration in milliseconds\n"
-	out += "# TYPE http_request_duration_milliseconds summary\n"
+	out += "# HELP http_request_duration_milliseconds Mean HTTP request duration since start, in milliseconds\n"
+	out += "# TYPE http_request_duration_milliseconds gauge\n"
 	m.httpRequestDuration.Range(func(key, value interface{}) bool {
 		h := value.(*histogram)
-		out += fmt.Sprintf("http_request_duration_milliseconds{route=\"%s\"} %.2f\n", key, h.avg())
+		out += fmt.Sprintf("http_request_duration_milliseconds{route=\"%s\"} %.2f\n", escapeLabel(key.(string)), h.avg())
 		return true
 	})
 
@@ -163,11 +171,11 @@ func (m *Metrics) Export() string {
 	out += "# TYPE discovery_scans_total counter\n"
 	out += fmt.Sprintf("discovery_scans_total %d\n", m.discoveryScans.Load())
 
-	out += "# HELP discovery_scan_duration_milliseconds Discovery scan duration in milliseconds\n"
-	out += "# TYPE discovery_scan_duration_milliseconds summary\n"
+	out += "# HELP discovery_scan_duration_milliseconds Mean discovery scan duration since start, in milliseconds\n"
+	out += "# TYPE discovery_scan_duration_milliseconds gauge\n"
 	m.discoveryDuration.Range(func(key, value interface{}) bool {
 		h := value.(*histogram)
-		out += fmt.Sprintf("discovery_scan_duration_milliseconds{type=\"%s\"} %.2f\n", key, h.avg())
+		out += fmt.Sprintf("discovery_scan_duration_milliseconds{type=\"%s\"} %.2f\n", escapeLabel(key.(string)), h.avg())
 		return true
 	})
 
@@ -176,11 +184,11 @@ func (m *Metrics) Export() string {
 	out += "# TYPE db_queries_total counter\n"
 	out += fmt.Sprintf("db_queries_total %d\n", m.dbQueriesTotal.Load())
 
-	out += "# HELP db_query_duration_milliseconds Database query duration in milliseconds\n"
-	out += "# TYPE db_query_duration_milliseconds summary\n"
+	out += "# HELP db_query_duration_milliseconds Mean database query duration since start, in milliseconds\n"
+	out += "# TYPE db_query_duration_milliseconds gauge\n"
 	m.dbQueryDuration.Range(func(key, value interface{}) bool {
 		h := value.(*histogram)
-		out += fmt.Sprintf("db_query_duration_milliseconds{query=\"%s\"} %.2f\n", key, h.avg())
+		out += fmt.Sprintf("db_query_duration_milliseconds{query=\"%s\"} %.2f\n", escapeLabel(key.(string)), h.avg())
 		return true
 	})
 
