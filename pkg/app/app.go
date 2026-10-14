@@ -107,7 +107,7 @@ func Command(opts Options) (*cli.Command, error) {
 		oauth.Command(),
 		backup.Command(),
 		dns.Command(),
-		migrate.Command(),
+		migrate.NewCommand(features),
 		{
 			Name:  "version",
 			Usage: "Show version information",

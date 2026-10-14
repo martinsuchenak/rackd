@@ -1143,11 +1143,11 @@ rackd export all [options]
 
 ### migrate
 
-Database migration management. Migrations are recorded in the `xdal_migrations` table; history from the older `schema_migrations` table is adopted automatically.
+Database migration management. Migrations are recorded in the `xdal_migrations` table, in a namespace each: `core` for Rackd's own, and the extension's name for an [extension](extensions.md)'s. History from the older `schema_migrations` table is adopted automatically.
 
 #### migrate status
 
-Show migration status.
+Show migration status for core and for each extension in the binary.
 
 ```bash
 rackd migrate status [options]
@@ -1159,19 +1159,24 @@ rackd migrate status [options]
 **Output:**
 
 ```
-VERSION         NAME                            STATUS   APPLIED AT
-20240120080000  initial_schema                  applied  2026-10-13 08:08:32
-20260305080000  add_ssh_host_keys               applied  2026-10-13 08:08:32
-20260409100000  add_audit_and_logs_permissions  pending  -
+core
+  VERSION         NAME                            STATUS   APPLIED AT
+  20240120080000  initial_schema                  applied  2026-10-13 08:08:32
+  20260305080000  add_ssh_host_keys               applied  2026-10-13 08:08:32
+  20260409100000  add_audit_and_logs_permissions  pending  -
 
-Total: 35 migrations, 1 pending
+inventory-tags
+  VERSION         NAME                   STATUS   APPLIED AT
+  20261014000000  create_inventory_tags  applied  2026-10-14 13:20:26
+
+Total: 1 pending
 ```
 
-`dirty` marks a migration that failed part-way; `unknown (newer rackd)` marks one applied by a newer version.
+`dirty` marks a migration that failed part-way; `unknown (newer or removed)` marks one applied by a newer version, or one the binary no longer defines. Extensions with migrations recorded in the database but not compiled into this binary are listed too; their tables are left in place.
 
 #### migrate run
 
-Run pending migrations. An existing database is backed up to `<data-dir>/backups/` first; the server does the same on start.
+Run pending migrations: core's, then each extension's. An existing database is backed up to `<data-dir>/backups/` first; the server does the same on start.
 
 ```bash
 rackd migrate run [options]
@@ -1183,14 +1188,16 @@ rackd migrate run [options]
 
 #### migrate rollback
 
-Revert applied migrations, newest first, after backing up to `<data-dir>/backups/`. Some Down steps drop tables and data; restore the backup to undo a rollback.
+Revert applied migrations of core or of one extension, newest first, after backing up to `<data-dir>/backups/`. Some Down steps drop tables and data; restore the backup to undo a rollback.
 
 ```bash
 rackd migrate rollback [options] --yes
+rackd migrate rollback --namespace inventory-tags --steps 1 --yes
 ```
 
 **Options:**
 - `--data-dir <dir>` - Data directory (default: ./data)
+- `--namespace <name>` - `core` (default) or an extension's name. An extension's migrations can only be reverted by a binary that includes it.
 - `--steps <n>` - Number of migrations to revert (default: 1)
 - `--to <version>` - Revert every migration newer than this version
 - `--yes` - Confirm; without it the command only describes what it would do

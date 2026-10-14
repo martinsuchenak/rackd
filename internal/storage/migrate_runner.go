@@ -282,17 +282,23 @@ func RunMigrationsWithOptions(ctx context.Context, db *sql.DB, opts MigrationOpt
 // validated, and a snapshot is written to BackupDir only when something will be
 // reverted. Down steps can drop data; restore the snapshot to undo.
 func RollbackMigrations(ctx context.Context, db *sql.DB, steps int, toVersion string, opts MigrationOptions) (MigrationResult, error) {
-	var res MigrationResult
 	if toVersion != "" && !knownMigration(toVersion) {
-		return res, fmt.Errorf("%w: %s", migrate.ErrUnknownVersion, toVersion)
+		return MigrationResult{}, fmt.Errorf("%w: %s", migrate.ErrUnknownVersion, toVersion)
 	}
 	if steps < 0 {
-		return res, fmt.Errorf("%w: negative step count %d", migrate.ErrInvalid, steps)
+		return MigrationResult{}, fmt.Errorf("%w: negative step count %d", migrate.ErrInvalid, steps)
 	}
 	m, err := openCoreMigrator(ctx, db)
 	if err != nil {
-		return res, err
+		return MigrationResult{}, err
 	}
+	return rollback(ctx, db, m, steps, toVersion, opts, "")
+}
+
+// rollback reverts the latest steps migrations of m, or every one newer than
+// toVersion, after a backup. labelPrefix names the namespace in the backup file.
+func rollback(ctx context.Context, db *sql.DB, m *migrate.Migrator, steps int, toVersion string, opts MigrationOptions, labelPrefix string) (MigrationResult, error) {
+	var res MigrationResult
 	statuses, err := m.Status(ctx)
 	if err != nil {
 		return res, err
@@ -322,9 +328,9 @@ func RollbackMigrations(ctx context.Context, db *sql.DB, steps int, toVersion st
 		return res, nil
 	}
 
-	label := fmt.Sprintf("down-%d", count)
+	label := fmt.Sprintf("%sdown-%d", labelPrefix, count)
 	if toVersion != "" {
-		label = "down-to-" + toVersion
+		label = labelPrefix + "down-to-" + toVersion
 	}
 	res.BackupPath, err = preMigrationBackup(ctx, db, opts, label)
 	if err != nil {
@@ -373,6 +379,10 @@ func GetMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, err
 	if err != nil {
 		return nil, err
 	}
+	return migratorStatus(ctx, m)
+}
+
+func migratorStatus(ctx context.Context, m *migrate.Migrator) ([]MigrationStatus, error) {
 	statuses, err := m.Status(ctx)
 	if err != nil {
 		return nil, err
