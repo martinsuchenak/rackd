@@ -21,8 +21,6 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   - [Verifying a release](docs/installation.md#verifying-a-release) shows the
     `cosign verify-blob` and `gh attestation verify` commands.
 - `SECURITY.md`: supported versions, private reporting, and disclosure.
-- Removed the stale `webui/package-lock.json`; `bun.lock` is the web UI's only
-  lockfile.
 - CI runs `govulncheck`. Dependabot proposes weekly updates for Go modules, the web
   UI (Bun), GitHub Actions and the Docker base images, with minor and patch updates
   grouped.
@@ -84,6 +82,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   - The default scan profiles are seeded once. A deleted default profile no longer
     comes back on the next restart.
   - Opening one of these stores before migrations have run now returns a clear error.
+
+### Removed
+
+- The stale `webui/package-lock.json`. `bun.lock` is the web UI's only lockfile.
 
 ### Fixed
 
