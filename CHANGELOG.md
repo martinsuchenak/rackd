@@ -92,6 +92,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Without an encryption key (so without the DNS service), the MCP server still
+  offered the DNS tools, and calling one crashed the request with a nil pointer.
+  The DNS tools, and their mention in the server instructions, now appear only when
+  DNS is available.
 - Webhooks never delivered events: nothing published them, and the delivery worker
   was never started. Device, network, discovery and conflict changes now publish the
   documented events (bulk operations publish one per item), and the worker runs with
