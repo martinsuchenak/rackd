@@ -85,6 +85,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- The README no longer warns against production use. It states what this release
+  promises instead: `/api/v1` stays backward compatible, upgrades back up the
+  database first, and only the latest release gets security fixes.
 - The server's SQLite database uses a pool of 8 connections instead of one, so
   reads no longer queue behind each other or behind writes. Writes still run one at
   a time: transactions start with `BEGIN IMMEDIATE`, and a connection waits up to 5

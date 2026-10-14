@@ -979,7 +979,3 @@ Rate limit headers are included in all responses:
 When rate limited, the API returns HTTP 429 with a `Retry-After` header.
 
 See [Rate Limiting](ratelimit.md) for detailed configuration options.
-
-## Versioning
-
-The API is currently unversioned. Future versions will use URL-based versioning (e.g., `/api/v2/`).
