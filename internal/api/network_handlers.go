@@ -13,6 +13,7 @@ func (h *Handler) listNetworks(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		VLANID:       parseIntParam(r, "vlan_id", 0),
 	}
+	filter.Pagination = parseOptionalPagination(r)
 
 	networks, err := h.svc.Networks.List(r.Context(), filter)
 	if err != nil {

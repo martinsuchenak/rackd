@@ -14,6 +14,7 @@ func (h *Handler) listCircuits(w http.ResponseWriter, r *http.Request) {
 		DatacenterID: r.URL.Query().Get("datacenter_id"),
 		Type:         r.URL.Query().Get("type"),
 	}
+	filter.Pagination = parseOptionalPagination(r)
 	if status := r.URL.Query().Get("status"); status != "" {
 		filter.Status = model.CircuitStatus(status)
 	}

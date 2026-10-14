@@ -37,6 +37,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Added
 
+- Every list endpoint accepts `limit` (at most 1000) and `offset`. Device lists,
+  audit logs, logs and webhook deliveries return 100 results unless `limit` says
+  otherwise; other lists return everything when no page is asked for, as the API
+  reference says.
 - An extension API, `pkg/extension`, and a public entry point, `pkg/app`, for
   building Rackd binaries with extra features compiled in. A feature declares its
   permissions, event types and UI entries in a manifest, and can add its own
@@ -92,6 +96,16 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Lists were cut off at 100 records with no way to page, although the API reference
+  said they returned everything. Among the effects:
+  - The API and web UI showed only the first 100 networks, datacenters, users,
+    webhooks, circuits, NAT mappings, reservations, DNS records and others.
+  - Rackd has 118 permissions, so the last 18 could not be assigned to a role
+    ("Unknown permission ID"), were missing from the role editor, and could not be
+    requested as OAuth scopes.
+  - Audit log exports held at most 100 entries.
+  - The Prometheus `devices_total`, `networks_total` and `datacenters_total` metrics,
+    dashboard utilization and utilization snapshots covered at most 100 records.
 - Without an encryption key (so without the DNS service), the MCP server still
   offered the DNS tools, and calling one crashed the request with a nil pointer.
   The DNS tools, and their mention in the server instructions, now appear only when

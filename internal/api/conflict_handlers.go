@@ -9,6 +9,7 @@ import (
 
 func (h *Handler) listConflicts(w http.ResponseWriter, r *http.Request) {
 	filter := &model.ConflictFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if typeStr := r.URL.Query().Get("type"); typeStr != "" {
 		filter.Type = model.ConflictType(typeStr)
 	}

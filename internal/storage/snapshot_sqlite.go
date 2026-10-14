@@ -289,3 +289,23 @@ func scanSnapshots(rows *sql.Rows) ([]model.UtilizationSnapshot, error) {
 	}
 	return snapshots, rows.Err()
 }
+
+// InventoryCounts are the numbers of devices, networks and datacenters.
+type InventoryCounts struct {
+	Devices     int64
+	Networks    int64
+	Datacenters int64
+}
+
+// CountInventory counts devices, networks and datacenters with one query.
+func (s *SQLiteStorage) CountInventory(ctx context.Context) (InventoryCounts, error) {
+	var c InventoryCounts
+	err := s.db.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM devices),
+		(SELECT COUNT(*) FROM networks),
+		(SELECT COUNT(*) FROM datacenters)`).Scan(&c.Devices, &c.Networks, &c.Datacenters)
+	if err != nil {
+		return c, fmt.Errorf("failed to count inventory: %w", err)
+	}
+	return c, nil
+}

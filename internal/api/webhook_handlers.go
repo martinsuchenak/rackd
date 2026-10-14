@@ -25,6 +25,7 @@ func sanitizeWebhooks(webhooks []model.Webhook) {
 // listWebhooks returns all webhooks
 func (h *Handler) listWebhooks(w http.ResponseWriter, r *http.Request) {
 	filter := &model.WebhookFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if activeStr := r.URL.Query().Get("active"); activeStr != "" {
 		active := activeStr == "true"
 		filter.Active = &active
@@ -125,6 +126,7 @@ func (h *Handler) listWebhookDeliveries(w http.ResponseWriter, r *http.Request) 
 	filter := &model.DeliveryFilter{
 		WebhookID: webhookID,
 	}
+	filter.Pagination = parsePagination(r)
 
 	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
 		filter.Status = model.DeliveryStatus(statusStr)

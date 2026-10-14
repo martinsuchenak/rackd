@@ -25,22 +25,11 @@ func (h *Handler) metricsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateMetricsCounts(ctx context.Context) {
 	m := metrics.Get()
 
-	// Get device count
-	devices, err := h.store.ListDevices(ctx, nil)
-	if err == nil {
-		m.SetDeviceCount(int64(len(devices)))
-	}
-
-	// Get network count
-	networks, err := h.store.ListNetworks(ctx, nil)
-	if err == nil {
-		m.SetNetworkCount(int64(len(networks)))
-	}
-
-	// Get datacenter count
-	datacenters, err := h.store.ListDatacenters(ctx, nil)
-	if err == nil {
-		m.SetDatacenterCount(int64(len(datacenters)))
+	// Counts only: listing the records would load every device on each scrape.
+	if counts, err := h.store.CountInventory(ctx); err == nil {
+		m.SetDeviceCount(counts.Devices)
+		m.SetNetworkCount(counts.Networks)
+		m.SetDatacenterCount(counts.Datacenters)
 	}
 
 	// Get database connection stats

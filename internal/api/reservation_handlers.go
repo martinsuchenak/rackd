@@ -10,6 +10,7 @@ import (
 
 func (h *Handler) listReservations(w http.ResponseWriter, r *http.Request) {
 	filter := &model.ReservationFilter{}
+	filter.Pagination = parseOptionalPagination(r)
 	if poolID := r.URL.Query().Get("pool_id"); poolID != "" {
 		filter.PoolID = poolID
 	}
