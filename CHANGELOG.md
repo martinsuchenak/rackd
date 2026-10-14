@@ -46,6 +46,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   domains for all devices in three queries per 500 devices, instead of three per
   device. A page of 100 devices took about 300 queries. Under the load tool's
   defaults the median page time fell from 3.1 s to 0.29 s.
+- An API key's `last_used_at` is updated at most once a minute, instead of on every
+  request, so it is accurate to about a minute. Each API-key request used to add a
+  database write.
 - The dashboard computes network utilization with one grouped query instead of two
   queries per network. A new migration (`20261014120000`) replaces the `network_id`
   index on `addresses` with a `(network_id, ip)` index, so utilization counts read

@@ -182,7 +182,7 @@ server, and invalidates all active sessions for the user.
 
 - Rate limiting is enabled by default (100 req/min API, 5 req/min login)
 - Session cookies are `Secure` by default — use `--dev-mode` for local HTTP
-- API key last-used timestamps are updated asynchronously for auditing
+- API key last-used timestamps are updated asynchronously for auditing, at most once a minute per key, so they are accurate to about a minute
 - All authentication events are recorded in the audit log when `AUDIT_ENABLED=true`
 
 ## See Also
