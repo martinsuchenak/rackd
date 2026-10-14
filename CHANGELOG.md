@@ -23,6 +23,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Added
 
+- `tools/loadtest`, a load tool that seeds a server (by default 10,000 devices with
+  100,000 addresses) and reports per-operation latency percentiles and errors
+  under concurrent clients. See [Performance Testing](docs/performance.md).
 - The API is versioned under `/api/v1`. Within v1, changes are backward compatible;
   breaking changes go into a new version. The web UI, the CLI and the OpenAPI
   spec use the new paths. See
@@ -30,6 +33,11 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- The server's SQLite database uses a pool of 8 connections instead of one, so
+  reads no longer queue behind each other or behind writes. Writes still run one at
+  a time: transactions start with `BEGIN IMMEDIATE`, and a connection waits up to 5
+  seconds for the write lock. With the load tool's defaults (10,000 devices, 50
+  clients), throughput doubled.
 - An API key's `last_used_at` is updated at most once a minute, instead of on every
   request, so it is accurate to about a minute. Each API-key request used to add a
   database write.
