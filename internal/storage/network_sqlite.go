@@ -360,18 +360,22 @@ func (s *SQLiteStorage) GetNetworkUtilization(ctx context.Context, networkID str
 
 	availableIPs := max(totalIPs-usedIPs, 0)
 
-	var utilization float64
-	if totalIPs > 0 {
-		utilization = float64(usedIPs) / float64(totalIPs) * 100
-	}
-
 	return &model.NetworkUtilization{
 		NetworkID:    networkID,
 		TotalIPs:     totalIPs,
 		UsedIPs:      usedIPs,
 		AvailableIPs: availableIPs,
-		Utilization:  utilization,
+		Utilization:  utilizationPercent(usedIPs, totalIPs),
 	}, nil
+}
+
+// utilizationPercent returns used as a percentage of total, or 0 for an empty
+// network. The dashboard and the network pages both use it, so they agree.
+func utilizationPercent(used, total int) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return float64(used) / float64(total) * 100
 }
 
 // calculateCIDRSize calculates the number of usable host IPs in a CIDR block

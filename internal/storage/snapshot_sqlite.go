@@ -223,7 +223,10 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 
 	// Network utilization summary: one grouped count for all networks, instead
 	// of a GetNetworkUtilization call (two queries) per network.
-	networks, _ := s.ListNetworks(ctx, nil)
+	networks, err := s.ListNetworks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 	usedByNetwork, err := s.countUsedIPsByNetwork(ctx)
 	if err != nil {
 		return nil, err
@@ -235,26 +238,19 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 			continue
 		}
 		used := usedByNetwork[net.ID]
-		var utilization float64
-		if size > 0 {
-			utilization = float64(used) / float64(size) * 100
-		}
 		stats.NetworkUtilization = append(stats.NetworkUtilization, model.NetworkUtilizationSummary{
 			NetworkID:   net.ID,
 			NetworkName: net.Name,
 			Subnet:      net.Subnet,
 			TotalIPs:    size,
 			UsedIPs:     used,
-			Utilization: utilization,
+			Utilization: utilizationPercent(used, size),
 		})
 		totalIPs += size
 		usedIPs += used
 	}
 
-	// Calculate overall utilization
-	if totalIPs > 0 {
-		stats.OverallUtilization = float64(usedIPs) / float64(totalIPs) * 100
-	}
+	stats.OverallUtilization = utilizationPercent(usedIPs, totalIPs)
 
 	return stats, nil
 }

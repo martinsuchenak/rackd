@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/model"
@@ -48,5 +49,32 @@ func TestDashboardUtilizationMatchesPerNetwork(t *testing.T) {
 	}
 	if stats.NetworkUtilization[0].UsedIPs+stats.NetworkUtilization[1].UsedIPs != 2 {
 		t.Errorf("used IPs = %+v, want 2 in total", stats.NetworkUtilization)
+	}
+}
+
+// Utilization counts must read only the (network_id, ip) index, not the table.
+func TestUtilizationQueriesUseCoveringIndex(t *testing.T) {
+	s := newTestStorage(t)
+	for _, query := range []string{
+		`SELECT COUNT(DISTINCT ip) FROM addresses WHERE network_id = 'x'`,
+		`SELECT network_id, COUNT(DISTINCT ip) FROM addresses WHERE network_id IS NOT NULL GROUP BY network_id`,
+	} {
+		rows, err := s.db.Query("EXPLAIN QUERY PLAN " + query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var plan []string
+		for rows.Next() {
+			var id, parent, notused int
+			var detail string
+			if err := rows.Scan(&id, &parent, &notused, &detail); err != nil {
+				t.Fatal(err)
+			}
+			plan = append(plan, detail)
+		}
+		_ = rows.Close()
+		if got := strings.Join(plan, "; "); !strings.Contains(got, "COVERING INDEX idx_addresses_network_ip") {
+			t.Errorf("%s\nplan: %s", query, got)
+		}
 	}
 }
