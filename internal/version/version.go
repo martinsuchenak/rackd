@@ -1,6 +1,6 @@
-// Package version exposes the build version injected via ldflags.
-// main.go copies its -X main.version style flags into these vars at init,
-// so existing build tooling (Makefile, GoReleaser) keeps working unchanged.
+// Package version exposes the build version. pkg/app sets it from the
+// app.Options that main passes, which main fills from its -X main.version style
+// ldflags, so existing build tooling (Taskfile, GoReleaser) keeps working.
 package version
 
 var (

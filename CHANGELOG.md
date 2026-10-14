@@ -27,6 +27,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Added
 
+- An extension API, `pkg/extension`, and a public entry point, `pkg/app`, for
+  building Rackd binaries with extra features compiled in. A feature declares its
+  permissions, event types and UI entries in a manifest, and can add its own
+  migrations (in their own namespace), REST routes under `/api/v1`, MCP tools,
+  CLI commands and background work. It reads core data through interfaces that
+  apply the caller's permissions, and records its changes in the audit log. The
+  API is unstable until 1.0. See [Extensions](docs/extensions.md).
+- Event types are a registry instead of a fixed list, so extensions can add types
+  that webhooks subscribe to.
+- `/api/v1/config` lists the extensions in the binary, with their pages and nav
+  items, and reports the edition the binary was built with.
+
 - `tools/loadtest`, a load tool that seeds a server (by default 10,000 devices with
   100,000 addresses) and reports per-operation latency percentiles and errors
   under concurrent clients. See [Performance Testing](docs/performance.md).
@@ -65,6 +77,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- The server never closed its storage on shutdown, so audit entries still queued
+  were lost. It now finishes in-flight requests, stops background work and closes
+  the storage, flushing the queue.
 - Request metrics were labelled with the raw path and method, so every device ID,
   and every random path or method from any client, added a series that was kept
   for the life of the process. Memory and `/metrics` output grew without bound. The

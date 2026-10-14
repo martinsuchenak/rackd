@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/api"
@@ -14,58 +11,46 @@ import (
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
+	"github.com/martinsuchenak/rackd/internal/extensions"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/mcp"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/internal/worker"
+	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/redis/go-redis/v9"
 )
 
-// Run starts the server
-func Run(cfg *config.Config, store storage.ExtendedStorage) error {
-	return RunWithCustomRoutes(cfg, store, nil)
+// Options configures Run.
+type Options struct {
+	Config *config.Config
+	Store  storage.ExtendedStorage
+	// Credentials, Profiles and ScheduledScans enable credential-based and
+	// scheduled discovery; they and EncryptionKey are nil without an
+	// ENCRYPTION_KEY. EncryptionKey also enables DNS and encrypts webhook
+	// secrets at rest.
+	Credentials    credentials.Storage
+	Profiles       storage.ProfileStorage
+	ScheduledScans storage.ScheduledScanStorage
+	EncryptionKey  []byte
+	// Features are the extensions to run.
+	Features []extension.Feature
+	// Edition is reported in /api/v1/config; empty means "oss".
+	Edition string
 }
 
-// RunWithAdvancedFeatures starts the server with credentials, profiles, and scheduled scans features
-func RunWithAdvancedFeatures(
-	cfg *config.Config,
-	store storage.ExtendedStorage,
-	credStore credentials.Storage,
-	profileStore storage.ProfileStorage,
-	scheduledStore storage.ScheduledScanStorage,
-	encryptionKey []byte,
-) error {
+// Run starts the server and blocks until ctx is cancelled, then shuts down:
+// it finishes in-flight requests, stops extensions and workers, and returns.
+// The caller owns Store and closes it afterwards.
+func Run(ctx context.Context, opts Options) error {
+	cfg, store := opts.Config, opts.Store
 	mux := http.NewServeMux()
 
-	// Initialize session manager
-	var sessionStore auth.SessionStore
-	switch cfg.SessionStoreType {
-	case "valkey", "redis":
-		opt, err := redis.ParseURL(cfg.ValkeyURL)
-		if err != nil {
-			return fmt.Errorf("invalid Valkey URL: %w", err)
-		}
-		valkeyClient := redis.NewClient(opt)
-		if err := valkeyClient.Ping(context.Background()).Err(); err != nil {
-			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
-		}
-		sessionStore = storage.NewValkeySessionStore(valkeyClient)
-		log.Info("Using Valkey/Redis session store", "addr", opt.Addr, "db", opt.DB)
-
-	case "sqlite":
-		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
-			sessionStore = storage.NewSQLiteSessionStore(sqliteStore.DB())
-			log.Info("Using SQLite Database session store")
-		} else {
-			log.Warn("SQLite session store requested but underlying store is not SQLite")
-		}
-
-	default:
-		log.Warn("Unknown session store type or memory specified, falling back to memory", "type", cfg.SessionStoreType)
+	sessionStore, err := newSessionStore(cfg, store)
+	if err != nil {
+		return err
 	}
-
 	sessionManager := auth.NewSessionManager(cfg.SessionTTL, sessionStore)
 	defer sessionManager.Stop()
 
@@ -74,27 +59,33 @@ func RunWithAdvancedFeatures(
 		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
 	}
 
-	scanner := discovery.NewUnifiedScanner(store, credStore, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
+	scanner := discovery.NewUnifiedScanner(store, opts.Credentials, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
 	scheduler := worker.NewScheduler(store, scanner, cfg)
 	scheduler.Start()
+	defer scheduler.Stop()
 
-	// Initialize scheduled scan worker (unified scanner supports both basic and advanced scans)
-	scheduledWorker := worker.NewScheduledScanWorker(scheduledStore, profileStore, scanner)
-	if err := scheduledWorker.Start(); err != nil {
-		log.Error("Failed to start scheduled scan worker", "error", err)
+	if opts.ScheduledScans != nil && opts.Profiles != nil {
+		scheduledWorker := worker.NewScheduledScanWorker(opts.ScheduledScans, opts.Profiles, scanner)
+		if err := scheduledWorker.Start(); err != nil {
+			log.Error("Failed to start scheduled scan worker", "error", err)
+		}
+		defer scheduledWorker.Stop()
 	}
 
-	// Create services registry
 	services := service.NewServices(store, sessionManager, scanner)
-
-	// Set optional services with their storage types
-	services.SetCredentialsStorage(credStore)
-	services.SetProfileStorage(profileStore)
-	services.SetScheduledScanStorage(scheduledStore)
+	if opts.Credentials != nil {
+		services.SetCredentialsStorage(opts.Credentials)
+	}
+	if opts.Profiles != nil {
+		services.SetProfileStorage(opts.Profiles)
+	}
+	if opts.ScheduledScans != nil {
+		services.SetScheduledScanStorage(opts.ScheduledScans)
+	}
 
 	// DNS service setup (requires encryption for provider credentials)
-	if encryptionKey != nil {
-		encryptor, err := credentials.NewEncryptor(encryptionKey)
+	if opts.EncryptionKey != nil {
+		encryptor, err := credentials.NewEncryptor(opts.EncryptionKey)
 		if err != nil {
 			return fmt.Errorf("failed to create encryptor for DNS service: %w", err)
 		}
@@ -105,7 +96,6 @@ func RunWithAdvancedFeatures(
 			sqliteStore.SetWebhookEncryptor(encryptor)
 		}
 
-		// Initialize and start DNS sync worker if interval is configured
 		if cfg.DNSSyncInterval > 0 {
 			dnsWorker := worker.NewDNSWorker(services.DNS, cfg)
 			dnsWorker.Start()
@@ -124,20 +114,29 @@ func RunWithAdvancedFeatures(
 		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
 	}
 
+	// Extensions: migrations, permissions and event types before anything uses them
+	runtime, err := newRuntime(ctx, opts.Features, store, services)
+	if err != nil {
+		return err
+	}
+
 	// API routes
 	log.Info("Login rate limiting enabled", "requests", cfg.LoginRateLimitRequests, "window", cfg.LoginRateLimitWindow)
 	proxyResolver := api.NewTrustedProxyResolver(cfg.TrustProxy, cfg.TrustedProxies)
 	handler := api.NewHandler(store, scanner,
 		api.WithSessionManager(sessionManager),
-		api.WithCredentialsStorage(credStore),
-		api.WithProfileStorage(profileStore),
-		api.WithScheduledScanStorage(scheduledStore),
+		api.WithCredentialsStorage(opts.Credentials),
+		api.WithProfileStorage(opts.Profiles),
+		api.WithScheduledScanStorage(opts.ScheduledScans),
 		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
 		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
 		api.WithProxyResolver(proxyResolver),
 		api.WithServices(services),
 	)
 	handler.RegisterRoutes(mux)
+	if err := runtime.RegisterRoutes(handler, mux); err != nil {
+		return err
+	}
 
 	// MCP server (require auth when OAuth is enabled or session manager is configured)
 	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
@@ -145,15 +144,20 @@ func RunWithAdvancedFeatures(
 	if services.OAuth != nil {
 		mcpServer.SetOAuthService(services.OAuth)
 	}
+	if err := runtime.RegisterTools(mcpServer); err != nil {
+		return err
+	}
 	mcpHandler := http.HandlerFunc(mcpServer.HandleRequest)
 	mux.Handle("POST /mcp", mcpHandler)
 	mux.Handle("OPTIONS /mcp", mcpHandler)
 	mux.Handle("DELETE /mcp", mcpHandler)
 
-	// UI config (minimal)
-	uiBuilder := api.NewUIConfigBuilder()
-
 	// UI config endpoint
+	uiBuilder := api.NewUIConfigBuilder()
+	if opts.Edition != "" {
+		uiBuilder.SetEdition(opts.Edition)
+	}
+	runtime.ConfigureUI(uiBuilder)
 	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
 
 	// Static UI
@@ -164,6 +168,11 @@ func RunWithAdvancedFeatures(
 		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
 	}
 
+	if err := runtime.Start(); err != nil {
+		return err
+	}
+	defer runtime.Stop(10 * time.Second)
+
 	server := &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      httpHandler,
@@ -172,159 +181,68 @@ func RunWithAdvancedFeatures(
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Graceful shutdown
 	errCh := make(chan error, 1)
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		log.Info("Shutting down...")
-		scheduler.Stop()
-		scheduledWorker.Stop()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		errCh <- server.Shutdown(ctx)
+		log.Info("Starting server", "addr", cfg.ListenAddr)
+		errCh <- server.ListenAndServe()
 	}()
 
-	log.Info("Starting server", "addr", cfg.ListenAddr)
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+	select {
+	case err := <-errCh:
 		return err
+	case <-ctx.Done():
 	}
-	return <-errCh
+
+	log.Info("Shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return server.Shutdown(shutdownCtx)
 }
 
-// RunWithCustomRoutes starts the server with custom route registration
-func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, registerRoutes func(mux *http.ServeMux)) error {
-	mux := http.NewServeMux()
-
-	// Register custom routes if provided
-	if registerRoutes != nil {
-		registerRoutes(mux)
+// newRuntime prepares the extensions: their migrations, permissions and event
+// types.
+func newRuntime(ctx context.Context, features []extension.Feature, store storage.ExtendedStorage, services *service.Services) (*extensions.Runtime, error) {
+	extStore, ok := store.(extensions.Store)
+	if !ok && len(features) > 0 {
+		return nil, fmt.Errorf("extensions need SQLite storage")
 	}
+	runtime, err := extensions.New(features, extStore, services)
+	if err != nil {
+		return nil, err
+	}
+	if err := runtime.Prepare(ctx); err != nil {
+		return nil, err
+	}
+	return runtime, nil
+}
 
-	// Initialize session manager
-	var sessionStore auth.SessionStore
+func newSessionStore(cfg *config.Config, store storage.ExtendedStorage) (auth.SessionStore, error) {
 	switch cfg.SessionStoreType {
 	case "valkey", "redis":
 		opt, err := redis.ParseURL(cfg.ValkeyURL)
 		if err != nil {
-			return fmt.Errorf("invalid Valkey URL: %w", err)
+			return nil, fmt.Errorf("invalid Valkey URL: %w", err)
 		}
 		valkeyClient := redis.NewClient(opt)
 		if err := valkeyClient.Ping(context.Background()).Err(); err != nil {
-			return fmt.Errorf("failed to connect to Valkey session store: %w", err)
+			return nil, fmt.Errorf("failed to connect to Valkey session store: %w", err)
 		}
-		sessionStore = storage.NewValkeySessionStore(valkeyClient)
 		log.Info("Using Valkey/Redis session store", "addr", opt.Addr, "db", opt.DB)
+		return storage.NewValkeySessionStore(valkeyClient), nil
 
 	case "sqlite":
 		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
-			sessionStore = storage.NewSQLiteSessionStore(sqliteStore.DB())
 			log.Info("Using SQLite Database session store")
-		} else {
-			log.Warn("SQLite session store requested but underlying store is not SQLite")
+			return storage.NewSQLiteSessionStore(sqliteStore.DB()), nil
 		}
+		log.Warn("SQLite session store requested but underlying store is not SQLite")
 
 	default:
 		log.Warn("Unknown session store type or memory specified, falling back to memory", "type", cfg.SessionStoreType)
 	}
-
-	sessionManager := auth.NewSessionManager(cfg.SessionTTL, sessionStore)
-	defer sessionManager.Stop()
-
-	// Bootstrap initial admin user
-	if err := storage.BootstrapInitialAdmin(store, cfg, sessionManager); err != nil {
-		return fmt.Errorf("failed to bootstrap initial admin: %w", err)
-	}
-
-	scanner := discovery.NewUnifiedScanner(store, nil, 30*time.Second, cfg.DiscoverySNMPv2cEnabled)
-	scheduler := worker.NewScheduler(store, scanner, cfg)
-	scheduler.Start()
-
-	// Create services registry
-	services := service.NewServices(store, sessionManager, scanner)
-
-	// OAuth setup (conditional) - must be before RegisterRoutes
-	if cfg.MCPOAuthEnabled {
-		oauthService := service.NewOAuthService(store, sessionManager, cfg.MCPOAuthIssuerURL)
-		oauthService.SetTokenTTLs(cfg.MCPOAuthAccessTokenTTL, cfg.MCPOAuthRefreshTokenTTL)
-		oauthService.StartCleanup()
-		services.OAuth = oauthService
-		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
-	}
-
-	// API routes
-	proxyResolver := api.NewTrustedProxyResolver(cfg.TrustProxy, cfg.TrustedProxies)
-	handler := api.NewHandler(store, scanner,
-		api.WithSessionManager(sessionManager),
-		api.WithLoginRateLimiter(api.NewRateLimiter(cfg.LoginRateLimitRequests, cfg.LoginRateLimitWindow)),
-		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
-		api.WithProxyResolver(proxyResolver),
-		api.WithServices(services),
-	)
-	handler.RegisterRoutes(mux)
-
-	// MCP server (require auth when OAuth is enabled or session manager is configured)
-	mcpRequireAuth := cfg.MCPOAuthEnabled || sessionManager != nil
-	mcpServer := mcp.NewServer(services, store, mcpRequireAuth)
-	if services.OAuth != nil {
-		mcpServer.SetOAuthService(services.OAuth)
-	}
-	mcpHandler := http.HandlerFunc(mcpServer.HandleRequest)
-	mux.Handle("POST /mcp", mcpHandler)
-	mux.Handle("OPTIONS /mcp", mcpHandler)
-	mux.Handle("DELETE /mcp", mcpHandler)
-
-	// UI config (minimal)
-	uiBuilder := api.NewUIConfigBuilder()
-
-	// UI config endpoint
-	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
-
-	// Static UI
-	ui.RegisterRoutes(mux)
-
-	httpHandler := buildHandler(mux, cfg, proxyResolver)
-	if cfg.AuditEnabled {
-		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
-	}
-
-	server := &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      httpHandler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: writeTimeout(cfg.RequestTimeout),
-		IdleTimeout:  60 * time.Second,
-	}
-
-	// Graceful shutdown
-	errCh := make(chan error, 1)
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		log.Info("Shutting down...")
-		scheduler.Stop()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		errCh <- server.Shutdown(ctx)
-	}()
-
-	log.Info("Starting server", "addr", cfg.ListenAddr)
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
-	return <-errCh
+	return nil, nil
 }
 
-// writeTimeout returns the HTTP server write timeout. It must outlast the
-// request timeout: once the write deadline passes the connection is closed, so
-// http.TimeoutHandler could no longer send its timeout response and slow
-// requests would get an empty reply instead of an error.
 // buildHandler wraps the router in the middleware chain every server uses.
 func buildHandler(mux *http.ServeMux, cfg *config.Config, proxyResolver *api.TrustedProxyResolver) http.Handler {
 	handler := api.RecordRoutePattern(mux)
@@ -342,6 +260,10 @@ func buildHandler(mux *http.ServeMux, cfg *config.Config, proxyResolver *api.Tru
 	return handler
 }
 
+// writeTimeout returns the HTTP server write timeout. It must outlast the
+// request timeout: once the write deadline passes the connection is closed, so
+// http.TimeoutHandler could no longer send its timeout response and slow
+// requests would get an empty reply instead of an error.
 func writeTimeout(requestTimeout time.Duration) time.Duration {
 	const minWriteTimeout = 15 * time.Second
 	return max(minWriteTimeout, requestTimeout+5*time.Second)

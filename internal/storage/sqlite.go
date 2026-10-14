@@ -32,6 +32,10 @@ type SQLiteStorage struct {
 	// secrets at rest (write) and decrypts them on read. Legacy plaintext
 	// values are returned as-is when decryption fails.
 	webhookEncryptor WebhookEncryptor
+
+	// migrateOpts are the backup settings core migrations ran with, reused for
+	// extension migrations.
+	migrateOpts MigrationOptions
 }
 
 // WebhookEncryptor is the subset of the credentials encryptor used by the
@@ -100,6 +104,7 @@ func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteSt
 	if dataDir != ":memory:" && !opts.SkipPreMigrationBackup {
 		migrateOpts.BackupDir = filepath.Join(dataDir, "backups")
 	}
+	s.migrateOpts = migrateOpts
 	if err := s.runMigrations(ctx, migrateOpts); err != nil {
 		_ = s.Close()
 		return nil, err

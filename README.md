@@ -104,6 +104,7 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Deployment](docs/deployment.md) - Docker, Nomad, and production deployment
 - [Monitoring](docs/monitoring.md) - Metrics, health checks, and observability
 - [Performance Testing](docs/performance.md) - Load-testing a deployment with `tools/loadtest`
+- [Extensions](docs/extensions.md) - Building features on `pkg/extension`
 - [Backup & Restore](docs/backup.md) - Data backup strategies
 - [Import/Export](docs/import-export.md) - Bulk data operations
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions

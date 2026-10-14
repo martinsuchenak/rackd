@@ -12,8 +12,14 @@ import (
 	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
+const baseInstructions = `rackd is a network infrastructure management system.
+Use the native tools for common operations (search, device CRUD, network/datacenter lookup, IP allocation).
+Use tool_search to discover additional tools for: circuits, NAT mappings, reservations, webhooks,
+custom fields, discovery scans, conflict detection, DNS management, and audit logs.`
+
 type Server struct {
 	mcpServer    *mcp.Server
+	instructions []string // extension lines appended to baseInstructions
 	svc          *service.Services
 	store        storage.ExtendedStorage
 	requireAuth  bool
@@ -33,10 +39,7 @@ func NewServer(services *service.Services, store storage.ExtendedStorage, requir
 		store:       store,
 		requireAuth: requireAuth,
 	}
-	s.mcpServer.SetInstructions(`rackd is a network infrastructure management system.
-Use the native tools for common operations (search, device CRUD, network/datacenter lookup, IP allocation).
-Use tool_search to discover additional tools for: circuits, NAT mappings, reservations, webhooks,
-custom fields, discovery scans, conflict detection, DNS management, and audit logs.`)
+	s.mcpServer.SetInstructions(baseInstructions)
 	s.registerTools()
 	return s
 }

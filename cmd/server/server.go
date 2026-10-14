@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/credentials"
@@ -13,10 +15,18 @@ import (
 	"github.com/martinsuchenak/rackd/internal/server"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/webhook"
+	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/paularlott/cli"
 )
 
+// Command returns the server command with no extensions.
 func Command() *cli.Command {
+	return NewCommand(nil, "")
+}
+
+// NewCommand returns the server command, running features as extensions and
+// reporting edition in /api/v1/config (empty means "oss").
+func NewCommand(features []extension.Feature, edition string) *cli.Command {
 	return &cli.Command{
 		Name:  "server",
 		Usage: "Start the HTTP/MCP server",
@@ -70,12 +80,23 @@ func Command() *cli.Command {
 			if err != nil {
 				return err
 			}
+			// Closing the store after the server stops flushes queued audit entries.
+			defer func() {
+				if err := store.Close(); err != nil {
+					log.Error("Failed to close storage", "error", err)
+				}
+			}()
+
+			ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+
+			opts := server.Options{Config: cfg, Store: store, Features: features, Edition: edition}
 			encryptionKey, hasKey := getEncryptionKey(devMode)
 
 			// If no encryption key, run basic server without advanced features
 			if !hasKey {
 				log.Info("Running without credentials/scan profiles/DNS (set ENCRYPTION_KEY or use --dev-mode to enable)")
-				return server.Run(cfg, store)
+				return server.Run(ctx, opts)
 			}
 
 			// Initialize credentials storage
@@ -96,7 +117,11 @@ func Command() *cli.Command {
 				return fmt.Errorf("failed to initialize scheduled scans storage: %w", err)
 			}
 
-			return server.RunWithAdvancedFeatures(cfg, store, credStore, profileStore, scheduledStore, encryptionKey)
+			opts.Credentials = credStore
+			opts.Profiles = profileStore
+			opts.ScheduledScans = scheduledStore
+			opts.EncryptionKey = encryptionKey
+			return server.Run(ctx, opts)
 		},
 	}
 }

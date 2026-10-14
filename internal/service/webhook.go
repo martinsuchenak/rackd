@@ -79,7 +79,7 @@ func (s *WebhookService) Create(ctx context.Context, req *model.CreateWebhookReq
 
 	// Validate event types
 	for _, et := range req.Events {
-		if !et.IsValid() {
+		if !wh.IsKnownEventType(et) {
 			return nil, ValidationErrors{{Field: "events", Message: "Invalid event type: " + string(et)}}
 		}
 	}
@@ -146,7 +146,7 @@ func (s *WebhookService) Update(ctx context.Context, id string, req *model.Updat
 			return nil, ValidationErrors{{Field: "events", Message: "At least one event type is required"}}
 		}
 		for _, et := range *req.Events {
-			if !et.IsValid() {
+			if !wh.IsKnownEventType(et) {
 				return nil, ValidationErrors{{Field: "events", Message: "Invalid event type: " + string(et)}}
 			}
 		}

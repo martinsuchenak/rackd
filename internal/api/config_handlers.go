@@ -8,16 +8,34 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/version"
+	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // UIConfig represents frontend configuration
 type UIConfig struct {
-	Edition  string    `json:"edition"`
-	Version  string    `json:"version"`
-	Features []string  `json:"features"`
-	NavItems []NavItem `json:"nav_items"`
-	UserInfo *UserInfo `json:"user,omitempty"`
+	Edition string `json:"edition"`
+	Version string `json:"version"`
+	// Features are the names of the extensions in this binary.
+	Features   []string        `json:"features"`
+	Extensions []ExtensionInfo `json:"extensions"`
+	NavItems   []NavItem       `json:"nav_items"`
+	// Pages are extension routes, with the title and permission the router uses.
+	Pages    []PageInfo `json:"pages"`
+	UserInfo *UserInfo  `json:"user,omitempty"`
+}
+
+// ExtensionInfo describes an extension in /api/v1/config.
+type ExtensionInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version,omitempty"`
+}
+
+// PageInfo is an extension's web UI route.
+type PageInfo struct {
+	Path               string           `json:"path"`
+	Title              string           `json:"title"`
+	RequiredPermission *PermissionCheck `json:"required_permission,omitempty"`
 }
 
 type NavItem struct {
@@ -50,11 +68,33 @@ type UIConfigBuilder struct {
 func NewUIConfigBuilder() *UIConfigBuilder {
 	return &UIConfigBuilder{
 		config: UIConfig{
-			Edition:  "oss",
-			Version:  version.Version,
-			Features: []string{},
-			NavItems: []NavItem{},
+			Edition:    "oss",
+			Version:    version.Version,
+			Features:   []string{},
+			Extensions: []ExtensionInfo{},
+			NavItems:   []NavItem{},
+			Pages:      []PageInfo{},
 		},
+	}
+}
+
+// AddExtension adds an extension's name, navigation entries and pages.
+func (b *UIConfigBuilder) AddExtension(m extension.Manifest) {
+	b.config.Features = append(b.config.Features, m.Name)
+	b.config.Extensions = append(b.config.Extensions, ExtensionInfo{Name: m.Name, Version: m.Version})
+	for _, n := range m.UI.Nav {
+		item := NavItem{Label: n.Label, Path: n.Path, Icon: n.Icon, Order: n.Order}
+		if n.Permission != nil {
+			item.RequiredPermissions = []PermissionCheck{{Resource: n.Permission.Resource, Action: n.Permission.Action}}
+		}
+		b.config.NavItems = append(b.config.NavItems, item)
+	}
+	for _, p := range m.UI.Pages {
+		page := PageInfo{Path: p.Path, Title: p.Title}
+		if p.Permission != nil {
+			page.RequiredPermission = &PermissionCheck{Resource: p.Permission.Resource, Action: p.Permission.Action}
+		}
+		b.config.Pages = append(b.config.Pages, page)
 	}
 }
 

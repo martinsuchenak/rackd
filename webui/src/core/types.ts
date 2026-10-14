@@ -415,11 +415,24 @@ export interface UpdateRoleRequest {
   permissions?: string[];
 }
 
+export interface ExtensionInfo {
+  name: string;
+  version?: string;
+}
+
+export interface PageInfo {
+  path: string;
+  title: string;
+  required_permission?: { resource: string; action: string };
+}
+
 export interface UIConfig {
-  edition: 'oss';
+  edition: string;
   version: string;
   features: string[];
+  extensions?: ExtensionInfo[];
   nav_items: NavItem[];
+  pages?: PageInfo[];
   user?: UserInfo;
 }
 

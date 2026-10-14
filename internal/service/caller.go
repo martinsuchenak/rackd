@@ -2,48 +2,32 @@ package service
 
 import (
 	"context"
+
+	"github.com/martinsuchenak/rackd/pkg/extension"
 )
 
-type CallerType int
+// The caller types live in pkg/extension so that core and extensions share one
+// context key.
+type (
+	CallerType = extension.CallerType
+	Caller     = extension.Caller
+)
 
 const (
-	CallerTypeAnonymous CallerType = iota
-	CallerTypeUser
-	CallerTypeAPIKey
-	CallerTypeSystem
+	CallerTypeAnonymous = extension.CallerTypeAnonymous
+	CallerTypeUser      = extension.CallerTypeUser
+	CallerTypeAPIKey    = extension.CallerTypeAPIKey
+	CallerTypeSystem    = extension.CallerTypeSystem
 )
 
-type Caller struct {
-	Type      CallerType
-	UserID    string
-	Username  string
-	IPAddress string
-	Source    string
-	Scopes    []string // OAuth token scopes; if non-nil, limits effective permissions
-}
-
-func (c *Caller) IsSystem() bool {
-	return c.Type == CallerTypeSystem
-}
-
-type contextKey string
-
-const callerKey contextKey = "caller"
-
 func WithCaller(ctx context.Context, c *Caller) context.Context {
-	return context.WithValue(ctx, callerKey, c)
+	return extension.WithCaller(ctx, c)
 }
 
 func CallerFrom(ctx context.Context) *Caller {
-	if c, ok := ctx.Value(callerKey).(*Caller); ok {
-		return c
-	}
-	return nil
+	return extension.CallerFrom(ctx)
 }
 
 func SystemContext(ctx context.Context, source string) context.Context {
-	return WithCaller(ctx, &Caller{
-		Type:   CallerTypeSystem,
-		Source: source,
-	})
+	return extension.SystemContext(ctx, source)
 }

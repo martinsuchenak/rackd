@@ -18,3 +18,9 @@ func enrichAuditCtx(ctx context.Context) context.Context {
 		Source:    caller.Source,
 	})
 }
+
+// WithAuditContext returns ctx with the caller's identity attached for the
+// storage-level audit log, as services do before writing.
+func WithAuditContext(ctx context.Context) context.Context {
+	return enrichAuditCtx(ctx)
+}
