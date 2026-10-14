@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-14
+
 ### Upgrading from v0.0.21
 
 - The first start writes a verified snapshot of the database to
@@ -219,6 +221,7 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.0.21...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/martinsuchenak/rackd/compare/v0.0.21...v0.1.0
 [0.0.21]: https://github.com/martinsuchenak/rackd/compare/v0.0.20...v0.0.21
 [0.0.20]: https://github.com/martinsuchenak/rackd/compare/v0.0.19...v0.0.20
