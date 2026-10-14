@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -246,6 +247,8 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Printf("discovery: failed to update scan status: %v", err)
 	}
+	started := *scan
+	webhook.Publish(model.EventTypeDiscoveryStarted, &started)
 
 	// Bind a cancellable context to this scan so the broadcast listeners
 	// (mDNS/NetBIOS/LLDP) and any in-flight host probes terminate when the
@@ -329,6 +332,9 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 				} else {
 					if err := s.storage.CreateDiscoveredDevice(ctx, device); err != nil {
 						log.Printf("discovery: failed to create device %s: %v", ip, err)
+					} else {
+						found := *device
+						webhook.Publish(model.EventTypeDeviceDiscovered, &found)
 					}
 				}
 
@@ -360,6 +366,8 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 		log.Printf("discovery: failed to update completed scan: %v", err)
 	}
+	completed := *scan
+	webhook.Publish(model.EventTypeDiscoveryCompleted, &completed)
 
 	// Stop the ARP refresher and broadcast listeners.
 	finishScan()

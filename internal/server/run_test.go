@@ -14,7 +14,9 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/extension"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type probe struct {
@@ -69,10 +71,15 @@ func newStore(t *testing.T, cfg *config.Config) *storage.SQLiteStorage {
 func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 	cfg := testConfig(t)
 	p := &probe{pattern: "GET /probe"}
+	store := newStore(t, cfg)
+	hook := &model.Webhook{Name: "local", URL: "http://127.0.0.1:9/hook", Active: true, Events: []model.EventType{model.EventTypeNetworkCreated}}
+	if err := store.CreateWebhook(context.Background(), hook); err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Options{Config: cfg, Store: newStore(t, cfg), Features: []extension.Feature{p}, Edition: "test"})
+		done <- Run(ctx, Options{Config: cfg, Store: store, Features: []extension.Feature{p}, Edition: "test"})
 	}()
 
 	base := "http://" + cfg.ListenAddr
@@ -103,6 +110,21 @@ func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 	_ = resp.Body.Close()
 	if uiConfig.Edition != "test" || len(uiConfig.Features) != 1 || uiConfig.Features[0] != "probe" {
 		t.Errorf("config = %+v", uiConfig)
+	}
+
+	// The webhook worker runs: a published event produces a delivery attempt
+	// (refused here, since loopback targets are blocked).
+	webhook.Publish(model.EventTypeNetworkCreated, map[string]string{"id": "net-1"})
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		ds, _ := store.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: hook.ID})
+		if len(ds) == 1 && strings.Contains(ds[0].Error, "SSRF prevention") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no delivery attempt recorded: %+v", ds)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	// A connection the client dialled but never used would hold Shutdown for 5s

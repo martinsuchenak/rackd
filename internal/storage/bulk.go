@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -13,6 +14,9 @@ type BulkResult struct {
 	Success int      `json:"success"`
 	Failed  int      `json:"failed"`
 	Errors  []string `json:"errors,omitempty"`
+	// SucceededIDs are the IDs of the items that succeeded, for publishing
+	// events. They are not part of the API response.
+	SucceededIDs []string `json:"-"`
 }
 
 // BulkCreateDevices creates multiple devices in a transaction
@@ -31,6 +35,7 @@ func (s *SQLiteStorage) BulkCreateDevices(ctx context.Context, devices []*model.
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.Name, err))
 		} else {
 			result.Success++
+			result.SucceededIDs = append(result.SucceededIDs, device.ID)
 		}
 	}
 
@@ -58,6 +63,7 @@ func (s *SQLiteStorage) BulkUpdateDevices(ctx context.Context, devices []*model.
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.ID, err))
 		} else {
 			result.Success++
+			result.SucceededIDs = append(result.SucceededIDs, device.ID)
 		}
 	}
 
@@ -85,6 +91,7 @@ func (s *SQLiteStorage) BulkDeleteDevices(ctx context.Context, ids []string) (*B
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 		} else {
 			result.Success++
+			result.SucceededIDs = append(result.SucceededIDs, id)
 		}
 	}
 
@@ -107,39 +114,13 @@ func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tag
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
-		// Get existing tags within transaction
-		rows, err := tx.QueryContext(ctx, `SELECT tag FROM tags WHERE device_id = ?`, id)
-		if err != nil {
+		if err := addTagsInTx(ctx, tx, id, tags); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 			continue
 		}
-
-		existingTags := make(map[string]bool)
-		for rows.Next() {
-			var tag string
-			if err := rows.Scan(&tag); err != nil {
-				_ = rows.Close()
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
-				continue
-			}
-			existingTags[tag] = true
-		}
-		_ = rows.Close()
-
-		// Add new tags
-		for _, tag := range tags {
-			if !existingTags[tag] {
-				_, err := tx.ExecContext(ctx, `INSERT INTO tags (device_id, tag) VALUES (?, ?)`, id, tag)
-				if err != nil {
-					result.Failed++
-					result.Errors = append(result.Errors, fmt.Sprintf("device %s tag %s: %v", id, tag, err))
-					break
-				}
-			}
-		}
 		result.Success++
+		result.SucceededIDs = append(result.SucceededIDs, id)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -161,16 +142,13 @@ func (s *SQLiteStorage) BulkRemoveTags(ctx context.Context, deviceIDs []string, 
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
-		// Delete specified tags
-		for _, tag := range tags {
-			_, err := tx.ExecContext(ctx, `DELETE FROM tags WHERE device_id = ? AND tag = ?`, id, tag)
-			if err != nil {
-				result.Failed++
-				result.Errors = append(result.Errors, fmt.Sprintf("device %s tag %s: %v", id, tag, err))
-				break
-			}
+		if err := removeTagsInTx(ctx, tx, id, tags); err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
+			continue
 		}
 		result.Success++
+		result.SucceededIDs = append(result.SucceededIDs, id)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -197,6 +175,7 @@ func (s *SQLiteStorage) BulkCreateNetworks(ctx context.Context, networks []*mode
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", network.Name, err))
 		} else {
 			result.Success++
+			result.SucceededIDs = append(result.SucceededIDs, network.ID)
 		}
 	}
 
@@ -224,6 +203,7 @@ func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", id, err))
 		} else {
 			result.Success++
+			result.SucceededIDs = append(result.SucceededIDs, id)
 		}
 	}
 
@@ -233,4 +213,44 @@ func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*
 
 	s.auditLog(ctx, "bulk_delete", "network", "", map[string]interface{}{"count": len(ids)})
 	return result, nil
+}
+
+// addTagsInTx adds the tags a device doesn't have yet.
+func addTagsInTx(ctx context.Context, tx *sql.Tx, deviceID string, tags []string) error {
+	rows, err := tx.QueryContext(ctx, `SELECT tag FROM tags WHERE device_id = ?`, deviceID)
+	if err != nil {
+		return err
+	}
+	existing := map[string]bool{}
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		existing[tag] = true
+	}
+	_ = rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		if existing[tag] {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO tags (device_id, tag) VALUES (?, ?)`, deviceID, tag); err != nil {
+			return fmt.Errorf("tag %s: %w", tag, err)
+		}
+	}
+	return nil
+}
+
+// removeTagsInTx removes tags from a device.
+func removeTagsInTx(ctx context.Context, tx *sql.Tx, deviceID string, tags []string) error {
+	for _, tag := range tags {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM tags WHERE device_id = ? AND tag = ?`, deviceID, tag); err != nil {
+			return fmt.Errorf("tag %s: %w", tag, err)
+		}
+	}
+	return nil
 }

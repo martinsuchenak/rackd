@@ -20,6 +20,16 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   migrated by a newer Rackd. To go back to v0.1.0, first run
   `rackd migrate rollback --to 20261013120000 --yes` with this release, or restore
   the pre-migration snapshot from `<data-dir>/backups/`.
+- Webhook requests use a new format; see [Webhooks](docs/webhooks.md#webhook-delivery).
+  Only the test ping was ever sent before, so this matters only for receivers built
+  against it:
+  - Headers are `X-Rackd-Event`, `X-Rackd-Delivery`, `X-Rackd-Timestamp` and
+    `X-Rackd-Signature` instead of `X-Event-Type`, `X-Delivery-ID` and
+    `X-Signature-256`.
+  - The body is `{"event", "delivery_id", "timestamp", "data"}` instead of
+    `{"id", "type", "timestamp", "payload"}`.
+  - The signature covers `<X-Rackd-Timestamp>.<body>` instead of the body alone, so
+    receivers can reject replayed requests.
 - The `route` label on `http_request_duration_milliseconds` is now the route pattern,
   such as `GET /api/v1/devices/{id}`, instead of the raw method and path. Update
   dashboards and alerts that filter on old label values. The duration metrics are
@@ -77,6 +87,19 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Webhooks never delivered events: nothing published them, and the delivery worker
+  was never started. Device, network, discovery and conflict changes now publish the
+  documented events (bulk operations publish one per item), and the worker runs with
+  the server. Deliveries retry with the same delivery ID, and those interrupted by a
+  shutdown are retried after the next start. `pool.utilization_high` is not published
+  yet.
+- Webhook delivery records stored a response code of 200 for every success; they
+  now store the actual code. The test ping sent an empty event ID and timestamp.
+- Bulk tag add and remove counted a device whose tags failed as both failed and
+  succeeded.
+- The webhooks guide described fields, per-webhook retry settings and a retry
+  schedule that don't exist, said private networks were allowed by default, and
+  suggested sending events straight to Slack, which rejects them.
 - The server never closed its storage on shutdown, so audit entries still queued
   were lost. It now finishes in-flight requests, stops background work and closes
   the storage, flushing the queue.

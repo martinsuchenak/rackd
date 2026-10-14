@@ -36,7 +36,11 @@ func (s *NetworkService) Create(ctx context.Context, network *model.Network) err
 		return ValidationErrors{{Field: "subnet", Message: "Subnet is required"}}
 	}
 
-	return s.store.CreateNetwork(enrichAuditCtx(ctx), network)
+	if err := s.store.CreateNetwork(enrichAuditCtx(ctx), network); err != nil {
+		return err
+	}
+	publishEvent(model.EventTypeNetworkCreated, networkSnapshot(network))
+	return nil
 }
 
 func (s *NetworkService) Get(ctx context.Context, id string) (*model.Network, error) {
@@ -71,7 +75,11 @@ func (s *NetworkService) Update(ctx context.Context, network *model.Network) err
 		return ValidationErrors{{Field: "subnet", Message: "Subnet is required"}}
 	}
 
-	return s.store.UpdateNetwork(enrichAuditCtx(ctx), network)
+	if err := s.store.UpdateNetwork(enrichAuditCtx(ctx), network); err != nil {
+		return err
+	}
+	publishEvent(model.EventTypeNetworkUpdated, networkSnapshot(network))
+	return nil
 }
 
 func (s *NetworkService) Delete(ctx context.Context, id string) error {
@@ -79,12 +87,17 @@ func (s *NetworkService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	deleted, err := s.store.GetNetwork(ctx, id)
+	if err != nil {
+		deleted = &model.Network{ID: id}
+	}
 	if err := s.store.DeleteNetwork(enrichAuditCtx(ctx), id); err != nil {
 		if errors.Is(err, storage.ErrNetworkNotFound) {
 			return ErrNotFound
 		}
 		return err
 	}
+	publishEvent(model.EventTypeNetworkDeleted, deleted)
 	return nil
 }
 

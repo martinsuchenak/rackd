@@ -1,14 +1,7 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"net/url"
 	"time"
 
@@ -229,15 +222,13 @@ func (s *WebhookService) Ping(ctx context.Context, id string) (*model.WebhookDel
 
 	// Create a test event
 	testEvent := model.Event{
-		Type: "webhook.ping",
+		Type:      "webhook.ping",
+		Timestamp: time.Now().UTC(),
 		Payload: map[string]string{
 			"message": "Test webhook delivery from Rackd",
 			"webhook": webhook.Name,
 		},
 	}
-
-	// Import the webhook delivery package
-	// For now, we'll use a simple HTTP client approach
 	delivery, err := s.pingWebhook(ctx, webhook, testEvent)
 	if err != nil {
 		return nil, err
@@ -246,60 +237,38 @@ func (s *WebhookService) Ping(ctx context.Context, id string) (*model.WebhookDel
 	return delivery, nil
 }
 
-// pingWebhook sends a test request to the webhook
+// pingWebhook sends a test event in the same format, with the same headers and
+// signature, as real deliveries.
 func (s *WebhookService) pingWebhook(ctx context.Context, webhook *model.Webhook, event model.Event) (*model.WebhookDelivery, error) {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize event: %w", err)
+	delivery := &model.WebhookDelivery{
+		ID:        uuid.New().String(),
+		WebhookID: webhook.ID,
+		EventType: event.Type,
+		CreatedAt: time.Now().UTC(),
 	}
+	body, err := wh.NewMessage(event, delivery.ID)
+	if err != nil {
+		return nil, err
+	}
+	delivery.Payload = string(body)
 
+	req, err := wh.NewRequest(ctx, webhook, event.Type, delivery.ID, body, time.Now())
+	if err != nil {
+		return nil, err
+	}
 	// Runs inside the API request, so stay below the default REQUEST_TIMEOUT
 	// (30s) and report the real failure rather than a generic timeout.
 	client := wh.NewSecureHTTPClient(20 * time.Second)
-	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(payload))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Rackd-Webhook/1.0")
-	req.Header.Set("X-Event-Type", string(event.Type))
-	req.Header.Set("X-Delivery-ID", uuid.New().String())
-
-	// Add HMAC signature if secret is configured
-	if webhook.Secret != "" {
-		h := hmac.New(sha256.New, []byte(webhook.Secret))
-		h.Write(payload)
-		signature := hex.EncodeToString(h.Sum(nil))
-		req.Header.Set("X-Signature-256", "sha256="+signature)
-	}
-
-	delivery := &model.WebhookDelivery{
-		WebhookID: webhook.ID,
-		EventType: event.Type,
-		Payload:   string(payload),
-		CreatedAt: time.Now().UTC(),
-	}
 
 	startTime := time.Now()
-	resp, err := client.Do(req)
+	delivery.ResponseCode, err = wh.Send(client, req)
 	delivery.Duration = time.Since(startTime).Milliseconds()
-
 	if err != nil {
 		delivery.Status = model.DeliveryStatusFailed
 		delivery.Error = err.Error()
-		return delivery, nil
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	delivery.ResponseCode = resp.StatusCode
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		delivery.Status = model.DeliveryStatusSuccess
 	} else {
-		delivery.Status = model.DeliveryStatusFailed
-		delivery.Error = fmt.Sprintf("webhook returned status %d", resp.StatusCode)
+		delivery.Status = model.DeliveryStatusSuccess
 	}
-
 	return delivery, nil
 }
 

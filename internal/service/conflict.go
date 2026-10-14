@@ -76,6 +76,9 @@ func (s *ConflictService) Resolve(ctx context.Context, resolution *model.Conflic
 	if err := s.store.UpdateConflictStatus(enrichAuditCtx(ctx), resolution.ConflictID, model.ConflictStatusResolved, resolvedBy, resolution.Notes); err != nil {
 		return err
 	}
+	if resolved, err := s.store.GetConflict(ctx, resolution.ConflictID); err == nil {
+		publishEvent(model.EventTypeConflictResolved, resolved)
+	}
 
 	return nil
 }
@@ -146,6 +149,7 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 			if err := s.store.CreateConflict(ctx, &conflict); err != nil {
 				return nil, err
 			}
+			publishEvent(model.EventTypeConflictDetected, conflict)
 		}
 	}
 
@@ -183,11 +187,13 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 				if err := s.store.CreateConflict(ctx, &conflict); err != nil {
 					return nil, err
 				}
+				publishEvent(model.EventTypeConflictDetected, conflict)
 			}
 		} else {
 			if err := s.store.CreateConflict(ctx, &conflict); err != nil {
 				return nil, err
 			}
+			publishEvent(model.EventTypeConflictDetected, conflict)
 		}
 	}
 
