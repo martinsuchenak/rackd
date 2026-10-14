@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	"github.com/paularlott/cli"
 )
 

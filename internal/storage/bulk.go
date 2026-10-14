@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // BulkResult represents the result of a bulk operation

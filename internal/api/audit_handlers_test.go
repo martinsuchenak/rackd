@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestAuditHandlers_SourceFilterAndDetailEndpoints(t *testing.T) {

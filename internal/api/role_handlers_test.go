@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestRoleHandlers(t *testing.T) {

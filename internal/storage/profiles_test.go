@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestSQLiteProfileStorageCRUD(t *testing.T) {

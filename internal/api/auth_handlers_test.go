@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestLoginReturnsPermissions(t *testing.T) {

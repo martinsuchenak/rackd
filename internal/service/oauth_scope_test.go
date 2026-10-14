@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // TestOAuthScopeClampToUserPermissions covers the pentest finding: a

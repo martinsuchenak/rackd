@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestSearch(t *testing.T) {

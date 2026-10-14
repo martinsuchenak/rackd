@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // Format represents the export format

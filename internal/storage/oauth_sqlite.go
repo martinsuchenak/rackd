@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // --- OAuth Clients ---

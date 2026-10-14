@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/version"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // UIConfig represents frontend configuration

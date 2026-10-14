@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	rbac "github.com/martinsuchenak/go-rbac"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func canPermission(ctx context.Context, s *SQLiteStorage, userID, resource, action string) (bool, error) {

@@ -7,7 +7,7 @@ import (
 
 	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type RBACStorage interface {

@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // Scanner interface for network discovery

@@ -14,7 +14,7 @@ The network management system in Rackd consists of several key components:
 
 ## Network Model
 
-Networks in Rackd are defined by the following structure (see `internal/model/network.go`):
+Networks in Rackd are defined by the following structure (see `pkg/model/network.go`):
 
 ```go
 type Network struct {
@@ -247,7 +247,7 @@ Response:
 }
 ```
 
-The utilization model (see `internal/model/network.go`):
+The utilization model (see `pkg/model/network.go`):
 
 ```go
 type NetworkUtilization struct {

@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestDashboardService_DefaultsStatsAndTrendParameters(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 
 	rbac "github.com/martinsuchenak/go-rbac"
 	dnspkg "github.com/martinsuchenak/rackd/internal/dns"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	"pgregory.net/rapid"
 )
 

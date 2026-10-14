@@ -8,8 +8,8 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {

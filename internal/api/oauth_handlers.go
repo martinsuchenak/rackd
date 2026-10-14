@@ -9,9 +9,9 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/ui"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // oauthRegister handles RFC 7591 Dynamic Client Registration.

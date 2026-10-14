@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestSQLiteScheduledScanStorageCRUD(t *testing.T) {

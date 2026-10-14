@@ -9,9 +9,9 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/credentials"
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type extendedTestHandler struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // CreateWebhook stores a new webhook

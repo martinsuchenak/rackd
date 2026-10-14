@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestDashboardUtilizationMatchesPerNetwork(t *testing.T) {

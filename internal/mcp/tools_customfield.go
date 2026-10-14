@@ -5,7 +5,7 @@ import (
 
 	"github.com/paularlott/mcp"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func (s *Server) registerCustomFieldTools() {

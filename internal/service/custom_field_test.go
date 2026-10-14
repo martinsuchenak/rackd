@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/model"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestCustomFieldService_CreateDefinitionValidatesKeyAndSelectOptions(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // APIKeyStorage defines the interface for API key storage

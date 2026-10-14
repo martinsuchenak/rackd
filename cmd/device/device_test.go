@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
-	"github.com/martinsuchenak/rackd/internal/model"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func intPtr(i int) *int { return &i }
