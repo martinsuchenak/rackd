@@ -64,5 +64,5 @@ func (s *Server) AddInstructions(line string) {
 		return
 	}
 	s.instructions = append(s.instructions, line)
-	s.mcpServer.SetInstructions(baseInstructions + "\n" + strings.Join(s.instructions, "\n"))
+	s.mcpServer.SetInstructions(s.base + "\n" + strings.Join(s.instructions, "\n"))
 }
