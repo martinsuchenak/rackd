@@ -42,10 +42,41 @@ const (
 	sessionCookieName = "rackd_session"
 )
 
+// routePatternKey holds a *string that RecordRoutePattern fills with the
+// pattern the router matched.
+type routePatternKey struct{}
+
+// Requests without a route pattern share one metric series each, instead of one
+// per path or method: unmatchedRoute when the router found no route, and
+// unroutedRoute when the request was answered before reaching the router (for
+// example by the rate limiter).
+const (
+	unmatchedRoute = "unmatched"
+	unroutedRoute  = "unrouted"
+)
+
+// RecordRoutePattern wraps the router so LoggingMiddleware can label request
+// metrics with the matched route pattern (such as "GET /api/v1/devices/{id}").
+// Labelling by the raw path would create a series per ID, and per random path
+// from any client.
+func RecordRoutePattern(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mux.ServeHTTP(w, r) // sets r.Pattern on this request
+		if route, ok := r.Context().Value(routePatternKey{}).(*string); ok {
+			*route = r.Pattern
+			if *route == "" {
+				*route = unmatchedRoute
+			}
+		}
+	})
+}
+
 // LoggingMiddleware logs all HTTP requests and records metrics
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		route := new(string)
+		r = r.WithContext(context.WithValue(r.Context(), routePatternKey{}, route))
 
 		log.Debug("HTTP request started",
 			"method", r.Method,
@@ -68,7 +99,10 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		)
 
 		// Record metrics
-		metrics.Get().RecordHTTPRequest(r.Method, r.URL.Path, wrapped.statusCode, duration)
+		if *route == "" {
+			*route = unroutedRoute
+		}
+		metrics.Get().RecordHTTPRequest(*route, wrapped.statusCode, duration)
 	})
 }
 

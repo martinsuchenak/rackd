@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -8,16 +9,16 @@ import (
 func TestMetrics_RecordHTTPRequest(t *testing.T) {
 	m := &Metrics{startTime: time.Now()}
 
-	m.RecordHTTPRequest("GET", "/api/devices", 200, 50*time.Millisecond)
-	m.RecordHTTPRequest("GET", "/api/devices", 200, 100*time.Millisecond)
-	m.RecordHTTPRequest("POST", "/api/devices", 201, 75*time.Millisecond)
+	m.RecordHTTPRequest("GET /api/v1/devices", 200, 50*time.Millisecond)
+	m.RecordHTTPRequest("GET /api/v1/devices", 200, 100*time.Millisecond)
+	m.RecordHTTPRequest("POST /api/v1/devices", 201, 75*time.Millisecond)
 
 	if m.httpRequestsTotal.Load() != 3 {
 		t.Errorf("Expected 3 requests, got %d", m.httpRequestsTotal.Load())
 	}
 
 	// Check histogram
-	h := m.getOrCreateHistogram(&m.httpRequestDuration, "GET /api/devices")
+	h := m.getOrCreateHistogram(&m.httpRequestDuration, "GET /api/v1/devices")
 	if h.count.Load() != 2 {
 		t.Errorf("Expected 2 GET requests, got %d", h.count.Load())
 	}
@@ -64,7 +65,7 @@ func TestMetrics_SetCounts(t *testing.T) {
 func TestMetrics_Export(t *testing.T) {
 	m := &Metrics{startTime: time.Now()}
 
-	m.RecordHTTPRequest("GET", "/api/devices", 200, 50*time.Millisecond)
+	m.RecordHTTPRequest("GET /api/v1/devices", 200, 50*time.Millisecond)
 	m.SetDeviceCount(100)
 
 	output := m.Export()
@@ -99,4 +100,28 @@ func containsAt(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestMetrics_ExportEscapesLabels(t *testing.T) {
+	m := &Metrics{startTime: time.Now()}
+	m.RecordHTTPRequest("GET /a\"b\\c\nd", 200, time.Millisecond)
+
+	want := `http_request_duration_milliseconds{route="GET /a\"b\\c\nd"}`
+	if out := m.Export(); !strings.Contains(out, want) {
+		t.Errorf("label not escaped; want %s in:\n%s", want, out)
+	}
+}
+
+func TestMetrics_SubMillisecondDurations(t *testing.T) {
+	m := &Metrics{startTime: time.Now()}
+	m.RecordHTTPRequest("GET /fast", 200, 600*time.Microsecond)
+	m.RecordHTTPRequest("GET /fast", 200, 400*time.Microsecond)
+
+	if avg := m.getOrCreateHistogram(&m.httpRequestDuration, "GET /fast").avg(); avg < 0.49 || avg > 0.51 {
+		t.Errorf("avg = %.3f ms, want 0.5", avg)
+	}
+	if out := m.Export(); !strings.Contains(out, `http_request_duration_milliseconds{route="GET /fast"} 0.50`) ||
+		!strings.Contains(out, "# TYPE http_request_duration_milliseconds gauge") {
+		t.Errorf("unexpected export:\n%s", out)
+	}
 }

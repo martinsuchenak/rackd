@@ -159,21 +159,9 @@ func RunWithAdvancedFeatures(
 	// Static UI
 	ui.RegisterRoutes(mux)
 
-	// Apply middleware chain
-	var httpHandler http.Handler = mux
-	if cfg.RateLimitEnabled {
-		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
-		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter, proxyResolver)(httpHandler)
-	}
-	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	httpHandler := buildHandler(mux, cfg, proxyResolver)
 	if cfg.AuditEnabled {
 		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
-	}
-
-	// Enforce request timeout (M-10)
-	if cfg.RequestTimeout > 0 {
-		httpHandler = http.TimeoutHandler(httpHandler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
 	}
 
 	server := &http.Server{
@@ -298,21 +286,9 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 	// Static UI
 	ui.RegisterRoutes(mux)
 
-	// Apply middleware chain
-	var httpHandler http.Handler = mux
-	if cfg.RateLimitEnabled {
-		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
-		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
-		httpHandler = api.RateLimitMiddleware(limiter, proxyResolver)(httpHandler)
-	}
-	httpHandler = api.LoggingMiddleware(api.SecurityHeaders(httpHandler))
+	httpHandler := buildHandler(mux, cfg, proxyResolver)
 	if cfg.AuditEnabled {
 		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
-	}
-
-	// Enforce request timeout (M-10)
-	if cfg.RequestTimeout > 0 {
-		httpHandler = http.TimeoutHandler(httpHandler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
 	}
 
 	server := &http.Server{
@@ -349,6 +325,23 @@ func RunWithCustomRoutes(cfg *config.Config, store storage.ExtendedStorage, regi
 // request timeout: once the write deadline passes the connection is closed, so
 // http.TimeoutHandler could no longer send its timeout response and slow
 // requests would get an empty reply instead of an error.
+// buildHandler wraps the router in the middleware chain every server uses.
+func buildHandler(mux *http.ServeMux, cfg *config.Config, proxyResolver *api.TrustedProxyResolver) http.Handler {
+	handler := api.RecordRoutePattern(mux)
+	if cfg.RateLimitEnabled {
+		log.Info("Rate limiting enabled", "requests", cfg.RateLimitRequests, "window", cfg.RateLimitWindow)
+		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
+		handler = api.RateLimitMiddleware(limiter, proxyResolver)(handler)
+	}
+	handler = api.LoggingMiddleware(api.SecurityHeaders(handler))
+
+	// Enforce request timeout (M-10)
+	if cfg.RequestTimeout > 0 {
+		handler = http.TimeoutHandler(handler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
+	}
+	return handler
+}
+
 func writeTimeout(requestTimeout time.Duration) time.Duration {
 	const minWriteTimeout = 15 * time.Second
 	return max(minWriteTimeout, requestTimeout+5*time.Second)

@@ -94,7 +94,7 @@ curl http://localhost:8080/metrics
 #### HTTP Metrics
 
 - `http_requests_total` - Total number of HTTP requests (counter)
-- `http_request_duration_milliseconds{route="..."}` - Average request duration by route (summary)
+- `http_request_duration_milliseconds{route="..."}` - Mean request duration since start, by route (gauge). `route` is the matched route pattern, such as `GET /api/v1/devices/{id}`. Requests that match no route share `route="unmatched"`; requests answered before routing, such as rate-limited ones, share `route="unrouted"`.
 - `http_requests_by_code{code="..."}` - Total requests by HTTP status code (counter)
 
 #### Application Metrics
@@ -172,10 +172,12 @@ rate(http_requests_total[5m])
 rate(http_requests_by_code{code=~"5.."}[5m]) / rate(http_requests_total[5m])
 ```
 
-**3. Response Time (p95)**
+**3. Average Response Time by Route**
 ```promql
-histogram_quantile(0.95, rate(http_request_duration_milliseconds[5m]))
+topk(10, http_request_duration_milliseconds)
 ```
+
+Rackd exports an average per route, not a histogram, so percentiles such as p95 are not available from these metrics.
 
 **4. Active Resources**
 ```promql
