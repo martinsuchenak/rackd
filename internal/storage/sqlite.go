@@ -130,6 +130,10 @@ func (s *SQLiteStorage) runMigrations(ctx context.Context, opts MigrationOptions
 	if err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
+	if res.BackupPath != "" {
+		// One backup covers this start-up; extension migrations reuse it.
+		s.migrateOpts.BackupDir = ""
+	}
 	if len(res.Versions) > 0 {
 		log.Info("Applied database migrations", "count", len(res.Versions), "latest", res.Versions[len(res.Versions)-1], "backup", res.BackupPath)
 	}

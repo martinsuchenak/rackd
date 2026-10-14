@@ -50,3 +50,10 @@ func TestCommandRejectsDuplicateCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandValidatesFeatures(t *testing.T) {
+	_, err := Command(Options{Features: []extension.Feature{withCommands{name: "same"}, withCommands{name: "same"}}})
+	if err == nil || !strings.Contains(err.Error(), "registered twice") {
+		t.Errorf("Command = %v, want a duplicate feature error", err)
+	}
+}

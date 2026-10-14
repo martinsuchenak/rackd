@@ -35,6 +35,7 @@ import (
 	"github.com/martinsuchenak/rackd/cmd/server"
 	"github.com/martinsuchenak/rackd/cmd/user"
 	"github.com/martinsuchenak/rackd/cmd/webhook"
+	"github.com/martinsuchenak/rackd/internal/extensions"
 	buildversion "github.com/martinsuchenak/rackd/internal/version"
 	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/paularlott/cli"
@@ -83,6 +84,11 @@ func Command(opts Options) (*cli.Command, error) {
 	buildversion.Version, buildversion.Commit, buildversion.Date = opts.Version, opts.Commit, opts.Date
 
 	features := append(builtinFeatures(), opts.Features...)
+	// Validate up front so every command, not just the server, refuses
+	// malformed or clashing features.
+	if err := extensions.Validate(features); err != nil {
+		return nil, err
+	}
 	commands := []*cli.Command{
 		server.NewCommand(features, opts.Edition),
 		device.Command(),

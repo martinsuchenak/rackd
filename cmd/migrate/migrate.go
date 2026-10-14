@@ -184,12 +184,18 @@ func runCommand(exts []extensionSteps) *cli.Command {
 				return fmt.Errorf("migration failed: %w", err)
 			}
 			applied += report(storage.CoreMigrationNamespace, res)
+			if res.BackupPath != "" {
+				opts.BackupDir = "" // one backup covers this whole run
+			}
 			for _, e := range exts {
 				res, err := storage.RunExtensionMigrationsOn(ctx, db, e.name, e.steps, opts)
 				if err != nil {
 					return fmt.Errorf("%s migration failed: %w", e.name, err)
 				}
 				applied += report(e.name, res)
+				if res.BackupPath != "" {
+					opts.BackupDir = ""
+				}
 			}
 			if applied == 0 {
 				fmt.Println("Database is up to date, no pending migrations")
