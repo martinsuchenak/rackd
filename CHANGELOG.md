@@ -87,6 +87,15 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - The stale `webui/package-lock.json`. `bun.lock` is the web UI's only lockfile.
 
+### Security
+
+- Build with Go 1.27.2, which fixes nine standard library vulnerabilities that
+  rackd's code reaches. These include HTTP/2 server crash, CPU and memory
+  exhaustion issues in `net/http`, HTTP/1 connection desynchronisation after
+  CONNECT, MIME header memory limits, and malformed ECH handling in `crypto/tls`
+  (GO-2026-6603, 6605, 6607, 6608, 6610, 6611, 6612, 6613 and 6617). v0.0.21 was
+  built with Go 1.27.1 and is affected.
+
 ### Fixed
 
 - `rackd backup` copied the live database file and its WAL file separately, so a
