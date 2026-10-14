@@ -2,7 +2,10 @@
 set -eu
 
 ROOT_DIR="$(pwd)"
-DATA_DIR="${ROOT_DIR}/.tmp/e2e-data"
+# E2E_PACKAGE picks the binary to run: Rackd itself by default, or another
+# main package such as ./examples/hello.
+PACKAGE="${E2E_PACKAGE:-.}"
+DATA_DIR="${ROOT_DIR}/.tmp/${E2E_DATA_NAME:-e2e-data}"
 LISTEN_ADDR="${E2E_LISTEN_ADDR:-127.0.0.1:18080}"
 GO_CACHE_DIR="${ROOT_DIR}/.cache/go-build-e2e"
 GO_TMP_DIR="${ROOT_DIR}/.tmp/go-tmp-e2e"
@@ -19,8 +22,8 @@ export ENCRYPTION_KEY="${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456
 export LOGIN_RATE_LIMIT_REQUESTS="${LOGIN_RATE_LIMIT_REQUESTS:-1000}"
 export LOGIN_RATE_LIMIT_WINDOW="${LOGIN_RATE_LIMIT_WINDOW:-1m}"
 export MCP_OAUTH_ENABLED="${MCP_OAUTH_ENABLED:-true}"
-export MCP_OAUTH_ISSUER_URL="${MCP_OAUTH_ISSUER_URL:-http://127.0.0.1:18080}"
+export MCP_OAUTH_ISSUER_URL="${MCP_OAUTH_ISSUER_URL:-http://${LISTEN_ADDR}}"
 export GOCACHE="${GOCACHE:-${GO_CACHE_DIR}}"
 export GOTMPDIR="${GOTMPDIR:-${GO_TMP_DIR}}"
 
-exec go run . server --dev-mode --listen-addr "${LISTEN_ADDR}" --data-dir "${DATA_DIR}"
+exec go run "${PACKAGE}" server --dev-mode --listen-addr "${LISTEN_ADDR}" --data-dir "${DATA_DIR}"

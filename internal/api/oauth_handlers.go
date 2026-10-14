@@ -10,7 +10,6 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
-	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -64,7 +63,7 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 	// The SPA will then fetch this endpoint to get the consent data
 	if isBrowserNavigation {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(ui.IndexHTML())
+		_, _ = w.Write(h.indexHTML)
 		return
 	}
 

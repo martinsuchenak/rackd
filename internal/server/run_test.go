@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/config"
@@ -24,7 +26,12 @@ type probe struct {
 	stopped atomic.Bool
 }
 
-func (p *probe) Manifest() extension.Manifest { return extension.Manifest{Name: "probe", Version: "1"} }
+func (p *probe) Manifest() extension.Manifest {
+	return extension.Manifest{Name: "probe", Version: "1", UI: extension.UI{
+		Assets:  fstest.MapFS{"ui/probe.js": {Data: []byte("export {};")}},
+		Scripts: []string{"ui/probe.js"},
+	}}
+}
 
 func (p *probe) RegisterRoutes(r extension.Router, host extension.Host) {
 	r.Handle(p.pattern, func(w http.ResponseWriter, _ *http.Request) {
@@ -82,7 +89,8 @@ func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Options{Config: cfg, Store: store, Features: []extension.Feature{p}, Edition: "test"})
+		done <- Run(ctx, Options{Config: cfg, Store: store, Features: []extension.Feature{p}, Edition: "test",
+			UI: fstest.MapFS{"index.html": {Data: []byte("<!DOCTYPE html>replacement")}}})
 	}()
 
 	base := "http://" + cfg.ListenAddr
@@ -106,13 +114,35 @@ func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 		t.Fatal(err)
 	}
 	var uiConfig struct {
-		Edition  string   `json:"edition"`
-		Features []string `json:"features"`
+		Edition    string   `json:"edition"`
+		Features   []string `json:"features"`
+		Extensions []struct {
+			Scripts []string `json:"scripts"`
+		} `json:"extensions"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&uiConfig)
 	_ = resp.Body.Close()
 	if uiConfig.Edition != "test" || len(uiConfig.Features) != 1 || uiConfig.Features[0] != "probe" {
 		t.Errorf("config = %+v", uiConfig)
+	}
+	if len(uiConfig.Extensions) != 1 || strings.Join(uiConfig.Extensions[0].Scripts, ",") != "/ext/probe/ui/probe.js" {
+		t.Errorf("extension scripts = %+v", uiConfig.Extensions)
+	}
+
+	// The extension's UI files, and the replacement UI, are served.
+	for _, tc := range []struct{ path, want string }{
+		{"/ext/probe/ui/probe.js", "export {};"},
+		{"/devices", "<!DOCTYPE html>replacement"},
+	} {
+		resp, err := http.Get(base + tc.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || string(body) != tc.want {
+			t.Errorf("GET %s = %d %q, want %q", tc.path, resp.StatusCode, body, tc.want)
+		}
 	}
 
 	// The snapshot worker runs: it takes a snapshot of each network on start.

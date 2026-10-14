@@ -1,4 +1,5 @@
-import type { NavItem, Permission } from './types';
+import { findExtensionPage } from './extensions';
+import type { NavItem, PageInfo, Permission } from './types';
 
 export interface PermissionRequirement {
   resource: string;
@@ -81,22 +82,27 @@ export function getFeatureNavItems(): FeatureNavItem[] {
     }));
 }
 
-export function getPageTitle(route: string): string {
-  const routePath = normalizePath(route);
-  const feature = featureDefinitions.find((item) => item.path === routePath)
+function findCoreFeature(routePath: string): FeatureDefinition | undefined {
+  return featureDefinitions.find((item) => item.path === routePath)
     ?? featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
-  return feature?.title || 'Page';
 }
 
-export function canAccessRoute(route: string, permissions: Permission[]): boolean {
+// Core's routes come first, so an extension page cannot take one over.
+export function getPageTitle(route: string, extensionPages: PageInfo[] = []): string {
   const routePath = normalizePath(route);
-  const feature = featureDefinitions.find((item) => item.path === routePath)
-    ?? featureDefinitions.find((item) => matchesFeaturePath(routePath, item));
-  if (!feature?.permission) {
+  const title = findCoreFeature(routePath)?.title ?? findExtensionPage(routePath, extensionPages)?.title;
+  return title || 'Page';
+}
+
+export function canAccessRoute(route: string, permissions: Permission[], extensionPages: PageInfo[] = []): boolean {
+  const routePath = normalizePath(route);
+  const feature = findCoreFeature(routePath);
+  const required = feature ? feature.permission : findExtensionPage(routePath, extensionPages)?.required_permission;
+  if (!required) {
     return true;
   }
   return permissions.some((permission) =>
-    permission.resource === feature.permission!.resource && permission.action === feature.permission!.action
+    permission.resource === required.resource && permission.action === required.action
   );
 }
 

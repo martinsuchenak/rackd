@@ -9,6 +9,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/martinsuchenak/rackd/cmd/apikey"
@@ -55,6 +56,10 @@ type Options struct {
 	Edition string
 	// Features are extensions to run in addition to Rackd's built-in ones.
 	Features []extension.Feature
+	// UI replaces the built-in web UI, for a binary that builds its own; nil
+	// serves the built-in one. It must hold index.html at its root. To add
+	// pages to the built-in UI instead, use extension.UI.
+	UI fs.FS
 }
 
 // Main runs the CLI and exits with status 1 on an error.
@@ -89,8 +94,13 @@ func Command(opts Options) (*cli.Command, error) {
 	if err := extensions.Validate(features); err != nil {
 		return nil, err
 	}
+	if opts.UI != nil {
+		if _, err := fs.Stat(opts.UI, "index.html"); err != nil {
+			return nil, fmt.Errorf("app: UI: %w", err)
+		}
+	}
 	commands := []*cli.Command{
-		server.NewCommand(features, opts.Edition),
+		server.NewCommand(features, opts.Edition, opts.UI),
 		device.Command(),
 		network.Command(),
 		datacenter.Command(),

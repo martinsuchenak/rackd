@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -39,6 +40,9 @@ type Options struct {
 	Features []extension.Feature
 	// Edition is reported in /api/v1/config; empty means "oss".
 	Edition string
+	// UI replaces the built-in web UI; nil serves the built-in one. It must
+	// hold index.html at its root.
+	UI fs.FS
 }
 
 // Run starts the server and blocks until ctx is cancelled, then shuts down:
@@ -131,6 +135,11 @@ func Run(ctx context.Context, opts Options) error {
 		log.Info("MCP OAuth 2.1 enabled", "issuer", cfg.MCPOAuthIssuerURL)
 	}
 
+	site, err := ui.New(opts.UI)
+	if err != nil {
+		return err
+	}
+
 	// Extensions: migrations, permissions and event types before anything uses them
 	runtime, err := newRuntime(ctx, opts.Features, store, services)
 	if err != nil {
@@ -149,6 +158,7 @@ func Run(ctx context.Context, opts Options) error {
 		api.WithCookieConfig(cfg.CookieSecure, cfg.SessionTTL),
 		api.WithProxyResolver(proxyResolver),
 		api.WithServices(services),
+		api.WithIndexHTML(site.IndexHTML()),
 	)
 	handler.RegisterRoutes(mux)
 
@@ -181,7 +191,8 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	// Static UI
-	ui.RegisterRoutes(mux)
+	runtime.RegisterUIAssets(mux)
+	site.RegisterRoutes(mux)
 
 	httpHandler := buildHandler(mux, cfg, proxyResolver)
 	if cfg.AuditEnabled {

@@ -418,6 +418,10 @@ export interface UpdateRoleRequest {
 export interface ExtensionInfo {
   name: string;
   version?: string;
+  /** URLs of the extension's UI modules. */
+  scripts?: string[];
+  /** URLs of the extension's stylesheets. */
+  styles?: string[];
 }
 
 export interface PageInfo {

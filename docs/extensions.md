@@ -67,7 +67,7 @@ func (f *Feature) Manifest() extension.Manifest {
 
 - **Permissions** are added to RBAC when the server starts. A new permission is granted to its `DefaultRoles` once, when it is first added; later changes administrators make are kept. A route or tool can also require one of core's permissions; don't declare those, since an existing permission's `DefaultRoles` are not applied.
 - **Events** become event types that webhooks can subscribe to. A feature can't declare one of core's types or another feature's. Publishing an undeclared type is logged and dropped.
-- **UI** entries are reported in `/api/v1/config` as `pages` and `nav_items`.
+- **UI** declares the feature's pages, nav entries and web UI files; see [Web UI](#web-ui).
 - **Instructions** is one line added to the MCP server instructions.
 
 Rackd refuses to start when two features share a name, a declared permission, an event type, a route, a tool name or a command name, or when one clashes with core.
@@ -143,6 +143,79 @@ func (f *Feature) RegisterTools(t extension.ToolRegistry, host extension.Host) {
 
 Tools run as the MCP caller. CLI commands run without a server; to call the API they can use `github.com/martinsuchenak/rackd/cmd/client`, which reads the same configuration as Rackd's own commands.
 
-## Current Limits
+## Web UI
 
-- The web UI shows extension nav items, but extension pages and their scripts can't be added to the UI build yet.
+A feature draws its pages, and adds content to core's pages, with a JavaScript module that the web UI imports at startup. The module and its stylesheets are files embedded in the feature:
+
+```go
+//go:embed ui/dist
+var uiFiles embed.FS
+
+func (f *Feature) Manifest() extension.Manifest {
+	assets, _ := fs.Sub(uiFiles, "ui/dist")
+	read := &extension.Permission{Resource: "inventory-tags", Action: "list"}
+	return extension.Manifest{
+		// ...
+		UI: extension.UI{
+			Pages:   []extension.Page{{Path: "/inventory-tags", Title: "Inventory Tags", Permission: read}},
+			Nav:     []extension.NavItem{{Label: "Inventory Tags", Path: "/inventory-tags", Icon: "tag", Order: 95, Permission: read}},
+			Assets:  assets,
+			Scripts: []string{"index.js"},
+			Styles:  []string{"index.css"},
+		},
+	}
+}
+```
+
+- `Assets` are served at `/ext/<name>/`, without authentication, like core's own UI files. A missing file is a 404, never `index.html`.
+- `Scripts` and `Styles` must exist in `Assets`; Rackd refuses to start otherwise.
+- A page owns its path and every route below it, so `/inventory-tags/42` belongs to `/inventory-tags`. Core's routes take precedence over an extension page with the same path.
+- When a page has a `Permission`, users without it get core's Access Denied page and don't see the page's nav entry. The check only hides UI: the feature's API routes still need their own `Require`.
+
+The module uses `window.rackd`, typed in [`webui/src/core/extension-api.ts`](../webui/src/core/extension-api.ts):
+
+```js
+const rackd = window.rackd;
+
+rackd.registerPage('/inventory-tags', (el, ctx) => {
+  el.textContent = 'Loading...';
+  rackd.request('GET', '/api/v1/inventory-tags').then((tags) => { /* draw tags into el */ });
+  return () => { /* runs when the user leaves the page */ };
+});
+
+rackd.registerSlot('device-detail', (el, ctx) => {
+  // ctx.data is the device being shown
+});
+```
+
+| Member | What it does |
+| --- | --- |
+| `registerPage(path, mount)` | Draws a page declared in `UI.Pages`. `mount(el, {path, query})` draws into `el` and can return a cleanup function. It runs again when the route changes. |
+| `registerSlot(slot, mount)` | Adds content to a slot in core's pages: `dashboard`, `device-detail`, `network-detail` or `datacenter-detail`. `mount(el, {slot, data})` gets the device, network or datacenter shown, and runs again when the page reloads it. |
+| `registerComponent(name, factory)` | Registers an Alpine component for markup the module draws. The UI uses Alpine's CSP build, so expressions can only read and call the component's properties. Prefix names with the feature's name. |
+| `request(method, path, body?)` | Calls the API as the signed-in user, with JSON in and out. |
+| `can(resource, action)` | Whether the user has a permission. |
+| `navigate(path)` | Opens a route without reloading. |
+| `toast` | `success`, `error`, `info` and `warning` notifications. |
+
+Modules run once, before the UI starts, and only for a signed-in user. Register everything at the top level of the module. A module that fails to load, or a mount that throws, is logged in the browser console; the user sees a notification or "This page could not be loaded", and the rest of the UI keeps working.
+
+Core's stylesheet only has the utility classes core uses, so ship your own CSS. If you use Tailwind, build it from your own sources. Core's theme variables, such as `--sidebar-primary`, are available. Build the module with any bundler that outputs an ES module, and leave Alpine out of the bundle: use `registerComponent`.
+
+[`examples/hello`](../examples/hello) is a complete feature with a page, a slot, an Alpine component, an API route and a permission, in plain JavaScript with no build step.
+
+### Replacing the UI
+
+A binary can serve its own web UI instead of core's, for example one built from a fork of `webui`, by passing it as `app.Options.UI`:
+
+```go
+//go:embed webui/dist
+var webUI embed.FS
+
+func main() {
+	ui, _ := fs.Sub(webUI, "webui/dist")
+	app.Main(app.Options{UI: ui, Features: features})
+}
+```
+
+The file system must hold `index.html` at its root; Rackd serves it for every route that isn't a file. Features' `/ext/` files are still served. A replacement UI is tied to the API of the Rackd version it was built from, so rebuild it for each Rackd release.

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,12 +22,13 @@ import (
 
 // Command returns the server command with no extensions.
 func Command() *cli.Command {
-	return NewCommand(nil, "")
+	return NewCommand(nil, "", nil)
 }
 
-// NewCommand returns the server command, running features as extensions and
-// reporting edition in /api/v1/config (empty means "oss").
-func NewCommand(features []extension.Feature, edition string) *cli.Command {
+// NewCommand returns the server command, running features as extensions,
+// reporting edition in /api/v1/config (empty means "oss") and serving ui as the
+// web UI (nil means the built-in one).
+func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Command {
 	return &cli.Command{
 		Name:  "server",
 		Usage: "Start the HTTP/MCP server",
@@ -90,7 +92,7 @@ func NewCommand(features []extension.Feature, edition string) *cli.Command {
 			ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
 
-			opts := server.Options{Config: cfg, Store: store, Features: features, Edition: edition}
+			opts := server.Options{Config: cfg, Store: store, Features: features, Edition: edition, UI: ui}
 			encryptionKey, hasKey := getEncryptionKey(devMode)
 
 			// If no encryption key, run basic server without advanced features

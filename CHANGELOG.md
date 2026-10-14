@@ -48,6 +48,12 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   CLI commands and background work. It reads core data through interfaces that
   apply the caller's permissions, and records its changes in the audit log. The
   API is unstable until 1.0. See [Extensions](docs/extensions.md).
+- Extensions can add to the web UI. A feature embeds a JavaScript module and
+  stylesheets, which the UI loads at startup. The module draws the feature's pages
+  and adds content to slots on the dashboard and on device, network and
+  datacenter pages, through `window.rackd`. Pages get their titles and
+  permission checks from the manifest. A binary can also replace the built-in UI
+  with its own (`app.Options.UI`). `examples/hello` is a complete example.
 - `rackd migrate status` shows each extension's migrations, including extensions
   recorded in the database but not in the binary; `migrate run` applies them; and
   `migrate rollback --namespace <name>` reverts them. The status output now groups
