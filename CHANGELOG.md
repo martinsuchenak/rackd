@@ -44,6 +44,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   CLI commands and background work. It reads core data through interfaces that
   apply the caller's permissions, and records its changes in the audit log. The
   API is unstable until 1.0. See [Extensions](docs/extensions.md).
+- `rackd migrate status` shows each extension's migrations, including extensions
+  recorded in the database but not in the binary; `migrate run` applies them; and
+  `migrate rollback --namespace <name>` reverts them.
 - Event types are a registry instead of a fixed list, so extensions can add types
   that webhooks subscribe to.
 - `/api/v1/config` lists the extensions in the binary, with their pages and nav
