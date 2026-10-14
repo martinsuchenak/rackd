@@ -224,6 +224,7 @@
       <p x-show="hasRelationships() && !hasFilteredRelationships()" class="text-sm text-gray-600 dark:text-gray-400">No
         relationships match the current filter</p>
     </div>
+    <div x-ext-slot:device-detail="device"></div>
   </div>
   <!-- Delete Modal -->
   <include src="partials/modals/delete-confirm.html"></include>

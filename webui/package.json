@@ -17,6 +17,7 @@
     "test:e2e:credentials": "bun run build && playwright test --grep @credentials",
     "test:e2e:dns": "bun run build && playwright test --grep @dns",
     "test:e2e:discovery": "bun run build && playwright test --grep @discovery",
+    "test:e2e:extensions": "bun run build && playwright test --grep @extensions",
     "test:e2e:errors": "bun run build && playwright test --grep @errors",
     "test:e2e:headed": "bun run build && playwright test --headed",
     "test:e2e:install": "playwright install chromium",

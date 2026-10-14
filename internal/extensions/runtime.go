@@ -16,6 +16,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/mcp"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -156,6 +157,16 @@ func (rt *Runtime) RegisterTools(server *mcp.Server) error {
 func (rt *Runtime) ConfigureUI(builder *api.UIConfigBuilder) {
 	for _, f := range rt.features {
 		builder.AddExtension(f.Manifest())
+	}
+}
+
+// RegisterUIAssets serves the features' web UI files.
+func (rt *Runtime) RegisterUIAssets(mux *http.ServeMux) {
+	for _, f := range rt.features {
+		m := f.Manifest()
+		if m.UI.Assets != nil {
+			ui.RegisterExtensionAssets(mux, m.Name, m.UI.Assets)
+		}
 	}
 }
 

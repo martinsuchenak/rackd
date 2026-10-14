@@ -8,6 +8,7 @@ import { api, RackdAPI } from './core/api';
 import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
 import { canAccessRoute, getPageTitle, mergeNavItems } from './core/features';
 import { createUIStore } from './core/ui';
+import { createExtensionAPI, loadExtensionUI, registerExtensionDirectives } from './core/extensions';
 
 // Components
 import { nav } from './components/nav';
@@ -181,7 +182,7 @@ function registerCspSafeModelDirective(): void {
 
 // Update page title based on route
 function updatePageTitle(route: string) {
-  document.title = `${getPageTitle(route)} - Rackd`;
+  document.title = `${getPageTitle(route, window.rackdConfig?.pages ?? [])} - Rackd`;
 }
 
 declare global {
@@ -194,7 +195,7 @@ declare global {
 
 function checkRoutePermission(path: string): boolean {
   const userPermissions = window.rackdConfig?.user?.permissions ?? [];
-  return canAccessRoute(path, userPermissions);
+  return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? []);
 }
 
 // Router component for SPA navigation
@@ -495,9 +496,32 @@ async function init(): Promise<void> {
   Alpine.plugin(focus);
   Alpine.plugin(collapse);
   registerCspSafeModelDirective();
+  registerExtensionDirectives(Alpine, () => window.rackdConfig?.pages ?? []);
+
+  // Extensions register their pages, slots and components before Alpine
+  // starts, so the first render already includes them.
+  window.rackd = createExtensionAPI({
+    registerComponent: (name, factory) => Alpine.data(name, factory as () => Record<string, unknown>),
+    can: (resource, action) => getPermissionsStore()?.can(resource, action) ?? false,
+    navigate: (path) => window.dispatchEvent(new CustomEvent('nav', { detail: path })),
+    request: (method, path, body) => api.call(method, path, body),
+    toast: {
+      success: (message) => toast.success(message),
+      error: (message) => toast.error(message),
+      info: (message) => toast.info(message),
+      warning: (message) => toast.warning(message),
+    },
+  });
+  const failedExtensions = window.rackdConfig?.user
+    ? await loadExtensionUI(window.rackdConfig.extensions ?? [])
+    : [];
 
   // Start Alpine
   Alpine.start();
+
+  for (const name of failedExtensions) {
+    toast.error(`The ${name} extension's interface failed to load. Its pages may not work.`);
+  }
 }
 
 init();

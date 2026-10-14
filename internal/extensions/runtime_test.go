@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/api"
@@ -378,7 +379,14 @@ func (n named) Manifest() extension.Manifest {
 	return extension.Manifest{Name: string(n), Permissions: []extension.Permission{{Resource: "x", Action: "y"}}}
 }
 
+type withUI extension.UI
+
+func (u withUI) Manifest() extension.Manifest {
+	return extension.Manifest{Name: "ui", UI: extension.UI(u)}
+}
+
 func TestValidate(t *testing.T) {
+	assets := fstest.MapFS{"ui/index.js": {Data: []byte("export {};")}}
 	for _, tc := range []struct {
 		features []extension.Feature
 		want     string
@@ -386,10 +394,19 @@ func TestValidate(t *testing.T) {
 		{[]extension.Feature{named("Bad Name")}, "must match"},
 		{[]extension.Feature{named("a"), named("a")}, "registered twice"},
 		{[]extension.Feature{named("a"), named("b")}, "already declared by a"},
+		{[]extension.Feature{withUI{Pages: []extension.Page{{Path: "notes"}}}}, "must start with /"},
+		{[]extension.Feature{withUI{Nav: []extension.NavItem{{Path: "notes"}}}}, "must start with /"},
+		{[]extension.Feature{withUI{Scripts: []string{"ui/index.js"}}}, "need UI.Assets"},
+		{[]extension.Feature{withUI{Assets: assets, Scripts: []string{"/ui/index.js"}}}, "must be a path within"},
+		{[]extension.Feature{withUI{Assets: assets, Scripts: []string{"ui/missing.js"}}}, "ui/missing.js"},
+		{[]extension.Feature{withUI{Assets: assets, Styles: []string{"ui"}}}, "is a directory"},
 	} {
 		if err := Validate(tc.features); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("Validate(%v) = %v, want %q", tc.features, err, tc.want)
 		}
+	}
+	if err := Validate([]extension.Feature{withUI{Assets: assets, Scripts: []string{"ui/index.js"}}}); err != nil {
+		t.Errorf("valid UI: %v", err)
 	}
 }
 

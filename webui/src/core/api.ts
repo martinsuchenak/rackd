@@ -139,6 +139,11 @@ export class RackdAPI {
     this.baseURL = options.baseURL || '';
   }
 
+  /** Calls any API route; extensions use it through window.rackd.request. */
+  async call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request<T>(method.toUpperCase(), path, body);
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     // Only deduplicate GET requests
     const cacheKey = method === 'GET' ? `${method}:${path}` : null;

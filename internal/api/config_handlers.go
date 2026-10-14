@@ -7,6 +7,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/internal/version"
 	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -25,10 +26,13 @@ type UIConfig struct {
 	UserInfo *UserInfo  `json:"user,omitempty"`
 }
 
-// ExtensionInfo describes an extension in /api/v1/config.
+// ExtensionInfo describes an extension in /api/v1/config. Scripts and Styles
+// are the URLs of its UI files, which the web UI loads at startup.
 type ExtensionInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version,omitempty"`
+	Name    string   `json:"name"`
+	Version string   `json:"version,omitempty"`
+	Scripts []string `json:"scripts,omitempty"`
+	Styles  []string `json:"styles,omitempty"`
 }
 
 // PageInfo is an extension's web UI route.
@@ -81,7 +85,14 @@ func NewUIConfigBuilder() *UIConfigBuilder {
 // AddExtension adds an extension's name, navigation entries and pages.
 func (b *UIConfigBuilder) AddExtension(m extension.Manifest) {
 	b.config.Features = append(b.config.Features, m.Name)
-	b.config.Extensions = append(b.config.Extensions, ExtensionInfo{Name: m.Name, Version: m.Version})
+	info := ExtensionInfo{Name: m.Name, Version: m.Version}
+	for _, s := range m.UI.Scripts {
+		info.Scripts = append(info.Scripts, ui.ExtensionPrefix(m.Name)+s)
+	}
+	for _, s := range m.UI.Styles {
+		info.Styles = append(info.Styles, ui.ExtensionPrefix(m.Name)+s)
+	}
+	b.config.Extensions = append(b.config.Extensions, info)
 	for _, n := range m.UI.Nav {
 		item := NavItem{Label: n.Label, Path: n.Path, Icon: n.Icon, Order: n.Order}
 		if n.Permission != nil {

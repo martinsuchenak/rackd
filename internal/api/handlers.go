@@ -13,6 +13,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/ui"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -28,6 +29,7 @@ type Handler struct {
 	sessionTTL       time.Duration
 	proxyResolver    *TrustedProxyResolver
 	svc              *service.Services
+	indexHTML        []byte
 }
 
 // HandlerOption configures a Handler during construction.
@@ -77,11 +79,21 @@ func WithServices(svc *service.Services) HandlerOption {
 	return func(h *Handler) { h.svc = svc }
 }
 
+// WithIndexHTML sets the web UI page served for browser visits to API routes
+// that the UI handles, such as the OAuth consent page. It defaults to the
+// built-in UI's.
+func WithIndexHTML(html []byte) HandlerOption {
+	return func(h *Handler) { h.indexHTML = html }
+}
+
 // NewHandler creates a new API handler with the given storage, scanner, and options.
 func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner, opts ...HandlerOption) *Handler {
 	h := &Handler{store: s, scanner: scanner}
 	for _, opt := range opts {
 		opt(h)
+	}
+	if h.indexHTML == nil {
+		h.indexHTML = ui.IndexHTML()
 	}
 	return h
 }

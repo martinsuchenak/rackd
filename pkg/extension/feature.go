@@ -3,7 +3,9 @@ package extension
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"regexp"
+	"strings"
 
 	"github.com/martinsuchenak/xdal/pkg/migrate"
 	"github.com/paularlott/cli"
@@ -57,13 +59,24 @@ type EventType struct {
 	Label string
 }
 
-// UI lists a feature's pages and navigation entries.
+// UI lists a feature's pages and navigation entries, and the files the web UI
+// loads to draw them.
 type UI struct {
 	Pages []Page
 	Nav   []NavItem
+	// Assets holds the feature's web UI files. They are served at
+	// /ext/<name>/<path>, without authentication, like core's own UI files.
+	Assets fs.FS
+	// Scripts are JavaScript modules in Assets that the web UI imports once,
+	// before it starts. A module draws the feature's pages and slots through
+	// window.rackd; see docs/extensions.md.
+	Scripts []string
+	// Styles are stylesheets in Assets that the web UI adds to every page.
+	Styles []string
 }
 
-// Page is a route in the web UI.
+// Page is a route in the web UI. A page's path and anything below it belong to
+// the page; it must not be one of core's routes.
 type Page struct {
 	Path  string
 	Title string
@@ -131,6 +144,36 @@ func (m Manifest) Validate() error {
 	for _, e := range m.Events {
 		if e.Type == "" {
 			return fmt.Errorf("extension: feature %s: event type is empty", m.Name)
+		}
+	}
+	return m.UI.validate(m.Name)
+}
+
+func (ui UI) validate(feature string) error {
+	for _, p := range ui.Pages {
+		if !strings.HasPrefix(p.Path, "/") {
+			return fmt.Errorf("extension: feature %s: page path %q must start with /", feature, p.Path)
+		}
+	}
+	for _, n := range ui.Nav {
+		if !strings.HasPrefix(n.Path, "/") {
+			return fmt.Errorf("extension: feature %s: nav path %q must start with /", feature, n.Path)
+		}
+	}
+	files := append(append([]string{}, ui.Scripts...), ui.Styles...)
+	if len(files) > 0 && ui.Assets == nil {
+		return fmt.Errorf("extension: feature %s: UI scripts and styles need UI.Assets", feature)
+	}
+	for _, name := range files {
+		if !fs.ValidPath(name) || name == "." {
+			return fmt.Errorf("extension: feature %s: UI file %q must be a path within UI.Assets, like \"ui/index.js\"", feature, name)
+		}
+		info, err := fs.Stat(ui.Assets, name)
+		if err != nil {
+			return fmt.Errorf("extension: feature %s: UI file %q: %w", feature, name, err)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("extension: feature %s: UI file %q is a directory", feature, name)
 		}
 	}
 	return nil
