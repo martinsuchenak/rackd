@@ -87,10 +87,10 @@ func (b *UIConfigBuilder) AddExtension(m extension.Manifest) {
 	b.config.Features = append(b.config.Features, m.Name)
 	info := ExtensionInfo{Name: m.Name, Version: m.Version}
 	for _, s := range m.UI.Scripts {
-		info.Scripts = append(info.Scripts, ui.ExtensionPrefix(m.Name)+s)
+		info.Scripts = append(info.Scripts, ui.ExtensionURL(m.Name, s))
 	}
 	for _, s := range m.UI.Styles {
-		info.Styles = append(info.Styles, ui.ExtensionPrefix(m.Name)+s)
+		info.Styles = append(info.Styles, ui.ExtensionURL(m.Name, s))
 	}
 	b.config.Extensions = append(b.config.Extensions, info)
 	for _, n := range m.UI.Nav {

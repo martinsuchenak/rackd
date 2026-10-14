@@ -87,21 +87,32 @@ function pageUnavailable(el: HTMLElement): void {
  * a slot. Mounts run outside Alpine's effect, so what they read is not
  * tracked, and receive raw objects rather than reactive proxies.
  */
-export function registerExtensionDirectives(alpine: AlpineInstance, declaredPages: () => PageInfo[]): void {
+export function registerExtensionDirectives(
+  alpine: AlpineInstance,
+  declaredPages: () => PageInfo[],
+  isCoreRoute: (route: string) => boolean,
+): void {
   const extPage: Directive = (el, { expression }, { effect, evaluateLater, cleanup }) => {
     const target = el as HTMLElement;
     const getRoute = evaluateLater(expression);
     let undo: unknown;
     let shown = '';
+    let removed = false;
+
+    const clear = () => {
+      const pending = undo;
+      undo = undefined;
+      runCleanup(pending, 'page');
+    };
 
     const draw = (route: string) => {
-      if (route === shown) return;
+      if (removed || route === shown) return;
       shown = route;
-      runCleanup(undo, 'page');
-      undo = undefined;
+      clear();
       target.replaceChildren();
 
-      const page = findExtensionPage(route, declaredPages());
+      // Core's routes take precedence, as they do for titles and permissions.
+      const page = isCoreRoute(route) ? undefined : findExtensionPage(route, declaredPages());
       if (!page) return;
       const mount = pages.get(page.path);
       if (!mount) {
@@ -123,17 +134,27 @@ export function registerExtensionDirectives(alpine: AlpineInstance, declaredPage
         queueMicrotask(() => draw(value));
       });
     });
-    cleanup(() => runCleanup(undo, 'page'));
+    cleanup(() => {
+      removed = true;
+      clear();
+    });
   };
 
   const extSlot: Directive = (el, { value, expression }, { effect, evaluateLater, cleanup }) => {
     const target = el as HTMLElement;
     const slot = value;
     let undos: unknown[] = [];
+    let removed = false;
+
+    const clear = () => {
+      const pending = undos;
+      undos = [];
+      pending.forEach((undo) => runCleanup(undo, `slot ${slot}`));
+    };
 
     const draw = (data: unknown) => {
-      undos.forEach((undo) => runCleanup(undo, `slot ${slot}`));
-      undos = [];
+      if (removed) return;
+      clear();
       target.replaceChildren();
       // A slot about an object stays empty until the page has loaded it.
       if (expression && data == null) return;
@@ -161,17 +182,32 @@ export function registerExtensionDirectives(alpine: AlpineInstance, declaredPage
         });
       });
     }
-    cleanup(() => undos.forEach((undo) => runCleanup(undo, `slot ${slot}`)));
+    cleanup(() => {
+      removed = true;
+      clear();
+    });
   };
 
   alpine.directive('ext-page', extPage);
   alpine.directive('ext-slot', extSlot);
 }
 
+// How long the UI waits for a module before starting without it.
+const moduleTimeoutMs = 10_000;
+
+function importWithTimeout(src: string): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timed out after ${moduleTimeoutMs / 1000}s`)), moduleTimeoutMs);
+  });
+  return Promise.race([import(src), timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Adds the extensions' stylesheets and imports their modules. It returns the
- * names of the extensions whose modules failed, so the UI can say so; the
- * rest of the UI works without them.
+ * names of the extensions whose modules failed or took too long, so the UI can
+ * say so; the rest of the UI works without them. A module that finishes after
+ * the timeout still registers, and its pages work from the next navigation.
  */
 export async function loadExtensionUI(extensions: ExtensionInfo[]): Promise<string[]> {
   for (const ext of extensions) {
@@ -186,7 +222,7 @@ export async function loadExtensionUI(extensions: ExtensionInfo[]): Promise<stri
   const loads = extensions.flatMap((ext) =>
     (ext.scripts ?? []).map(async (src) => {
       try {
-        await import(src);
+        await importWithTimeout(src);
         return null;
       } catch (error) {
         console.error(`Extension ${ext.name}: ${src} failed to load:`, error);
@@ -201,14 +237,5 @@ export async function loadExtensionUI(extensions: ExtensionInfo[]): Promise<stri
 export type ExtensionAPIDeps = Omit<RackdExtensionAPI, 'version' | 'registerPage' | 'registerSlot'>;
 
 export function createExtensionAPI(deps: ExtensionAPIDeps): RackdExtensionAPI {
-  return {
-    version: 1,
-    registerPage,
-    registerSlot,
-    registerComponent: deps.registerComponent,
-    can: deps.can,
-    navigate: deps.navigate,
-    request: deps.request,
-    toast: deps.toast,
-  };
+  return { version: 1, registerPage, registerSlot, ...deps };
 }

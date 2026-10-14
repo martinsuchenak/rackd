@@ -102,6 +102,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- The web UI's notifications (such as "Permissions refreshed successfully" and
+  permission-denied messages) never appeared: the notification area showed a
+  separate, always-empty list.
 - Lists were cut off at 100 records with no way to page, although the API reference
   said they returned everything. Among the effects:
   - The API and web UI showed only the first 100 networks, datacenters, users,

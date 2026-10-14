@@ -6,7 +6,7 @@ import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
-import { canAccessRoute, getPageTitle, mergeNavItems } from './core/features';
+import { canAccessRoute, getPageTitle, isCoreRoute, mergeNavItems } from './core/features';
 import { createUIStore } from './core/ui';
 import { createExtensionAPI, loadExtensionUI, registerExtensionDirectives } from './core/extensions';
 
@@ -178,6 +178,20 @@ function registerCspSafeModelDirective(): void {
       });
     });
   });
+}
+
+type ToastState = ReturnType<typeof toastComponent>;
+
+// Names of the Alpine components registered so far, so an extension can't
+// replace one by registering the same name.
+const componentNames = new Set<string>();
+
+function registerComponent(name: string, factory: (...args: never[]) => object): void {
+  if (componentNames.has(name)) {
+    throw new Error(`Alpine component ${name} is already registered`);
+  }
+  componentNames.add(name);
+  Alpine.data(name, factory);
 }
 
 // Update page title based on route
@@ -393,42 +407,51 @@ async function init(): Promise<void> {
   }
 
   // Register Alpine components
-  Alpine.data('router', router);
-  Alpine.data('nav', nav);
-  Alpine.data('globalSearch', globalSearch);
-  Alpine.data('themeToggle', themeToggle);
-  Alpine.data('toast', toastComponent); // Register toast as data component for x-data="toast"
-  Alpine.data('deviceList', deviceList);
-  Alpine.data('deviceDetail', deviceDetail);
-  Alpine.data('deviceForm', deviceForm);
-  Alpine.data('deviceGraph', deviceGraph);
-  Alpine.data('networkList', networkList);
-  Alpine.data('networkDetail', networkDetail);
-  Alpine.data('networkForm', networkForm);
-  Alpine.data('poolDetail', poolDetail);
-  Alpine.data('poolForm', poolForm);
-  Alpine.data('datacenterList', datacenterList);
-  Alpine.data('datacenterDetail', datacenterDetail);
-  Alpine.data('datacenterForm', datacenterForm);
-  Alpine.data('discoveryList', discoveryList);
-  Alpine.data('scanForm', scanForm);
-  Alpine.data('scanDetail', scanDetail);
-  Alpine.data('promoteForm', promoteForm);
+  registerComponent('router', router);
+  registerComponent('nav', nav);
+  registerComponent('globalSearch', globalSearch);
+  registerComponent('themeToggle', themeToggle);
+  // x-data="toast" renders the toast store; a separate instance would never
+  // show what components and extensions send to $store.toast.
+  registerComponent('toast', () => ({
+    get toasts() {
+      return (Alpine.store('toast') as ToastState).toasts;
+    },
+    remove(id: string) {
+      (Alpine.store('toast') as ToastState).remove(id);
+    },
+  }));
+  registerComponent('deviceList', deviceList);
+  registerComponent('deviceDetail', deviceDetail);
+  registerComponent('deviceForm', deviceForm);
+  registerComponent('deviceGraph', deviceGraph);
+  registerComponent('networkList', networkList);
+  registerComponent('networkDetail', networkDetail);
+  registerComponent('networkForm', networkForm);
+  registerComponent('poolDetail', poolDetail);
+  registerComponent('poolForm', poolForm);
+  registerComponent('datacenterList', datacenterList);
+  registerComponent('datacenterDetail', datacenterDetail);
+  registerComponent('datacenterForm', datacenterForm);
+  registerComponent('discoveryList', discoveryList);
+  registerComponent('scanForm', scanForm);
+  registerComponent('scanDetail', scanDetail);
+  registerComponent('promoteForm', promoteForm);
 
   // Credentials, Profiles, Scheduled Scans components
-  Alpine.data('credentialsList', credentialsList);
-  Alpine.data('scanProfilesList', scanProfilesList);
-  Alpine.data('scheduledScansList', scheduledScansList);
+  registerComponent('credentialsList', credentialsList);
+  registerComponent('scanProfilesList', scanProfilesList);
+  registerComponent('scheduledScansList', scheduledScansList);
 
   // Auth & user management
-  Alpine.data('login', login);
-  Alpine.data('usersList', usersList);
-  Alpine.data('rolesList', rolesList);
-  Alpine.data('userMenu', userMenu);
+  registerComponent('login', login);
+  registerComponent('usersList', usersList);
+  registerComponent('rolesList', rolesList);
+  registerComponent('userMenu', userMenu);
 
   // OAuth
-  Alpine.data('oauthConsent', oauthConsent);
-  Alpine.data('oauthClients', oauthClients);
+  registerComponent('oauthConsent', oauthConsent);
+  registerComponent('oauthClients', oauthClients);
 
   // Permissions store (accessible as $store.permissions in all components)
   initPermissionsStore();
@@ -456,9 +479,10 @@ async function init(): Promise<void> {
   });
 
   // Toast store for notifications (accessible as $store.toast in all components)
-  const toast = toastComponent();
   Alpine.store('ui', createUIStore());
-  Alpine.store('toast', toast);
+  Alpine.store('toast', toastComponent());
+  // Use the store's reactive proxy, so the toasts this code adds are rendered.
+  const toast = Alpine.store('toast') as ToastState;
 
   // Listen for permission denied events from API client
   window.addEventListener('toast:permission-denied', (event: any) => {
@@ -476,18 +500,18 @@ async function init(): Promise<void> {
   });
 
   // Conflicts component
-  Alpine.data('conflictList', conflictList);
-  Alpine.data('webhookComponent', webhookComponent);
-  Alpine.data('customFieldComponent', customFieldComponent);
-  Alpine.data('dashboardComponent', dashboardComponent);
-  Alpine.data('circuitComponent', circuitComponent);
-  Alpine.data('natComponent', natComponent);
-  Alpine.data('dnsProvidersComponent', dnsProvidersComponent);
-  Alpine.data('dnsZonesComponent', dnsZonesComponent);
-  Alpine.data('dnsRecordsComponent', dnsRecordsComponent);
-  Alpine.data('apiKeysList', apiKeysList);
-  Alpine.data('auditLogsPage', auditLogsPage);
-  Alpine.data('logsPage', logsPage);
+  registerComponent('conflictList', conflictList);
+  registerComponent('webhookComponent', webhookComponent);
+  registerComponent('customFieldComponent', customFieldComponent);
+  registerComponent('dashboardComponent', dashboardComponent);
+  registerComponent('circuitComponent', circuitComponent);
+  registerComponent('natComponent', natComponent);
+  registerComponent('dnsProvidersComponent', dnsProvidersComponent);
+  registerComponent('dnsZonesComponent', dnsZonesComponent);
+  registerComponent('dnsRecordsComponent', dnsRecordsComponent);
+  registerComponent('apiKeysList', apiKeysList);
+  registerComponent('auditLogsPage', auditLogsPage);
+  registerComponent('logsPage', logsPage);
 
   // Expose Alpine globally
   window.Alpine = Alpine;
@@ -496,12 +520,12 @@ async function init(): Promise<void> {
   Alpine.plugin(focus);
   Alpine.plugin(collapse);
   registerCspSafeModelDirective();
-  registerExtensionDirectives(Alpine, () => window.rackdConfig?.pages ?? []);
+  registerExtensionDirectives(Alpine, () => window.rackdConfig?.pages ?? [], isCoreRoute);
 
   // Extensions register their pages, slots and components before Alpine
   // starts, so the first render already includes them.
   window.rackd = createExtensionAPI({
-    registerComponent: (name, factory) => Alpine.data(name, factory as () => Record<string, unknown>),
+    registerComponent,
     can: (resource, action) => getPermissionsStore()?.can(resource, action) ?? false,
     navigate: (path) => window.dispatchEvent(new CustomEvent('nav', { detail: path })),
     request: (method, path, body) => api.call(method, path, body),

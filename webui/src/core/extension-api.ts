@@ -50,7 +50,8 @@ export interface RackdExtensionAPI {
   /**
    * Registers an Alpine component for markup the extension draws. The UI uses
    * Alpine's CSP build, so expressions can only read and call the component's
-   * properties. Prefix names with the extension's name.
+   * properties. Prefix names with the extension's name: a name that is
+   * already registered, by core or another extension, throws.
    */
   registerComponent(name: string, factory: (...args: never[]) => object): void;
   /** Whether the signed-in user has the permission. */
