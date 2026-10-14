@@ -96,6 +96,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   offered the DNS tools, and calling one crashed the request with a nil pointer.
   The DNS tools, and their mention in the server instructions, now appear only when
   DNS is available.
+- The utilization snapshot worker was never started, so the dashboard's trend chart
+  had no data. It now runs with the server: a snapshot of every network and pool on
+  start, then every `SNAPSHOT_INTERVAL` (default 1h; `0` disables it), with
+  snapshots older than `SNAPSHOT_RETENTION_DAYS` (default 90) removed.
 - Webhooks never delivered events: nothing published them, and the delivery worker
   was never started. Device, network, discovery and conflict changes now publish the
   documented events (bulk operations publish one per item), and the worker runs with

@@ -72,6 +72,9 @@ func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 	cfg := testConfig(t)
 	p := &probe{pattern: "GET /probe"}
 	store := newStore(t, cfg)
+	if err := store.CreateNetwork(context.Background(), &model.Network{Name: "trend", Subnet: "10.7.0.0/24"}); err != nil {
+		t.Fatal(err)
+	}
 	hook := &model.Webhook{Name: "local", URL: "http://127.0.0.1:9/hook", Active: true, Events: []model.EventType{model.EventTypeNetworkCreated}}
 	if err := store.CreateWebhook(context.Background(), hook); err != nil {
 		t.Fatal(err)
@@ -111,6 +114,20 @@ func TestRunServesExtensionsAndShutsDown(t *testing.T) {
 	if uiConfig.Edition != "test" || len(uiConfig.Features) != 1 || uiConfig.Features[0] != "probe" {
 		t.Errorf("config = %+v", uiConfig)
 	}
+
+	// The snapshot worker runs: it takes a snapshot of each network on start.
+	waitFor := func(what string, cond func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(5 * time.Second); !cond(); time.Sleep(20 * time.Millisecond) {
+			if time.Now().After(deadline) {
+				t.Fatalf("timed out waiting for %s", what)
+			}
+		}
+	}
+	waitFor("a network snapshot", func() bool {
+		snaps, _ := store.GetLatestSnapshots(context.Background(), model.SnapshotTypeNetwork)
+		return len(snaps) == 1
+	})
 
 	// The webhook worker runs: a published event produces a delivery attempt
 	// (refused here, since loopback targets are blocked).
