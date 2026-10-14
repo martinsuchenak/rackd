@@ -45,7 +45,7 @@ The built-in Web UI sends this header on all requests. External integrations usi
 - Every key must be associated with a user account for RBAC enforcement
 - Legacy keys (no user association) are rejected at the auth boundary
 - Expired keys return a specific `EXPIRED_KEY` error code
-- Last-used timestamps are tracked for auditing
+- Last-used timestamps are tracked for auditing (to about a minute)
 
 ## Session Security
 
