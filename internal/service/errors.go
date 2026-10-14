@@ -3,17 +3,24 @@ package service
 import (
 	"errors"
 	"fmt"
+
+	"github.com/martinsuchenak/rackd/pkg/extension"
+)
+
+// The common errors are shared with pkg/extension, so errors from core
+// services keep their meaning when they reach extension code.
+var (
+	ErrNotFound        = extension.ErrNotFound
+	ErrAlreadyExists   = extension.ErrAlreadyExists
+	ErrValidation      = extension.ErrValidation
+	ErrForbidden       = extension.ErrForbidden
+	ErrUnauthenticated = extension.ErrUnauthenticated
 )
 
 var (
-	ErrNotFound        = errors.New("not found")
-	ErrAlreadyExists   = errors.New("already exists")
-	ErrValidation      = errors.New("validation error")
-	ErrForbidden       = errors.New("forbidden")
-	ErrUnauthenticated = errors.New("unauthenticated")
-	ErrSystemRole      = errors.New("cannot modify system role")
-	ErrSelfDelete      = errors.New("cannot delete own account")
-	ErrIPNotAvailable  = errors.New("no IP addresses available")
+	ErrSystemRole     = errors.New("cannot modify system role")
+	ErrSelfDelete     = errors.New("cannot delete own account")
+	ErrIPNotAvailable = errors.New("no IP addresses available")
 )
 
 type ValidationError struct {

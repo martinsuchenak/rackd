@@ -89,13 +89,7 @@ func NewHandler(s storage.ExtendedStorage, scanner discovery.Scanner, opts ...Ha
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	route := func(pattern string, handler http.HandlerFunc) { HandleAPI(mux, pattern, handler) }
 
-	wrapAuth := func(handler http.HandlerFunc) http.HandlerFunc {
-		handler = LimitBody(handler)
-		if h.sessionManager != nil {
-			return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
-		}
-		return AuthMiddleware(h.store, handler)
-	}
+	wrapAuth := h.authenticated
 
 	wrapSensitiveAuth := func(handler http.HandlerFunc) http.HandlerFunc {
 		handler = wrapAuth(handler)
@@ -369,6 +363,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Unmatched API requests get JSON errors instead of the UI's index.html.
 	h.registerAPIFallback(mux)
+}
+
+// authenticated wraps handler with the body limit and session or API-key
+// authentication, which puts the caller in the request context.
+func (h *Handler) authenticated(handler http.HandlerFunc) http.HandlerFunc {
+	handler = LimitBody(handler)
+	if h.sessionManager != nil {
+		return AuthMiddlewareWithSessions(h.store, h.sessionManager, handler)
+	}
+	return AuthMiddleware(h.store, handler)
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data any) {

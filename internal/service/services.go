@@ -33,10 +33,13 @@ type Services struct {
 	Circuits       *CircuitService
 	NAT            *NATService
 	DNS            *DNSService
+
+	store storage.ExtendedStorage // for Authorize
 }
 
 func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionManager, scanner discovery.Scanner) *Services {
 	return &Services{
+		store:         store,
 		Devices:       NewDeviceService(store),
 		Datacenters:   NewDatacenterService(store),
 		Networks:      NewNetworkService(store),

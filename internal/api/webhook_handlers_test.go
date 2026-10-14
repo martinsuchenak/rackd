@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -355,9 +356,19 @@ func TestGetEventLabel(t *testing.T) {
 		{model.EventType("unknown.event"), "unknown.event"},
 	}
 
+	labels := map[model.EventType]string{}
+	for _, et := range webhook.EventTypes() {
+		labels[et.Type] = et.Label
+	}
 	for _, tt := range tests {
 		t.Run(string(tt.eventType), func(t *testing.T) {
-			label := getEventLabel(tt.eventType)
+			label, ok := labels[tt.eventType]
+			if !ok {
+				if webhook.IsKnownEventType(tt.eventType) || tt.expected != string(tt.eventType) {
+					t.Errorf("event type %q is not registered", tt.eventType)
+				}
+				return
+			}
 			if label != tt.expected {
 				t.Errorf("expected '%s', got '%s'", tt.expected, label)
 			}

@@ -68,3 +68,10 @@ func requirePermission(ctx context.Context, store permissionStore, resource, act
 
 	return nil
 }
+
+// Authorize returns nil if the caller in ctx holds resource:action, and
+// ErrForbidden or ErrUnauthenticated otherwise. System callers always pass. It
+// is the check services use, exposed for extensions and the extension router.
+func (s *Services) Authorize(ctx context.Context, resource, action string) error {
+	return requirePermission(ctx, s.store, resource, action)
+}

@@ -1,95 +1,14 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"os"
+import "github.com/martinsuchenak/rackd/pkg/app"
 
-	"github.com/martinsuchenak/rackd/cmd/apikey"
-	"github.com/martinsuchenak/rackd/cmd/audit"
-	"github.com/martinsuchenak/rackd/cmd/backup"
-	"github.com/martinsuchenak/rackd/cmd/circuit"
-	cmdconflict "github.com/martinsuchenak/rackd/cmd/conflict"
-	"github.com/martinsuchenak/rackd/cmd/credential"
-	"github.com/martinsuchenak/rackd/cmd/customfield"
-	"github.com/martinsuchenak/rackd/cmd/datacenter"
-	"github.com/martinsuchenak/rackd/cmd/device"
-	"github.com/martinsuchenak/rackd/cmd/discovery"
-	"github.com/martinsuchenak/rackd/cmd/dns"
-	"github.com/martinsuchenak/rackd/cmd/export"
-	importcmd "github.com/martinsuchenak/rackd/cmd/import"
-	"github.com/martinsuchenak/rackd/cmd/migrate"
-	"github.com/martinsuchenak/rackd/cmd/nat"
-	"github.com/martinsuchenak/rackd/cmd/network"
-	"github.com/martinsuchenak/rackd/cmd/oauth"
-	"github.com/martinsuchenak/rackd/cmd/reservation"
-	"github.com/martinsuchenak/rackd/cmd/role"
-	"github.com/martinsuchenak/rackd/cmd/scanprofile"
-	"github.com/martinsuchenak/rackd/cmd/scheduledscan"
-	"github.com/martinsuchenak/rackd/cmd/server"
-	"github.com/martinsuchenak/rackd/cmd/user"
-	"github.com/martinsuchenak/rackd/cmd/webhook"
-	buildversion "github.com/martinsuchenak/rackd/internal/version"
-	"github.com/paularlott/cli"
-)
-
+// Set by -ldflags "-X main.version=... -X main.commit=... -X main.date=...".
 var (
 	version = "dev"
 	commit  = "unknown"
 	date    = "unknown"
 )
 
-func init() {
-	// Publish ldflags-injected build info for the internal packages
-	// (e.g. the /api/v1/config UI endpoint).
-	buildversion.Version = version
-	buildversion.Commit = commit
-	buildversion.Date = date
-}
-
 func main() {
-	app := &cli.Command{
-		Name:    "rackd",
-		Usage:   "Device inventory and IPAM management",
-		Version: version,
-		Commands: []*cli.Command{
-			server.Command(),
-			device.Command(),
-			network.Command(),
-			datacenter.Command(),
-			discovery.Command(),
-			cmdconflict.Command(),
-			credential.Command(),
-			circuit.Command(),
-			nat.Command(),
-			reservation.Command(),
-			webhook.Command(),
-			customfield.Command(),
-			apikey.Command(),
-			user.Command(),
-			role.Command(),
-			audit.Command(),
-			export.Command(),
-			importcmd.Command(),
-			scanprofile.Command(),
-			scheduledscan.Command(),
-			oauth.Command(),
-			backup.Command(),
-			dns.Command(),
-			migrate.Command(),
-			{
-				Name:  "version",
-				Usage: "Show version information",
-				Run: func(ctx context.Context, cmd *cli.Command) error {
-					fmt.Printf("Version: %s\nCommit: %s\nBuilt: %s\n", version, commit, date)
-					return nil
-				},
-			},
-		},
-	}
-
-	if err := app.Execute(context.Background()); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	app.Main(app.Options{Version: version, Commit: commit, Date: date})
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -154,35 +155,15 @@ func (h *Handler) getWebhookDelivery(w http.ResponseWriter, r *http.Request) {
 
 // getEventTypes returns all available event types
 func (h *Handler) getEventTypes(w http.ResponseWriter, r *http.Request) {
-	eventTypes := make([]map[string]string, len(model.AllEventTypes))
-	for i, et := range model.AllEventTypes {
+	registered := webhook.EventTypes()
+	eventTypes := make([]map[string]string, len(registered))
+	for i, et := range registered {
 		eventTypes[i] = map[string]string{
-			"value": string(et),
-			"label": getEventLabel(et),
+			"value": string(et.Type),
+			"label": et.Label,
 		}
 	}
 	h.writeJSON(w, http.StatusOK, eventTypes)
 }
 
 // getEventLabel returns a human-readable label for an event type
-func getEventLabel(et model.EventType) string {
-	labels := map[model.EventType]string{
-		model.EventTypeDeviceCreated:      "Device Created",
-		model.EventTypeDeviceUpdated:      "Device Updated",
-		model.EventTypeDeviceDeleted:      "Device Deleted",
-		model.EventTypeDevicePromoted:     "Device Promoted",
-		model.EventTypeNetworkCreated:     "Network Created",
-		model.EventTypeNetworkUpdated:     "Network Updated",
-		model.EventTypeNetworkDeleted:     "Network Deleted",
-		model.EventTypeDiscoveryStarted:   "Discovery Started",
-		model.EventTypeDiscoveryCompleted: "Discovery Completed",
-		model.EventTypeDeviceDiscovered:   "Device Discovered",
-		model.EventTypeConflictDetected:   "Conflict Detected",
-		model.EventTypeConflictResolved:   "Conflict Resolved",
-		model.EventTypePoolUtilization:    "Pool Utilization High",
-	}
-	if label, ok := labels[et]; ok {
-		return label
-	}
-	return string(et)
-}
