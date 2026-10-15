@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { canAccessRoute, filterNavItems, getPageTitle, mergeNavItems } from '../src/core/features';
+import { canAccessRoute, filterNavItems, getPageTitle, mergeNavItems, missingSetting } from '../src/core/features';
 import type { NavItem, Permission } from '../src/core/types';
 
 const permissions: Permission[] = [
@@ -75,7 +75,14 @@ describe('core/features', () => {
     expect(labels(null)).not.toContain('OAuth Clients');
     expect(labels({ mcp_oauth: true })).toContain('OAuth Clients');
 
-    expect(canAccessRoute('/oauth-clients', permissions, [], { mcp_oauth: false })).toBe(false);
-    expect(canAccessRoute('/oauth-clients', permissions, [], { mcp_oauth: true })).toBe(true);
+    // Off is "not on this server", not "access denied".
+    expect(missingSetting('/oauth-clients', { mcp_oauth: false })).toBe('mcp_oauth');
+    expect(missingSetting('/oauth-clients', { mcp_oauth: true })).toBeNull();
+    expect(missingSetting('/users', { mcp_oauth: false })).toBeNull();
+    expect(canAccessRoute('/oauth-clients', permissions)).toBe(true);
+
+    // An extension can't take the slot of the hidden core entry.
+    const extension: NavItem[] = [{ label: 'OAuth Clients', path: '/ext-oauth', order: 5 }];
+    expect(mergeNavItems(extension, { mcp_oauth: false }).map((item) => item.label)).not.toContain('OAuth Clients');
   });
 });

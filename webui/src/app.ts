@@ -6,7 +6,7 @@ import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
-import { canAccessRoute, getPageTitle, isCoreRoute, mergeNavItems } from './core/features';
+import { canAccessRoute, getPageTitle, isCoreRoute, mergeNavItems, missingSetting } from './core/features';
 import { createUIStore } from './core/ui';
 import { createExtensionAPI, loadExtensionUI, registerExtensionDirectives } from './core/extensions';
 
@@ -209,7 +209,7 @@ declare global {
 
 function checkRoutePermission(path: string): boolean {
   const userPermissions = window.rackdConfig?.user?.permissions ?? [];
-  return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? [], window.rackdConfig);
+  return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? []);
 }
 
 // Router component for SPA navigation
@@ -218,6 +218,8 @@ function router() {
     route: window.location.pathname + window.location.search,
     sidebarOpen: false,
     accessDenied: false,
+    // The server setting the current page needs that is off, if any.
+    unavailable: null as string | null,
     activeConflictCount: 0,
 
     // Server version from the UI config (shown in the sidebar footer)
@@ -247,7 +249,7 @@ function router() {
 
 
     init() {
-      this.accessDenied = !checkRoutePermission(this.route);
+      this.checkRoute(this.route);
       updatePageTitle(this.route);
       // Load conflict count on init (only if authenticated)
       if (window.rackdConfig?.user) {
@@ -255,7 +257,7 @@ function router() {
       }
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
-        this.accessDenied = !checkRoutePermission(this.route);
+        this.checkRoute(this.route);
         updatePageTitle(this.route);
       });
     },
@@ -264,10 +266,15 @@ function router() {
       if (path !== this.route) {
         history.pushState({}, '', path);
         this.route = path;
-        this.accessDenied = !checkRoutePermission(path);
+        this.checkRoute(path);
         updatePageTitle(path);
         this.sidebarOpen = false;
       }
+    },
+
+    checkRoute(path: string) {
+      this.unavailable = missingSetting(path, window.rackdConfig);
+      this.accessDenied = !this.unavailable && !checkRoutePermission(path);
     },
 
     closeSidebar() {

@@ -78,9 +78,10 @@ function enabled(feature: FeatureDefinition, settings: ServerSettings): boolean 
   return !feature.requires || settings?.[feature.requires] === true;
 }
 
-export function getFeatureNavItems(settings?: ServerSettings): FeatureNavItem[] {
+/** Core's nav items; pass settings to leave out pages the server has off. */
+export function getFeatureNavItems(settings?: ServerSettings, all = false): FeatureNavItem[] {
   return featureDefinitions
-    .filter((feature) => feature.nav && enabled(feature, settings))
+    .filter((feature) => feature.nav && (all || enabled(feature, settings)))
     .map((feature) => ({
       label: feature.nav!.label,
       path: feature.path,
@@ -108,12 +109,19 @@ export function getPageTitle(route: string, extensionPages: PageInfo[] = []): st
   return title || 'Page';
 }
 
-export function canAccessRoute(route: string, permissions: Permission[], extensionPages: PageInfo[] = [], settings?: ServerSettings): boolean {
+/**
+ * The server setting a core route needs that is off, such as 'mcp_oauth', or
+ * null. The page doesn't exist on this server, which isn't the same as the
+ * user lacking permission for it.
+ */
+export function missingSetting(route: string, settings: ServerSettings): string | null {
+  const feature = findCoreFeature(normalizePath(route));
+  return feature?.requires && !enabled(feature, settings) ? feature.requires : null;
+}
+
+export function canAccessRoute(route: string, permissions: Permission[], extensionPages: PageInfo[] = []): boolean {
   const routePath = normalizePath(route);
   const feature = findCoreFeature(routePath);
-  if (feature && !enabled(feature, settings)) {
-    return false;
-  }
   const required = feature ? feature.permission : findExtensionPage(routePath, extensionPages)?.required_permission;
   if (!required) {
     return true;
@@ -138,8 +146,11 @@ export function filterNavItems(items: NavItem[], permissions: Permission[]): Nav
 
 export function mergeNavItems(dynamicItems: NavItem[], settings?: ServerSettings): FeatureNavItem[] {
   const baseItems = getFeatureNavItems(settings);
+  // Dedupe against every core item, shown or not, so an extension can't
+  // fill the slot of a core page the server has off.
+  const coreItems = getFeatureNavItems(settings, true);
   const dynamic = dynamicItems.filter(
-    (item) => !baseItems.some((base) =>
+    (item) => !coreItems.some((base) =>
       (base.path === item.path || (base.path === '/' && item.path === '')) || base.label === item.label
     )
   );

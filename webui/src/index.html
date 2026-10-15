@@ -402,6 +402,21 @@
           <!-- Page content -->
           <main id="main-content" class="flex-1 p-6" role="main" @nav.window="navigate($event.detail)">
 
+            <!-- Page needs a server setting that is off -->
+            <template x-if="unavailable === 'mcp_oauth'">
+              <div class="flex flex-col items-center justify-center py-16">
+                <div
+                  class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 p-8 max-w-md w-full text-center">
+                  <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">MCP OAuth Is Off</h1>
+                  <p class="text-gray-600 dark:text-gray-400 mb-6">OAuth clients exist only when the server runs with
+                    <code>MCP_OAUTH_ENABLED=true</code>.</p>
+                  <button @click="navigate('/')"
+                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">Go
+                    to Dashboard</button>
+                </div>
+              </div>
+            </template>
+
             <!-- Access Denied -->
             <template x-if="accessDenied">
               <div class="flex flex-col items-center justify-center py-16">
@@ -425,7 +440,7 @@
               </div>
             </template>
 
-            <template x-if="!accessDenied">
+            <template x-if="!accessDenied && !unavailable">
               <div>
                 <include src="partials/pages/dashboard.html"></include>
                 <include src="partials/pages/devices.html"></include>
