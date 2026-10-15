@@ -70,7 +70,7 @@ func (s *Server) handleNATList(ctx context.Context, req *mcp.ToolRequest) (*mcp.
 	}
 	mappings, err := s.svc.NAT.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(mappings, len(mappings), pg)), nil
 }
@@ -79,7 +79,7 @@ func (s *Server) handleNATGet(ctx context.Context, req *mcp.ToolRequest) (*mcp.T
 	id, _ := req.String("id")
 	mapping, err := s.svc.NAT.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(mapping), nil
 }
@@ -107,7 +107,7 @@ func (s *Server) handleNATSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.
 		}
 		mapping, err := s.svc.NAT.Create(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(mapping), nil
 	}
@@ -133,7 +133,7 @@ func (s *Server) handleNATSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.
 
 	mapping, err := s.svc.NAT.Update(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(mapping), nil
 }
@@ -141,7 +141,7 @@ func (s *Server) handleNATSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.
 func (s *Server) handleNATDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.NAT.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }

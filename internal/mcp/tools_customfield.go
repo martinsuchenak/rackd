@@ -48,7 +48,7 @@ func (s *Server) handleCustomFieldList(ctx context.Context, req *mcp.ToolRequest
 	}
 	fields, err := s.svc.CustomFields.ListDefinitions(ctx, nil)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(fields), nil
 }
@@ -60,7 +60,7 @@ func (s *Server) handleCustomFieldGet(ctx context.Context, req *mcp.ToolRequest)
 	id, _ := req.String("id")
 	field, err := s.svc.CustomFields.GetDefinition(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(field), nil
 }
@@ -86,7 +86,7 @@ func (s *Server) handleCustomFieldSave(ctx context.Context, req *mcp.ToolRequest
 		}
 		field, err := s.svc.CustomFields.CreateDefinition(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(field), nil
 	}
@@ -104,7 +104,7 @@ func (s *Server) handleCustomFieldSave(ctx context.Context, req *mcp.ToolRequest
 
 	field, err := s.svc.CustomFields.UpdateDefinition(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(field), nil
 }
@@ -115,7 +115,7 @@ func (s *Server) handleCustomFieldDelete(ctx context.Context, req *mcp.ToolReque
 	}
 	id, _ := req.String("id")
 	if err := s.svc.CustomFields.DeleteDefinition(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }

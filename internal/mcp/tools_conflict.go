@@ -43,7 +43,7 @@ func (s *Server) handleConflictList(ctx context.Context, req *mcp.ToolRequest) (
 	}
 	conflicts, err := s.svc.Conflicts.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(conflicts, len(conflicts), pg)), nil
 }
@@ -51,11 +51,11 @@ func (s *Server) handleConflictList(ctx context.Context, req *mcp.ToolRequest) (
 func (s *Server) handleConflictDetect(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	dupIPs, err := s.svc.Conflicts.DetectDuplicateIPs(ctx)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	overlapping, err := s.svc.Conflicts.DetectOverlappingSubnets(ctx)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]interface{}{
 		"duplicate_ips":       dupIPs,
@@ -70,7 +70,7 @@ func (s *Server) handleConflictResolve(ctx context.Context, req *mcp.ToolRequest
 		KeepDeviceID: req.StringOr("keep_device_id", ""),
 	}
 	if err := s.svc.Conflicts.Resolve(ctx, resolution); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "resolved", "conflict_id": conflictID}), nil
 }

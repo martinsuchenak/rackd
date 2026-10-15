@@ -11,6 +11,16 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Upgrading from v0.1.0
 
+- Rackd now refuses to start if `ENCRYPTION_KEY` is set but malformed. Before,
+  it ran without encryption. The docs' `RACKD_ENCRYPTION_KEY` was never read; use
+  `ENCRYPTION_KEY`.
+- On start, the database files are made readable only by Rackd's user. If
+  another user (a backup agent, say) reads them directly, use `rackd backup`
+  instead.
+- `rackd credentials rotate-key --new-key` is replaced by `NEW_ENCRYPTION_KEY`
+  or `--new-key-file`, plus `--yes`.
+- MCP clients see error codes -32001 (unauthenticated), -32003 (forbidden),
+  -32004 (not found) and -32009 (conflict), as well as -32602 and -32603.
 - Login (`POST /api/v1/auth/login`) now requires `Content-Type: application/json`.
   Scripts that post JSON without that header get `415`.
 - Sessions now end 7 days after sign-in even if used every day; set
@@ -116,6 +126,34 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- **Security:** secrets and internal details were easier to reach than they
+  should have been:
+  - The install guide and CLI reference told operators to set
+    `RACKD_ENCRYPTION_KEY` or `--encryption-key`, which Rackd never read, so
+    following them ran without encryption. A malformed `ENCRYPTION_KEY` also only
+    printed a warning. The docs now name `ENCRYPTION_KEY`, and Rackd refuses to
+    start if it is set but isn't 64 hex characters.
+  - The database and its WAL files were created world-readable (`0644`) in a
+    `0755` directory, and audit exports were written `0644`. They are now `0600`,
+    in a `0700` directory for new installs, and existing database files are
+    tightened on start.
+  - Webhook URLs, which can themselves be credentials (Slack and Teams incoming
+    webhooks, `?token=`), were shown to every role that can read webhooks. Only
+    those who can update webhooks now see them in full; others see the scheme and
+    host. Delivery errors no longer repeat the URL.
+  - The in-app log kept debug and trace entries whatever `LOG_LEVEL` was set to.
+    It now keeps what the level shows, and hides sensitive values in logged query
+    strings.
+  - MCP tools, the OAuth token endpoint and `/readyz` returned raw internal
+    errors, including database messages. MCP errors now say forbidden, not
+    found, invalid or conflict, with the service's message, and anything else is
+    logged and reported as an internal error.
+  - HSTS was only sent when Rackd itself served TLS, which it never does. It is
+    now sent whenever `COOKIE_SECURE` is on (the default).
+  - `rackd credentials rotate-key` took the new key as a command-line argument,
+    visible in the process list, and updated rows one at a time. It now reads the
+    key from `NEW_ENCRYPTION_KEY` or `--new-key-file`, needs `--yes`, and rotates
+    in one transaction that changes nothing if the current key is wrong.
 - **Security:** sessions and OAuth tokens could outlive revocation, and sign-in
   could be abused:
   - Sessions never re-checked their user, and the refresh on each request was an

@@ -35,7 +35,7 @@ func (r *ToolRegistry) Register(tool *mcp.ToolBuilder, handler mcp.ToolHandler, 
 		next := handler
 		handler = func(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 			if err := r.s.svc.Authorize(ctx, perm.Resource, perm.Action); err != nil {
-				return nil, mcp.NewToolErrorInternal(err.Error())
+				return nil, toolError(err)
 			}
 			return next(ctx, req)
 		}

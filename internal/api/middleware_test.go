@@ -265,3 +265,16 @@ func TestLimitBody(t *testing.T) {
 		t.Errorf("expected status %d for large body, got %d", http.StatusRequestEntityTooLarge, w.Code)
 	}
 }
+
+// Behind a TLS-terminating proxy the request looks like plain HTTP, so an
+// HTTPS deployment sends HSTS regardless; dev mode (no secure cookies) doesn't.
+func TestSecurityHeadersSendHSTSForHTTPSDeployments(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	for httpsDeployment, want := range map[bool]bool{true: true, false: false} {
+		w := httptest.NewRecorder()
+		SecurityHeadersFor(ok, httpsDeployment).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
+		if got := w.Header().Get("Strict-Transport-Security") != ""; got != want {
+			t.Errorf("httpsDeployment=%v: HSTS sent = %v, want %v", httpsDeployment, got, want)
+		}
+	}
+}

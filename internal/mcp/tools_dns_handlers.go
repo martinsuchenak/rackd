@@ -18,7 +18,7 @@ func (s *Server) handleDNSProviderList(ctx context.Context, req *mcp.ToolRequest
 	}
 	providers, err := s.svc.DNS.ListProviders(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(providers, len(providers), pg)), nil
 }
@@ -27,7 +27,7 @@ func (s *Server) handleDNSProviderGet(ctx context.Context, req *mcp.ToolRequest)
 	id, _ := req.String("id")
 	provider, err := s.svc.DNS.GetProvider(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(provider), nil
 }
@@ -47,7 +47,7 @@ func (s *Server) handleDNSProviderSave(ctx context.Context, req *mcp.ToolRequest
 		}
 		provider, err := s.svc.DNS.CreateProvider(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(provider), nil
 	}
@@ -69,7 +69,7 @@ func (s *Server) handleDNSProviderSave(ctx context.Context, req *mcp.ToolRequest
 
 	provider, err := s.svc.DNS.UpdateProvider(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(provider), nil
 }
@@ -77,7 +77,7 @@ func (s *Server) handleDNSProviderSave(ctx context.Context, req *mcp.ToolRequest
 func (s *Server) handleDNSProviderDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.DNS.DeleteProvider(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -106,7 +106,7 @@ func (s *Server) handleDNSZoneList(ctx context.Context, req *mcp.ToolRequest) (*
 	}
 	zones, err := s.svc.DNS.ListZones(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(zones, len(zones), pg)), nil
 }
@@ -115,7 +115,7 @@ func (s *Server) handleDNSZoneGet(ctx context.Context, req *mcp.ToolRequest) (*m
 	id, _ := req.String("id")
 	zone, err := s.svc.DNS.GetZone(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(zone), nil
 }
@@ -146,7 +146,7 @@ func (s *Server) handleDNSZoneSave(ctx context.Context, req *mcp.ToolRequest) (*
 		}
 		zone, err := s.svc.DNS.CreateZone(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(zone), nil
 	}
@@ -173,7 +173,7 @@ func (s *Server) handleDNSZoneSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 	zone, err := s.svc.DNS.UpdateZone(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(zone), nil
 }
@@ -181,7 +181,7 @@ func (s *Server) handleDNSZoneSave(ctx context.Context, req *mcp.ToolRequest) (*
 func (s *Server) handleDNSZoneDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.DNS.DeleteZone(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -190,7 +190,7 @@ func (s *Server) handleDNSZoneSync(ctx context.Context, req *mcp.ToolRequest) (*
 	id, _ := req.String("id")
 	result, err := s.svc.DNS.SyncZone(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(result), nil
 }
@@ -199,7 +199,7 @@ func (s *Server) handleDNSZoneImport(ctx context.Context, req *mcp.ToolRequest) 
 	id, _ := req.String("id")
 	result, err := s.svc.DNS.ImportFromDNS(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(result), nil
 }
@@ -222,7 +222,7 @@ func (s *Server) handleDNSRecordList(ctx context.Context, req *mcp.ToolRequest) 
 	}
 	records, err := s.svc.DNS.ListRecords(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(records, len(records), pg)), nil
 }
@@ -231,7 +231,7 @@ func (s *Server) handleDNSRecordGet(ctx context.Context, req *mcp.ToolRequest) (
 	id, _ := req.String("id")
 	record, err := s.svc.DNS.GetRecord(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(record), nil
 }
@@ -258,7 +258,7 @@ func (s *Server) handleDNSRecordSave(ctx context.Context, req *mcp.ToolRequest) 
 		}
 		record, err := s.svc.DNS.CreateRecord(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(record), nil
 	}
@@ -277,7 +277,7 @@ func (s *Server) handleDNSRecordSave(ctx context.Context, req *mcp.ToolRequest) 
 
 	record, err := s.svc.DNS.UpdateRecord(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(record), nil
 }
@@ -285,7 +285,7 @@ func (s *Server) handleDNSRecordSave(ctx context.Context, req *mcp.ToolRequest) 
 func (s *Server) handleDNSRecordDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.DNS.DeleteRecord(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -302,7 +302,7 @@ func (s *Server) handleDNSRecordLink(ctx context.Context, req *mcp.ToolRequest) 
 	}
 	record, err := s.svc.DNS.LinkRecord(ctx, id, linkReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(record), nil
 }

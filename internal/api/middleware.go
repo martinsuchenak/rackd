@@ -339,6 +339,14 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 
 // SecurityHeaders adds security headers to all responses
 func SecurityHeaders(next http.Handler) http.Handler {
+	return SecurityHeadersFor(next, false)
+}
+
+// SecurityHeadersFor adds the security headers. With httpsDeployment, which
+// the server sets from COOKIE_SECURE, HSTS is sent on every response: TLS
+// usually ends at a proxy in front of Rackd, so the request itself looks like
+// plain HTTP, and browsers ignore HSTS that does arrive over plain HTTP.
+func SecurityHeadersFor(next http.Handler, httpsDeployment bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -349,8 +357,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		// 'unsafe-inline' for styles remains due to occasional dynamic styles from JS that fail without it
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 
-		// HSTS only for TLS connections
-		if r.TLS != nil {
+		if httpsDeployment || r.TLS != nil {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 

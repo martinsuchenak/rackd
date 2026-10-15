@@ -6,10 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -215,5 +218,17 @@ func TestDeliveryInterruptedByShutdownIsKeptForRetry(t *testing.T) {
 	stored, err := store.ListDeliveries(context.Background(), &model.DeliveryFilter{WebhookID: webhook.ID})
 	if err != nil || len(stored) != 1 || stored[0].Status != model.DeliveryStatusRetrying {
 		t.Errorf("stored deliveries = %+v, %v; the interrupted delivery must be kept for retry", stored, err)
+	}
+}
+
+// Delivery errors are stored and shown to readers, so they must not repeat a
+// URL that may itself be the credential.
+func TestDeliveryErrorsOmitTheURL(t *testing.T) {
+	err := withoutURL(&url.Error{Op: "Post", URL: "https://hooks.example/services/SECRET?token=abc", Err: errors.New("connection refused")})
+	if strings.Contains(err.Error(), "SECRET") || strings.Contains(err.Error(), "token") {
+		t.Errorf("error still has the URL: %v", err)
+	}
+	if !strings.Contains(err.Error(), "connection refused") {
+		t.Errorf("error lost its cause: %v", err)
 	}
 }
