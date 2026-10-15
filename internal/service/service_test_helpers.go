@@ -824,3 +824,5 @@ func (s *stubSessionInvalidator) InvalidateUserSessions(userID string) {
 func userContext(userID string) context.Context {
 	return WithCaller(context.Background(), &Caller{Type: CallerTypeUser, UserID: userID})
 }
+
+func (s *serviceTestStorage) RevokeOAuthTokensByUser(context.Context, string) error { return nil }

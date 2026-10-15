@@ -748,3 +748,59 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// A session works only while its user is active: deactivation can race the
+// session purge, so every request checks.
+func TestSessionOfADeactivatedUserIsRejected(t *testing.T) {
+	ts := newTestServer(t)
+	userID := ts.createAdminUser(t, "admin", "securepassword123")
+	session, err := ts.sessionManager.CreateSession(userID, "admin", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	get := func() int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/devices", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: session.Token})
+		w := httptest.NewRecorder()
+		ts.mux.ServeHTTP(w, req)
+		return w.Code
+	}
+	if code := get(); code != http.StatusOK {
+		t.Fatalf("active user: %d", code)
+	}
+
+	// Deactivate directly in storage, as a race with the purge would leave it.
+	user, err := ts.store.GetUser(context.Background(), userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user.IsActive = false
+	if err := ts.store.UpdateUser(context.Background(), user); err != nil {
+		t.Fatal(err)
+	}
+	if code := get(); code != http.StatusUnauthorized {
+		t.Errorf("deactivated user: %d, want 401", code)
+	}
+	if _, err := ts.sessionManager.GetSession(session.Token); err == nil {
+		t.Error("the deactivated user's session was not deleted")
+	}
+}
+
+// Login accepts only JSON, so a cross-site form can't sign the visitor into
+// another account.
+func TestLoginRequiresJSON(t *testing.T) {
+	ts := newTestServer(t)
+	ts.createAdminUser(t, "admin", "securepassword123")
+	body := `{"username":"admin","password":"securepassword123","x":"="}`
+	for _, contentType := range []string{"text/plain", "application/x-www-form-urlencoded", ""} {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(body))
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		w := httptest.NewRecorder()
+		ts.mux.ServeHTTP(w, req)
+		if w.Code != http.StatusUnsupportedMediaType || len(w.Result().Cookies()) != 0 {
+			t.Errorf("Content-Type %q: %d with %d cookies, want 415 and none", contentType, w.Code, len(w.Result().Cookies()))
+		}
+	}
+}

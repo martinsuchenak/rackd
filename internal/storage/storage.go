@@ -178,6 +178,11 @@ type OAuthStorage interface {
 	GetOAuthTokenByHash(ctx context.Context, tokenHash string) (*model.OAuthToken, error)
 	GetOAuthTokenByHashIncludingRevoked(ctx context.Context, tokenHash string) (*model.OAuthToken, error)
 	RevokeOAuthToken(ctx context.Context, tokenID string) error
+	// ClaimOAuthToken revokes a token that isn't revoked yet and reports
+	// whether this call did, so only one of two concurrent uses wins.
+	ClaimOAuthToken(ctx context.Context, tokenID string) (bool, error)
+	// RevokeOAuthTokenChain revokes a token and every token issued from it,
+	// however many rotations deep.
 	RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error
 	RevokeOAuthTokensByClient(ctx context.Context, clientID string) error
 	RevokeOAuthTokensByUser(ctx context.Context, userID string) error

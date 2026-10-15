@@ -52,6 +52,36 @@ func (s *ValkeySessionStore) Save(ctx context.Context, session *auth.Session) er
 	return err
 }
 
+// Extend sets an existing session's expiry. SET XX writes only if the key
+// still exists, so a session deleted after the read stays deleted.
+func (s *ValkeySessionStore) Extend(ctx context.Context, token string, expiresAt time.Time) error {
+	session, err := s.Get(ctx, token)
+	if err != nil {
+		return err
+	}
+	session.ExpiresAt = expiresAt
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return auth.ErrSessionExpired
+	}
+	data, err := json.Marshal(session)
+	if err != nil {
+		return err
+	}
+	ok, err := s.client.SetXX(ctx, sessionKey(token), data, ttl).Result()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return auth.ErrSessionNotFound
+	}
+	if session.UserID != "" {
+		// GT: only lengthen, since the index also lists the user's other sessions.
+		_ = s.client.ExpireGT(ctx, userIndexKey(session.UserID), ttl).Err()
+	}
+	return nil
+}
+
 func (s *ValkeySessionStore) Get(ctx context.Context, token string) (*auth.Session, error) {
 	data, err := s.client.Get(ctx, sessionKey(token)).Bytes()
 	if err != nil {

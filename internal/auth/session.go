@@ -24,6 +24,10 @@ type Session struct {
 
 type SessionStore interface {
 	Save(ctx context.Context, session *Session) error
+	// Extend sets an existing session's expiry. Unlike Save it never creates
+	// one, so refreshing can't bring back a session deleted meanwhile; it
+	// returns ErrSessionNotFound when the session is gone.
+	Extend(ctx context.Context, token string, expiresAt time.Time) error
 	Get(ctx context.Context, token string) (*Session, error)
 	Delete(ctx context.Context, token string) error
 	DeleteByUser(ctx context.Context, userID string) error
@@ -33,6 +37,7 @@ type SessionStore interface {
 type SessionManager struct {
 	store       SessionStore
 	sessionTTL  time.Duration
+	maxLifetime time.Duration
 	cleanupTick *time.Ticker
 	stopCleanup chan struct{}
 }
@@ -132,20 +137,39 @@ func (sm *SessionManager) GetSession(token string) (*Session, error) {
 	return nil, ErrSessionNotFound
 }
 
+// SetMaxLifetime limits how long a session lasts from sign-in, however often
+// it is used; zero means no limit.
+func (sm *SessionManager) SetMaxLifetime(d time.Duration) {
+	sm.maxLifetime = d
+}
+
+// RefreshSession slides the session's expiry forward by the TTL, up to its
+// maximum lifetime. It fails if the session has expired or was deleted.
 func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
 	session, err := sm.GetSession(token)
 	if err != nil {
 		return nil, err
 	}
 
-	session.ExpiresAt = time.Now().UTC().Add(sm.sessionTTL)
-
-	if sm.store != nil {
-		if err := sm.store.Save(context.Background(), hashSession(session)); err != nil {
-			return nil, err
+	now := time.Now().UTC()
+	expires := now.Add(sm.sessionTTL)
+	if sm.maxLifetime > 0 {
+		limit := session.CreatedAt.Add(sm.maxLifetime)
+		if !now.Before(limit) {
+			_ = sm.InvalidateSession(token)
+			return nil, ErrSessionExpired
+		}
+		if expires.After(limit) {
+			expires = limit
 		}
 	}
 
+	if sm.store != nil {
+		if err := sm.store.Extend(context.Background(), HashToken(token), expires); err != nil {
+			return nil, err
+		}
+	}
+	session.ExpiresAt = expires
 	return session, nil
 }
 

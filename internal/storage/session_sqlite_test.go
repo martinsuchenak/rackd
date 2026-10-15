@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -116,5 +117,37 @@ func TestSQLiteSessionStoreExpiryCleanupAndDeleteByUser(t *testing.T) {
 	}
 	if _, err := store.Get(ctx, active.Token); err != auth.ErrSessionNotFound {
 		t.Fatalf("expected ErrSessionNotFound after DeleteByUser, got %v", err)
+	}
+}
+
+// Extend only updates; a session deleted meanwhile stays deleted.
+func TestSQLiteSessionStoreExtendNeverRecreates(t *testing.T) {
+	storage := newTestStorage(t)
+	defer func() { _ = storage.Close() }()
+	store := NewSQLiteSessionStore(storage.DB())
+	ctx := context.Background()
+	if err := storage.CreateUser(ctx, &model.User{ID: "user-1", Username: "alice", Email: "a@example.com", PasswordHash: "h", IsActive: true}); err != nil {
+		t.Fatal(err)
+	}
+	session := &auth.Session{Token: "token-1", UserID: "user-1", Username: "alice", CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().Add(time.Hour).UTC()}
+	if err := store.Save(ctx, session); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(2 * time.Hour).UTC()
+	if err := store.Extend(ctx, "token-1", later); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Get(ctx, "token-1")
+	if err != nil || got.ExpiresAt.Sub(later).Abs() > time.Second {
+		t.Fatalf("extended session = %+v, %v", got, err)
+	}
+	if err := store.DeleteByUser(ctx, "user-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Extend(ctx, "token-1", later); !errors.Is(err, auth.ErrSessionNotFound) {
+		t.Errorf("Extend of a deleted session: %v, want ErrSessionNotFound", err)
+	}
+	if _, err := store.Get(ctx, "token-1"); err == nil {
+		t.Error("Extend recreated the deleted session")
 	}
 }

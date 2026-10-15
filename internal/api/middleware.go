@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -233,9 +234,23 @@ func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *a
 		// Try session authentication via cookie first
 		if sessionManager != nil {
 			if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
-				session, err := sessionManager.GetSession(cookie.Value)
+				// Refreshing fails if the session expired, reached its maximum
+				// lifetime or was deleted (for example by a password reset).
+				session, err := sessionManager.RefreshSession(cookie.Value)
 				if err == nil {
-					_, _ = sessionManager.RefreshSession(cookie.Value)
+					// A session lasts only while its user exists and is active, as
+					// API keys do; deactivation can race the session purge.
+					user, userErr := store.GetUser(r.Context(), session.UserID)
+					switch {
+					case errors.Is(userErr, storage.ErrUserNotFound) || (userErr == nil && !user.IsActive):
+						_ = sessionManager.InvalidateSession(cookie.Value)
+						writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session is no longer valid")
+						return
+					case userErr != nil:
+						log.Error("Failed to load session user", "user_id", session.UserID, "error", userErr)
+						writeAuthError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+						return
+					}
 
 					// CSRF Protection for state-changing requests when using sessions (M-6)
 					switch r.Method {

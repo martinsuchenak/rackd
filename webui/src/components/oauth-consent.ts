@@ -29,6 +29,16 @@ export function oauthConsent() {
       }
     },
 
+    // Where the authorization code goes. Clients register themselves and
+    // choose their own name, so this host is what the user should check.
+    get redirectHost(): string {
+      try {
+        return new URL(this.consentData?.redirect_uri ?? '').host;
+      } catch {
+        return '';
+      }
+    },
+
     // Only http(s) redirect targets may be navigated to; the value comes
     // from client registration and must never become a javascript:/data:
     // navigation, even if a hostile client was somehow registered.

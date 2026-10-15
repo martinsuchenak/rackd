@@ -27,12 +27,15 @@ Use `--dev-mode` flag on `rackd server` to automatically disable `COOKIE_SECURE`
 | `RATE_LIMIT_WINDOW` | duration | `1m` | Rate limit sliding window |
 | `LOGIN_RATE_LIMIT_REQUESTS` | int | `5` | Max login attempts per window per IP |
 | `LOGIN_RATE_LIMIT_WINDOW` | duration | `1m` | Login rate limit sliding window |
+| `LOGIN_ACCOUNT_MAX_FAILURES` | int | `10` | Failed sign-ins per account within `LOGIN_ACCOUNT_WINDOW` before further attempts are refused; `0` turns it off |
+| `LOGIN_ACCOUNT_WINDOW` | duration | `15m` | Window for `LOGIN_ACCOUNT_MAX_FAILURES` |
 
 ## Sessions
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `SESSION_TTL` | duration | `24h` | Session expiry after last activity |
+| `SESSION_MAX_LIFETIME` | duration | `168h` | Longest a session lasts from sign-in, however often it is used; `0` means no limit |
 | `SESSION_STORE_TYPE` | string | `sqlite` | Session store backend: `sqlite` or `valkey` |
 | `VALKEY_URL` | string | `redis://localhost:6379/0` | Valkey/Redis URL (when `SESSION_STORE_TYPE=valkey`) |
 
