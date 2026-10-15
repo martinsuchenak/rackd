@@ -483,6 +483,9 @@ DELETE /api/v1/pools/{id}
 GET /api/v1/pools/{id}/next-ip
 ```
 
+Returns the first address in the pool's range that no device holds and no
+unexpired reservation sets aside.
+
 **Response:** `200 OK`
 ```json
 {

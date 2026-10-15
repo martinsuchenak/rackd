@@ -359,6 +359,32 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 	if err := rows.Err(); err != nil {
 		return "", err
 	}
+	_ = rows.Close()
+
+	// Reserved addresses aren't free either, unless the reservation has
+	// expired; CreateReservation refuses them, so offering one would make
+	// auto-assign retry the same address until it gives up.
+	reserved, err := tx.QueryContext(ctx, `
+		SELECT ip_address, expires_at FROM reservations WHERE pool_id = ? AND status = ?
+	`, poolID, string(model.ReservationStatusActive))
+	if err != nil {
+		return "", fmt.Errorf("failed to query reserved IPs: %w", err)
+	}
+	defer func() { _ = reserved.Close() }()
+	now := nowUTC()
+	for reserved.Next() {
+		var ip string
+		var expiresAt sql.NullTime
+		if err := reserved.Scan(&ip, &expiresAt); err != nil {
+			return "", fmt.Errorf("failed to scan reserved IP: %w", err)
+		}
+		if !reservationExpired(expiresAt, now) {
+			usedIPs[ip] = true
+		}
+	}
+	if err := reserved.Err(); err != nil {
+		return "", err
+	}
 
 	// Iterate through the range to find the first available IP
 	current := make(net.IP, len(startIP))

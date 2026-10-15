@@ -128,19 +128,17 @@ View all reservations for a pool with:
 
 ## Automatic Expiration
 
-Reservations can have an optional expiration date. Configure expiration handling:
+A reservation with an expiration stops holding its address once that time
+passes:
 
-```yaml
-# config.yaml
-reservation:
-  default_expiration_days: 30
-  cleanup_interval: 1h
-```
+- Reserving the address again, or asking for the next free address in the
+  pool, treats it as free straight away.
+- Within a minute, its status changes to `expired`, and the pool views and
+  dashboards count the address as available.
+- The reservation record stays, and the change is in the audit log.
 
-Expired reservations:
-- Status changes to `expired`
-- IP becomes available for new reservations
-- Original reservation record preserved for audit
+Reservations without an expiration never expire. There is nothing to
+configure.
 
 ## RBAC Permissions
 
@@ -212,23 +210,21 @@ rackd reservation create \
 
 ## Integration with Other Features
 
-### Conflict Detection
+### Devices
 
-Reserved IPs that are assigned to devices trigger `reserved_ip_assigned` conflicts.
+When a device is created or updated (including in bulk, and by promoting a
+discovered device) with an address in a pool, the active reservation for that
+address becomes `claimed`. The address is no longer just set aside; it is in
+use. The claim is in the audit log.
 
-### Device Creation
+If the address is already assigned to another device, a duplicate-IP conflict
+is created.
 
-When creating a device:
-- If IP is reserved, reservation is automatically claimed
-- If IP is already assigned to another device, conflict is created
+The next free address in a pool skips both assigned and reserved addresses.
 
 ### Webhooks
 
-Subscribe to reservation events:
-- `reservation.created`
-- `reservation.claimed`
-- `reservation.released`
-- `reservation.expired`
+There are no reservation webhook events yet.
 
 ## Best Practices
 

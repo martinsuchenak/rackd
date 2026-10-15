@@ -26,6 +26,20 @@ func (s *DeviceService) setDNSService(dns *DNSService) {
 	s.dns = dns
 }
 
+// claimReservations marks the reservation for each pool address the device
+// holds as claimed: the address is now in use, not just set aside. A failure
+// doesn't undo the device write.
+func (s *DeviceService) claimReservations(ctx context.Context, device *model.Device) {
+	for _, addr := range device.Addresses {
+		if addr.PoolID == "" || addr.IP == "" {
+			continue
+		}
+		if _, err := s.store.ClaimReservation(enrichAuditCtx(ctx), addr.PoolID, addr.IP); err != nil {
+			log.Warn("Failed to claim reservation", "device_id", device.ID, "ip", addr.IP, "error", err)
+		}
+	}
+}
+
 // boolPtr returns a pointer to the given bool value
 func boolPtr(v bool) *bool {
 	return &v
@@ -247,6 +261,7 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	publishEvent(model.EventTypeDeviceCreated, deviceSnapshot(device))
 
 	// Check for IP conflicts after creation
+	s.claimReservations(ctx, device)
 	s.checkForIPConflicts(ctx, device)
 
 	// Sync DNS records if device has a hostname. Run in the background:
@@ -303,6 +318,7 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 	publishEvent(model.EventTypeDeviceUpdated, deviceSnapshot(device))
 
 	// Check for IP conflicts after update
+	s.claimReservations(ctx, device)
 	s.checkForIPConflicts(ctx, device)
 
 	s.syncDeviceDNSAsync(ctx, device)
