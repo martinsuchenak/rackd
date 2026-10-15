@@ -62,7 +62,7 @@ tasks:
     desc: Build web UI assets
     dir: '{{.WEBUI_DIR}}'
     # Many tasks depend on this one, and deps run in parallel: without
-    # run: once, `task release` (check + build) could start two builds that
+    # run: once, `task release` (check + build) could start several builds that
     # replace internal/ui/assets at the same moment and fail.
     run: once
     cmds:
