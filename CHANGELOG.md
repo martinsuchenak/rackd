@@ -149,7 +149,7 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   detection and DNS sync.
 - Device list filters accept `tags` both repeated (`tags=a&tags=b`) and
   comma-separated (`tags=a,b`). The web UI and CLI sent the second form, which
-  matched nothing.
+  matched nothing. New tags can't contain a comma.
 - **Security:** much of what an attacker would do left no audit trail. Sign-ins
   (successful, failed and refused), sign-outs, user changes, password changes and
   resets, role and permission changes, role assignments, API keys, credentials,

@@ -5,9 +5,24 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
+
+// maxDescriptionLen is the longest description a record may have.
+const maxDescriptionLen = 4096
+
+// truncateRunes cuts s to at most n bytes without splitting a character.
+func truncateRunes(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
+}
 
 // Field validation for inventory records. Services run it on every create
 // and update, so the REST API, MCP, bulk operations and the CLI all apply the
@@ -34,7 +49,7 @@ func ValidateDevice(device *model.Device) ValidationErrors {
 	}
 
 	// Description length check
-	if len(device.Description) > 4096 {
+	if len(device.Description) > maxDescriptionLen {
 		errs = append(errs, ValidationError{Field: "description", Message: "description must be 4096 characters or less"})
 	}
 
@@ -50,6 +65,9 @@ func ValidateDevice(device *model.Device) ValidationErrors {
 			errs = append(errs, ValidationError{Field: fmt.Sprintf("tags[%d]", i), Message: "tag cannot be empty"})
 		} else if len(tag) > 128 {
 			errs = append(errs, ValidationError{Field: fmt.Sprintf("tags[%d]", i), Message: "tag must be 128 characters or less"})
+		} else if strings.Contains(tag, ",") {
+			// Filters accept comma-separated tags, so a tag can't contain one.
+			errs = append(errs, ValidationError{Field: fmt.Sprintf("tags[%d]", i), Message: "tag cannot contain a comma"})
 		}
 	}
 

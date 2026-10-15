@@ -234,3 +234,26 @@ func TestDiscoveryService_ListGetAndDeleteWrappers(t *testing.T) {
 		t.Fatalf("expected not found deleting missing discovered device, got %v", err)
 	}
 }
+
+// Names found by mDNS or NetBIOS needn't be valid hostnames, and scan results
+// can be long; promoting such a host must still work.
+func TestPromoteKeepsDiscoveredDataWithinValidation(t *testing.T) {
+	store := newDiscoveryTestStorage()
+	store.setPermission("user-1", "discovery", "create", true)
+	store.setPermission("user-1", "devices", "create", true)
+	var services []model.ServiceInfo
+	for port := 1; port <= 400; port++ {
+		services = append(services, model.ServiceInfo{Port: port, Protocol: "tcp", Service: "some-long-service-name", Version: "v1.2.3"})
+	}
+	store.discovered["disc-2"] = &model.DiscoveredDevice{ID: "disc-2", IP: "10.0.0.16", Hostname: "Martins MacBook_Pro", Services: services}
+
+	svc := NewDiscoveryService(store, nil)
+	svc.devices = NewDeviceService(store)
+	device, err := svc.PromoteDevice(userContext("user-1"), "disc-2", &model.Device{Name: "laptop"})
+	if err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+	if device.Hostname != "" || len(device.Description) > maxDescriptionLen {
+		t.Errorf("hostname %q, description length %d", device.Hostname, len(device.Description))
+	}
+}
