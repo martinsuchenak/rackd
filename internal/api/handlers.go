@@ -425,6 +425,8 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 	case errors.Is(err, service.ErrAlreadyExists):
 		h.writeError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
+	case errors.Is(err, discovery.ErrTooManyScans):
+		h.writeError(w, http.StatusTooManyRequests, "TOO_MANY_SCANS", err.Error())
 	case errors.Is(err, service.ErrIPNotAvailable):
 		h.writeError(w, http.StatusConflict, "IP_NOT_AVAILABLE", "No IP addresses available")
 	case errors.Is(err, service.ErrValidation):

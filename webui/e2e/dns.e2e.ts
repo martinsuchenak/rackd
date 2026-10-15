@@ -23,6 +23,10 @@ test('@dns dns providers support create, edit, and delete flows', async ({ page 
   await editDialog.getByLabel(/^Name/).fill(updatedName);
   await editDialog.getByLabel(/^Endpoint/).fill('https://203.0.113.14');
   await editDialog.getByLabel('Description').fill('Updated provider description');
+  // The stored token is never sent to a new endpoint, so it must be re-entered.
+  await editDialog.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(editDialog.getByText('Enter the token again when changing the endpoint')).toBeVisible();
+  await editDialog.getByLabel('API Token').fill('provider-token');
   await editDialog.getByRole('button', { name: 'Save Changes' }).click();
 
   await expect(editDialog).toBeHidden();

@@ -47,7 +47,7 @@ MCP_OAUTH_REFRESH_TOKEN_TTL=720h          # Refresh token lifetime (default: 30 
 |----------|-------------|
 | `GET /.well-known/oauth-protected-resource` | RFC 9728 Protected Resource Metadata |
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 Authorization Server Metadata |
-| `POST /mcp-oauth/register` | Dynamic client registration |
+| `POST /mcp-oauth/register` | Dynamic client registration (limits: `client_name` 200 characters, URIs 2,048, at most 10 `redirect_uris`) |
 | `GET /mcp-oauth/authorize` | Authorization endpoint (shows login/consent) |
 | `POST /mcp-oauth/token` | Token endpoint (issues access/refresh tokens) |
 | `POST /mcp-oauth/revoke` | Token revocation |

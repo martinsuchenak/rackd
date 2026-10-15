@@ -8,11 +8,11 @@ import (
 )
 
 func TestConflictHelpersAndResolveValidation(t *testing.T) {
-	if !sameNetworks([]string{"a", "b"}, []string{"b", "a"}) {
-		t.Fatal("expected sameNetworks to treat slices as sets")
+	if networkPairKey([]string{"a", "b"}) != networkPairKey([]string{"b", "a"}) {
+		t.Fatal("expected networkPairKey to ignore order")
 	}
-	if sameNetworks([]string{"a"}, []string{"a", "b"}) {
-		t.Fatal("expected sameNetworks to reject different sets")
+	if networkPairKey([]string{"a"}) == networkPairKey([]string{"a", "b"}) {
+		t.Fatal("expected networkPairKey to tell different sets apart")
 	}
 
 	store := newServiceTestStorage()

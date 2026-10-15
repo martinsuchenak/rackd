@@ -171,7 +171,8 @@ func Run(ctx context.Context, opts Options) error {
 	if err := runtime.RegisterTools(mcpServer); err != nil {
 		return err
 	}
-	mcpHandler := http.HandlerFunc(mcpServer.HandleRequest)
+	// The MCP library decodes the whole body; cap it like every API route.
+	mcpHandler := api.LimitBody(mcpServer.HandleRequest)
 	mux.Handle("POST /mcp", mcpHandler)
 	mux.Handle("OPTIONS /mcp", mcpHandler)
 	mux.Handle("DELETE /mcp", mcpHandler)

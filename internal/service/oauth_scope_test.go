@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -146,5 +149,26 @@ func TestOAuthRefreshReclampsScope(t *testing.T) {
 	}
 	if resp.Scope != "devices:read" {
 		t.Errorf("expected refresh to re-clamp scope to 'devices:read', got %q", resp.Scope)
+	}
+}
+
+// Registration is unauthenticated, so what one request can store is bounded.
+func TestOAuthRegistrationLimitsMetadata(t *testing.T) {
+	svc := NewOAuthService(newMockOAuthStorage(), nil, "http://localhost")
+	long := strings.Repeat("a", 3000)
+	many := make([]string, 11)
+	for i := range many {
+		many[i] = "https://client.example/cb" + strconv.Itoa(i)
+	}
+	for name, req := range map[string]model.OAuthClientRegistrationRequest{
+		"long name":          {ClientName: long, RedirectURIs: []string{"https://client.example/cb"}},
+		"long client_uri":    {ClientName: "c", ClientURI: "https://x.example/" + long, RedirectURIs: []string{"https://client.example/cb"}},
+		"long redirect_uri":  {ClientName: "c", RedirectURIs: []string{"https://client.example/" + long}},
+		"many redirect_uris": {ClientName: "c", RedirectURIs: many},
+	} {
+		req := req
+		if _, err := svc.RegisterClient(context.Background(), &req); !errors.Is(err, ErrOAuthClientMetadataLimit) {
+			t.Errorf("%s: %v, want ErrOAuthClientMetadataLimit", name, err)
+		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 	"time"
 )
@@ -39,6 +40,23 @@ func isCGNAT(ip net.IP) bool {
 // multicast and (unless explicitly allowed) RFC1918, ULA and CGNAT ranges
 // are blocked.
 func blockedIPReason(ip net.IP) string {
+	// An IPv6 address that carries an IPv4 one (NAT64, 6to4, Teredo) can
+	// reach that IPv4 address through a gateway, so it gets the IPv4 rules.
+	if embedded := embeddedIPv4(ip); embedded != nil {
+		if reason := blockedIPReason(embedded); reason != "" {
+			return reason + " (embedded in " + ip.String() + ")"
+		}
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		switch {
+		case ip4[0] == 0:
+			return "unspecified address" // 0.0.0.0/8 reaches the local host on some systems
+		case ip4[0] >= 240:
+			return "reserved address" // 240.0.0.0/4, including broadcast
+		case ip4[0] == 198 && ip4[1]&0xfe == 18:
+			return "reserved address" // 198.18.0.0/15, benchmarking
+		}
+	}
 	switch {
 	case ip.IsLoopback():
 		return "loopback address"
@@ -58,6 +76,40 @@ func blockedIPReason(ip net.IP) string {
 		}
 	}
 	return ""
+}
+
+var (
+	nat64Prefix  = mustCIDR("64:ff9b::/96")
+	nat64Local   = mustCIDR("64:ff9b:1::/48")
+	sixToFour    = mustCIDR("2002::/16")
+	teredoPrefix = mustCIDR("2001::/32")
+)
+
+func mustCIDR(s string) *net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return n
+}
+
+// embeddedIPv4 returns the IPv4 address an IPv6 transition address carries,
+// or nil. IPv4-mapped addresses (::ffff:a.b.c.d) need no decoding: the net.IP
+// methods already treat them as IPv4.
+func embeddedIPv4(ip net.IP) net.IP {
+	if ip.To4() != nil || len(ip) != net.IPv6len {
+		return nil
+	}
+	switch {
+	case nat64Prefix.Contains(ip), nat64Local.Contains(ip):
+		return net.IPv4(ip[12], ip[13], ip[14], ip[15])
+	case sixToFour.Contains(ip):
+		return net.IPv4(ip[2], ip[3], ip[4], ip[5])
+	case teredoPrefix.Contains(ip):
+		// Teredo stores the client's IPv4 address inverted.
+		return net.IPv4(^ip[12], ^ip[13], ^ip[14], ^ip[15])
+	}
+	return nil
 }
 
 // ValidateOutboundHost reports whether host (an URL host, i.e. a literal IP
@@ -154,13 +206,32 @@ func safeCheckRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
+// environmentProxy picks the proxy for a request; a variable so tests can set
+// one (http.ProxyFromEnvironment reads the environment only once).
+var environmentProxy = http.ProxyFromEnvironment
+
+// safeProxy uses the proxy from the environment, if any. Through a proxy the
+// dialer only sees the proxy's address, so the real target is checked here
+// first. A name that resolves differently for the proxy than it did here can
+// still get through, so the proxy should enforce its own egress rules too.
+func safeProxy(req *http.Request) (*url.URL, error) {
+	proxyURL, err := environmentProxy(req)
+	if err != nil || proxyURL == nil {
+		return proxyURL, err
+	}
+	if err := ValidateOutboundHost(req.URL.Hostname()); err != nil {
+		return nil, err
+	}
+	return proxyURL, nil
+}
+
 // NewSecureHTTPClient returns an http.Client that enforces SSRF protections
 func NewSecureHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout:       timeout,
 		CheckRedirect: safeCheckRedirect,
 		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
+			Proxy:                 safeProxy,
 			DialContext:           SafeDialContext,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,

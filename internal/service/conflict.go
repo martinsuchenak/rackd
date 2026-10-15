@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"sort"
+	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -167,54 +169,38 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 		return nil, err
 	}
 
-	// Store any new conflicts
+	// Store the conflicts not already recorded, reading the recorded ones once.
+	existing, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
+		Type:   model.ConflictTypeOverlappingSubnet,
+		Status: model.ConflictStatusActive,
+	})
+	if err != nil {
+		return nil, err
+	}
+	recorded := make(map[string]bool, len(existing))
+	for _, ex := range existing {
+		recorded[networkPairKey(ex.NetworkIDs)] = true
+	}
 	for _, conflict := range conflicts {
-		// Check if this exact conflict already exists
-		existing, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
-			Type:   model.ConflictTypeOverlappingSubnet,
-			Status: model.ConflictStatusActive,
-		})
-		if err == nil {
-			// Check for duplicate by comparing network IDs
-			isDuplicate := false
-			for _, ex := range existing {
-				if sameNetworks(ex.NetworkIDs, conflict.NetworkIDs) {
-					isDuplicate = true
-					break
-				}
-			}
-			if !isDuplicate {
-				if err := s.store.CreateConflict(ctx, &conflict); err != nil {
-					return nil, err
-				}
-				publishEvent(model.EventTypeConflictDetected, conflict)
-			}
-		} else {
-			if err := s.store.CreateConflict(ctx, &conflict); err != nil {
-				return nil, err
-			}
-			publishEvent(model.EventTypeConflictDetected, conflict)
+		key := networkPairKey(conflict.NetworkIDs)
+		if recorded[key] {
+			continue
 		}
+		if err := s.store.CreateConflict(ctx, &conflict); err != nil {
+			return nil, err
+		}
+		recorded[key] = true
+		publishEvent(model.EventTypeConflictDetected, conflict)
 	}
 
 	return conflicts, nil
 }
 
-// sameNetworks checks if two network ID slices contain the same networks
-func sameNetworks(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	aMap := make(map[string]bool)
-	for _, id := range a {
-		aMap[id] = true
-	}
-	for _, id := range b {
-		if !aMap[id] {
-			return false
-		}
-	}
-	return true
+// networkPairKey identifies a set of networks regardless of order.
+func networkPairKey(ids []string) string {
+	sorted := append([]string(nil), ids...)
+	sort.Strings(sorted)
+	return strings.Join(sorted, "\x00")
 }
 
 // GetConflictsByDevice returns all conflicts involving a specific device

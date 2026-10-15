@@ -14,7 +14,7 @@ func TestUnifiedScannerGetNetworkAndScanAdvanced(t *testing.T) {
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
-	network := &model.Network{ID: "net-advanced", Name: "Advanced", Subnet: "127.0.0.0/30"}
+	network := &model.Network{ID: "net-advanced", Name: "Advanced", Subnet: "192.0.2.0/30"} // TEST-NET-1; loopback is not scannable
 	if err := store.CreateNetwork(ctx, network); err != nil {
 		t.Fatalf("CreateNetwork failed: %v", err)
 	}

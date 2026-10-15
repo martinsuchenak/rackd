@@ -229,6 +229,12 @@ export function dnsProvidersComponent(): DNSProvidersData {
       if (!this.selectedProvider && !this.providerToken.trim()) {
         this.validationErrors.token = 'Token is required';
       }
+      // The stored token is never sent to a new endpoint, so moving the
+      // provider needs the token again.
+      if (this.selectedProvider && !this.providerToken.trim() &&
+          this.providerEndpoint.trim() !== this.selectedProvider.endpoint) {
+        this.validationErrors.token = 'Enter the token again when changing the endpoint';
+      }
 
       return Object.keys(this.validationErrors).length === 0;
     },

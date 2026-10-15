@@ -219,6 +219,11 @@ func (s *DNSService) UpdateProvider(ctx context.Context, id string, req *model.U
 		if *req.Endpoint == "" {
 			return nil, ValidationErrors{{Field: "endpoint", Message: "Endpoint cannot be empty"}}
 		}
+		// The stored token is write-only. Sending it to a new endpoint would
+		// let anyone who can edit providers collect it at a host they run.
+		if *req.Endpoint != provider.Endpoint && (req.Token == nil || *req.Token == "") {
+			return nil, ValidationErrors{{Field: "token", Message: "Enter the token again when changing the endpoint"}}
+		}
 		if err := validateDNSProviderEndpoint(*req.Endpoint); err != nil {
 			return nil, err
 		}

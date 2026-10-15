@@ -22,6 +22,7 @@ type UnifiedScanner struct {
 	credStore       credentials.Storage
 	scans           map[string]*model.DiscoveryScan
 	cancelFuncs     map[string]context.CancelFunc
+	active          int // scans started and not yet finished; guarded by mu
 	arpScanner      *ARPScanner
 	snmpScanner     *SNMPScanner
 	sshScanner      *SSHScanner
@@ -103,6 +104,22 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 	if bits-ones > MaxSubnetBits {
 		return nil, ErrSubnetTooLarge
 	}
+	if err := checkScannable(network.Subnet); err != nil {
+		return nil, err
+	}
+
+	s.mu.Lock()
+	if s.active >= MaxConcurrentScans {
+		s.mu.Unlock()
+		return nil, ErrTooManyScans
+	}
+	s.active++
+	s.mu.Unlock()
+	release := func() {
+		s.mu.Lock()
+		s.active--
+		s.mu.Unlock()
+	}
 
 	scan := &model.DiscoveryScan{
 		ID:         uuid.Must(uuid.NewV7()).String(),
@@ -113,6 +130,7 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 	}
 
 	if err := s.storage.CreateDiscoveryScan(ctx, scan); err != nil {
+		release()
 		return nil, err
 	}
 
@@ -125,7 +143,10 @@ func (s *UnifiedScanner) ScanWithOptions(ctx context.Context, network *model.Net
 	s.cancelFuncs[scan.ID] = cancel
 	s.mu.Unlock()
 
-	go s.runScanWithOptions(ctxCancellable, scan, network, ipNet, opts)
+	go func() {
+		defer release()
+		s.runScanWithOptions(ctxCancellable, scan, network, ipNet, opts)
+	}()
 
 	return scan, nil
 }

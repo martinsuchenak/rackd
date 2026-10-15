@@ -27,6 +27,9 @@ type TechnitiumClient struct {
 // refused, SSRF block) instead of a generic request timeout.
 const providerTimeout = 20 * time.Second
 
+// maxResponseBytes caps a Technitium API response.
+const maxResponseBytes = 32 << 20
+
 // NewTechnitiumClient creates a new Technitium DNS client
 func NewTechnitiumClient(endpoint, token string) *TechnitiumClient {
 	// The client carries the provider API token, so it must not be
@@ -170,7 +173,9 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	}
 
 	var apiResp apiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+	// Bound what a provider can make Rackd read; a large zone's record list
+	// fits well within this.
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseBytes)).Decode(&apiResp); err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 

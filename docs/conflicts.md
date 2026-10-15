@@ -93,6 +93,8 @@ Trigger manual conflict detection scan:
 POST /api/v1/conflicts/detect
 ```
 
+One run records at most 1,000 overlapping-subnet pairs. Networks may overlap freely, so many copies of one subnet would otherwise make an unbounded number of pairs; resolve some and run detection again to find the rest.
+
 **Response:**
 ```json
 {

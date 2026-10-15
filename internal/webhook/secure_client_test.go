@@ -2,6 +2,9 @@ package webhook
 
 import (
 	"context"
+	"net"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -92,5 +95,54 @@ func TestNewSecureHTTPClient(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "SSRF prevention") {
 		t.Errorf("expected SSRF prevention error, got: %v", err)
+	}
+}
+
+func TestBlockedIPReasonDecodesEmbeddedIPv4AndReservedRanges(t *testing.T) {
+	SetPrivateRangePolicy(false)
+	defer SetPrivateRangePolicy(false)
+	for addr, blocked := range map[string]bool{
+		"64:ff9b::a00:1":                 true,  // NAT64 for 10.0.0.1
+		"64:ff9b::7f00:1":                true,  // NAT64 for 127.0.0.1
+		"64:ff9b::a9fe:a9fe":             true,  // NAT64 for 169.254.169.254
+		"2002:a00:1::1":                  true,  // 6to4 for 10.0.0.1
+		"2001:0:4136:e378:0:0:80ff:fffe": true,  // Teredo for 127.0.0.1 (inverted)
+		"64:ff9b::cb00:710a":             false, // NAT64 for 203.0.113.10, public
+		"0.1.2.3":                        true,
+		"198.18.0.1":                     true,
+		"240.0.0.1":                      true,
+		"255.255.255.255":                true,
+		"203.0.113.10":                   false,
+		"2001:db8::1":                    false,
+	} {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			t.Fatalf("bad test address %s", addr)
+		}
+		if got := blockedIPReason(ip) != ""; got != blocked {
+			t.Errorf("%s: blocked = %v (%q), want %v", addr, got, blockedIPReason(ip), blocked)
+		}
+	}
+}
+
+// Through a proxy the dialer only sees the proxy, so the target is checked
+// before the proxy is used.
+func TestSafeProxyChecksTheTarget(t *testing.T) {
+	proxyURL, _ := url.Parse("http://203.0.113.5:3128")
+	environmentProxy = http.ProxyURL(proxyURL)
+	defer func() { environmentProxy = http.ProxyFromEnvironment }()
+	for target, ok := range map[string]bool{
+		"https://169.254.169.254/latest/meta-data": false,
+		"http://127.0.0.1:8080/":                   false,
+		"https://203.0.113.10/hook":                true,
+	} {
+		req, _ := http.NewRequest(http.MethodPost, target, nil)
+		proxy, err := safeProxy(req)
+		if ok && (err != nil || proxy == nil) {
+			t.Errorf("%s: proxy %v, err %v; want the proxy", target, proxy, err)
+		}
+		if !ok && err == nil {
+			t.Errorf("%s: allowed through the proxy", target)
+		}
 	}
 }
