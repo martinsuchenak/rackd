@@ -94,3 +94,45 @@ func TestSecurityChangesAreAudited(t *testing.T) {
 		}
 	}
 }
+
+// A failed sign-in for an unknown username doesn't store what was typed (it's
+// often a password), and a lock is audited once, not for every refusal.
+func TestFailedSignInAuditing(t *testing.T) {
+	f := newPrivilegeFixture(t)
+	ctx := audit.WithContext(context.Background(), &audit.Context{IPAddress: "203.0.113.9", Source: "api"})
+	authSvc := NewAuthService(f.store, auth.NewSessionManager(time.Hour, nil))
+	authSvc.SetLoginThrottle(2, time.Hour)
+
+	_, _ = authSvc.Login(ctx, "hunter2-typed-in-the-wrong-box", "x")
+	for i := 0; i < 5; i++ {
+		_, _ = authSvc.Login(ctx, "root", "wrong")
+	}
+
+	var logs []model.AuditLog
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		logs, _ = f.store.ListAuditLogs(context.Background(), &model.AuditFilter{Action: "login"})
+		if len(logs) >= 4 {
+			break
+		}
+	}
+	time.Sleep(100 * time.Millisecond)
+	logs, _ = f.store.ListAuditLogs(context.Background(), &model.AuditFilter{Action: "login"})
+
+	locks, wrong := 0, 0
+	for _, l := range logs {
+		if strings.Contains(l.Username+l.Changes, "hunter2") {
+			t.Errorf("the typed username was stored: %+v", l)
+		}
+		switch {
+		case strings.HasPrefix(l.Error, "too many failed sign-ins"):
+			locks++
+		case l.Error == "wrong password":
+			wrong++
+		}
+	}
+	// Two wrong passwords lock the account; the three refusals after that
+	// aren't audited.
+	if wrong != 2 || locks != 1 || len(logs) != 4 {
+		t.Errorf("got %d entries (%d wrong password, %d locks), want 4 (2, 1) plus the unknown user", len(logs), wrong, locks)
+	}
+}

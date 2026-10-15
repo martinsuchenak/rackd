@@ -58,10 +58,11 @@ func (t *loginThrottle) blocked(username string) bool {
 	return f.count >= t.max
 }
 
-// fail records a failed sign-in.
-func (t *loginThrottle) fail(username string) {
+// fail records a failed sign-in and reports whether it just reached the
+// limit, locking the account.
+func (t *loginThrottle) fail(username string) bool {
 	if t == nil || t.max <= 0 {
-		return
+		return false
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -73,12 +74,13 @@ func (t *loginThrottle) fail(username string) {
 			t.prune(now)
 		}
 		if len(t.failures) >= maxThrottledAccounts && !t.evictOne() {
-			return // every entry is at the limit; keep blocking those
+			return false // every entry is at the limit; keep blocking those
 		}
 		f = &loginFailures{since: now}
 		t.failures[key] = f
 	}
 	f.count++
+	return f.count == t.max
 }
 
 // reset clears an account's failures after a successful sign-in.

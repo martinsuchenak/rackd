@@ -43,10 +43,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	// Refuse before checking the password, so guessing past the limit also
 	// stops costing bcrypt work. The limit applies to unknown usernames too,
 	// so it doesn't reveal which exist.
-	attempt := map[string]string{"username": username}
+	// Refusals while locked are logged but not audited: the lock itself was
+	// (see failed), and auditing each refusal would let anyone fill the log.
 	if s.throttle.blocked(username) {
 		log.Warn("Login refused: too many failed sign-ins", "username", username)
-		recordAuditFailure(ctx, s.store, "login", "session", "", attempt, "too many failed sign-ins")
 		return nil, ErrTooManyLoginAttempts
 	}
 
@@ -56,8 +56,9 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 			// Burn the same bcrypt work as the password-verify path so login
 			// timing does not reveal whether the username exists.
 			auth.VerifyDummyPassword(password)
-			s.throttle.fail(username)
-			recordAuditFailure(ctx, s.store, "login", "session", "", attempt, "unknown user")
+			// The typed username isn't recorded: it is often a password
+			// entered in the wrong field.
+			s.failed(ctx, username, nil, "unknown user")
 			return nil, ErrUnauthenticated
 		}
 		log.Error("Failed to get user for login", "error", err, "username", username)
@@ -67,14 +68,12 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	if !user.IsActive {
 		// Equalize timing for deactivated accounts too.
 		auth.VerifyDummyPassword(password)
-		s.throttle.fail(username)
-		recordAuditFailure(ctx, s.store, "login", "session", user.ID, attempt, "account is deactivated")
+		s.failed(ctx, username, user, "account is deactivated")
 		return nil, ErrUnauthenticated
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
-		s.throttle.fail(username)
-		recordAuditFailure(ctx, s.store, "login", "session", user.ID, attempt, "wrong password")
+		s.failed(ctx, username, user, "wrong password")
 		return nil, ErrUnauthenticated
 	}
 	s.throttle.reset(username)
@@ -86,7 +85,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		return nil, err
 	}
 
-	recordAudit(audit.WithContext(ctx, signedIn(ctx, user)), s.store, "login", "session", user.ID, attempt)
+	recordAudit(audit.WithContext(ctx, signedIn(ctx, user)), s.store, "login", "session", user.ID, nil)
 
 	now := time.Now()
 	if err := s.store.UpdateUserLastLogin(ctx, user.ID, now); err != nil {
@@ -109,6 +108,22 @@ func (s *AuthService) Logout(ctx context.Context, token string) error {
 		recordAudit(ctx, s.store, "logout", "session", session.UserID, nil)
 	}
 	return s.sessionManager.InvalidateSession(token)
+}
+
+// failed counts and audits a failed sign-in. user is nil for an unknown
+// username, which is then left out of the entry.
+func (s *AuthService) failed(ctx context.Context, username string, user *model.User, reason string) {
+	locked := s.throttle.fail(username)
+	actor := &audit.Context{IPAddress: attemptAddress(ctx), Source: "api"}
+	id := ""
+	if user != nil {
+		actor.UserID, actor.Username, id = user.ID, user.Username, user.ID
+	}
+	actx := audit.WithContext(ctx, actor)
+	recordAuditFailure(actx, s.store, "login", "session", id, nil, reason)
+	if locked {
+		recordAuditFailure(actx, s.store, "login", "session", id, nil, "too many failed sign-ins: further attempts refused for "+s.throttle.window.String())
+	}
 }
 
 // signedIn is the audit actor for a successful sign-in: the user, from the
