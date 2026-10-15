@@ -207,7 +207,10 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 			conflict.DeviceNames = append(conflict.DeviceNames, d.Name)
 		}
 		if err := s.conflictService.store.CreateConflict(ctx, conflict); err != nil {
-			log.Warn("Failed to record duplicate-IP conflict", "ip", addr.IP, "error", err)
+			// A concurrent write recorded it first.
+			if !errors.Is(err, storage.ErrConflictRecorded) {
+				log.Warn("Failed to record duplicate-IP conflict", "ip", addr.IP, "error", err)
+			}
 			continue
 		}
 		publishEvent(model.EventTypeConflictDetected, conflict)

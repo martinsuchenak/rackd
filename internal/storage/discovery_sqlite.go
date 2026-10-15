@@ -11,6 +11,65 @@ import (
 
 // CreateDiscoveredDevice inserts a new discovered device
 func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
+	if err := insertDiscoveredDevice(ctx, s.db, device); err != nil {
+		return err
+	}
+	s.auditLog(ctx, "create", "discovered_device", device.ID, device)
+	return nil
+}
+
+// UpdateDiscoveredDevice updates an existing discovered device
+func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
+	if err := updateDiscoveredDevice(ctx, s.db, device); err != nil {
+		return err
+	}
+	s.auditLog(ctx, "update", "discovered_device", device.ID, device)
+	return nil
+}
+
+// SaveDiscoveredDevice records a host a scan found: it updates the network's
+// record for the address, keeping its id and first sighting, or creates one.
+// Both happen in one transaction, so overlapping scans of a network can't
+// each create a record for the same host. It reports whether it created one.
+func (s *SQLiteStorage) SaveDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) (bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id string
+	var firstSeen sql.NullTime
+	err = tx.QueryRowContext(ctx, `SELECT id, first_seen FROM discovered_devices WHERE network_id = ? AND ip = ?`,
+		device.NetworkID, device.IP).Scan(&id, &firstSeen)
+	created := err == sql.ErrNoRows
+	switch {
+	case created:
+		err = insertDiscoveredDevice(ctx, tx, device)
+	case err != nil:
+		return false, err
+	default:
+		device.ID = id
+		if firstSeen.Valid {
+			device.FirstSeen = firstSeen.Time
+		}
+		err = updateDiscoveredDevice(ctx, tx, device)
+	}
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	action := "update"
+	if created {
+		action = "create"
+	}
+	s.auditLog(ctx, action, "discovered_device", device.ID, device)
+	return created, nil
+}
+
+func insertDiscoveredDevice(ctx context.Context, db sqlTx, device *model.DiscoveredDevice) error {
 	if device.ID == "" {
 		device.ID = newUUID()
 	}
@@ -25,29 +84,24 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *mode
 	openPorts, _ := json.Marshal(device.OpenPorts)
 	services, _ := json.Marshal(device.Services)
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO discovered_devices (id, ip, mac_address, hostname, network_id, status, confidence,
 			os_guess, vendor, open_ports, services, first_seen, last_seen, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, device.ID, device.IP, device.MACAddress, device.Hostname, device.NetworkID, device.Status,
 		device.Confidence, device.OSGuess, device.Vendor, string(openPorts), string(services),
 		device.FirstSeen, device.LastSeen, device.CreatedAt, device.UpdatedAt)
-	if err != nil {
-		return err
-	}
-	s.auditLog(ctx, "create", "discovered_device", device.ID, device)
-	return nil
+	return err
 }
 
-// UpdateDiscoveredDevice updates an existing discovered device
-func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
+func updateDiscoveredDevice(ctx context.Context, db sqlTx, device *model.DiscoveredDevice) error {
 	device.UpdatedAt = nowUTC()
 	device.LastSeen = device.UpdatedAt
 
 	openPorts, _ := json.Marshal(device.OpenPorts)
 	services, _ := json.Marshal(device.Services)
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := db.ExecContext(ctx, `
 		UPDATE discovered_devices SET ip = ?, mac_address = ?, hostname = ?, network_id = ?,
 			status = ?, confidence = ?, os_guess = ?, vendor = ?, open_ports = ?, services = ?,
 			last_seen = ?, updated_at = ?
@@ -58,11 +112,9 @@ func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *mode
 	if err != nil {
 		return err
 	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
+	if rows, _ := result.RowsAffected(); rows == 0 {
 		return ErrDiscoveryNotFound
 	}
-	s.auditLog(ctx, "update", "discovered_device", device.ID, device)
 	return nil
 }
 

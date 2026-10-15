@@ -64,6 +64,9 @@ func (s *SQLiteStorage) CreateConflict(ctx context.Context, conflict *model.Conf
 		nullString(conflict.Notes))
 
 	if err != nil {
+		if field, ok := DuplicateField(err); ok && field == "ip_address" {
+			return ErrConflictRecorded
+		}
 		return fmt.Errorf("failed to create conflict: %w", err)
 	}
 

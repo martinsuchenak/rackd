@@ -153,8 +153,11 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 				}
 			}
 		} else {
-			// Create new conflict record
+			// Create new conflict record, unless a concurrent write just did.
 			if err := s.store.CreateConflict(ctx, &conflict); err != nil {
+				if errors.Is(err, storage.ErrConflictRecorded) {
+					continue
+				}
 				return nil, err
 			}
 			publishEvent(model.EventTypeConflictDetected, conflict)
