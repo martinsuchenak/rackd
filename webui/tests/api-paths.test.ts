@@ -48,3 +48,23 @@ describe('API paths', () => {
     expect(hasDotSegment('/api/v1/devices?x=../y')).toBe(false);
   });
 });
+
+describe('listDevices', () => {
+  test('fetches every page, not just the first', async () => {
+    const urls: string[] = [];
+    (globalThis as { window?: unknown }).window = { location: { pathname: '/', href: '/' }, dispatchEvent: () => true };
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      urls.push(String(url));
+      const offset = Number(new URL(String(url), 'http://x').searchParams.get('offset'));
+      const count = offset === 0 ? 1000 : 5;
+      const page = Array.from({ length: count }, (_, i) => ({ id: `d${offset + i}`, name: 'd' }));
+      return new Response(JSON.stringify(page), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }) as unknown as typeof fetch;
+
+    const devices = await new RackdAPI().listDevices({ tags: ['a', 'b'] });
+    expect(devices.length).toBe(1005);
+    expect(urls.length).toBe(2);
+    expect(urls[1]).toContain('offset=1000');
+    expect(urls[0]).toContain('tags=a&tags=b');
+  });
+});

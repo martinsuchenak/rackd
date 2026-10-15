@@ -15,6 +15,9 @@ import (
 type DiscoveryService struct {
 	store   storage.ExtendedStorage
 	scanner discovery.Scanner
+	// devices creates promoted devices, with its permission check,
+	// validation, conflict detection and DNS sync.
+	devices *DeviceService
 }
 
 func NewDiscoveryService(store storage.ExtendedStorage, scanner discovery.Scanner) *DiscoveryService {
@@ -237,7 +240,13 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		}
 	}
 
-	if err := s.store.CreateDevice(enrichAuditCtx(ctx), device); err != nil {
+	// Through the device service, so promoting needs devices:create too and
+	// gets the same checks and side effects (including the device.created
+	// event) as creating a device.
+	if s.devices == nil {
+		return nil, errors.New("discovery: device service not configured")
+	}
+	if err := s.devices.Create(ctx, device); err != nil {
 		return nil, err
 	}
 
@@ -245,8 +254,6 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		return nil, err
 	}
 
-	// A promoted device is a new device too, so both events are published.
-	publishEvent(model.EventTypeDeviceCreated, deviceSnapshot(device))
 	publishEvent(model.EventTypeDevicePromoted, deviceSnapshot(device))
 	return device, nil
 }

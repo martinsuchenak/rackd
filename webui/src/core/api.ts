@@ -154,6 +154,9 @@ export function hasDotSegment(path: string): boolean {
   });
 }
 
+// The API's largest page.
+const DEVICE_PAGE_SIZE = 1000;
+
 export class RackdAPI {
   private baseURL: string;
   private inFlightRequests: Map<string, Promise<unknown>> = new Map();
@@ -332,18 +335,31 @@ export class RackdAPI {
   }
 
   // Devices
+  /**
+   * Lists every device that matches the filter. The API returns devices a page
+   * at a time (100 by default), so this asks for the largest pages and keeps
+   * going until a short page, instead of silently stopping at the first.
+   */
   async listDevices(filter?: DeviceFilter): Promise<Device[]> {
     const params = new URLSearchParams();
-    if (filter?.tags?.length) params.set('tags', filter.tags.join(','));
+    for (const tag of filter?.tags ?? []) params.append('tags', tag);
     if (filter?.datacenter_id) params.set('datacenter_id', filter.datacenter_id);
     if (filter?.network_id) params.set('network_id', filter.network_id);
     if (filter?.pool_id) params.set('pool_id', filter.pool_id);
     if (filter?.status) params.set('status', filter.status);
     if (filter?.stale) params.set('stale', 'true');
     if (filter?.stale_days) params.set('stale_days', String(filter.stale_days));
-    const query = params.toString();
-    return this.request<Device[]>('GET', `/api/v1/devices${query ? `?${query}` : ''}`);
+
+    const devices: Device[] = [];
+    for (let offset = 0; ; offset += DEVICE_PAGE_SIZE) {
+      params.set('limit', String(DEVICE_PAGE_SIZE));
+      params.set('offset', String(offset));
+      const page = (await this.request<Device[]>('GET', `/api/v1/devices?${params}`)) ?? [];
+      devices.push(...page);
+      if (page.length < DEVICE_PAGE_SIZE) return devices;
+    }
   }
+
 
   async getDevice(id: string): Promise<Device> {
     return this.request<Device>('GET', `/api/v1/devices/${seg(id)}`);

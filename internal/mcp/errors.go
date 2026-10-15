@@ -74,3 +74,17 @@ func isStorageNotFound(err error) bool {
 	}
 	return false
 }
+
+// has reports whether the tool call passed the argument, so an update can
+// leave the fields it didn't mention alone.
+func has(req *mcp.ToolRequest, name string) bool {
+	_, ok := req.Args()[name]
+	return ok
+}
+
+// setString sets *field from the argument if the call passed it.
+func setString(req *mcp.ToolRequest, name string, field *string) {
+	if has(req, name) {
+		*field = req.StringOr(name, "")
+	}
+}

@@ -38,7 +38,8 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
-	if errs := append(ValidateNewID(device.ID), ValidateDevice(&device)...); len(errs) > 0 {
+	// Field validation happens in the service, for every caller.
+	if errs := ValidateNewID(device.ID); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -128,11 +129,6 @@ func (h *Handler) updateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if customFields, ok := updates["custom_fields"].([]any); ok {
 		device.CustomFields = toCustomFieldSlice(customFields)
-	}
-
-	if errs := ValidateDevice(device); len(errs) > 0 {
-		h.writeValidationErrors(w, errs)
-		return
 	}
 
 	if err := h.svc.Devices.Update(r.Context(), device); err != nil {
@@ -245,10 +241,13 @@ func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
-	// Same field validation as the single-device path, so bulk cannot be used
-	// to bypass name/hostname/length/address checks.
+	// The service validates each device's fields like a single create does.
 	for i, device := range devices {
-		if errs := append(ValidateNewID(device.ID), ValidateDevice(device)...); len(errs) > 0 {
+		if device == nil {
+			h.badRequest(w, fmt.Sprintf("devices[%d] is null", i))
+			return
+		}
+		if errs := ValidateNewID(device.ID); len(errs) > 0 {
 			errs[0].Field = fmt.Sprintf("devices[%d].%s", i, errs[0].Field)
 			h.writeValidationErrors(w, errs)
 			return
@@ -274,9 +273,8 @@ func (h *Handler) bulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i, device := range devices {
-		if errs := ValidateDevice(device); len(errs) > 0 {
-			errs[0].Field = fmt.Sprintf("devices[%d].%s", i, errs[0].Field)
-			h.writeValidationErrors(w, errs)
+		if device == nil {
+			h.badRequest(w, fmt.Sprintf("devices[%d] is null", i))
 			return
 		}
 	}

@@ -50,9 +50,9 @@ func (s *Server) registerNetworkTools() {
 
 	// Discoverable tools
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("datacenter_save", "Create or update a datacenter",
+		mcp.NewTool("datacenter_save", "Create a datacenter, or update one by id; an update changes only the fields passed",
 			mcp.String("id", "Datacenter ID (omit for new)"),
-			mcp.String("name", "Datacenter name", mcp.Required()),
+			mcp.String("name", "Datacenter name (required for a new datacenter)"),
 			mcp.String("location", "Physical location"),
 			mcp.String("description", "Description"),
 		).Discoverable("datacenter", "create", "update", "location", "facility"),
@@ -67,10 +67,10 @@ func (s *Server) registerNetworkTools() {
 	)
 
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("network_save", "Create or update a network",
+		mcp.NewTool("network_save", "Create a network, or update one by id; an update changes only the fields passed",
 			mcp.String("id", "Network ID (omit for new)"),
-			mcp.String("name", "Network name", mcp.Required()),
-			mcp.String("subnet", "CIDR subnet (e.g., 192.168.1.0/24)", mcp.Required()),
+			mcp.String("name", "Network name (required for a new network)"),
+			mcp.String("subnet", "CIDR subnet, e.g. 192.168.1.0/24 (required for a new network)"),
 			mcp.String("datacenter_id", "Datacenter ID"),
 			mcp.Number("vlan_id", "VLAN ID"),
 			mcp.String("description", "Description"),
@@ -116,14 +116,19 @@ func (s *Server) handleDatacenterGet(ctx context.Context, req *mcp.ToolRequest) 
 
 func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id := req.StringOr("id", "")
-	name, _ := req.String("name")
 
-	dc := &model.Datacenter{
-		ID:          id,
-		Name:        name,
-		Location:    req.StringOr("location", ""),
-		Description: req.StringOr("description", ""),
+	// An update changes only the arguments given; see handleDeviceSave.
+	dc := &model.Datacenter{}
+	if id != "" {
+		existing, err := s.svc.Datacenters.Get(ctx, id)
+		if err != nil {
+			return nil, toolError(err)
+		}
+		dc = existing
 	}
+	setString(req, "name", &dc.Name)
+	setString(req, "location", &dc.Location)
+	setString(req, "description", &dc.Description)
 
 	if id == "" {
 		if err := s.svc.Datacenters.Create(ctx, dc); err != nil {
@@ -171,16 +176,22 @@ func (s *Server) handleNetworkGet(ctx context.Context, req *mcp.ToolRequest) (*m
 
 func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id := req.StringOr("id", "")
-	name, _ := req.String("name")
-	subnet, _ := req.String("subnet")
 
-	network := &model.Network{
-		ID:           id,
-		Name:         name,
-		Subnet:       subnet,
-		DatacenterID: req.StringOr("datacenter_id", ""),
-		VLANID:       req.IntOr("vlan_id", 0),
-		Description:  req.StringOr("description", ""),
+	// An update changes only the arguments given; see handleDeviceSave.
+	network := &model.Network{}
+	if id != "" {
+		existing, err := s.svc.Networks.Get(ctx, id)
+		if err != nil {
+			return nil, toolError(err)
+		}
+		network = existing
+	}
+	setString(req, "name", &network.Name)
+	setString(req, "subnet", &network.Subnet)
+	setString(req, "datacenter_id", &network.DatacenterID)
+	setString(req, "description", &network.Description)
+	if has(req, "vlan_id") {
+		network.VLANID = req.IntOr("vlan_id", 0)
 	}
 
 	if id == "" {

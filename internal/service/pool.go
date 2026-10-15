@@ -45,8 +45,8 @@ func (s *PoolService) Create(ctx context.Context, pool *model.NetworkPool) error
 		return err
 	}
 
-	if pool.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateNetworkPool(pool); len(errs) > 0 {
+		return errs
 	}
 
 	if pool.NetworkID == "" {
@@ -96,8 +96,8 @@ func (s *PoolService) Update(ctx context.Context, pool *model.NetworkPool) error
 		return ValidationErrors{{Field: "id", Message: "ID is required"}}
 	}
 
-	if pool.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateNetworkPool(pool); len(errs) > 0 {
+		return errs
 	}
 
 	return s.store.UpdateNetworkPool(enrichAuditCtx(ctx), pool)

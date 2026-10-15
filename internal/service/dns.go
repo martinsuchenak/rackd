@@ -1231,6 +1231,10 @@ func (s *DNSService) LinkRecord(ctx context.Context, recordID string, req *model
 			}
 		}
 		if !alreadyPresent {
+			// This changes the device, so it needs device permission too.
+			if err := requirePermission(ctx, s.store, "devices", "update"); err != nil {
+				return nil, err
+			}
 			device.Domains = append(device.Domains, fqdn)
 			if err := s.store.UpdateDevice(ctx, device); err != nil {
 				return nil, fmt.Errorf("failed to update device domains: %w", err)

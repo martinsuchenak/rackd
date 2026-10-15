@@ -69,6 +69,10 @@ func (s *ConflictService) Resolve(ctx context.Context, resolution *model.Conflic
 
 	// For duplicate IP conflicts, update the addresses of devices that should lose the IP
 	if conflict.Type == model.ConflictTypeDuplicateIP && resolution.KeepDeviceID != "" {
+		// Taking the IP off the other devices changes them.
+		if err := requirePermission(ctx, s.store, "devices", "update"); err != nil {
+			return err
+		}
 		if err := s.resolveDuplicateIP(ctx, resolution, resolvedBy); err != nil {
 			return err
 		}

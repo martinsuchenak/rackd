@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/auth"
@@ -477,12 +478,19 @@ func (h *Handler) writeValidationErrors(w http.ResponseWriter, errs ValidationEr
 	})
 }
 
+// parseArrayParam reads a list parameter given either repeated
+// (tags=a&tags=b) or comma-separated (tags=a,b), as the web UI, the CLI and
+// the docs have each used one form or the other.
 func parseArrayParam(r *http.Request, name string) []string {
-	values := r.URL.Query()[name]
-	if len(values) == 0 {
-		return nil
+	var out []string
+	for _, value := range r.URL.Query()[name] {
+		for _, part := range strings.Split(value, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				out = append(out, part)
+			}
+		}
 	}
-	return values
+	return out
 }
 
 func parseIntParam(r *http.Request, name string, defaultValue int) int {
