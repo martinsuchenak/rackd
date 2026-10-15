@@ -153,6 +153,14 @@ func TestDiscoveryService_PromoteDeviceCarriesOverDiscoveredFields(t *testing.T)
 	}
 
 	svc := NewDiscoveryService(store, nil)
+	svc.devices = NewDeviceService(store)
+
+	// Promoting creates a device, so it needs devices:create too.
+	if _, err := svc.PromoteDevice(userContext("user-1"), "disc-1", &model.Device{Name: "edge-router"}); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("promote without devices:create: %v, want forbidden", err)
+	}
+	store.setPermission("user-1", "devices", "create", true)
+
 	device, err := svc.PromoteDevice(userContext("user-1"), "disc-1", &model.Device{Name: "edge-router"})
 	if err != nil {
 		t.Fatalf("PromoteDevice returned unexpected error: %v", err)

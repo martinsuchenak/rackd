@@ -28,7 +28,7 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errs := append(ValidateNewID(dc.ID), ValidateDatacenter(&dc)...); len(errs) > 0 {
+	if errs := ValidateNewID(dc.ID); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -82,11 +82,6 @@ func (h *Handler) updateDatacenter(w http.ResponseWriter, r *http.Request) {
 	}
 	if description, ok := updates["description"].(string); ok {
 		dc.Description = description
-	}
-
-	if errs := ValidateDatacenter(dc); len(errs) > 0 {
-		h.writeValidationErrors(w, errs)
-		return
 	}
 
 	if err := h.svc.Datacenters.Update(r.Context(), dc); err != nil {

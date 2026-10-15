@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -72,13 +73,15 @@ func TestParseArrayParam(t *testing.T) {
 		{"empty", "", "tags", nil},
 		{"single", "tags=foo", "tags", []string{"foo"}},
 		{"multiple", "tags=foo&tags=bar", "tags", []string{"foo", "bar"}},
+		{"comma-separated", "tags=foo,bar", "tags", []string{"foo", "bar"}},
+		{"both", "tags=foo,%20bar&tags=baz", "tags", []string{"foo", "bar", "baz"}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest("GET", "/?"+tt.query, nil)
 			result := parseArrayParam(r, tt.param)
-			if len(result) != len(tt.expected) {
+			if strings.Join(result, "|") != strings.Join(tt.expected, "|") {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
 		})

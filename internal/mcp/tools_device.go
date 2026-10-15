@@ -41,9 +41,9 @@ func (s *Server) registerDeviceTools() {
 	)
 
 	s.mcpServer.RegisterTool(
-		mcp.NewTool("device_save", "Create or update a device",
+		mcp.NewTool("device_save", "Create a device, or update one by id. An update changes only the fields passed; passing addresses, tags or domains replaces that whole list",
 			mcp.String("id", "Device ID (omit for new device)"),
-			mcp.String("name", "Device name", mcp.Required()),
+			mcp.String("name", "Device name (required for a new device)"),
 			mcp.String("hostname", "Hostname"),
 			mcp.String("description", "Device description"),
 			mcp.String("make_model", "Device make and model"),
@@ -53,7 +53,13 @@ func (s *Server) registerDeviceTools() {
 			mcp.String("username", "Login username"),
 			mcp.String("location", "Physical location"),
 			mcp.StringArray("tags", "Device tags"),
-			mcp.ObjectArray("addresses", "IP addresses", mcp.String("ip", "IP address"), mcp.String("type", "Address type")),
+			mcp.ObjectArray("addresses", "IP addresses",
+				mcp.String("ip", "IP address"),
+				mcp.String("type", "Address type"),
+				mcp.String("network_id", "Network the address is in"),
+				mcp.String("pool_id", "Pool the address is from"),
+				mcp.Integer("port", "Port"),
+			),
 			mcp.StringArray("domains", "Domain names"),
 			mcp.ObjectArray("custom_fields", "Custom field values",
 				mcp.String("field_id", "Custom field definition ID"),
@@ -148,28 +154,48 @@ func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mc
 
 func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id := req.StringOr("id", "")
-	name, _ := req.String("name")
 
-	device := &model.Device{
-		ID:           id,
-		Name:         name,
-		Hostname:     req.StringOr("hostname", ""),
-		Description:  req.StringOr("description", ""),
-		MakeModel:    req.StringOr("make_model", ""),
-		OS:           req.StringOr("os", ""),
-		Status:       model.DeviceStatus(req.StringOr("status", "")),
-		DatacenterID: req.StringOr("datacenter_id", ""),
-		Username:     req.StringOr("username", ""),
-		Location:     req.StringOr("location", ""),
-		Tags:         req.StringSliceOr("tags", []string{}),
-		Domains:      req.StringSliceOr("domains", []string{}),
+	// An update starts from the stored device and changes only the arguments
+	// given, like a REST PUT, so {id, description} doesn't wipe addresses,
+	// tags and the rest.
+	device := &model.Device{}
+	if id != "" {
+		existing, err := s.svc.Devices.Get(ctx, id)
+		if err != nil {
+			return nil, toolError(err)
+		}
+		device = existing
 	}
-
-	for _, addr := range req.ObjectSliceOr("addresses", nil) {
-		ip, _ := addr["ip"].(string)
-		addrType, _ := addr["type"].(string)
-		if ip != "" {
-			device.Addresses = append(device.Addresses, model.Address{IP: ip, Type: addrType})
+	setString(req, "name", &device.Name)
+	setString(req, "hostname", &device.Hostname)
+	setString(req, "description", &device.Description)
+	setString(req, "make_model", &device.MakeModel)
+	setString(req, "os", &device.OS)
+	setString(req, "datacenter_id", &device.DatacenterID)
+	setString(req, "username", &device.Username)
+	setString(req, "location", &device.Location)
+	if has(req, "status") {
+		device.Status = model.DeviceStatus(req.StringOr("status", ""))
+	}
+	if has(req, "tags") {
+		device.Tags = req.StringSliceOr("tags", []string{})
+	}
+	if has(req, "domains") {
+		device.Domains = req.StringSliceOr("domains", []string{})
+	}
+	if has(req, "addresses") {
+		device.Addresses = nil
+		for _, addr := range req.ObjectSliceOr("addresses", nil) {
+			a := model.Address{}
+			a.IP, _ = addr["ip"].(string)
+			a.Type, _ = addr["type"].(string)
+			a.NetworkID, _ = addr["network_id"].(string)
+			a.PoolID, _ = addr["pool_id"].(string)
+			if port, ok := addr["port"].(float64); ok {
+				p := int(port)
+				a.Port = &p
+			}
+			device.Addresses = append(device.Addresses, a)
 		}
 	}
 
@@ -194,7 +220,9 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 			}
 		}
 		if len(inputs) > 0 {
-			_ = s.svc.CustomFields.SetValues(ctx, device.ID, inputs)
+			if err := s.svc.CustomFields.SetValues(ctx, device.ID, inputs); err != nil {
+				return nil, toolError(err)
+			}
 		}
 	}
 

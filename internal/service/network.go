@@ -28,12 +28,8 @@ func (s *NetworkService) Create(ctx context.Context, network *model.Network) err
 		return err
 	}
 
-	if network.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
-	}
-
-	if network.Subnet == "" {
-		return ValidationErrors{{Field: "subnet", Message: "Subnet is required"}}
+	if errs := ValidateNetwork(network); len(errs) > 0 {
+		return errs
 	}
 
 	if err := s.store.CreateNetwork(enrichAuditCtx(ctx), network); err != nil {
@@ -67,12 +63,8 @@ func (s *NetworkService) Update(ctx context.Context, network *model.Network) err
 		return ValidationErrors{{Field: "id", Message: "ID is required"}}
 	}
 
-	if network.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
-	}
-
-	if network.Subnet == "" {
-		return ValidationErrors{{Field: "subnet", Message: "Subnet is required"}}
+	if errs := ValidateNetwork(network); len(errs) > 0 {
+		return errs
 	}
 
 	if err := s.store.UpdateNetwork(enrichAuditCtx(ctx), network); err != nil {

@@ -228,8 +228,8 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 		return err
 	}
 
-	if device.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateDevice(device); len(errs) > 0 {
+		return errs
 	}
 
 	// Validate status
@@ -284,8 +284,8 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 		return ValidationErrors{{Field: "id", Message: "ID is required"}}
 	}
 
-	if device.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateDevice(device); len(errs) > 0 {
+		return errs
 	}
 
 	// Validate status

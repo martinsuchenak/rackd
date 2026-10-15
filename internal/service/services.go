@@ -63,6 +63,8 @@ func NewServices(store storage.ExtendedStorage, sessionManager *auth.SessionMana
 	}
 	// Device writes check their addresses for duplicate-IP conflicts.
 	svc.Devices.conflictService = svc.Conflicts
+	svc.Bulk.devices = svc.Devices
+	svc.Discovery.devices = svc.Devices
 	return svc
 }
 

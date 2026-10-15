@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -499,5 +500,52 @@ func TestInner(t *testing.T) {
 	inner := srv.Inner()
 	if inner == nil {
 		t.Fatal("Inner() should return the underlying MCP server")
+	}
+}
+
+// toolJSON decodes a tool call's JSON text content into v.
+func toolJSON(t *testing.T, resp map[string]interface{}, v interface{}) {
+	t.Helper()
+	if resp["error"] != nil {
+		t.Fatalf("tool error: %v", resp["error"])
+	}
+	content := resp["result"].(map[string]interface{})["content"].([]interface{})
+	text := content[0].(map[string]interface{})["text"].(string)
+	if err := json.Unmarshal([]byte(text), v); err != nil {
+		t.Fatalf("decoding %q: %v", text, err)
+	}
+}
+
+// An update through device_save changes only what it is given, like a REST
+// PUT; before, {id, description} wiped addresses, tags and hostname.
+func TestDeviceSave_UpdateKeepsFieldsNotPassed(t *testing.T) {
+	srv, store := newTestServer(t)
+	defer func() { _ = store.Close() }()
+
+	var created model.Device
+	toolJSON(t, callTool(t, srv, "device_save", map[string]interface{}{
+		"name": "web-1", "hostname": "web-1.example.com", "tags": []string{"prod"},
+		"addresses": []map[string]interface{}{{"ip": "10.0.0.5", "type": "ipv4"}},
+	}), &created)
+
+	var updated model.Device
+	toolJSON(t, callTool(t, srv, "device_save", map[string]interface{}{
+		"id": created.ID, "description": "front end",
+	}), &updated)
+
+	if updated.Description != "front end" || updated.Name != "web-1" || updated.Hostname != "web-1.example.com" ||
+		len(updated.Tags) != 1 || len(updated.Addresses) != 1 || updated.Addresses[0].IP != "10.0.0.5" {
+		t.Errorf("after a description-only update: %+v", updated)
+	}
+}
+
+// Validation runs in the service, so MCP gets the same checks as REST.
+func TestNetworkSave_Validates(t *testing.T) {
+	srv, store := newTestServer(t)
+	defer func() { _ = store.Close() }()
+	resp := callTool(t, srv, "network_save", map[string]interface{}{"name": "n", "subnet": "foo"})
+	errObj, ok := resp["error"].(map[string]interface{})
+	if !ok || errObj["code"].(float64) != -32602 || !strings.Contains(errObj["message"].(string), "CIDR") {
+		t.Errorf("invalid subnet: %v, want an invalid-params error about CIDR", resp)
 	}
 }

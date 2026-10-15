@@ -10,6 +10,9 @@ import (
 
 type BulkService struct {
 	store storage.ExtendedStorage
+	// devices runs the side effects of a device write (IP conflict detection,
+	// DNS sync) for each device a bulk operation changed. Nil skips them.
+	devices *DeviceService
 }
 
 func NewBulkService(store storage.ExtendedStorage) *BulkService {
@@ -26,6 +29,7 @@ func (s *BulkService) CreateDevices(ctx context.Context, devices []*model.Device
 	result, err := s.store.BulkCreateDevices(enrichAuditCtx(ctx), devices)
 	if err == nil {
 		publishDevices(model.EventTypeDeviceCreated, devices, result.SucceededIDs)
+		s.afterDeviceWrites(ctx, devices, result.SucceededIDs)
 	}
 	return result, err
 }
@@ -40,24 +44,55 @@ func (s *BulkService) UpdateDevices(ctx context.Context, devices []*model.Device
 	result, err := s.store.BulkUpdateDevices(enrichAuditCtx(ctx), devices)
 	if err == nil {
 		publishDevices(model.EventTypeDeviceUpdated, devices, result.SucceededIDs)
+		s.afterDeviceWrites(ctx, devices, result.SucceededIDs)
 	}
 	return result, err
 }
 
-// validateBulkDevices applies the same status validation and audit attribution
-// as the single-device path, so bulk operations cannot submit invalid statuses
-// or forge status_changed_by.
+// afterDeviceWrites runs what a single device write does after saving, for
+// each device the bulk operation saved: duplicate IPs raise conflicts and
+// hostnames sync to DNS.
+func (s *BulkService) afterDeviceWrites(ctx context.Context, devices []*model.Device, succeeded []string) {
+	if s.devices == nil {
+		return
+	}
+	ok := make(map[string]bool, len(succeeded))
+	for _, id := range succeeded {
+		ok[id] = true
+	}
+	for _, device := range devices {
+		if ok[device.ID] {
+			s.devices.checkForIPConflicts(ctx, device)
+			s.devices.syncDeviceDNSAsync(ctx, device)
+		}
+	}
+}
+
+// validateBulkDevices applies the same field and status validation and audit
+// attribution as the single-device path, so bulk operations can't store what
+// a single write would refuse, or forge status_changed_by.
 func validateBulkDevices(ctx context.Context, devices []*model.Device) error {
 	for i, device := range devices {
+		errs := ValidateDevice(device)
 		if err := validateStatus(device.Status); err != nil {
-			if verrs, ok := err.(ValidationErrors); ok && len(verrs) > 0 {
-				verrs[0].Field = fmt.Sprintf("devices[%d].%s", i, verrs[0].Field)
+			if verrs, ok := err.(ValidationErrors); ok {
+				errs = append(errs, verrs...)
 			}
-			return err
+		}
+		if len(errs) > 0 {
+			return prefixFields(errs, fmt.Sprintf("devices[%d]", i))
 		}
 		setStatusChangedBy(ctx, device)
 	}
 	return nil
+}
+
+// prefixFields names the bulk item each error is about.
+func prefixFields(errs ValidationErrors, prefix string) ValidationErrors {
+	for i := range errs {
+		errs[i].Field = prefix + "." + errs[i].Field
+	}
+	return errs
 }
 
 func (s *BulkService) DeleteDevices(ctx context.Context, ids []string) (*storage.BulkResult, error) {
@@ -97,6 +132,11 @@ func (s *BulkService) RemoveTags(ctx context.Context, deviceIDs []string, tags [
 func (s *BulkService) CreateNetworks(ctx context.Context, networks []*model.Network) (*storage.BulkResult, error) {
 	if err := requirePermission(ctx, s.store, "networks", "create"); err != nil {
 		return nil, err
+	}
+	for i, network := range networks {
+		if errs := ValidateNetwork(network); len(errs) > 0 {
+			return nil, prefixFields(errs, fmt.Sprintf("networks[%d]", i))
+		}
 	}
 	result, err := s.store.BulkCreateNetworks(enrichAuditCtx(ctx), networks)
 	if err == nil {

@@ -130,6 +130,26 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- The web UI showed only the first 100 devices: the device list, the relationship
+  graph and the device pickers in NAT, DNS and pools. It now fetches every page.
+- MCP `device_save`, `network_save` and `datacenter_save` replaced the whole record
+  on update, so `{id, description}` wiped a device's addresses, tags and hostname.
+  An update now changes only the fields passed. Addresses can carry `network_id`,
+  `pool_id` and `port`, and custom field errors are reported instead of ignored.
+- Field validation (CIDRs, IP formats, VLAN range, hostnames, pool ranges, lengths)
+  ran only in the REST handlers. MCP and bulk operations skipped it, and bulk
+  device creation also skipped IP conflict detection and DNS sync. The services
+  now validate every write, and bulk writes get the same side effects as single
+  ones.
+- **Security:** writes to devices through other features were checked only
+  against that feature's permission. Promoting a discovered device now needs
+  `devices:create`. Resolving a duplicate-IP conflict, which takes the IP off
+  other devices, needs `devices:update`, and so does linking a DNS record that
+  adds a domain to a device. Promoting now also runs device validation, conflict
+  detection and DNS sync.
+- Device list filters accept `tags` both repeated (`tags=a&tags=b`) and
+  comma-separated (`tags=a,b`). The web UI and CLI sent the second form, which
+  matched nothing.
 - **Security:** much of what an attacker would do left no audit trail. Sign-ins
   (successful, failed and refused), sign-outs, user changes, password changes and
   resets, role and permission changes, role assignments, API keys, credentials,

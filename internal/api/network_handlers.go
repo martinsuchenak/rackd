@@ -30,7 +30,7 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
-	if errs := append(ValidateNewID(network.ID), ValidateNetwork(&network)...); len(errs) > 0 {
+	if errs := ValidateNewID(network.ID); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -90,11 +90,6 @@ func (h *Handler) updateNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 	if description, ok := updates["description"].(string); ok {
 		network.Description = description
-	}
-
-	if errs := ValidateNetwork(network); len(errs) > 0 {
-		h.writeValidationErrors(w, errs)
-		return
 	}
 
 	if err := h.svc.Networks.Update(r.Context(), network); err != nil {
@@ -176,7 +171,7 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool.NetworkID = networkID
-	if errs := append(ValidateNewID(pool.ID), ValidateNetworkPool(&pool)...); len(errs) > 0 {
+	if errs := ValidateNewID(pool.ID); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -243,11 +238,6 @@ func (h *Handler) updateNetworkPool(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if errs := ValidateNetworkPool(pool); len(errs) > 0 {
-		h.writeValidationErrors(w, errs)
-		return
-	}
-
 	if err := h.svc.Pools.Update(r.Context(), pool); err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -309,13 +299,13 @@ func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
 	}
-	// Same validation as the single-network path.
+	// The service validates each network's fields like a single create does.
 	for i, network := range networks {
 		if network == nil {
 			h.badRequest(w, fmt.Sprintf("networks[%d] is null", i))
 			return
 		}
-		if errs := append(ValidateNewID(network.ID), ValidateNetwork(network)...); len(errs) > 0 {
+		if errs := ValidateNewID(network.ID); len(errs) > 0 {
 			errs[0].Field = fmt.Sprintf("networks[%d].%s", i, errs[0].Field)
 			h.writeValidationErrors(w, errs)
 			return

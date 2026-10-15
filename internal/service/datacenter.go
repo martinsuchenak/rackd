@@ -28,8 +28,8 @@ func (s *DatacenterService) Create(ctx context.Context, dc *model.Datacenter) er
 		return err
 	}
 
-	if dc.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateDatacenter(dc); len(errs) > 0 {
+		return errs
 	}
 
 	return s.store.CreateDatacenter(enrichAuditCtx(ctx), dc)
@@ -59,8 +59,8 @@ func (s *DatacenterService) Update(ctx context.Context, dc *model.Datacenter) er
 		return ValidationErrors{{Field: "id", Message: "ID is required"}}
 	}
 
-	if dc.Name == "" {
-		return ValidationErrors{{Field: "name", Message: "Name is required"}}
+	if errs := ValidateDatacenter(dc); len(errs) > 0 {
+		return errs
 	}
 
 	return s.store.UpdateDatacenter(enrichAuditCtx(ctx), dc)
