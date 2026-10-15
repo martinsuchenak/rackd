@@ -14,6 +14,7 @@ import (
 type AuthService struct {
 	store          storage.ExtendedStorage
 	sessionManager *auth.SessionManager
+	throttle       *loginThrottle
 }
 
 type LoginResult struct {
@@ -25,16 +26,33 @@ func NewAuthService(store storage.ExtendedStorage, sessionManager *auth.SessionM
 	return &AuthService{
 		store:          store,
 		sessionManager: sessionManager,
+		throttle:       newLoginThrottle(defaultMaxLoginFailures, defaultLoginFailureWindow),
 	}
 }
 
+// SetLoginThrottle sets how many failed sign-ins an account may have within
+// window before further attempts are refused until the window passes; max 0
+// turns the limit off.
+func (s *AuthService) SetLoginThrottle(max int, window time.Duration) {
+	s.throttle = newLoginThrottle(max, window)
+}
+
 func (s *AuthService) Login(ctx context.Context, username, password string) (*LoginResult, error) {
+	// Refuse before checking the password, so guessing past the limit also
+	// stops costing bcrypt work. The limit applies to unknown usernames too,
+	// so it doesn't reveal which exist.
+	if s.throttle.blocked(username) {
+		log.Warn("Login refused: too many failed sign-ins", "username", username)
+		return nil, ErrTooManyLoginAttempts
+	}
+
 	user, err := s.store.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			// Burn the same bcrypt work as the password-verify path so login
 			// timing does not reveal whether the username exists.
 			auth.VerifyDummyPassword(password)
+			s.throttle.fail(username)
 			return nil, ErrUnauthenticated
 		}
 		log.Error("Failed to get user for login", "error", err, "username", username)
@@ -44,12 +62,15 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	if !user.IsActive {
 		// Equalize timing for deactivated accounts too.
 		auth.VerifyDummyPassword(password)
+		s.throttle.fail(username)
 		return nil, ErrUnauthenticated
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
+		s.throttle.fail(username)
 		return nil, ErrUnauthenticated
 	}
+	s.throttle.reset(username)
 
 	isAdmin, _ := userCan(ctx, s.store, user.ID, "users", "create")
 	session, err := s.sessionManager.CreateSession(user.ID, user.Username, isAdmin)

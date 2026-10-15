@@ -28,10 +28,13 @@ type Config struct {
 	AuditEnabled            bool
 	AuditRetentionDays      int
 	SessionTTL              time.Duration
+	SessionMaxLifetime      time.Duration
 	SessionStoreType        string
 	ValkeyURL               string
 	LoginRateLimitRequests  int
 	LoginRateLimitWindow    time.Duration
+	LoginAccountMaxFailures int
+	LoginAccountWindow      time.Duration
 	CookieSecure            bool
 	TrustProxy              bool
 	TrustedProxies          string
@@ -84,10 +87,13 @@ func Load() *Config {
 		AuditEnabled:            getBoolEnv("AUDIT_ENABLED", false),
 		AuditRetentionDays:      getIntEnv("AUDIT_RETENTION_DAYS", 90),
 		SessionTTL:              getDurationEnv("SESSION_TTL", 24*time.Hour),
+		SessionMaxLifetime:      getDurationEnv("SESSION_MAX_LIFETIME", 7*24*time.Hour),
 		SessionStoreType:        getEnv("SESSION_STORE_TYPE", "sqlite"),
 		ValkeyURL:               getEnv("VALKEY_URL", "redis://localhost:6379/0"),
 		LoginRateLimitRequests:  getIntEnv("LOGIN_RATE_LIMIT_REQUESTS", 5),
 		LoginRateLimitWindow:    getDurationEnv("LOGIN_RATE_LIMIT_WINDOW", 1*time.Minute),
+		LoginAccountMaxFailures: getIntEnv("LOGIN_ACCOUNT_MAX_FAILURES", 10),
+		LoginAccountWindow:      getDurationEnv("LOGIN_ACCOUNT_WINDOW", 15*time.Minute),
 		CookieSecure:            getBoolEnv("COOKIE_SECURE", true),
 		TrustProxy:              getBoolEnv("TRUST_PROXY", false),
 		TrustedProxies:          getEnv("TRUSTED_PROXIES", ""),

@@ -57,6 +57,7 @@ func Run(ctx context.Context, opts Options) error {
 		return err
 	}
 	sessionManager := auth.NewSessionManager(cfg.SessionTTL, sessionStore)
+	sessionManager.SetMaxLifetime(cfg.SessionMaxLifetime)
 	defer sessionManager.Stop()
 
 	// Bootstrap initial admin user
@@ -78,6 +79,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	services := service.NewServices(store, sessionManager, scanner)
+	services.Auth.SetLoginThrottle(cfg.LoginAccountMaxFailures, cfg.LoginAccountWindow)
 	if opts.Credentials != nil {
 		services.SetCredentialsStorage(opts.Credentials)
 	}

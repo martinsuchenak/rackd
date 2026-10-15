@@ -103,20 +103,23 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	wrapAuth := h.authenticated
 
-	wrapSensitiveAuth := func(handler http.HandlerFunc) http.HandlerFunc {
-		handler = wrapAuth(handler)
-		if h.loginRateLimiter != nil {
-			return LoginRateLimitMiddleware(h.loginRateLimiter, h.proxyResolver, handler)
+	// Each sensitive route gets its own buckets with the login limit's
+	// settings, so failed logins from an address can't also block that
+	// address's token refreshes or password changes, and the other way round.
+	strictLimit := func(handler http.HandlerFunc) http.HandlerFunc {
+		if h.loginRateLimiter == nil {
+			return handler
 		}
-		return handler
+		limiter := NewRateLimiter(h.loginRateLimiter.requests, h.loginRateLimiter.window)
+		return LoginRateLimitMiddleware(limiter, h.proxyResolver, handler)
+	}
+
+	wrapSensitiveAuth := func(handler http.HandlerFunc) http.HandlerFunc {
+		return strictLimit(wrapAuth(handler))
 	}
 
 	wrapSensitiveNoAuth := func(handler http.HandlerFunc) http.HandlerFunc {
-		handler = LimitBody(handler)
-		if h.loginRateLimiter != nil {
-			return LoginRateLimitMiddleware(h.loginRateLimiter, h.proxyResolver, handler)
-		}
-		return handler
+		return strictLimit(LimitBody(handler))
 	}
 
 	// Datacenter routes (RBAC enforced in service layer)

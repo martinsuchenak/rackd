@@ -38,6 +38,20 @@ func (s *SQLiteSessionStore) Save(ctx context.Context, session *auth.Session) er
 	return err
 }
 
+// Extend sets an existing session's expiry; it never creates a session.
+func (s *SQLiteSessionStore) Extend(ctx context.Context, token string, expiresAt time.Time) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE sessions SET expires_at = ? WHERE token = ?`, expiresAt.UTC(), token)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return auth.ErrSessionNotFound
+	}
+	return nil
+}
+
 // Get retrieves a session by token
 func (s *SQLiteSessionStore) Get(ctx context.Context, token string) (*auth.Session, error) {
 	var sess auth.Session

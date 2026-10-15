@@ -11,6 +11,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Upgrading from v0.1.0
 
+- Login (`POST /api/v1/auth/login`) now requires `Content-Type: application/json`.
+  Scripts that post JSON without that header get `415`.
+- Sessions now end 7 days after sign-in even if used every day; set
+  `SESSION_MAX_LIFETIME` to change this, or `0` for the old behaviour.
 - `is_admin` now always matches the admin role. A migration sets it for users who
   hold the role and clears it for users who don't, so users created with
   `is_admin` but never given the role (and who never had admin rights) no longer
@@ -109,6 +113,31 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- **Security:** sessions and OAuth tokens could outlive revocation, and sign-in
+  could be abused:
+  - Sessions never re-checked their user, and the refresh on each request was an
+    upsert, so a request in flight could bring back a session that a password
+    reset or deactivation had just deleted. Refresh now only extends existing
+    sessions, and every request rejects a session whose user is missing or
+    inactive.
+  - Sessions had no absolute lifetime. They now end 7 days after sign-in
+    (`SESSION_MAX_LIFETIME`).
+  - When a reused OAuth refresh token was detected, only the tokens issued
+    directly from it were revoked, so a thief who refreshed first kept a working
+    refresh token. Revocation now covers every descendant. Two refreshes of the
+    same token at once no longer both succeed.
+  - A password change or reset now revokes the user's OAuth tokens.
+  - A cross-site form could sign a visitor into another account (login CSRF).
+    Login now requires `Content-Type: application/json`.
+  - The login page's `?redirect=` could send users to another site with a path
+    like `/.//evil.example`.
+  - Guessing from many addresses got around the per-address login limit. Failed
+    sign-ins are now also limited per account (`LOGIN_ACCOUNT_MAX_FAILURES`,
+    `LOGIN_ACCOUNT_WINDOW`).
+  - Login, OAuth, API key, user and bulk routes shared one rate-limit bucket per
+    address, so failed logins could block token refreshes. Each now has its own.
+  - The OAuth consent page now shows where an approval sends access, and warns
+    that the application's name can't be verified.
 - **Security:** several ways to overload the server or reach places it shouldn't:
   - Overlapping-subnet detection compared every pair of networks and listed every
     recorded conflict once per new one. An operator could create thousands of

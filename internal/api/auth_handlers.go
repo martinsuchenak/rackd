@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"mime"
 	"net/http"
 	"time"
 
@@ -37,6 +38,15 @@ func (h *Handler) clearSessionCookie(w http.ResponseWriter) {
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+	// A cross-site page can POST a form (text/plain can even carry JSON), and
+	// would sign the visitor into the attacker's account. Browsers only send
+	// application/json cross-site after a CORS preflight, which Rackd never
+	// grants, so requiring it stops login CSRF.
+	if mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mediaType != "application/json" {
+		h.writeError(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Login requires Content-Type: application/json")
+		return
+	}
+
 	var req model.LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -56,6 +66,10 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.svc.Auth.Login(r.Context(), req.Username, req.Password)
 	if err != nil {
+		if errors.Is(err, service.ErrTooManyLoginAttempts) {
+			h.writeError(w, http.StatusTooManyRequests, "TOO_MANY_ATTEMPTS", err.Error())
+			return
+		}
 		if errors.Is(err, service.ErrUnauthenticated) {
 			// Deliberately vague: never reveal whether the username exists.
 			h.writeError(w, http.StatusUnauthorized, "INVALID_CREDENTIALS", "Invalid username or password")

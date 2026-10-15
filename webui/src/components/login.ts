@@ -13,6 +13,21 @@ interface LoginData {
   showError(message: string): void;
 }
 
+/**
+ * Where to go after signing in: the redirect parameter if it is on this
+ * origin, otherwise "/". It returns an absolute URL: a path such as
+ * "//evil.example" (from "/.//evil.example") would be read as another host.
+ */
+export function loginRedirectTarget(redirect: string | null, origin: string): string {
+  if (!redirect) return '/';
+  try {
+    const url = new URL(redirect, origin);
+    return url.origin === origin ? url.href : '/';
+  } catch {
+    return '/';
+  }
+}
+
 export function login() {
   return {
     username: '',
@@ -49,22 +64,7 @@ export function login() {
 
         // Cookie is set by the server (httpOnly) — just redirect
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect');
-        // Security: only navigate to same-origin paths. Resolving via URL and
-        // comparing origins defeats encoded-host tricks like /\evil.com and
-        // //evil.com (browsers normalize backslashes to slashes).
-        if (redirect) {
-          try {
-            const url = new URL(redirect, window.location.origin);
-            if (url.origin === window.location.origin) {
-              window.location.href = url.pathname + url.search + url.hash;
-              return;
-            }
-          } catch {
-            // fall through to default
-          }
-        }
-        window.location.href = '/';
+        window.location.href = loginRedirectTarget(params.get('redirect'), window.location.origin);
       } catch (err) {
         this.showError(err instanceof Error && err.message ? err.message : 'Login failed');
       } finally {

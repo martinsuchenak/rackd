@@ -227,8 +227,8 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 	}
 	// Deactivating a user must terminate their live sessions immediately;
 	// otherwise a suspended account keeps access until cookie expiry.
-	if deactivate && s.sessions != nil {
-		s.sessions.InvalidateUserSessions(id)
+	if deactivate {
+		s.endAccess(ctx, id)
 	}
 	if adminRoleChange != nil {
 		if err := adminRoleChange(); err != nil {
@@ -275,9 +275,7 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	if s.sessions != nil {
-		s.sessions.InvalidateUserSessions(id)
-	}
+	s.endAccess(ctx, id)
 
 	return nil
 }
@@ -327,9 +325,7 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	}
 
 	// Invalidate all sessions for this user to prevent old sessions from remaining active
-	if s.sessions != nil {
-		s.sessions.InvalidateUserSessions(id)
-	}
+	s.endAccess(ctx, id)
 
 	return nil
 }
@@ -369,9 +365,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 	}
 
 	// Invalidate all sessions for this user to prevent old sessions from remaining active
-	if s.sessions != nil {
-		s.sessions.InvalidateUserSessions(id)
-	}
+	s.endAccess(ctx, id)
 
 	return nil
 }
@@ -431,6 +425,18 @@ func (s *UserService) GetCurrentUserWithPermissions(ctx context.Context) (*model
 		Roles:       roles,
 		Permissions: permissions,
 	}, nil
+}
+
+// endAccess signs the user out everywhere: their sessions end and their
+// OAuth tokens are revoked, so a stolen session or token can't outlive a
+// password change. API keys are kept; their owners manage them.
+func (s *UserService) endAccess(ctx context.Context, userID string) {
+	if s.sessions != nil {
+		s.sessions.InvalidateUserSessions(userID)
+	}
+	if err := s.store.RevokeOAuthTokensByUser(ctx, userID); err != nil {
+		log.Error("Failed to revoke OAuth tokens", "user_id", userID, "error", err)
+	}
 }
 
 func (s *UserService) isAdmin(ctx context.Context) bool {

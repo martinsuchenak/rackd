@@ -255,27 +255,32 @@ func (s *SQLiteStorage) RevokeOAuthToken(ctx context.Context, tokenID string) er
 	return err
 }
 
-// RevokeOAuthTokenChain revokes all tokens in a refresh token chain.
-// This is called when refresh token replay is detected to prevent further abuse.
-// It revokes all access tokens that were issued using the compromised refresh token,
-// as well as any descendant refresh tokens.
-func (s *SQLiteStorage) RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error {
-	now := nowUTC()
-
-	// First revoke all access tokens that have this refresh token as parent
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE oauth_tokens SET revoked_at = ?
-		WHERE parent_token_id = ? AND revoked_at IS NULL
-	`, now, refreshTokenID)
+// ClaimOAuthToken revokes tokenID if it isn't revoked yet and reports whether
+// this call did. Refresh uses it so a token can be exchanged only once, even
+// by two requests at the same moment.
+func (s *SQLiteStorage) ClaimOAuthToken(ctx context.Context, tokenID string) (bool, error) {
+	res, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, nowUTC(), tokenID)
 	if err != nil {
-		return err
+		return false, err
 	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
 
-	// Then revoke the refresh token itself
-	_, err = s.db.ExecContext(ctx, `
+// RevokeOAuthTokenChain revokes a refresh token and every token descended
+// from it. It is called when refresh token replay is detected: each rotation
+// issues an access token whose child is the next refresh token, so a thief who
+// refreshed first holds a grandchild, which revoking direct children missed.
+func (s *SQLiteStorage) RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		WITH RECURSIVE chain(id) AS (
+			SELECT ?
+			UNION
+			SELECT t.id FROM oauth_tokens t JOIN chain c ON t.parent_token_id = c.id
+		)
 		UPDATE oauth_tokens SET revoked_at = ?
-		WHERE id = ? AND revoked_at IS NULL
-	`, now, refreshTokenID)
+		WHERE id IN (SELECT id FROM chain) AND revoked_at IS NULL
+	`, refreshTokenID, nowUTC())
 	return err
 }
 

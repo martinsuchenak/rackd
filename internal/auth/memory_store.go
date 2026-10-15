@@ -26,6 +26,19 @@ func (m *MemorySessionStore) Save(ctx context.Context, session *Session) error {
 	return nil
 }
 
+func (m *MemorySessionStore) Extend(ctx context.Context, token string, expiresAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	session, exists := m.sessions[token]
+	if !exists {
+		return ErrSessionNotFound
+	}
+	updated := *session
+	updated.ExpiresAt = expiresAt
+	m.sessions[token] = &updated
+	return nil
+}
+
 func (m *MemorySessionStore) Get(ctx context.Context, token string) (*Session, error) {
 	m.mu.RLock()
 	session, exists := m.sessions[token]
@@ -40,7 +53,9 @@ func (m *MemorySessionStore) Get(ctx context.Context, token string) (*Session, e
 		return nil, ErrSessionExpired
 	}
 
-	return session, nil
+	// A copy, so callers can't change the stored session.
+	copied := *session
+	return &copied, nil
 }
 
 func (m *MemorySessionStore) Delete(ctx context.Context, token string) error {

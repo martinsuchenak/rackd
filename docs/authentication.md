@@ -19,13 +19,17 @@ Content-Type: application/json
 {"username": "admin", "password": "your-password"}
 ```
 
+Login requires `Content-Type: application/json` (other types get `415`), so a page on another site can't submit a form that signs a visitor into a different account.
+
 Session properties:
-- 24-hour TTL (configurable via `SESSION_TTL`)
-- HttpOnly, SameSite=Lax cookies
+- Expire 24 hours after last use (`SESSION_TTL`), and 7 days after sign-in however often they are used (`SESSION_MAX_LIFETIME`)
+- HttpOnly, SameSite=Strict cookies
 - `Secure` flag enabled by default (`COOKIE_SECURE=true`)
 - CSRF protection via `X-Requested-With: XMLHttpRequest` header on state-changing requests
-- Sessions invalidated on password change
+- End when the user changes or has their password reset, is deactivated or deleted; every request checks that the user still exists and is active
 - Stored in SQLite or Valkey (`SESSION_STORE_TYPE`)
+
+Sign-in is limited per address (`LOGIN_RATE_LIMIT_REQUESTS` per `LOGIN_RATE_LIMIT_WINDOW`) and per account: after `LOGIN_ACCOUNT_MAX_FAILURES` failed attempts (default 10) within `LOGIN_ACCOUNT_WINDOW` (default 15 minutes), further attempts on that account get `429 TOO_MANY_ATTEMPTS`, even with the right password, until the window passes. Unknown usernames are counted the same way. Each Rackd instance counts separately.
 
 Related endpoints:
 - `POST /api/v1/auth/logout` — destroy session
@@ -128,7 +132,9 @@ Client management:
 Token properties:
 - Access token TTL: 1 hour (configurable via `MCP_OAUTH_ACCESS_TOKEN_TTL`)
 - Refresh token TTL: 30 days (configurable via `MCP_OAUTH_REFRESH_TOKEN_TTL`)
-- Refresh token rotation with replay detection
+- Refresh token rotation with replay detection: a refresh token works once. If it is used again, or twice at the same moment, every token issued from it is revoked, including those of whoever used it first.
+- A password change or reset, deactivation or deletion revokes the user's OAuth tokens. API keys are kept; delete them separately if they may be compromised.
+- Clients register themselves, so the consent page warns that their name isn't verified and shows the host the approval sends access to.
 
 ## RBAC
 
@@ -180,7 +186,7 @@ server, and invalidates all active sessions for the user.
 
 ## Security Notes
 
-- Rate limiting is enabled by default (100 req/min API, 5 req/min login)
+- Rate limiting is enabled by default (100 req/min API, 5 req/min login). Login, OAuth endpoints, API key and user management, password changes and bulk operations each have their own per-address limit with the login settings, so one can't exhaust another
 - Session cookies are `Secure` by default — use `--dev-mode` for local HTTP
 - API key last-used timestamps are updated asynchronously for auditing, at most once a minute per key, so they are accurate to about a minute
 - All authentication events are recorded in the audit log when `AUDIT_ENABLED=true`

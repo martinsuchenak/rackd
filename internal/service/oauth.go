@@ -539,6 +539,22 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 		scope = auth.JoinScopes(effectiveScopes)
 	}
 
+	// Use up the refresh token before issuing anything. If another request
+	// claimed it first, the token was used twice: treat it as a replay.
+	claimed, err := s.store.ClaimOAuthToken(ctx, refreshToken.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !claimed {
+		log.Warn("OAuth refresh token used concurrently - revoking token chain",
+			"token_id", refreshToken.ID,
+			"client_id", refreshToken.ClientID,
+			"user_id", refreshToken.UserID,
+		)
+		_ = s.store.RevokeOAuthTokenChain(ctx, refreshToken.ID)
+		return nil, storage.ErrOAuthTokenRevoked
+	}
+
 	// Create new access token
 	accessPlain, accessHash, err := auth.GenerateOAuthToken()
 	if err != nil {
@@ -575,12 +591,6 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 	}
 	if err := s.store.CreateOAuthToken(ctx, newRefreshToken); err != nil {
 		return nil, err
-	}
-
-	// Revoke the old refresh token
-	if err := s.store.RevokeOAuthToken(ctx, refreshToken.ID); err != nil {
-		log.Error("Failed to revoke old refresh token during rotation", "error", err)
-		// Continue anyway - the new token is already created
 	}
 
 	return &model.OAuthTokenResponse{

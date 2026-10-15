@@ -90,17 +90,32 @@ func (m *mockOAuthStorage) RevokeOAuthToken(_ context.Context, tokenID string) e
 	return nil
 }
 
+func (m *mockOAuthStorage) ClaimOAuthToken(_ context.Context, tokenID string) (bool, error) {
+	token, ok := m.tokens[tokenID]
+	if !ok || token.RevokedAt != nil {
+		return false, nil
+	}
+	now := time.Now().UTC()
+	token.RevokedAt = &now
+	return true, nil
+}
+
 func (m *mockOAuthStorage) RevokeOAuthTokenChain(_ context.Context, refreshTokenID string) error {
 	now := time.Now().UTC()
-	// Revoke all tokens that have this refresh token as parent
-	for _, token := range m.tokens {
-		if token.ParentTokenID == refreshTokenID {
-			token.RevokedAt = &now
+	// Revoke the token and all its descendants.
+	chain := map[string]bool{refreshTokenID: true}
+	for grew := true; grew; {
+		grew = false
+		for id, token := range m.tokens {
+			if !chain[id] && chain[token.ParentTokenID] {
+				chain[id], grew = true, true
+			}
 		}
 	}
-	// Revoke the refresh token itself
-	if token, ok := m.tokens[refreshTokenID]; ok {
-		token.RevokedAt = &now
+	for id := range chain {
+		if token, ok := m.tokens[id]; ok && token.RevokedAt == nil {
+			token.RevokedAt = &now
+		}
 	}
 	return nil
 }
