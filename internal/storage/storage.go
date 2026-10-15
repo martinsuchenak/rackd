@@ -47,6 +47,9 @@ var (
 	ErrRoleNotFound        = errors.New("role not found")
 	ErrPermissionNotFound  = errors.New("permission not found")
 	ErrConflictNotFound    = errors.New("conflict not found")
+	// ErrConflictRecorded is returned when an active duplicate-IP conflict
+	// for the address already exists.
+	ErrConflictRecorded = errors.New("an active conflict is already recorded for this address")
 )
 
 // DeviceStorage defines device persistence operations
@@ -117,6 +120,7 @@ type DiscoveryStorage interface {
 	// Discovered devices
 	CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error
 	UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error
+	SaveDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) (created bool, err error)
 	GetDiscoveredDevice(ctx context.Context, id string) (*model.DiscoveredDevice, error)
 	GetDiscoveredDeviceByIP(ctx context.Context, networkID, ip string) (*model.DiscoveredDevice, error)
 	ListDiscoveredDevices(ctx context.Context, networkID string) ([]model.DiscoveredDevice, error)

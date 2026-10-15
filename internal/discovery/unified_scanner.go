@@ -343,20 +343,12 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 
 			device := s.discoverHostWithOptions(scanCtx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
-				existing, _ := s.storage.GetDiscoveredDeviceByIP(ctx, network.ID, ip)
-				if existing != nil {
-					device.ID = existing.ID
-					device.FirstSeen = existing.FirstSeen
-					if err := s.storage.UpdateDiscoveredDevice(ctx, device); err != nil {
-						log.Printf("discovery: failed to update device %s: %v", ip, err)
-					}
-				} else {
-					if err := s.storage.CreateDiscoveredDevice(ctx, device); err != nil {
-						log.Printf("discovery: failed to create device %s: %v", ip, err)
-					} else {
-						found := *device
-						webhook.Publish(model.EventTypeDeviceDiscovered, &found)
-					}
+				created, err := s.storage.SaveDiscoveredDevice(ctx, device)
+				if err != nil {
+					log.Printf("discovery: failed to save device %s: %v", ip, err)
+				} else if created {
+					found := *device
+					webhook.Publish(model.EventTypeDeviceDiscovered, &found)
 				}
 
 				scanMu.Lock()

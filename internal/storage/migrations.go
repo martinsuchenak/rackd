@@ -263,6 +263,18 @@ var migrations = []*Migration{
 		Up:      migrateAddMetricsReadUp,
 		Down:    migrateAddMetricsReadDown,
 	},
+	{
+		Version: "20261015160000",
+		Name:    "one_active_conflict_per_duplicate_ip",
+		Up:      migrateUniqueActiveDuplicateIPConflictUp,
+		Down:    migrateUniqueActiveDuplicateIPConflictDown,
+	},
+	{
+		Version: "20261015170000",
+		Name:    "one_discovered_device_per_network_ip",
+		Up:      migrateUniqueDiscoveredDeviceUp,
+		Down:    migrateUniqueDiscoveredDeviceDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3122,4 +3134,67 @@ func migrateAddMetricsReadDown(ctx context.Context, tx sqlTx) error {
 		}
 	}
 	return nil
+}
+
+// migrateUniqueActiveDuplicateIPConflictUp allows one active duplicate-IP
+// conflict per address, so concurrent device writes can't each record one.
+// Extra active records already there are resolved as duplicates, keeping the
+// first detected.
+func migrateUniqueActiveDuplicateIPConflictUp(ctx context.Context, tx sqlTx) error {
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE conflicts
+		SET status = 'resolved', resolved_at = ?, resolved_by = 'system',
+			notes = COALESCE(notes, 'Duplicate record of another conflict for this address')
+		WHERE type = 'duplicate_ip' AND status = 'active' AND id NOT IN (
+			SELECT id FROM (
+				SELECT id, ROW_NUMBER() OVER (PARTITION BY ip_address ORDER BY detected_at, id) AS n
+				FROM conflicts WHERE type = 'duplicate_ip' AND status = 'active'
+			) WHERE n = 1
+		)
+	`, nowUTC()); err != nil {
+		return fmt.Errorf("failed to resolve duplicate conflict records: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_conflicts_active_duplicate_ip
+		ON conflicts(ip_address) WHERE type = 'duplicate_ip' AND status = 'active'
+	`); err != nil {
+		return fmt.Errorf("failed to create conflict index: %w", err)
+	}
+	return nil
+}
+
+func migrateUniqueActiveDuplicateIPConflictDown(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_conflicts_active_duplicate_ip`)
+	return err
+}
+
+// migrateUniqueDiscoveredDeviceUp allows one discovered device per address in
+// a network, so overlapping scans can't each record the same host. Of the
+// duplicates already there it keeps the promoted record, else the one seen
+// last.
+func migrateUniqueDiscoveredDeviceUp(ctx context.Context, tx sqlTx) error {
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM discovered_devices WHERE network_id IS NOT NULL AND id NOT IN (
+			SELECT id FROM (
+				SELECT id, ROW_NUMBER() OVER (
+					PARTITION BY network_id, ip
+					ORDER BY promoted_to_device_id IS NULL, last_seen DESC, id
+				) AS n
+				FROM discovered_devices WHERE network_id IS NOT NULL
+			) WHERE n = 1
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to remove duplicate discovered devices: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_discovered_devices_network_ip ON discovered_devices(network_id, ip)
+	`); err != nil {
+		return fmt.Errorf("failed to create discovered device index: %w", err)
+	}
+	return nil
+}
+
+func migrateUniqueDiscoveredDeviceDown(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_discovered_devices_network_ip`)
+	return err
 }
