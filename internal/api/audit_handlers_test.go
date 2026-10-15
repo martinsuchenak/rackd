@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -57,5 +58,28 @@ func TestAuditHandlers_SourceFilterAndDetailEndpoints(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "cli") {
 		t.Fatalf("expected CSV export to include source, got %s", w.Body.String())
+	}
+}
+
+// A time filter that doesn't parse must be rejected: ignoring it returned
+// every entry, the opposite of what was asked (found by the black-box pass).
+func TestTimeFiltersRejectBadValues(t *testing.T) {
+	h, store := setupTestHandler(t)
+	defer func() { _ = store.Close() }()
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	for _, path := range []string{"/api/v1/audit", "/api/v1/audit/export", "/api/v1/logs", "/api/v1/logs/export"} {
+		for query, want := range map[string]int{
+			"?start_time=garbage":                                                http.StatusBadRequest,
+			"?end_time=%27+AND+%271%27%3D%271%27+--+":                            http.StatusBadRequest,
+			"?start_time=2026-10-15T00:00:00Z&end_time=2026-10-14T00:00:00Z":     http.StatusBadRequest,
+			"?start_time=2026-10-14T00:00:00.000Z&end_time=2026-10-15T00:00:00Z": http.StatusOK,
+		} {
+			w := performRequest(mux, authReq(httptest.NewRequest("GET", path+query, nil)))
+			if w.Code != want {
+				t.Errorf("GET %s%s: got %d, want %d: %s", path, query, w.Code, want, w.Body.String())
+			}
+		}
 	}
 }

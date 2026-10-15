@@ -5,23 +5,27 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/martinsuchenak/rackd/internal/storage"
 )
 
 func TestMetricsHandler(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	h, store := setupTestHandler(t)
 	defer func() { _ = store.Close() }()
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
 
-	handler := NewHandler(store, nil)
+	t.Run("needs metrics:read", func(t *testing.T) {
+		_, token := createAPIUserForStore(t, store, "metrics-no-role")
+		w := performRequest(mux, authReqWithToken(httptest.NewRequest("GET", "/metrics", nil), token))
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("user without metrics:read got %d, want 403", w.Code)
+		}
+		w = performRequest(mux, httptest.NewRequest("GET", "/metrics", nil))
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("anonymous got %d, want 401", w.Code)
+		}
+	})
 
-	req := httptest.NewRequest("GET", "/metrics", nil)
-	w := httptest.NewRecorder()
-
-	handler.metricsHandler(w, req)
+	w := performRequest(mux, authReq(httptest.NewRequest("GET", "/metrics", nil)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)

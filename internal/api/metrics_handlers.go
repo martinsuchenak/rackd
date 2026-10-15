@@ -9,6 +9,11 @@ import (
 
 // metricsHandler serves Prometheus-compatible metrics
 func (h *Handler) metricsHandler(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.Authorize(r.Context(), "metrics", "read"); err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
 	// Update current counts
 	h.updateMetricsCounts(r.Context())
 

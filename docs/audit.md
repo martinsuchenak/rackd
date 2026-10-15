@@ -141,8 +141,8 @@ GET /api/v1/audit/export
 - `resource` - Filter by resource type
 - `resource_id` - Filter by resource ID
 - `user_id` - Filter by user ID
-- `start_time` - Filter by start time
-- `end_time` - Filter by end time
+- `start_time` - Filter by start time (RFC3339)
+- `end_time` - Filter by end time (RFC3339)
 
 **Examples:**
 

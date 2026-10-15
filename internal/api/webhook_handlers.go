@@ -114,7 +114,7 @@ func (h *Handler) pingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeJSON(w, http.StatusOK, map[string]any{
-		"message":  "Webhook ping sent successfully",
+		"message":  "Webhook ping delivered",
 		"delivery": delivery,
 	})
 }

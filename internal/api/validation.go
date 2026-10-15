@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // ValidationError represents a validation failure
@@ -42,4 +44,27 @@ func ValidateNewID(id string) ValidationErrors {
 		return nil
 	}
 	return ValidationErrors{{Field: "id", Message: "id must be a UUID, or omitted so Rackd assigns one"}}
+}
+
+// timeRangeParams reads the start_time and end_time query parameters (RFC
+// 3339). A value that doesn't parse is an error rather than ignored, which
+// would silently widen the filter to everything.
+func timeRangeParams(r *http.Request) (start, end *time.Time, errs ValidationErrors) {
+	parse := func(name string) *time.Time {
+		v := r.URL.Query().Get(name)
+		if v == "" {
+			return nil
+		}
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			errs = append(errs, ValidationError{Field: name, Message: name + " must be an RFC 3339 time, such as 2026-10-15T00:00:00Z"})
+			return nil
+		}
+		return &t
+	}
+	start, end = parse("start_time"), parse("end_time")
+	if start != nil && end != nil && end.Before(*start) {
+		errs = append(errs, ValidationError{Field: "end_time", Message: "end_time is before start_time"})
+	}
+	return start, end, errs
 }

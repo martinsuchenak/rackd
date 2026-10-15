@@ -84,10 +84,13 @@ Rackd exposes Prometheus-compatible metrics at `/metrics` endpoint.
 ### Accessing Metrics
 
 ```bash
-curl http://localhost:8080/metrics
+curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics
 ```
 
-**Note**: Metrics endpoint does not require authentication.
+The endpoint needs an API key or session whose user holds `metrics:read`. The
+built-in admin, operator and viewer roles have it. For Prometheus, create a
+user with a role holding only `metrics:read` and give the scraper that user's
+API key.
 
 ### Available Metrics
 
@@ -129,6 +132,9 @@ scrape_configs:
       - targets: ['localhost:8080']
     metrics_path: '/metrics'
     scrape_interval: 30s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/rackd-api-key
 ```
 
 ### Example Queries
@@ -346,6 +352,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
+        # The scrape job also needs an API key with metrics:read; see Prometheus Configuration.
     spec:
       containers:
       - name: rackd
@@ -379,7 +386,7 @@ spec:
 
 1. Check that `/metrics` endpoint is accessible:
    ```bash
-   curl http://localhost:8080/metrics
+   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics
    ```
 
 2. Verify Prometheus is scraping:
@@ -407,12 +414,12 @@ spec:
 
 1. Check current memory metrics:
    ```bash
-   curl http://localhost:8080/metrics | grep go_memory
+   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics | grep go_memory
    ```
 
 2. Monitor goroutine count:
    ```bash
-   curl http://localhost:8080/metrics | grep go_goroutines
+   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics | grep go_goroutines
    ```
 
 3. Consider increasing memory limits or investigating memory leaks

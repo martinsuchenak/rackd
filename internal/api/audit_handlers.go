@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -19,16 +18,10 @@ func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
 		Source:     r.URL.Query().Get("source"),
 	}
 
-	if start := r.URL.Query().Get("start_time"); start != "" {
-		if t, err := time.Parse(time.RFC3339, start); err == nil {
-			filter.StartTime = &t
-		}
-	}
-
-	if end := r.URL.Query().Get("end_time"); end != "" {
-		if t, err := time.Parse(time.RFC3339, end); err == nil {
-			filter.EndTime = &t
-		}
+	var errs ValidationErrors
+	if filter.StartTime, filter.EndTime, errs = timeRangeParams(r); errs != nil {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	logs, err := h.svc.Audit.List(r.Context(), filter)
@@ -66,16 +59,10 @@ func (h *Handler) exportAuditLogs(w http.ResponseWriter, r *http.Request) {
 		Source:     r.URL.Query().Get("source"),
 	}
 
-	if start := r.URL.Query().Get("start_time"); start != "" {
-		if t, err := time.Parse(time.RFC3339, start); err == nil {
-			filter.StartTime = &t
-		}
-	}
-
-	if end := r.URL.Query().Get("end_time"); end != "" {
-		if t, err := time.Parse(time.RFC3339, end); err == nil {
-			filter.EndTime = &t
-		}
+	var errs ValidationErrors
+	if filter.StartTime, filter.EndTime, errs = timeRangeParams(r); errs != nil {
+		h.writeValidationErrors(w, errs)
+		return
 	}
 
 	data, err := h.svc.Audit.Export(r.Context(), filter, format)

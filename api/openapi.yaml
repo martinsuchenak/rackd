@@ -2626,6 +2626,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AuditLog'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -2671,6 +2672,7 @@ paths:
             text/csv:
               schema:
                 type: string
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -2725,6 +2727,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LogEntry'
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -2764,6 +2767,7 @@ paths:
             text/csv:
               schema:
                 type: string
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -3697,14 +3701,23 @@ paths:
       tags: [Webhooks]
       responses:
         '200':
-          description: Ping sent
+          description: The test event was delivered
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebhookDelivery'
+                type: object
+                required: [message, delivery]
+                properties:
+                  message: { type: string }
+                  delivery: { $ref: '#/components/schemas/WebhookDelivery' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
+        '502':
+          description: The receiver couldn't be reached or didn't answer 2xx (`WEBHOOK_UNREACHABLE`); the message gives the cause
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /api/v1/webhooks/{id}/deliveries:
     parameters:

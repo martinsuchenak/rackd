@@ -55,6 +55,8 @@ func toolError(err error) error {
 		errors.Is(err, service.ErrIPNotAvailable), errors.Is(err, discovery.ErrTooManyScans),
 		errors.Is(err, discovery.ErrScanNotRunning):
 		return mcp.NewToolError(errCodeConflict, err.Error(), nil)
+	case errors.Is(err, service.ErrWebhookPingFailed):
+		return mcp.NewToolError(errCodeUpstream, err.Error(), nil)
 	case errors.Is(err, service.ErrSystemRole), errors.Is(err, service.ErrSelfDelete):
 		return mcp.NewToolErrorInvalidParams(err.Error())
 	}

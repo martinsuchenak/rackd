@@ -37,7 +37,7 @@ func PingCommand() *cli.Command {
 				return err
 			}
 
-			fmt.Println("Webhook ping sent successfully")
+			fmt.Println("Webhook ping delivered")
 			client.PrintJSON(result)
 			return nil
 		},

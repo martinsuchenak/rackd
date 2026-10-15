@@ -311,7 +311,7 @@ export function webhookComponent(): WebhookData {
       try {
         await api.pingWebhook(id);
         window.dispatchEvent(new CustomEvent('toast:success', {
-          detail: { message: 'Test event sent successfully' }
+          detail: { message: 'Test event delivered' }
         }));
       } catch (e) {
         console.error('Failed to ping webhook:', e);
