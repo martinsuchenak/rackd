@@ -59,9 +59,6 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 	profile.ID = id
 	applyScanProfileDefaults(profile)
 	if err := s.store.Update(ctx, profile); err != nil {
-		if errors.Is(err, storage.ErrProfileNotFound) {
-			return ErrNotFound
-		}
 		return NormalizeError(err)
 	}
 

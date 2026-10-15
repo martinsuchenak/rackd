@@ -68,9 +68,6 @@ func (s *ScheduledScanService) Update(ctx context.Context, id string, scan *mode
 		return errs
 	}
 	if err := s.store.Update(scan); err != nil {
-		if errors.Is(err, storage.ErrScheduledScanNotFound) {
-			return ErrNotFound
-		}
 		return NormalizeError(err)
 	}
 
