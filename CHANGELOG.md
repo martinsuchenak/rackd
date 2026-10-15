@@ -17,6 +17,15 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   interface. `task release` now waits for CI to pass on the release commit
   instead of rerunning the suite locally.
 
+### Fixed
+
+- A discovery scan could make the whole server stop responding on slow or
+  network storage: every scan worker wrote the scan's progress after each
+  host, and saved what it found, at the same time, which took every database
+  connection, so even `/api/v1/config` timed out with a 503. A scan now saves
+  results from one goroutine and writes progress every two seconds, so it
+  holds at most two connections.
+
 ## [0.3.0] - 2026-10-15
 
 ### Changed
