@@ -490,14 +490,8 @@ func (s *SQLiteStorage) AssignRoleToUser(ctx context.Context, userID, roleID str
 		return ErrInvalidID
 	}
 
-	query := `INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at) VALUES (?, ?, ?)`
-
-	_, err := s.db.ExecContext(ctx, query, userID, roleID, nowUTC())
-	if err != nil {
-		return fmt.Errorf("failed to assign role to user: %w", err)
-	}
-
-	return nil
+	return s.changeUserRoles(ctx, userID, `INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at) VALUES (?, ?, ?)`,
+		userID, roleID, nowUTC())
 }
 
 func (s *SQLiteStorage) RemoveRoleFromUser(ctx context.Context, userID, roleID string) error {
@@ -505,12 +499,25 @@ func (s *SQLiteStorage) RemoveRoleFromUser(ctx context.Context, userID, roleID s
 		return ErrInvalidID
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`, userID, roleID)
-	if err != nil {
-		return fmt.Errorf("failed to remove role from user: %w", err)
-	}
+	return s.changeUserRoles(ctx, userID, `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`, userID, roleID)
+}
 
-	return nil
+// changeUserRoles runs a change to a user's roles and updates the user's
+// is_admin to match, in one transaction.
+func (s *SQLiteStorage) changeUserRoles(ctx context.Context, userID, query string, args ...any) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to change user roles: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, syncIsAdminSQL+` WHERE id = ?`, userID); err != nil {
+		return fmt.Errorf("failed to update is_admin: %w", err)
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStorage) RBACManager() *rbac.Manager { return s.rbacManager }

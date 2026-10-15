@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -14,10 +13,11 @@ import (
 
 type RoleService struct {
 	store storage.ExtendedStorage
+	guard privilegeGuard
 }
 
 func NewRoleService(store storage.ExtendedStorage) *RoleService {
-	return &RoleService{store: store}
+	return &RoleService{store: store, guard: privilegeGuard{store: store}}
 }
 
 func (s *RoleService) List(ctx context.Context, filter *model.RoleFilter) ([]model.Role, error) {
@@ -104,6 +104,15 @@ func (s *RoleService) Delete(ctx context.Context, id string) error {
 		return ErrSystemRole
 	}
 
+	// Deleting a role takes its permissions from everyone who has it.
+	perms, err := s.store.GetRolePermissions(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.guard.requireHolds(ctx, perms); err != nil {
+		return err
+	}
+
 	return s.store.DeleteRole(ctx, id)
 }
 
@@ -129,6 +138,14 @@ func (s *RoleService) GrantPermission(ctx context.Context, roleID, permissionID 
 		return ErrSystemRole
 	}
 
+	perm, err := s.findPermission(ctx, permissionID)
+	if err != nil {
+		return err
+	}
+	if err := s.guard.requireHolds(ctx, []model.Permission{*perm}); err != nil {
+		return err
+	}
+
 	return s.store.AddRolePermission(ctx, roleID, permissionID)
 }
 
@@ -144,6 +161,14 @@ func (s *RoleService) RevokePermission(ctx context.Context, roleID, permissionID
 
 	if role.IsSystem {
 		return ErrSystemRole
+	}
+
+	perm, err := s.findPermission(ctx, permissionID)
+	if err != nil {
+		return err
+	}
+	if err := s.guard.requireHolds(ctx, []model.Permission{*perm}); err != nil {
+		return err
 	}
 
 	return s.store.RemoveRolePermission(ctx, roleID, permissionID)
@@ -173,17 +198,54 @@ func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permiss
 	if err != nil {
 		return err
 	}
-	valid := make(map[string]bool, len(perms))
+	byID := make(map[string]model.Permission, len(perms))
 	for _, p := range perms {
-		valid[p.ID] = true
+		byID[p.ID] = p
 	}
+	wanted := make(map[string]bool, len(permissionIDs))
 	for _, id := range permissionIDs {
-		if !valid[id] {
+		if _, ok := byID[id]; !ok {
 			return ValidationErrors{{Field: "permissions", Message: "Unknown permission ID: " + id}}
 		}
+		wanted[id] = true
+	}
+
+	// The caller must hold every permission this adds or removes.
+	current, err := s.store.GetRolePermissions(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	had := make(map[string]bool, len(current))
+	var changed []model.Permission
+	for _, p := range current {
+		had[p.ID] = true
+		if !wanted[p.ID] {
+			changed = append(changed, p)
+		}
+	}
+	for id := range wanted {
+		if !had[id] {
+			changed = append(changed, byID[id])
+		}
+	}
+	if err := s.guard.requireHolds(ctx, changed); err != nil {
+		return err
 	}
 
 	return s.store.SetRolePermissions(ctx, roleID, permissionIDs)
+}
+
+func (s *RoleService) findPermission(ctx context.Context, id string) (*model.Permission, error) {
+	perms, err := s.store.ListPermissions(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	for i := range perms {
+		if perms[i].ID == id {
+			return &perms[i], nil
+		}
+	}
+	return nil, ValidationErrors{{Field: "permission_id", Message: "Unknown permission ID: " + id}}
 }
 
 func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) error {
@@ -191,14 +253,8 @@ func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) e
 		return err
 	}
 
-	role, err := s.store.GetRole(ctx, roleID)
-	if err != nil {
+	if _, err := s.guard.requireRole(ctx, roleID); err != nil {
 		return err
-	}
-
-	// Only admins can assign admin or system roles
-	if (role.Name == "admin" || role.IsSystem) && !s.isAdmin(ctx) {
-		return ErrForbidden
 	}
 
 	return s.store.AssignRoleToUser(ctx, userID, roleID)
@@ -209,14 +265,18 @@ func (s *RoleService) RevokeFromUser(ctx context.Context, userID, roleID string)
 		return err
 	}
 
-	role, err := s.store.GetRole(ctx, roleID)
+	role, err := s.guard.requireRole(ctx, roleID)
 	if err != nil {
 		return err
 	}
-
-	// Only admins can revoke admin or system roles
-	if (role.Name == "admin" || role.IsSystem) && !s.isAdmin(ctx) {
-		return ErrForbidden
+	// Taking a role away from someone more privileged is acting on them.
+	if err := s.guard.requireOutranks(ctx, userID); err != nil {
+		return err
+	}
+	if role.Name == "admin" {
+		if err := s.guard.requireAnotherAdmin(ctx, userID); err != nil {
+			return err
+		}
 	}
 
 	return s.store.RemoveRoleFromUser(ctx, userID, roleID)
@@ -228,16 +288,4 @@ func (s *RoleService) ListPermissions(ctx context.Context, filter *model.Permiss
 	}
 
 	return s.store.ListPermissions(ctx, filter)
-}
-
-func (s *RoleService) isAdmin(ctx context.Context) bool {
-	caller := CallerFrom(ctx)
-	if caller == nil {
-		return false
-	}
-	if caller.IsSystem() {
-		return true
-	}
-	isAdmin, _ := auth.IsAdmin(ctx, s.store, caller.UserID)
-	return isAdmin
 }

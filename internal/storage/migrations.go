@@ -238,6 +238,12 @@ var migrations = []*Migration{
 		Up:      migrateAddressNetworkIPIndexUp,
 		Down:    migrateAddressNetworkIPIndexDown,
 	},
+	{
+		Version: "20261015120000",
+		Name:    "sync_is_admin_with_admin_role",
+		Up:      migrateSyncIsAdminUp,
+		Down:    migrateSyncIsAdminDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -2976,5 +2982,28 @@ func migrateAddressNetworkIPIndexDown(ctx context.Context, tx sqlTx) error {
 			return fmt.Errorf("failed to restore address indexes: %w", err)
 		}
 	}
+	return nil
+}
+
+// syncIsAdminSQL sets users.is_admin to whether the user holds the admin role.
+// The role is what grants admin rights; the column only reports it.
+const syncIsAdminSQL = `UPDATE users SET is_admin = EXISTS (
+	SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+	WHERE ur.user_id = users.id AND r.name = 'admin'
+)`
+
+// migrateSyncIsAdminUp makes is_admin match the admin role. Users promoted by
+// granting the role had is_admin = 0, and users created with is_admin = 1 but
+// no role held no admin rights; both now show what they can actually do.
+func migrateSyncIsAdminUp(ctx context.Context, tx sqlTx) error {
+	if _, err := tx.ExecContext(ctx, syncIsAdminSQL); err != nil {
+		return fmt.Errorf("failed to sync is_admin with the admin role: %w", err)
+	}
+	return nil
+}
+
+// migrateSyncIsAdminDown is a no-op: the previous values were inconsistent
+// and nothing depends on them.
+func migrateSyncIsAdminDown(ctx context.Context, tx sqlTx) error {
 	return nil
 }

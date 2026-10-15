@@ -35,14 +35,17 @@ func (s *SQLiteStorage) CreateUser(ctx context.Context, user *model.User) error 
 		user.UpdatedAt = nowUTC()
 	}
 
+	// A new user holds no roles yet, so is_admin starts false; assigning the
+	// admin role sets it.
 	query := `INSERT INTO users (id, username, email, full_name, password_hash, is_active, is_admin, created_at, updated_at, last_login_at) 
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	          VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(ctx, query,
 		user.ID, user.Username, user.Email, user.FullName,
-		user.PasswordHash, user.IsActive, user.IsAdmin,
+		user.PasswordHash, user.IsActive,
 		user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
 	)
+	user.IsAdmin = false
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -213,11 +216,13 @@ func (s *SQLiteStorage) UpdateUser(ctx context.Context, user *model.User) error 
 
 	user.UpdatedAt = nowUTC()
 
-	query := `UPDATE users SET username = ?, email = ?, full_name = ?, password_hash = ?, is_active = ?, is_admin = ?, updated_at = ? 
+	// is_admin is not written here: it follows the admin role, which
+	// AssignRoleToUser and RemoveRoleFromUser keep it in step with.
+	query := `UPDATE users SET username = ?, email = ?, full_name = ?, password_hash = ?, is_active = ?, updated_at = ? 
 	          WHERE id = ?`
 
 	result, err := s.db.ExecContext(ctx, query,
-		user.Username, user.Email, user.FullName, user.PasswordHash, user.IsActive, user.IsAdmin,
+		user.Username, user.Email, user.FullName, user.PasswordHash, user.IsActive,
 		user.UpdatedAt, user.ID,
 	)
 	if err != nil {

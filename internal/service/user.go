@@ -16,6 +16,7 @@ import (
 type UserService struct {
 	store    storage.ExtendedStorage
 	sessions SessionInvalidator
+	guard    privilegeGuard
 }
 
 type SessionInvalidator interface {
@@ -30,6 +31,7 @@ func NewUserService(store storage.ExtendedStorage, sessionManager *auth.SessionM
 	return &UserService{
 		store:    store,
 		sessions: sessions,
+		guard:    privilegeGuard{store: store},
 	}
 }
 
@@ -53,7 +55,7 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 
 	// Only admins can create admin users
 	if req.IsAdmin && !s.isAdmin(ctx) {
-		return nil, ErrForbidden
+		return nil, &PrivilegeError{Reason: "Only admins can create admins"}
 	}
 
 	var errs ValidationErrors
@@ -86,29 +88,40 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 		FullName:     req.FullName,
 		PasswordHash: passwordHash,
 		IsActive:     true,
-		IsAdmin:      req.IsAdmin,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
 
-	// If RoleID is provided, verify it's not assigning admin role to a non-admin creator
-	if req.RoleID != "" && !s.isAdmin(ctx) {
-		role, _ := s.store.GetRole(ctx, req.RoleID)
-		if role != nil && role.Name == "admin" {
-			return nil, ErrForbidden
+	// The creator may only give the new user a role they could assign.
+	roleIDs := []string{}
+	if req.RoleID != "" {
+		if _, err := s.guard.requireRole(ctx, req.RoleID); err != nil {
+			return nil, err
 		}
+		roleIDs = append(roleIDs, req.RoleID)
+	}
+	// is_admin follows the admin role, so an admin user gets the role.
+	if req.IsAdmin {
+		adminRole, err := s.store.GetRoleByName(ctx, "admin")
+		if err != nil {
+			return nil, fmt.Errorf("finding the admin role: %w", err)
+		}
+		roleIDs = append(roleIDs, adminRole.ID)
 	}
 
 	if err := s.store.CreateUser(enrichAuditCtx(ctx), user); err != nil {
 		return nil, err
 	}
 
-	if req.RoleID != "" {
-		if err := s.store.AssignRoleToUser(ctx, user.ID, req.RoleID); err != nil {
-			// The user exists but has no role; surface this rather than
+	for _, roleID := range roleIDs {
+		if err := s.store.AssignRoleToUser(ctx, user.ID, roleID); err != nil {
+			// The user exists but lacks the role; surface this rather than
 			// silently creating an unprivileged orphan.
-			log.Error("Failed to assign role to new user", "user_id", user.ID, "role_id", req.RoleID, "error", err)
+			log.Error("Failed to assign role to new user", "user_id", user.ID, "role_id", roleID, "error", err)
 		}
+	}
+	if updated, err := s.store.GetUser(ctx, user.ID); err == nil {
+		user = updated
 	}
 
 	resp := user.ToResponse()
@@ -158,9 +171,10 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 		return nil, err
 	}
 
-	// Only admins can update other admins
-	if user.IsAdmin && !isSelf && !s.isAdmin(ctx) {
-		return nil, ErrForbidden
+	if !isSelf {
+		if err := s.guard.requireOutranks(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 
 	if req.Username != "" && req.Username != user.Username {
@@ -176,25 +190,53 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 		user.FullName = req.FullName
 	}
 	// Privileged fields require users:update permission
+	deactivate := false
 	if req.IsActive != nil && !isSelf {
+		if !*req.IsActive && user.IsActive {
+			if err := s.guard.requireAnotherAdmin(ctx, id); err != nil {
+				return nil, err
+			}
+			deactivate = true
+		}
 		user.IsActive = *req.IsActive
-		// Deactivating a user must terminate their live sessions immediately;
-		// otherwise a suspended account keeps access until cookie expiry.
-		if !*req.IsActive && s.sessions != nil {
-			s.sessions.InvalidateUserSessions(id)
-		}
 	}
-	// Only admins can elevate others to admin or remove admin status
-	if req.IsAdmin != nil && !isSelf {
+	// Only admins can elevate others to admin or remove admin status, which
+	// grants or removes the admin role.
+	var adminRoleChange func() error
+	if req.IsAdmin != nil && !isSelf && *req.IsAdmin != user.IsAdmin {
 		if !s.isAdmin(ctx) {
-			return nil, ErrForbidden
+			return nil, &PrivilegeError{Reason: "Only admins can make or remove admins"}
 		}
-		user.IsAdmin = *req.IsAdmin
+		adminRole, err := s.store.GetRoleByName(ctx, "admin")
+		if err != nil {
+			return nil, fmt.Errorf("finding the admin role: %w", err)
+		}
+		if *req.IsAdmin {
+			adminRoleChange = func() error { return s.store.AssignRoleToUser(ctx, id, adminRole.ID) }
+		} else {
+			if err := s.guard.requireAnotherAdmin(ctx, id); err != nil {
+				return nil, err
+			}
+			adminRoleChange = func() error { return s.store.RemoveRoleFromUser(ctx, id, adminRole.ID) }
+		}
 	}
 	user.UpdatedAt = time.Now()
 
 	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
 		return nil, err
+	}
+	// Deactivating a user must terminate their live sessions immediately;
+	// otherwise a suspended account keeps access until cookie expiry.
+	if deactivate && s.sessions != nil {
+		s.sessions.InvalidateUserSessions(id)
+	}
+	if adminRoleChange != nil {
+		if err := adminRoleChange(); err != nil {
+			return nil, err
+		}
+		if updated, err := s.store.GetUser(ctx, id); err == nil {
+			user = updated
+		}
 	}
 
 	resp := user.ToResponse()
@@ -218,14 +260,15 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	// Only admins can delete other admins
-	if user.IsAdmin && !s.isAdmin(ctx) {
-		return ErrForbidden
-	}
-
 	caller := CallerFrom(ctx)
 	if caller != nil && caller.UserID == id {
 		return ErrSelfDelete
+	}
+	if err := s.guard.requireOutranks(ctx, user.ID); err != nil {
+		return err
+	}
+	if err := s.guard.requireAnotherAdmin(ctx, user.ID); err != nil {
+		return err
 	}
 
 	if err := s.store.DeleteUser(enrichAuditCtx(ctx), id); err != nil {
@@ -260,6 +303,12 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 			return ErrNotFound
 		}
 		return err
+	}
+
+	if caller == nil || caller.UserID != id {
+		if err := s.guard.requireOutranks(ctx, id); err != nil {
+			return err
+		}
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, req.OldPassword); err != nil {
@@ -304,9 +353,8 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 		return err
 	}
 
-	// Only admins can reset passwords for other admins
-	if user.IsAdmin && !s.isAdmin(ctx) {
-		return ErrForbidden
+	if err := s.guard.requireOutranks(ctx, id); err != nil {
+		return err
 	}
 
 	passwordHash, err := auth.HashPassword(req.NewPassword)
@@ -386,13 +434,6 @@ func (s *UserService) GetCurrentUserWithPermissions(ctx context.Context) (*model
 }
 
 func (s *UserService) isAdmin(ctx context.Context) bool {
-	caller := CallerFrom(ctx)
-	if caller == nil {
-		return false
-	}
-	if caller.IsSystem() {
-		return true
-	}
-	isAdmin, _ := auth.IsAdmin(ctx, s.store, caller.UserID)
-	return isAdmin
+	admin, _ := s.guard.callerIsAdmin(ctx)
+	return admin
 }

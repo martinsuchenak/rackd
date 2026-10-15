@@ -415,8 +415,12 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrNotFound):
 		h.writeError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+	case errors.As(err, new(*service.PrivilegeError)):
+		h.writeError(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 	case errors.Is(err, service.ErrForbidden):
 		h.writeError(w, http.StatusForbidden, "FORBIDDEN", "Forbidden")
+	case errors.Is(err, service.ErrLastAdmin):
+		h.writeError(w, http.StatusConflict, "LAST_ADMIN", "This would leave no active admin")
 	case errors.Is(err, service.ErrUnauthenticated):
 		h.writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 	case errors.Is(err, service.ErrAlreadyExists):
