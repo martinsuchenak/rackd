@@ -21,8 +21,10 @@ func insertAuditLog(ctx context.Context, db sqlTx, log *model.AuditLog) error {
 		log.Timestamp = nowUTC()
 	}
 
+	// OR IGNORE: an id is written once, so a retried batch can't fail on
+	// entries that made it the first time.
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
+		INSERT OR IGNORE INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error, log.Source)
 

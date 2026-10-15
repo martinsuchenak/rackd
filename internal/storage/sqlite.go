@@ -417,10 +417,7 @@ func (s *SQLiteStorage) auditEntry(ctx context.Context, action, resource, resour
 		return
 	}
 
-	// Never drop an entry. When closing, the worker may already be gone;
-	// when the queue is full, the write would otherwise be lost. In both
-	// cases write it here: slower for this request, but the audit trail
-	// stays complete.
+	// When closing, the worker may already be gone: write it here.
 	select {
 	case <-s.auditDone:
 		s.persistAuditEntry(entry)
@@ -429,7 +426,22 @@ func (s *SQLiteStorage) auditEntry(ctx context.Context, action, resource, resour
 	}
 	select {
 	case s.auditChan <- entry:
+		return
 	default:
+	}
+	// The queue is full. Wait for the worker to make room rather than drop
+	// the entry: it writes in batches, so this is brief, and only it takes
+	// the write lock (requests writing their own entries would queue for
+	// the lock and time out). Give up waiting only if it seems stuck.
+	select {
+	case s.auditChan <- entry:
+	case <-s.auditDone:
+		s.persistAuditEntry(entry)
+	case <-time.After(auditQueueWait):
+		log.Error("Audit queue not draining; writing entry directly", "action", action)
 		s.persistAuditEntry(entry)
 	}
 }
+
+// auditQueueWait is how long a request waits for room in a full audit queue.
+const auditQueueWait = 30 * time.Second

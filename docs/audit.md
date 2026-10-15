@@ -306,11 +306,12 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 ### Write Performance
 
 - Audit entries are queued and written in the background, in batches
-- When a burst fills the queue, the request writes its own entry instead of
-  dropping it; those requests are slower until the queue drains
-- A write the database itself refuses (for example, still locked after the
-  5-second busy timeout) is logged as "Failed to create audit log" but doesn't
-  fail the request
+- When a burst fills the queue, requests wait for room instead of dropping
+  their entries; they are slower until the queue drains. If the queue makes no
+  room for 30 seconds, the request writes its entry directly and the server
+  logs "Audit queue not draining"
+- A write the database itself refuses is logged as "Failed to create audit
+  log" but doesn't fail the request
 - Overhead: <1ms per request normally
 
 ### Query Performance

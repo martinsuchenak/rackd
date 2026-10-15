@@ -50,7 +50,8 @@ func TestAuditBurstLosesNothing(t *testing.T) {
 	}
 }
 
-// One entry the database refuses mustn't take the rest of its batch with it.
+// An entry already written (as when a batch is retried) mustn't take the
+// rest of its batch with it.
 func TestAuditBatchFallsBackPerEntry(t *testing.T) {
 	s := newTestStorage(t)
 	defer func() { _ = s.Close() }()
