@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -29,7 +30,7 @@ func (h *Handler) createNetwork(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
-	if errs := ValidateNetwork(&network); len(errs) > 0 {
+	if errs := append(ValidateNewID(network.ID), ValidateNetwork(&network)...); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -175,7 +176,7 @@ func (h *Handler) createNetworkPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool.NetworkID = networkID
-	if errs := ValidateNetworkPool(&pool); len(errs) > 0 {
+	if errs := append(ValidateNewID(pool.ID), ValidateNetworkPool(&pool)...); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -307,6 +308,18 @@ func (h *Handler) bulkCreateNetworks(w http.ResponseWriter, r *http.Request) {
 	if len(networks) > 100 {
 		h.badRequest(w, "Maximum 100 items allowed in bulk operations")
 		return
+	}
+	// Same validation as the single-network path.
+	for i, network := range networks {
+		if network == nil {
+			h.badRequest(w, fmt.Sprintf("networks[%d] is null", i))
+			return
+		}
+		if errs := append(ValidateNewID(network.ID), ValidateNetwork(network)...); len(errs) > 0 {
+			errs[0].Field = fmt.Sprintf("networks[%d].%s", i, errs[0].Field)
+			h.writeValidationErrors(w, errs)
+			return
+		}
 	}
 
 	result, err := h.svc.Bulk.CreateNetworks(r.Context(), networks)

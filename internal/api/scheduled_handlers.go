@@ -23,6 +23,10 @@ func (h *Handler) createScheduledScan(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
+	if errs := ValidateNewID(scan.ID); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
 	if err := h.svc.ScheduledScans.Create(r.Context(), &scan); err != nil {
 		h.handleServiceError(w, err)
 		return

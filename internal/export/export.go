@@ -65,13 +65,13 @@ func exportDevicesCSV(devices []model.Device, w io.Writer) error {
 	// Write rows
 	for _, device := range devices {
 		row := []string{
-			device.ID,
+			sanitizeCell(device.ID),
 			sanitizeCell(device.Name),
 			sanitizeCell(device.Hostname),
 			sanitizeCell(device.Description),
 			sanitizeCell(device.MakeModel),
 			sanitizeCell(device.OS),
-			device.DatacenterID,
+			sanitizeCell(device.DatacenterID),
 			sanitizeCell(device.Username),
 			sanitizeCell(device.Location),
 			sanitizeCell(joinAddresses(device.Addresses)),
@@ -127,12 +127,12 @@ func exportNetworksCSV(networks []model.Network, w io.Writer) error {
 	// Write rows
 	for _, network := range networks {
 		row := []string{
-			network.ID,
+			sanitizeCell(network.ID),
 			sanitizeCell(network.Name),
 			sanitizeCell(network.Subnet),
 			fmt.Sprintf("%d", network.VLANID),
 			sanitizeCell(network.Description),
-			network.DatacenterID,
+			sanitizeCell(network.DatacenterID),
 			network.CreatedAt.Format(time.RFC3339),
 			network.UpdatedAt.Format(time.RFC3339),
 		}
@@ -175,7 +175,7 @@ func exportDatacentersCSV(datacenters []model.Datacenter, w io.Writer) error {
 	// Write rows
 	for _, dc := range datacenters {
 		row := []string{
-			dc.ID,
+			sanitizeCell(dc.ID),
 			sanitizeCell(dc.Name),
 			sanitizeCell(dc.Location),
 			sanitizeCell(dc.Description),

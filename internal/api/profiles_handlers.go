@@ -22,6 +22,10 @@ func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
+	if errs := ValidateNewID(profile.ID); len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
 	if err := h.svc.ScanProfiles.Create(r.Context(), &profile); err != nil {
 		h.handleServiceError(w, err)
 		return

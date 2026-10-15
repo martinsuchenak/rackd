@@ -131,6 +131,29 @@ export interface RackdAPIOptions {
   baseURL?: string;
 }
 
+/**
+ * Escapes a value for one path segment or query value. Every interpolated
+ * value in an API path goes through it, so an id like "../users/<id>" or
+ * "<id>?x" can't change which route a request reaches.
+ */
+function seg(value: string | number | boolean): string {
+  return encodeURIComponent(String(value));
+}
+
+/** Whether a path's route part contains a "." or ".." segment, escaped or not. */
+export function hasDotSegment(path: string): boolean {
+  const route = path.split(/[?#]/)[0];
+  return route.split('/').some((part) => {
+    let decoded = part;
+    try {
+      decoded = decodeURIComponent(part);
+    } catch {
+      // A malformed escape isn't a dot segment.
+    }
+    return decoded === '.' || decoded === '..';
+  });
+}
+
 export class RackdAPI {
   private baseURL: string;
   private inFlightRequests: Map<string, Promise<unknown>> = new Map();
@@ -145,6 +168,12 @@ export class RackdAPI {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    // The browser resolves dot segments before sending, which would send the
+    // request to a different route than the one the caller built.
+    if (hasDotSegment(path)) {
+      throw new RackdAPIError('INVALID_PATH', 'Refusing a request with a "." or ".." path segment');
+    }
+
     // Only deduplicate GET requests
     const cacheKey = method === 'GET' ? `${method}:${path}` : null;
 
@@ -220,6 +249,9 @@ export class RackdAPI {
   }
 
   private async requestOptionalJSON<T>(method: string, path: string): Promise<T | null> {
+    if (hasDotSegment(path)) {
+      throw new RackdAPIError('INVALID_PATH', 'Refusing a request with a "." or ".." path segment');
+    }
     const response = await fetch(`${this.baseURL}${path}`, {
       method,
       headers: {
@@ -280,7 +312,7 @@ export class RackdAPI {
   }
 
   async getAuditLog(id: string): Promise<AuditLog> {
-    return this.request<AuditLog>('GET', `/api/v1/audit/${id}`);
+    return this.request<AuditLog>('GET', `/api/v1/audit/${seg(id)}`);
   }
 
   getAuditExportURL(filter: AuditFilter = {}, format: 'json' | 'csv' = 'json'): string {
@@ -292,7 +324,7 @@ export class RackdAPI {
   }
 
   async getLogEntry(id: string): Promise<LogEntry> {
-    return this.request<LogEntry>('GET', `/api/v1/logs/${id}`);
+    return this.request<LogEntry>('GET', `/api/v1/logs/${seg(id)}`);
   }
 
   getLogsExportURL(filter: LogFilter = {}, format: 'json' | 'csv' = 'json'): string {
@@ -314,7 +346,7 @@ export class RackdAPI {
   }
 
   async getDevice(id: string): Promise<Device> {
-    return this.request<Device>('GET', `/api/v1/devices/${id}`);
+    return this.request<Device>('GET', `/api/v1/devices/${seg(id)}`);
   }
 
   async createDevice(device: Partial<Device>): Promise<Device> {
@@ -322,11 +354,11 @@ export class RackdAPI {
   }
 
   async updateDevice(id: string, updates: Partial<Device>): Promise<Device> {
-    return this.request<Device>('PUT', `/api/v1/devices/${id}`, updates);
+    return this.request<Device>('PUT', `/api/v1/devices/${seg(id)}`, updates);
   }
 
   async deleteDevice(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/devices/${id}`);
+    return this.request<void>('DELETE', `/api/v1/devices/${seg(id)}`);
   }
 
   async getDeviceStatusCounts(): Promise<DeviceStatusCounts> {
@@ -344,11 +376,11 @@ export class RackdAPI {
 
   // Relationships
   async addRelationship(deviceId: string, childId: string, type: DeviceRelationship['type'], notes?: string): Promise<void> {
-    return this.request<void>('POST', `/api/v1/devices/${deviceId}/relationships`, { child_id: childId, type, notes: notes || '' });
+    return this.request<void>('POST', `/api/v1/devices/${seg(deviceId)}/relationships`, { child_id: childId, type, notes: notes || '' });
   }
 
   async getRelationships(deviceId: string): Promise<DeviceRelationship[]> {
-    return this.request<DeviceRelationship[]>('GET', `/api/v1/devices/${deviceId}/relationships`);
+    return this.request<DeviceRelationship[]>('GET', `/api/v1/devices/${seg(deviceId)}/relationships`);
   }
 
   async getAllRelationships(): Promise<DeviceRelationship[]> {
@@ -356,15 +388,15 @@ export class RackdAPI {
   }
 
   async getRelatedDevices(deviceId: string, type: DeviceRelationship['type']): Promise<Device[]> {
-    return this.request<Device[]>('GET', `/api/v1/devices/${deviceId}/related?type=${type}`);
+    return this.request<Device[]>('GET', `/api/v1/devices/${seg(deviceId)}/related?type=${seg(type)}`);
   }
 
   async updateRelationshipNotes(deviceId: string, childId: string, type: DeviceRelationship['type'], notes: string): Promise<void> {
-    return this.request<void>('PATCH', `/api/v1/devices/${deviceId}/relationships/${childId}/${type}`, { notes });
+    return this.request<void>('PATCH', `/api/v1/devices/${seg(deviceId)}/relationships/${seg(childId)}/${seg(type)}`, { notes });
   }
 
   async removeRelationship(deviceId: string, childId: string, type: DeviceRelationship['type']): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/devices/${deviceId}/relationships/${childId}/${type}`);
+    return this.request<void>('DELETE', `/api/v1/devices/${seg(deviceId)}/relationships/${seg(childId)}/${seg(type)}`);
   }
 
   // Datacenters
@@ -373,7 +405,7 @@ export class RackdAPI {
   }
 
   async getDatacenter(id: string): Promise<Datacenter> {
-    return this.request<Datacenter>('GET', `/api/v1/datacenters/${id}`);
+    return this.request<Datacenter>('GET', `/api/v1/datacenters/${seg(id)}`);
   }
 
   async createDatacenter(datacenter: Partial<Datacenter>): Promise<Datacenter> {
@@ -381,15 +413,15 @@ export class RackdAPI {
   }
 
   async updateDatacenter(id: string, updates: Partial<Datacenter>): Promise<Datacenter> {
-    return this.request<Datacenter>('PUT', `/api/v1/datacenters/${id}`, updates);
+    return this.request<Datacenter>('PUT', `/api/v1/datacenters/${seg(id)}`, updates);
   }
 
   async deleteDatacenter(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/datacenters/${id}`);
+    return this.request<void>('DELETE', `/api/v1/datacenters/${seg(id)}`);
   }
 
   async getDatacenterDevices(id: string): Promise<Device[]> {
-    return this.request<Device[]>('GET', `/api/v1/datacenters/${id}/devices`);
+    return this.request<Device[]>('GET', `/api/v1/datacenters/${seg(id)}/devices`);
   }
 
   // Networks
@@ -399,7 +431,7 @@ export class RackdAPI {
   }
 
   async getNetwork(id: string): Promise<Network> {
-    return this.request<Network>('GET', `/api/v1/networks/${id}`);
+    return this.request<Network>('GET', `/api/v1/networks/${seg(id)}`);
   }
 
   async createNetwork(network: Partial<Network>): Promise<Network> {
@@ -407,53 +439,53 @@ export class RackdAPI {
   }
 
   async updateNetwork(id: string, updates: Partial<Network>): Promise<Network> {
-    return this.request<Network>('PUT', `/api/v1/networks/${id}`, updates);
+    return this.request<Network>('PUT', `/api/v1/networks/${seg(id)}`, updates);
   }
 
   async deleteNetwork(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/networks/${id}`);
+    return this.request<void>('DELETE', `/api/v1/networks/${seg(id)}`);
   }
 
   async getNetworkUtilization(id: string): Promise<NetworkUtilization> {
-    return this.request<NetworkUtilization>('GET', `/api/v1/networks/${id}/utilization`);
+    return this.request<NetworkUtilization>('GET', `/api/v1/networks/${seg(id)}/utilization`);
   }
 
   async getNetworkDevices(id: string): Promise<Device[]> {
-    return this.request<Device[]>('GET', `/api/v1/networks/${id}/devices`);
+    return this.request<Device[]>('GET', `/api/v1/networks/${seg(id)}/devices`);
   }
 
   // Network Pools
   async listNetworkPools(networkId: string): Promise<NetworkPool[]> {
-    return this.request<NetworkPool[]>('GET', `/api/v1/networks/${networkId}/pools`);
+    return this.request<NetworkPool[]>('GET', `/api/v1/networks/${seg(networkId)}/pools`);
   }
 
   async createNetworkPool(networkId: string, pool: Partial<NetworkPool>): Promise<NetworkPool> {
-    return this.request<NetworkPool>('POST', `/api/v1/networks/${networkId}/pools`, pool);
+    return this.request<NetworkPool>('POST', `/api/v1/networks/${seg(networkId)}/pools`, pool);
   }
 
   async getNetworkPool(id: string): Promise<NetworkPool> {
-    return this.request<NetworkPool>('GET', `/api/v1/pools/${id}`);
+    return this.request<NetworkPool>('GET', `/api/v1/pools/${seg(id)}`);
   }
 
   async updateNetworkPool(id: string, updates: Partial<NetworkPool>): Promise<NetworkPool> {
-    return this.request<NetworkPool>('PUT', `/api/v1/pools/${id}`, updates);
+    return this.request<NetworkPool>('PUT', `/api/v1/pools/${seg(id)}`, updates);
   }
 
   async deleteNetworkPool(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/pools/${id}`);
+    return this.request<void>('DELETE', `/api/v1/pools/${seg(id)}`);
   }
 
   async getNextIP(poolId: string): Promise<{ ip: string }> {
-    return this.request<{ ip: string }>('GET', `/api/v1/pools/${poolId}/next-ip`);
+    return this.request<{ ip: string }>('GET', `/api/v1/pools/${seg(poolId)}/next-ip`);
   }
 
   async getPoolHeatmap(poolId: string): Promise<IPStatus[]> {
-    return this.request<IPStatus[]>('GET', `/api/v1/pools/${poolId}/heatmap`);
+    return this.request<IPStatus[]>('GET', `/api/v1/pools/${seg(poolId)}/heatmap`);
   }
 
   // Discovery
   async startScan(networkId: string, scanType: DiscoveryScan['scan_type']): Promise<DiscoveryScan> {
-    return this.request<DiscoveryScan>('POST', `/api/v1/discovery/networks/${networkId}/scan`, { scan_type: scanType });
+    return this.request<DiscoveryScan>('POST', `/api/v1/discovery/networks/${seg(networkId)}/scan`, { scan_type: scanType });
   }
 
   async listScans(networkId?: string): Promise<DiscoveryScan[]> {
@@ -462,15 +494,15 @@ export class RackdAPI {
   }
 
   async getScan(id: string): Promise<DiscoveryScan> {
-    return this.request<DiscoveryScan>('GET', `/api/v1/discovery/scans/${id}`);
+    return this.request<DiscoveryScan>('GET', `/api/v1/discovery/scans/${seg(id)}`);
   }
 
   async deleteScan(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/discovery/scans/${id}`);
+    return this.request<void>('DELETE', `/api/v1/discovery/scans/${seg(id)}`);
   }
 
   async cancelScan(id: string): Promise<DiscoveryScan> {
-    return this.request<DiscoveryScan>('POST', `/api/v1/discovery/scans/${id}/cancel`);
+    return this.request<DiscoveryScan>('POST', `/api/v1/discovery/scans/${seg(id)}/cancel`);
   }
 
   async listDiscoveredDevices(networkId?: string): Promise<DiscoveredDevice[]> {
@@ -479,14 +511,14 @@ export class RackdAPI {
   }
 
   async deleteDiscoveredDevice(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/discovery/devices/${id}`);
+    return this.request<void>('DELETE', `/api/v1/discovery/devices/${seg(id)}`);
   }
 
   async promoteDevice(id: string, name: string, datacenterId?: string, makeModel?: string): Promise<Device> {
     const body: any = { name };
     if (datacenterId) body.datacenter_id = datacenterId;
     if (makeModel) body.make_model = makeModel;
-    return this.request<Device>('POST', `/api/v1/discovery/devices/${id}/promote`, body);
+    return this.request<Device>('POST', `/api/v1/discovery/devices/${seg(id)}/promote`, body);
   }
 
   async deleteDiscoveredDevicesByNetwork(networkId: string): Promise<void> {
@@ -507,7 +539,7 @@ export class RackdAPI {
   }
 
   async getScanProfile(id: string): Promise<ScanProfile> {
-    return this.request<ScanProfile>('GET', `/api/v1/scan-profiles/${id}`);
+    return this.request<ScanProfile>('GET', `/api/v1/scan-profiles/${seg(id)}`);
   }
 
   async createScanProfile(profile: Partial<ScanProfile>): Promise<ScanProfile> {
@@ -515,11 +547,11 @@ export class RackdAPI {
   }
 
   async updateScanProfile(id: string, profile: Partial<ScanProfile>): Promise<ScanProfile> {
-    return this.request<ScanProfile>('PUT', `/api/v1/scan-profiles/${id}`, profile);
+    return this.request<ScanProfile>('PUT', `/api/v1/scan-profiles/${seg(id)}`, profile);
   }
 
   async deleteScanProfile(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/scan-profiles/${id}`);
+    return this.request<void>('DELETE', `/api/v1/scan-profiles/${seg(id)}`);
   }
 
   // Credentials
@@ -533,11 +565,11 @@ export class RackdAPI {
   }
 
   async updateCredential(id: string, input: CredentialInput): Promise<Credential> {
-    return this.request<Credential>('PUT', `/api/v1/credentials/${id}`, input);
+    return this.request<Credential>('PUT', `/api/v1/credentials/${seg(id)}`, input);
   }
 
   async deleteCredential(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/credentials/${id}`);
+    return this.request<void>('DELETE', `/api/v1/credentials/${seg(id)}`);
   }
 
   // Scheduled scans
@@ -551,11 +583,11 @@ export class RackdAPI {
   }
 
   async updateScheduledScan(id: string, input: ScheduledScanInput): Promise<ScheduledScan> {
-    return this.request<ScheduledScan>('PUT', `/api/v1/scheduled-scans/${id}`, input);
+    return this.request<ScheduledScan>('PUT', `/api/v1/scheduled-scans/${seg(id)}`, input);
   }
 
   async deleteScheduledScan(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/scheduled-scans/${id}`);
+    return this.request<void>('DELETE', `/api/v1/scheduled-scans/${seg(id)}`);
   }
 
   // OAuth clients
@@ -565,7 +597,7 @@ export class RackdAPI {
   }
 
   async deleteOAuthClient(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/oauth/clients/${id}`);
+    return this.request<void>('DELETE', `/api/v1/oauth/clients/${seg(id)}`);
   }
 
   // Auth
@@ -593,7 +625,7 @@ export class RackdAPI {
   }
 
   async getUser(id: string): Promise<User> {
-    return this.request<User>('GET', `/api/v1/users/${id}`);
+    return this.request<User>('GET', `/api/v1/users/${seg(id)}`);
   }
 
   async createUser(user: CreateUserRequest): Promise<User> {
@@ -601,19 +633,19 @@ export class RackdAPI {
   }
 
   async updateUser(id: string, updates: UpdateUserRequest): Promise<User> {
-    return this.request<User>('PUT', `/api/v1/users/${id}`, updates);
+    return this.request<User>('PUT', `/api/v1/users/${seg(id)}`, updates);
   }
 
   async deleteUser(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/users/${id}`);
+    return this.request<void>('DELETE', `/api/v1/users/${seg(id)}`);
   }
 
   async changePassword(id: string, request: ChangePasswordRequest): Promise<void> {
-    return this.request<void>('POST', `/api/v1/users/${id}/password`, request);
+    return this.request<void>('POST', `/api/v1/users/${seg(id)}/password`, request);
   }
 
   async resetPassword(id: string, newPassword: string): Promise<void> {
-    return this.request<void>('POST', `/api/v1/users/${id}/reset-password`, { new_password: newPassword });
+    return this.request<void>('POST', `/api/v1/users/${seg(id)}/reset-password`, { new_password: newPassword });
   }
 
   async grantRole(userId: string, roleId: string): Promise<void> {
@@ -634,7 +666,7 @@ export class RackdAPI {
   }
 
   async getRole(id: string): Promise<Role> {
-    return this.request<Role>('GET', `/api/v1/roles/${id}`);
+    return this.request<Role>('GET', `/api/v1/roles/${seg(id)}`);
   }
 
   async createRole(role: CreateRoleRequest): Promise<Role> {
@@ -642,15 +674,15 @@ export class RackdAPI {
   }
 
   async updateRole(id: string, role: UpdateRoleRequest): Promise<Role> {
-    return this.request<Role>('PUT', `/api/v1/roles/${id}`, role);
+    return this.request<Role>('PUT', `/api/v1/roles/${seg(id)}`, role);
   }
 
   async deleteRole(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/roles/${id}`);
+    return this.request<void>('DELETE', `/api/v1/roles/${seg(id)}`);
   }
 
   async getRolePermissions(id: string): Promise<{ role: Role; permissions: Permission[] }> {
-    return this.request<{ role: Role; permissions: Permission[] }>('GET', `/api/v1/roles/${id}/permissions`);
+    return this.request<{ role: Role; permissions: Permission[] }>('GET', `/api/v1/roles/${seg(id)}/permissions`);
   }
 
   async listPermissions(): Promise<Permission[]> {
@@ -658,11 +690,11 @@ export class RackdAPI {
   }
 
   async getUserRoles(id: string): Promise<Role[]> {
-    return this.request<Role[]>('GET', `/api/v1/users/${id}/roles`);
+    return this.request<Role[]>('GET', `/api/v1/users/${seg(id)}/roles`);
   }
 
   async getUserPermissions(id: string): Promise<Permission[]> {
-    return this.request<Permission[]>('GET', `/api/v1/users/${id}/permissions`);
+    return this.request<Permission[]>('GET', `/api/v1/users/${seg(id)}/permissions`);
   }
 
   // Conflicts
@@ -675,20 +707,20 @@ export class RackdAPI {
   }
 
   async detectConflicts(type?: string): Promise<{ conflicts: Conflict[] }> {
-    const query = type ? `?type=${type}` : '';
+    const query = type ? `?type=${seg(type)}` : '';
     return this.request<{ conflicts: Conflict[] }>('POST', `/api/v1/conflicts/detect${query}`);
   }
 
   async getConflict(id: string): Promise<Conflict> {
-    return this.request<Conflict>('GET', `/api/v1/conflicts/${id}`);
+    return this.request<Conflict>('GET', `/api/v1/conflicts/${seg(id)}`);
   }
 
   async resolveConflict(id: string, resolution: ConflictResolution): Promise<void> {
-    return this.request<void>('POST', `/api/v1/conflicts/${id}/resolve`, resolution);
+    return this.request<void>('POST', `/api/v1/conflicts/${seg(id)}/resolve`, resolution);
   }
 
   async deleteConflict(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/conflicts/${id}`);
+    return this.request<void>('DELETE', `/api/v1/conflicts/${seg(id)}`);
   }
 
   // Reservations
@@ -703,7 +735,7 @@ export class RackdAPI {
   }
 
   async getReservation(id: string): Promise<Reservation> {
-    return this.request<Reservation>('GET', `/api/v1/reservations/${id}`);
+    return this.request<Reservation>('GET', `/api/v1/reservations/${seg(id)}`);
   }
 
   async createReservation(request: CreateReservationRequest): Promise<Reservation> {
@@ -711,19 +743,19 @@ export class RackdAPI {
   }
 
   async updateReservation(id: string, request: UpdateReservationRequest): Promise<Reservation> {
-    return this.request<Reservation>('PUT', `/api/v1/reservations/${id}`, request);
+    return this.request<Reservation>('PUT', `/api/v1/reservations/${seg(id)}`, request);
   }
 
   async deleteReservation(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/reservations/${id}`);
+    return this.request<void>('DELETE', `/api/v1/reservations/${seg(id)}`);
   }
 
   async releaseReservation(id: string): Promise<void> {
-    return this.request<void>('POST', `/api/v1/reservations/${id}/release`);
+    return this.request<void>('POST', `/api/v1/reservations/${seg(id)}/release`);
   }
 
   async getPoolReservations(poolId: string): Promise<Reservation[]> {
-    return this.request<Reservation[]>('GET', `/api/v1/pools/${poolId}/reservations`);
+    return this.request<Reservation[]>('GET', `/api/v1/pools/${seg(poolId)}/reservations`);
   }
 
   // Dashboard
@@ -745,12 +777,12 @@ export class RackdAPI {
 
   // Webhooks
   async listWebhooks(active?: boolean): Promise<Webhook[]> {
-    const params = active !== undefined ? `?active=${active}` : '';
+    const params = active !== undefined ? `?active=${seg(active)}` : '';
     return this.request<Webhook[]>('GET', `/api/v1/webhooks${params}`);
   }
 
   async getWebhook(id: string): Promise<Webhook> {
-    return this.request<Webhook>('GET', `/api/v1/webhooks/${id}`);
+    return this.request<Webhook>('GET', `/api/v1/webhooks/${seg(id)}`);
   }
 
   async createWebhook(request: CreateWebhookRequest): Promise<Webhook> {
@@ -758,24 +790,24 @@ export class RackdAPI {
   }
 
   async updateWebhook(id: string, request: UpdateWebhookRequest): Promise<Webhook> {
-    return this.request<Webhook>('PUT', `/api/v1/webhooks/${id}`, request);
+    return this.request<Webhook>('PUT', `/api/v1/webhooks/${seg(id)}`, request);
   }
 
   async deleteWebhook(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/webhooks/${id}`);
+    return this.request<void>('DELETE', `/api/v1/webhooks/${seg(id)}`);
   }
 
   async pingWebhook(id: string): Promise<{ message: string; delivery: WebhookDelivery }> {
-    return this.request<{ message: string; delivery: WebhookDelivery }>('POST', `/api/v1/webhooks/${id}/ping`);
+    return this.request<{ message: string; delivery: WebhookDelivery }>('POST', `/api/v1/webhooks/${seg(id)}/ping`);
   }
 
   async getWebhookDeliveries(webhookId: string, status?: DeliveryStatus): Promise<WebhookDelivery[]> {
-    const params = status ? `?status=${status}` : '';
-    return this.request<WebhookDelivery[]>('GET', `/api/v1/webhooks/${webhookId}/deliveries${params}`);
+    const params = status ? `?status=${seg(status)}` : '';
+    return this.request<WebhookDelivery[]>('GET', `/api/v1/webhooks/${seg(webhookId)}/deliveries${params}`);
   }
 
   async getWebhookDelivery(webhookId: string, deliveryId: string): Promise<WebhookDelivery> {
-    return this.request<WebhookDelivery>('GET', `/api/v1/webhooks/${webhookId}/deliveries/${deliveryId}`);
+    return this.request<WebhookDelivery>('GET', `/api/v1/webhooks/${seg(webhookId)}/deliveries/${seg(deliveryId)}`);
   }
 
   async getEventTypes(): Promise<EventTypeOption[]> {
@@ -784,12 +816,12 @@ export class RackdAPI {
 
   // Custom Fields
   async listCustomFieldDefinitions(type?: string): Promise<CustomFieldDefinition[]> {
-    const params = type ? `?type=${type}` : '';
+    const params = type ? `?type=${seg(type)}` : '';
     return this.request<CustomFieldDefinition[]>('GET', `/api/v1/custom-fields${params}`);
   }
 
   async getCustomFieldDefinition(id: string): Promise<CustomFieldDefinition> {
-    return this.request<CustomFieldDefinition>('GET', `/api/v1/custom-fields/${id}`);
+    return this.request<CustomFieldDefinition>('GET', `/api/v1/custom-fields/${seg(id)}`);
   }
 
   async createCustomFieldDefinition(request: CreateCustomFieldDefinitionRequest): Promise<CustomFieldDefinition> {
@@ -797,11 +829,11 @@ export class RackdAPI {
   }
 
   async updateCustomFieldDefinition(id: string, request: UpdateCustomFieldDefinitionRequest): Promise<CustomFieldDefinition> {
-    return this.request<CustomFieldDefinition>('PUT', `/api/v1/custom-fields/${id}`, request);
+    return this.request<CustomFieldDefinition>('PUT', `/api/v1/custom-fields/${seg(id)}`, request);
   }
 
   async deleteCustomFieldDefinition(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/custom-fields/${id}`);
+    return this.request<void>('DELETE', `/api/v1/custom-fields/${seg(id)}`);
   }
 
   async getCustomFieldTypes(): Promise<{ value: string; label: string }[]> {
@@ -823,7 +855,7 @@ export class RackdAPI {
   }
 
   async getCircuit(id: string): Promise<Circuit> {
-    return this.request<Circuit>('GET', `/api/v1/circuits/${id}`);
+    return this.request<Circuit>('GET', `/api/v1/circuits/${seg(id)}`);
   }
 
   async createCircuit(data: CreateCircuitRequest): Promise<Circuit> {
@@ -831,11 +863,11 @@ export class RackdAPI {
   }
 
   async updateCircuit(id: string, data: UpdateCircuitRequest): Promise<Circuit> {
-    return this.request<Circuit>('PUT', `/api/v1/circuits/${id}`, data);
+    return this.request<Circuit>('PUT', `/api/v1/circuits/${seg(id)}`, data);
   }
 
   async deleteCircuit(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/circuits/${id}`);
+    return this.request<void>('DELETE', `/api/v1/circuits/${seg(id)}`);
   }
 
   // NAT API methods
@@ -853,7 +885,7 @@ export class RackdAPI {
   }
 
   async getNATMapping(id: string): Promise<NATMapping> {
-    return this.request<NATMapping>('GET', `/api/v1/nat/${id}`);
+    return this.request<NATMapping>('GET', `/api/v1/nat/${seg(id)}`);
   }
 
   async createNATMapping(data: CreateNATRequest): Promise<NATMapping> {
@@ -861,11 +893,11 @@ export class RackdAPI {
   }
 
   async updateNATMapping(id: string, data: UpdateNATRequest): Promise<NATMapping> {
-    return this.request<NATMapping>('PUT', `/api/v1/nat/${id}`, data);
+    return this.request<NATMapping>('PUT', `/api/v1/nat/${seg(id)}`, data);
   }
 
   async deleteNATMapping(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/nat/${id}`);
+    return this.request<void>('DELETE', `/api/v1/nat/${seg(id)}`);
   }
 
   // DNS Providers
@@ -877,7 +909,7 @@ export class RackdAPI {
   }
 
   async getDNSProvider(id: string): Promise<DNSProvider> {
-    return this.request<DNSProvider>('GET', `/api/v1/dns/providers/${id}`);
+    return this.request<DNSProvider>('GET', `/api/v1/dns/providers/${seg(id)}`);
   }
 
   async createDNSProvider(req: CreateDNSProviderRequest): Promise<DNSProvider> {
@@ -885,15 +917,15 @@ export class RackdAPI {
   }
 
   async updateDNSProvider(id: string, req: UpdateDNSProviderRequest): Promise<DNSProvider> {
-    return this.request<DNSProvider>('PUT', `/api/v1/dns/providers/${id}`, req);
+    return this.request<DNSProvider>('PUT', `/api/v1/dns/providers/${seg(id)}`, req);
   }
 
   async deleteDNSProvider(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/dns/providers/${id}`);
+    return this.request<void>('DELETE', `/api/v1/dns/providers/${seg(id)}`);
   }
 
   async testDNSProvider(id: string): Promise<void> {
-    return this.request<void>('POST', `/api/v1/dns/providers/${id}/test`);
+    return this.request<void>('POST', `/api/v1/dns/providers/${seg(id)}/test`);
   }
 
   // DNS Zones
@@ -907,7 +939,7 @@ export class RackdAPI {
   }
 
   async getDNSZone(id: string): Promise<DNSZone> {
-    return this.request<DNSZone>('GET', `/api/v1/dns/zones/${id}`);
+    return this.request<DNSZone>('GET', `/api/v1/dns/zones/${seg(id)}`);
   }
 
   async createDNSZone(req: CreateDNSZoneRequest): Promise<DNSZone> {
@@ -915,19 +947,19 @@ export class RackdAPI {
   }
 
   async updateDNSZone(id: string, req: UpdateDNSZoneRequest): Promise<DNSZone> {
-    return this.request<DNSZone>('PUT', `/api/v1/dns/zones/${id}`, req);
+    return this.request<DNSZone>('PUT', `/api/v1/dns/zones/${seg(id)}`, req);
   }
 
   async deleteDNSZone(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/dns/zones/${id}`);
+    return this.request<void>('DELETE', `/api/v1/dns/zones/${seg(id)}`);
   }
 
   async syncDNSZone(id: string): Promise<SyncResult> {
-    return this.request<SyncResult>('POST', `/api/v1/dns/zones/${id}/sync`);
+    return this.request<SyncResult>('POST', `/api/v1/dns/zones/${seg(id)}/sync`);
   }
 
   async importDNSZone(id: string): Promise<ImportResult> {
-    return this.request<ImportResult>('POST', `/api/v1/dns/zones/${id}/import`);
+    return this.request<ImportResult>('POST', `/api/v1/dns/zones/${seg(id)}/import`);
   }
 
   // DNS Records
@@ -946,22 +978,22 @@ export class RackdAPI {
   }
 
   async getDNSRecord(id: string): Promise<DNSRecord> {
-    return this.request<DNSRecord>('GET', `/api/v1/dns/records/${id}`);
+    return this.request<DNSRecord>('GET', `/api/v1/dns/records/${seg(id)}`);
   }
 
   async updateDNSRecord(id: string, req: UpdateDNSRecordRequest): Promise<DNSRecord> {
-    return this.request<DNSRecord>('PUT', `/api/v1/dns/records/${id}`, req);
+    return this.request<DNSRecord>('PUT', `/api/v1/dns/records/${seg(id)}`, req);
   }
 
   async deleteDNSRecord(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/dns/records/${id}`);
+    return this.request<void>('DELETE', `/api/v1/dns/records/${seg(id)}`);
   }
 
   async linkDNSRecord(id: string, req: { device_id: string; address_id?: string; add_to_domains?: boolean }): Promise<DNSRecord> {
-    return this.request<DNSRecord>('POST', `/api/v1/dns/records/${id}/link`, req);
+    return this.request<DNSRecord>('POST', `/api/v1/dns/records/${seg(id)}/link`, req);
   }
   async promoteDNSRecord(id: string, req: { name?: string; datacenter_id?: string; tags?: string[] }): Promise<DNSRecord> {
-    return this.request<DNSRecord>('POST', `/api/v1/dns/records/${id}/promote`, req);
+    return this.request<DNSRecord>('POST', `/api/v1/dns/records/${seg(id)}/promote`, req);
   }
 
   // API Keys
@@ -972,7 +1004,7 @@ export class RackdAPI {
     return this.request<APIKey>('POST', '/api/v1/keys', req);
   }
   async deleteAPIKey(id: string): Promise<void> {
-    return this.request<void>('DELETE', `/api/v1/keys/${id}`);
+    return this.request<void>('DELETE', `/api/v1/keys/${seg(id)}`);
   }
 
 }

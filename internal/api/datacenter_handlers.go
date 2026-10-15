@@ -28,7 +28,7 @@ func (h *Handler) createDatacenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errs := ValidateDatacenter(&dc); len(errs) > 0 {
+	if errs := append(ValidateNewID(dc.ID), ValidateDatacenter(&dc)...); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
