@@ -4452,7 +4452,7 @@ paths:
     get:
       operationId: getMetrics
       tags: [Health]
-      security: []
+      description: Needs `metrics:read`.
       responses:
         '200':
           description: Prometheus metrics
@@ -4460,3 +4460,5 @@ paths:
             text/plain:
               schema:
                 type: string
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }

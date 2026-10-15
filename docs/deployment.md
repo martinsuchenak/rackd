@@ -343,10 +343,11 @@ Configure log rotation in `/etc/logrotate.d/rackd`:
 
 ### Health Checks
 
-Rackd provides a health check endpoint:
+Rackd provides unauthenticated health check endpoints, `/healthz` (liveness)
+and `/readyz` (readiness):
 
 ```bash
-curl http://localhost:8080/api/v1/datacenters
+curl http://localhost:8080/healthz
 ```
 
 ### Prometheus Metrics
@@ -361,6 +362,9 @@ services:
       - "prometheus.io/port=8080"
       - "prometheus.io/path=/metrics"
 ```
+
+The scrape needs an API key whose user holds `metrics:read`; see the
+[monitoring guide](monitoring.md#prometheus-configuration).
 
 ### Basic Monitoring Script
 
