@@ -223,8 +223,11 @@
                   class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">API Token</label>
                 <input :id="getEditInputId(selectedProvider.id, 'edit-token')" type="password" x-model="providerToken"
                   placeholder="Leave blank to keep existing"
+                  :aria-invalid="!!validationErrors.token"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to keep the existing token</p>
+                <p x-show="validationErrors.token" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                  x-text="validationErrors.token"></p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to keep the existing token, unless you change the endpoint</p>
               </div>
               <div>
                 <label :for="getEditInputId(selectedProvider.id, 'edit-description')"

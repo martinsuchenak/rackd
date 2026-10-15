@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"slices"
@@ -31,6 +32,7 @@ var (
 	ErrOAuthScopeRequired        = errors.New("scope is required (an empty scope would grant no access)")
 	ErrOAuthScopeNotAllowed      = errors.New("scope must not contain '*'; register explicit scopes")
 	ErrOAuthInvalidScope         = errors.New("requested scope exceeds the client's registered scope")
+	ErrOAuthClientMetadataLimit  = errors.New("client metadata is too large")
 )
 
 type OAuthService struct {
@@ -89,9 +91,42 @@ func isValidRedirectURI(uri string) bool {
 }
 
 // RegisterClient handles RFC 7591 dynamic client registration.
+// Limits on what anyone can register: registration is unauthenticated, so
+// without them each request could store up to a megabyte.
+const (
+	maxClientNameLen   = 200
+	maxClientURILen    = 2048
+	maxRedirectURIs    = 10
+	maxClientListItems = 10 // grant and response types
+)
+
+func checkClientMetadataLimits(req *model.OAuthClientRegistrationRequest) error {
+	switch {
+	case len(req.ClientName) > maxClientNameLen:
+		return fmt.Errorf("%w: client_name is longer than %d characters", ErrOAuthClientMetadataLimit, maxClientNameLen)
+	case len(req.ClientURI) > maxClientURILen, len(req.LogoURI) > maxClientURILen:
+		return fmt.Errorf("%w: client_uri and logo_uri must be at most %d characters", ErrOAuthClientMetadataLimit, maxClientURILen)
+	case len(req.RedirectURIs) > maxRedirectURIs:
+		return fmt.Errorf("%w: at most %d redirect_uris", ErrOAuthClientMetadataLimit, maxRedirectURIs)
+	case len(req.GrantTypes) > maxClientListItems, len(req.ResponseTypes) > maxClientListItems:
+		return fmt.Errorf("%w: at most %d grant_types and response_types", ErrOAuthClientMetadataLimit, maxClientListItems)
+	case len(req.Scope) > maxClientURILen:
+		return fmt.Errorf("%w: scope is longer than %d characters", ErrOAuthClientMetadataLimit, maxClientURILen)
+	}
+	for _, uri := range req.RedirectURIs {
+		if len(uri) > maxClientURILen {
+			return fmt.Errorf("%w: each redirect_uri must be at most %d characters", ErrOAuthClientMetadataLimit, maxClientURILen)
+		}
+	}
+	return nil
+}
+
 func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClientRegistrationRequest) (*model.OAuthClientRegistrationResponse, error) {
 	if req.ClientName == "" {
 		return nil, ErrOAuthClientNameRequired
+	}
+	if err := checkClientMetadataLimits(req); err != nil {
+		return nil, err
 	}
 	if len(req.RedirectURIs) == 0 {
 		return nil, ErrOAuthRedirectURIRequired

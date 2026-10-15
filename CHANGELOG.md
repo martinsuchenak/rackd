@@ -109,6 +109,27 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- **Security:** several ways to overload the server or reach places it shouldn't:
+  - Overlapping-subnet detection compared every pair of networks and listed every
+    recorded conflict once per new one. An operator could create thousands of
+    identical networks and exhaust the server's memory. It now sweeps sorted
+    networks, stops when the request is cancelled, records at most 1,000 pairs per
+    run, and reads the recorded conflicts once.
+  - `/mcp` read request bodies of any size; it now has the same 1 MB limit as the
+    API.
+  - Discovery scans could target loopback, link-local (including the cloud
+    metadata address) and other non-host ranges, which probed the server itself.
+    Those subnets are now refused, and at most 4 scans run at once
+    (`429 TOO_MANY_SCANS`). A subnet that is too large is now a `400` instead of a
+    `500`.
+  - Changing a DNS provider's endpoint kept its stored token and sent it to the
+    new host on the next sync or test. The token must now be entered again.
+  - Outbound requests (webhooks, DNS providers) now apply the IPv4 rules to NAT64,
+    6to4 and Teredo addresses. They block reserved IPv4 space, and check the target
+    before handing a request to an environment proxy. DNS provider responses are
+    capped at 32 MB.
+  - Anonymous OAuth client registration limits field lengths and the number of
+    redirect URIs.
 - **Security:** delegated user and role management could be escalated to full
   admin:
   - The "only admins can manage admins" checks read the `is_admin` column, which

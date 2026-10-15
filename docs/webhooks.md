@@ -144,7 +144,12 @@ Any response other than 2xx, a timeout (30 seconds) or a connection error counts
 Webhook URLs are checked when a webhook is saved, and again when each request connects, so DNS rebinding can't redirect a delivery:
 
 - Loopback (`127.0.0.0/8`, `::1`), unspecified (`0.0.0.0`, `::`), link-local (`169.254.0.0/16`, which includes cloud metadata services) and multicast addresses are always blocked.
+- Reserved IPv4 space (`0.0.0.0/8`, `198.18.0.0/15`, `240.0.0.0/4`) is always blocked.
 - Private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, CGNAT `100.64.0.0/10`, and IPv6 ULA) are blocked unless `SSRF_ALLOW_PRIVATE_TARGETS=true`. Set it to deliver to services on your own network.
+- IPv6 addresses that carry an IPv4 address (NAT64 `64:ff9b::/96`, 6to4 `2002::/16`, Teredo `2001::/32`) get the rules for that IPv4 address.
+- With `HTTPS_PROXY`/`HTTP_PROXY` set, the target is checked before the request goes to the proxy. The proxy resolves the name itself, so it should enforce its own egress rules too.
+
+The same rules apply to DNS provider endpoints.
 
 ## API Endpoints
 

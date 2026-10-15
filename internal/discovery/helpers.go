@@ -3,6 +3,7 @@ package discovery
 import (
 	"fmt"
 	"net"
+	"net/netip"
 )
 
 // MaxSubnetBits is the maximum subnet size allowed for scanning (default /16 = 65536 hosts)
@@ -11,6 +12,57 @@ const MaxSubnetBits = 16
 var ErrSubnetTooLarge = fmt.Errorf("subnet too large: maximum /%d allowed", 32-MaxSubnetBits)
 var ErrScanNotFound = fmt.Errorf("scan not found")
 var ErrScanNotRunning = fmt.Errorf("scan is not running or pending")
+
+// MaxConcurrentScans is how many scans may run at once; each probes up to
+// 65,536 hosts with many workers.
+const MaxConcurrentScans = 4
+
+var ErrTooManyScans = fmt.Errorf("too many scans running: at most %d at once", MaxConcurrentScans)
+
+// SubnetNotScannableError is returned for a subnet that reaches addresses a
+// scan must never probe from the server.
+type SubnetNotScannableError struct {
+	Subnet string
+	Reason string
+}
+
+func (e *SubnetNotScannableError) Error() string {
+	return fmt.Sprintf("subnet %s can't be scanned: it includes %s addresses", e.Subnet, e.Reason)
+}
+
+// unscannable lists ranges that aren't hosts on a network: probing them would
+// reach the server itself or the cloud metadata service (169.254.169.254).
+// Private ranges stay scannable, since finding devices on them is the point.
+var unscannable = []struct {
+	prefix netip.Prefix
+	reason string
+}{
+	{netip.MustParsePrefix("0.0.0.0/8"), "unspecified"},
+	{netip.MustParsePrefix("127.0.0.0/8"), "loopback"},
+	{netip.MustParsePrefix("169.254.0.0/16"), "link-local"},
+	{netip.MustParsePrefix("224.0.0.0/4"), "multicast"},
+	{netip.MustParsePrefix("240.0.0.0/4"), "reserved"},
+	{netip.MustParsePrefix("::/128"), "unspecified"},
+	{netip.MustParsePrefix("::1/128"), "loopback"},
+	{netip.MustParsePrefix("::ffff:0:0/96"), "IPv4-mapped"},
+	{netip.MustParsePrefix("fe80::/10"), "link-local"},
+	{netip.MustParsePrefix("ff00::/8"), "multicast"},
+}
+
+// checkScannable returns a *SubnetNotScannableError if subnet overlaps a
+// range in unscannable.
+func checkScannable(subnet string) error {
+	p, err := netip.ParsePrefix(subnet)
+	if err != nil {
+		return err
+	}
+	for _, u := range unscannable {
+		if p.Overlaps(u.prefix) {
+			return &SubnetNotScannableError{Subnet: subnet, Reason: u.reason}
+		}
+	}
+	return nil
+}
 
 func countHosts(ipNet *net.IPNet) int {
 	ones, bits := ipNet.Mask.Size()

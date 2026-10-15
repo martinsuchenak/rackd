@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
+	"net/netip"
+	"sort"
 	"strings"
 	"time"
 
@@ -312,22 +313,23 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 	return conflicts, nil
 }
 
-// FindOverlappingSubnets finds all network subnets that overlap
+// MaxOverlapConflicts caps how many overlapping pairs one detection run
+// reports. Networks may overlap freely, so n identical subnets make n²/2 pairs;
+// without a cap, a few thousand networks could exhaust memory.
+const MaxOverlapConflicts = 1000
+
+// FindOverlappingSubnets finds network subnets that overlap, at most
+// MaxOverlapConflicts pairs.
 func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Conflict, error) {
-	// Get all networks
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, name, subnet FROM networks ORDER BY subnet
-	`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, subnet FROM networks`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get networks: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
 	type networkInfo struct {
-		ID     string
-		Name   string
-		Subnet string
-		IPNet  *net.IPNet
+		ID, Name, Subnet string
+		first, last      netip.Addr
 	}
 
 	var networks []networkInfo
@@ -336,60 +338,58 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 		if err := rows.Scan(&ni.ID, &ni.Name, &ni.Subnet); err != nil {
 			return nil, fmt.Errorf("failed to scan network: %w", err)
 		}
-
-		// Parse the subnet
-		_, ipNet, err := net.ParseCIDR(ni.Subnet)
+		prefix, err := netip.ParsePrefix(ni.Subnet)
 		if err != nil {
-			// Skip invalid subnets
-			continue
+			continue // skip invalid subnets
 		}
-		ni.IPNet = ipNet
+		prefix = prefix.Masked()
+		ni.first, ni.last = prefix.Addr(), lastAddr(prefix)
 		networks = append(networks, ni)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read networks: %w", err)
+	}
 
-	// Find overlaps
-	var conflicts []model.Conflict
-	checked := make(map[string]bool)
+	// Sorted by first address, a network can only overlap the ones after it
+	// that start before it ends, so the inner loop stops at the first that
+	// doesn't. IPv4 sorts before IPv6, so the families never mix.
+	sort.Slice(networks, func(i, j int) bool { return networks[i].first.Less(networks[j].first) })
 
+	conflicts := []model.Conflict{}
 	for i, n1 := range networks {
-		for j := i + 1; j < len(networks); j++ {
-			n2 := networks[j]
-
-			// Create a unique key for this pair to avoid duplicates
-			key1 := n1.ID + "-" + n2.ID
-			key2 := n2.ID + "-" + n1.ID
-			if checked[key1] || checked[key2] {
-				continue
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		for _, n2 := range networks[i+1:] {
+			if n2.first.BitLen() != n1.first.BitLen() || n1.last.Less(n2.first) {
+				break
 			}
-			checked[key1] = true
-			checked[key2] = true
-
-			// Check for overlap
-			if networksOverlap(n1.IPNet, n2.IPNet) {
-				conflicts = append(conflicts, model.Conflict{
-					ID:           newUUID(),
-					Type:         model.ConflictTypeOverlappingSubnet,
-					Status:       model.ConflictStatusActive,
-					Description:  fmt.Sprintf("Subnets %s and %s overlap", n1.Subnet, n2.Subnet),
-					NetworkIDs:   []string{n1.ID, n2.ID},
-					NetworkNames: []string{n1.Name, n2.Name},
-					Subnets:      []string{n1.Subnet, n2.Subnet},
-					DetectedAt:   nowUTC(),
-				})
+			conflicts = append(conflicts, model.Conflict{
+				ID:           newUUID(),
+				Type:         model.ConflictTypeOverlappingSubnet,
+				Status:       model.ConflictStatusActive,
+				Description:  fmt.Sprintf("Subnets %s and %s overlap", n1.Subnet, n2.Subnet),
+				NetworkIDs:   []string{n1.ID, n2.ID},
+				NetworkNames: []string{n1.Name, n2.Name},
+				Subnets:      []string{n1.Subnet, n2.Subnet},
+				DetectedAt:   nowUTC(),
+			})
+			if len(conflicts) == MaxOverlapConflicts {
+				return conflicts, nil
 			}
 		}
 	}
-
-	if conflicts == nil {
-		conflicts = []model.Conflict{}
-	}
-
 	return conflicts, nil
 }
 
-// networksOverlap checks if two IP networks overlap
-func networksOverlap(n1, n2 *net.IPNet) bool {
-	return n1.Contains(n2.IP) || n2.Contains(n1.IP)
+// lastAddr returns the last address in a masked prefix.
+func lastAddr(p netip.Prefix) netip.Addr {
+	b := p.Addr().AsSlice()
+	for bit := p.Bits(); bit < len(b)*8; bit++ {
+		b[bit/8] |= 0x80 >> (bit % 8)
+	}
+	addr, _ := netip.AddrFromSlice(b)
+	return addr
 }
 
 // GetConflictsByDeviceID returns all conflicts involving a specific device

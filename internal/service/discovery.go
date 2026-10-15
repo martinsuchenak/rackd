@@ -44,6 +44,10 @@ func (s *DiscoveryService) StartScan(ctx context.Context, networkID, scanType st
 
 	if s.scanner != nil {
 		scan, err := s.scanner.Scan(ctx, network, scanType)
+		var notScannable *discovery.SubnetNotScannableError
+		if errors.As(err, &notScannable) || errors.Is(err, discovery.ErrSubnetTooLarge) {
+			return nil, ValidationErrors{{Field: "subnet", Message: err.Error()}}
+		}
 		if err != nil {
 			return nil, err
 		}

@@ -53,6 +53,8 @@ For security, API tokens are not passed directly on the command line. Instead, u
 - `--token-env <VAR>` - Read token from environment variable
 - `--token-file <PATH>` - Read token from file
 
+Rackd never returns a provider's token. Changing a provider's endpoint requires entering the token again, so the stored token is never sent to a new host.
+
 ### 2. Test the Provider
 
 Verify connectivity before creating zones:

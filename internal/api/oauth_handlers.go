@@ -33,6 +33,8 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_redirect_uri", "redirect_uri must be an absolute https URI (http is only allowed for loopback hosts)")
 		case errors.Is(err, service.ErrOAuthScopeNotAllowed):
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", "scope must not contain '*'; register explicit scopes")
+		case errors.Is(err, service.ErrOAuthClientMetadataLimit):
+			h.writeOAuthError(w, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 		case errors.Is(err, service.ErrOAuthScopeRequired):
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_client_metadata", "scope is required; register the explicit scopes the client needs")
 		default:

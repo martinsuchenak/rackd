@@ -173,7 +173,9 @@ rackd discovery cancel <scan-id>
 ### Scan Limitations
 
 - **Maximum subnet size**: /16 (65,536 hosts)
-- **Concurrent scans**: Configurable per profile (default: 10)
+- **Addresses never scanned**: subnets that include loopback (`127.0.0.0/8`, `::1`), link-local (`169.254.0.0/16`, which includes cloud metadata services, and `fe80::/10`), unspecified (`0.0.0.0/8`, `::`), multicast, reserved (`240.0.0.0/4`) or IPv4-mapped IPv6 addresses are refused with `400`. Private ranges can be scanned.
+- **Scans at once**: at most 4 scans run at the same time across the server; another is refused with `429 TOO_MANY_SCANS` until one finishes
+- **Workers per scan**: Configurable per profile (default: 10)
 - **Timeout**: 1-60 seconds per host
 - **Rate limiting**: Prevents network flooding
 
