@@ -185,6 +185,7 @@ func Run(ctx context.Context, opts Options) error {
 	if opts.Edition != "" {
 		uiBuilder.SetEdition(opts.Edition)
 	}
+	uiBuilder.SetMCPOAuth(services.OAuth != nil)
 	runtime.ConfigureUI(uiBuilder)
 	api.HandleAPI(mux, "GET /config", uiBuilder.HandlerWithSession(sessionManager, store))
 

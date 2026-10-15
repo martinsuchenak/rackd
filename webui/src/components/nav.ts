@@ -22,7 +22,7 @@ export function nav(): NavData {
       if (!this.config) {
         return this.items;
       }
-      const allItems = mergeNavItems(this.config.nav_items ?? []);
+      const allItems = mergeNavItems(this.config.nav_items ?? [], this.config);
       return filterNavItems(allItems, this.config.user?.permissions ?? []);
     },
 

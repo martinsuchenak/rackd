@@ -66,4 +66,16 @@ describe('core/features', () => {
     expect(merged.filter((item) => item.label === 'Users')).toHaveLength(1);
     expect(merged.some((item) => item.label === 'Custom' && item.path === '/custom')).toBe(true);
   });
+
+  test('the OAuth Clients page exists only when MCP OAuth is on', () => {
+    const labels = (settings: { mcp_oauth?: boolean } | null) =>
+      mergeNavItems([], settings).map((item) => item.label);
+
+    expect(labels({ mcp_oauth: false })).not.toContain('OAuth Clients');
+    expect(labels(null)).not.toContain('OAuth Clients');
+    expect(labels({ mcp_oauth: true })).toContain('OAuth Clients');
+
+    expect(canAccessRoute('/oauth-clients', permissions, [], { mcp_oauth: false })).toBe(false);
+    expect(canAccessRoute('/oauth-clients', permissions, [], { mcp_oauth: true })).toBe(true);
+  });
 });

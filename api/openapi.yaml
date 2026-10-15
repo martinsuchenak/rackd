@@ -591,7 +591,7 @@ components:
 
     UIConfig:
       type: object
-      required: [edition, version, features, nav_items]
+      required: [edition, version, features, nav_items, mcp_oauth]
       properties:
         edition:
           type: string
@@ -606,6 +606,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NavItem'
+        mcp_oauth:
+          type: boolean
+          description: Whether MCP OAuth is enabled (`MCP_OAUTH_ENABLED`); the OAuth client endpoints exist only when it is
         user:
           $ref: '#/components/schemas/UserInfo'
 

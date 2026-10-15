@@ -1,5 +1,8 @@
 import { findExtensionPage } from './extensions';
-import type { NavItem, PageInfo, Permission } from './types';
+import type { NavItem, PageInfo, Permission, UIConfig } from './types';
+
+/** The server settings a core page can depend on, from /api/v1/config. */
+export type ServerSettings = Pick<UIConfig, 'mcp_oauth'> | null | undefined;
 
 export interface PermissionRequirement {
   resource: string;
@@ -19,6 +22,8 @@ interface FeatureDefinition {
     badgeKey?: FeatureBadgeKey;
   };
   permission?: PermissionRequirement;
+  /** A server setting that must be on for the page to exist. */
+  requires?: 'mcp_oauth';
 }
 
 export interface FeatureNavItem extends NavItem {
@@ -49,7 +54,7 @@ const featureDefinitions: FeatureDefinition[] = [
   { path: '/dns/records', title: 'DNS Records', routePrefix: '/dns/records', permission: { resource: 'dns', action: 'list' } },
   { path: '/users', title: 'User Management', nav: { label: 'Users', icon: 'user', order: 90 }, permission: { resource: 'users', action: 'list' } },
   { path: '/roles', title: 'Role Management', nav: { label: 'Roles', icon: 'shield', order: 91 }, permission: { resource: 'roles', action: 'list' } },
-  { path: '/oauth-clients', title: 'OAuth Clients', nav: { label: 'OAuth Clients', icon: 'shield', order: 93 }, permission: { resource: 'users', action: 'list' } },
+  { path: '/oauth-clients', title: 'OAuth Clients', nav: { label: 'OAuth Clients', icon: 'shield', order: 93 }, permission: { resource: 'users', action: 'list' }, requires: 'mcp_oauth' },
   { path: '/api-keys', title: 'API Keys', nav: { label: 'API Keys', icon: 'key', order: 94 }, permission: { resource: 'apikeys', action: 'list' } },
   { path: '/audit', title: 'Audit Logs', nav: { label: 'Audit', icon: 'shield', order: 95 }, permission: { resource: 'audit', action: 'list' } },
   { path: '/logs', title: 'Application Logs', nav: { label: 'Logs', icon: 'terminal', order: 96 }, permission: { resource: 'logs', action: 'list' } },
@@ -69,9 +74,13 @@ function matchesFeaturePath(routePath: string, feature: FeatureDefinition): bool
   return false;
 }
 
-export function getFeatureNavItems(): FeatureNavItem[] {
+function enabled(feature: FeatureDefinition, settings: ServerSettings): boolean {
+  return !feature.requires || settings?.[feature.requires] === true;
+}
+
+export function getFeatureNavItems(settings?: ServerSettings): FeatureNavItem[] {
   return featureDefinitions
-    .filter((feature) => feature.nav)
+    .filter((feature) => feature.nav && enabled(feature, settings))
     .map((feature) => ({
       label: feature.nav!.label,
       path: feature.path,
@@ -99,9 +108,12 @@ export function getPageTitle(route: string, extensionPages: PageInfo[] = []): st
   return title || 'Page';
 }
 
-export function canAccessRoute(route: string, permissions: Permission[], extensionPages: PageInfo[] = []): boolean {
+export function canAccessRoute(route: string, permissions: Permission[], extensionPages: PageInfo[] = [], settings?: ServerSettings): boolean {
   const routePath = normalizePath(route);
   const feature = findCoreFeature(routePath);
+  if (feature && !enabled(feature, settings)) {
+    return false;
+  }
   const required = feature ? feature.permission : findExtensionPage(routePath, extensionPages)?.required_permission;
   if (!required) {
     return true;
@@ -124,8 +136,8 @@ export function filterNavItems(items: NavItem[], permissions: Permission[]): Nav
   });
 }
 
-export function mergeNavItems(dynamicItems: NavItem[]): FeatureNavItem[] {
-  const baseItems = getFeatureNavItems();
+export function mergeNavItems(dynamicItems: NavItem[], settings?: ServerSettings): FeatureNavItem[] {
+  const baseItems = getFeatureNavItems(settings);
   const dynamic = dynamicItems.filter(
     (item) => !baseItems.some((base) =>
       (base.path === item.path || (base.path === '/' && item.path === '')) || base.label === item.label

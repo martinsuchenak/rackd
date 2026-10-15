@@ -22,8 +22,11 @@ type UIConfig struct {
 	Extensions []ExtensionInfo `json:"extensions"`
 	NavItems   []NavItem       `json:"nav_items"`
 	// Pages are extension routes, with the title and permission the router uses.
-	Pages    []PageInfo `json:"pages"`
-	UserInfo *UserInfo  `json:"user,omitempty"`
+	Pages []PageInfo `json:"pages"`
+	// MCPOAuth reports whether MCP OAuth is on, which the OAuth Clients
+	// page needs.
+	MCPOAuth bool      `json:"mcp_oauth"`
+	UserInfo *UserInfo `json:"user,omitempty"`
 }
 
 // ExtensionInfo describes an extension in /api/v1/config. Scripts and Styles
@@ -115,6 +118,11 @@ func (b *UIConfigBuilder) SetEdition(edition string) {
 
 func (b *UIConfigBuilder) SetUser(user *UserInfo) {
 	b.config.UserInfo = user
+}
+
+// SetMCPOAuth records whether MCP OAuth is enabled.
+func (b *UIConfigBuilder) SetMCPOAuth(enabled bool) {
+	b.config.MCPOAuth = enabled
 }
 
 func (b *UIConfigBuilder) Build() UIConfig {

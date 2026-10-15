@@ -435,6 +435,8 @@ export interface UIConfig {
   extensions?: ExtensionInfo[];
   nav_items: NavItem[];
   pages?: PageInfo[];
+  /** Whether MCP OAuth is on; the OAuth Clients page needs it. */
+  mcp_oauth?: boolean;
   user?: UserInfo;
 }
 
