@@ -164,6 +164,15 @@ func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
 		}
 	}
 
+	// Writing the new expiry on every request turned each page load into a
+	// burst of writes, which queue for SQLite's write lock and are slow on
+	// network storage. Extend at most once a minute: the session then ends
+	// its TTL after the last write, at most a minute earlier than after the
+	// last request. Shortening it, to the maximum lifetime, is always
+	// written.
+	if d := expires.Sub(session.ExpiresAt); d >= 0 && d < sessionRefreshInterval {
+		return session, nil
+	}
 	if sm.store != nil {
 		if err := sm.store.Extend(context.Background(), HashToken(token), expires); err != nil {
 			return nil, err
@@ -172,6 +181,10 @@ func (sm *SessionManager) RefreshSession(token string) (*Session, error) {
 	session.ExpiresAt = expires
 	return session, nil
 }
+
+// sessionRefreshInterval is the least time between writes of a session's new
+// expiry.
+const sessionRefreshInterval = time.Minute
 
 func (sm *SessionManager) InvalidateSession(token string) error {
 	if token == "" {

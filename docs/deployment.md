@@ -300,6 +300,12 @@ sudo chmod 600 /etc/ssl/private/rackd.key
 
 - Allocate sufficient memory (minimum 256MB)
 - Use SSD storage for database
+- Keep `DATA_DIR` on a local disk, not a network share (NFS, SMB/CIFS, or a
+  Docker volume backed by one). SQLite is slow there and its locking is
+  unreliable, which shows up as pages that take a long time to load and
+  "context deadline exceeded" errors. Rackd logs a warning at start on Linux
+  when it detects one. To keep a copy on the share, write backups there
+  (`rackd backup`) instead.
 - Monitor disk space usage
 - Configure log rotation
 
