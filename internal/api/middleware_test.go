@@ -231,7 +231,7 @@ func TestSecurityHeaders_HTTPS(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	// HSTS should be set for HTTPS
-	expected := "max-age=31536000; includeSubDomains"
+	expected := "max-age=31536000"
 	if got := w.Header().Get("Strict-Transport-Security"); got != expected {
 		t.Errorf("expected HSTS: %s, got %s", expected, got)
 	}

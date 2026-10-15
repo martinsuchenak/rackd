@@ -167,9 +167,11 @@ func restrictDBFiles(dbPath string) error {
 		return fmt.Errorf("creating database file: %w", err)
 	}
 	_ = f.Close()
+	// Some volumes (CIFS, some NFS mounts) don't support chmod, and a file may
+	// belong to another user; that mustn't stop Rackd starting.
 	for _, path := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
 		if err := os.Chmod(path, 0600); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("restricting %s: %w", path, err)
+			log.Warn("Could not make the database file private; check its permissions", "path", path, "error", err)
 		}
 	}
 	return nil

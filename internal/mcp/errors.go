@@ -16,6 +16,7 @@ const (
 	errCodeForbidden       = -32003
 	errCodeNotFound        = -32004
 	errCodeConflict        = -32009
+	errCodeUpstream        = -32010 // a DNS provider or other outside service failed
 )
 
 // storageNotFound are the not-found errors services can pass through from
@@ -45,10 +46,14 @@ func toolError(err error) error {
 		return mcp.NewToolError(errCodeForbidden, "Forbidden", nil)
 	case errors.Is(err, service.ErrUnauthenticated):
 		return mcp.NewToolError(errCodeUnauthenticated, "Unauthorized", nil)
-	case errors.Is(err, service.ErrNotFound), isStorageNotFound(err):
+	case errors.Is(err, service.ErrDNSProviderTestFailed):
+		// Like REST's 502: the cause is the outside service's, not Rackd's.
+		return mcp.NewToolError(errCodeUpstream, err.Error(), nil)
+	case errors.Is(err, service.ErrNotFound), isStorageNotFound(err), errors.Is(err, discovery.ErrScanNotFound):
 		return mcp.NewToolError(errCodeNotFound, err.Error(), nil)
 	case errors.Is(err, service.ErrAlreadyExists), errors.Is(err, service.ErrLastAdmin),
-		errors.Is(err, service.ErrIPNotAvailable), errors.Is(err, discovery.ErrTooManyScans):
+		errors.Is(err, service.ErrIPNotAvailable), errors.Is(err, discovery.ErrTooManyScans),
+		errors.Is(err, discovery.ErrScanNotRunning):
 		return mcp.NewToolError(errCodeConflict, err.Error(), nil)
 	case errors.Is(err, service.ErrSystemRole), errors.Is(err, service.ErrSelfDelete):
 		return mcp.NewToolErrorInvalidParams(err.Error())
