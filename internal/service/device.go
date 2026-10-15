@@ -177,14 +177,15 @@ func (s *DeviceService) checkForIPConflicts(ctx context.Context, device *model.D
 		}
 		checked[addr.IP] = true
 
-		// An IP that has had a conflict before (active, resolved or ignored)
-		// is left to that record, so ignored conflicts stay ignored.
+		// An IP with an active or ignored conflict is left to that record,
+		// so ignored conflicts stay ignored. A resolved one was dealt with:
+		// a duplicate now is new.
 		conflicts, err := s.store.GetConflictsByIP(ctx, addr.IP)
 		if err != nil {
 			log.Warn("Duplicate-IP check failed", "ip", addr.IP, "error", err)
 			continue
 		}
-		if len(conflicts) > 0 {
+		if hasOpenConflict(conflicts) {
 			continue
 		}
 

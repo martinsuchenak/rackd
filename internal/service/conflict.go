@@ -144,7 +144,7 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 	for _, conflict := range conflicts {
 		// Check if conflict already exists for this IP
 		existing, err := s.store.GetConflictsByIP(ctx, conflict.IPAddress)
-		if err == nil && len(existing) > 0 {
+		if err == nil && hasOpenConflict(existing) {
 			// Update existing conflict if still active
 			for _, ex := range existing {
 				if ex.Status == model.ConflictStatusActive {
@@ -259,4 +259,16 @@ func (s *ConflictService) GetSummary(ctx context.Context) (map[string]int, error
 	}
 
 	return summary, nil
+}
+
+// hasOpenConflict reports whether any of an address's conflicts is still
+// active or was ignored; a resolved one doesn't stop a new duplicate being
+// recorded.
+func hasOpenConflict(conflicts []model.Conflict) bool {
+	for _, c := range conflicts {
+		if c.Type == model.ConflictTypeDuplicateIP && c.Status != model.ConflictStatusResolved {
+			return true
+		}
+	}
+	return false
 }
