@@ -327,7 +327,6 @@ func (s *SQLiteStorage) CreateInitialAdmin(ctx context.Context, username, email,
 		FullName:     fullName,
 		PasswordHash: passwordHash,
 		IsActive:     true,
-		IsAdmin:      true,
 	}
 
 	if err := s.CreateUser(ctx, user); err != nil {

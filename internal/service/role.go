@@ -194,6 +194,41 @@ func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permiss
 		return ErrSystemRole
 	}
 
+	current, err := s.store.GetRolePermissions(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	if err := s.checkPermissionChange(ctx, current, permissionIDs); err != nil {
+		return err
+	}
+
+	return s.store.SetRolePermissions(ctx, roleID, permissionIDs)
+}
+
+// CreateWithPermissions creates a role holding permissionIDs. It checks the
+// permissions before creating anything, so a refusal leaves no empty role.
+func (s *RoleService) CreateWithPermissions(ctx context.Context, role *model.Role, permissionIDs []string) error {
+	if len(permissionIDs) > 0 {
+		if err := requirePermission(ctx, s.store, "roles", "update"); err != nil {
+			return err
+		}
+		if err := s.checkPermissionChange(ctx, nil, permissionIDs); err != nil {
+			return err
+		}
+	}
+	if err := s.Create(ctx, role); err != nil {
+		return err
+	}
+	if len(permissionIDs) == 0 {
+		return nil
+	}
+	return s.store.SetRolePermissions(ctx, role.ID, permissionIDs)
+}
+
+// checkPermissionChange fails if any of permissionIDs is unknown, or if the
+// caller doesn't hold every permission that changing a role from current to
+// permissionIDs adds or removes.
+func (s *RoleService) checkPermissionChange(ctx context.Context, current []model.Permission, permissionIDs []string) error {
 	perms, err := s.store.ListPermissions(ctx, nil)
 	if err != nil {
 		return err
@@ -210,11 +245,6 @@ func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permiss
 		wanted[id] = true
 	}
 
-	// The caller must hold every permission this adds or removes.
-	current, err := s.store.GetRolePermissions(ctx, roleID)
-	if err != nil {
-		return err
-	}
 	had := make(map[string]bool, len(current))
 	var changed []model.Permission
 	for _, p := range current {
@@ -228,11 +258,7 @@ func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permiss
 			changed = append(changed, byID[id])
 		}
 	}
-	if err := s.guard.requireHolds(ctx, changed); err != nil {
-		return err
-	}
-
-	return s.store.SetRolePermissions(ctx, roleID, permissionIDs)
+	return s.guard.requireHolds(ctx, changed)
 }
 
 func (s *RoleService) findPermission(ctx context.Context, id string) (*model.Permission, error) {

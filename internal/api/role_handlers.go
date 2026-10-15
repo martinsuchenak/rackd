@@ -60,16 +60,9 @@ func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
 		IsSystem:    false,
 	}
 
-	if err := h.svc.Roles.Create(r.Context(), role); err != nil {
+	if err := h.svc.Roles.CreateWithPermissions(r.Context(), role, req.Permissions); err != nil {
 		h.handleServiceError(w, err)
 		return
-	}
-
-	if len(req.Permissions) > 0 {
-		if err := h.svc.Roles.SetPermissions(r.Context(), role.ID, req.Permissions); err != nil {
-			h.handleServiceError(w, err)
-			return
-		}
 	}
 
 	h.writeJSON(w, http.StatusCreated, role.ToResponse())

@@ -84,7 +84,21 @@ func (g privilegeGuard) callerPermissions(ctx context.Context) (permissionSet, e
 	if err != nil {
 		return nil, err
 	}
-	return newPermissionSet(perms), nil
+	held := newPermissionSet(perms)
+	// An OAuth token holds only the permissions in its scope.
+	if caller.Scopes != nil {
+		scoped := permissionSet{}
+		for _, s := range caller.Scopes {
+			if s == "*" {
+				return held, nil
+			}
+			if held[s] {
+				scoped[s] = true
+			}
+		}
+		held = scoped
+	}
+	return held, nil
 }
 
 // requireHolds fails with ErrForbidden unless the caller holds every
@@ -104,8 +118,8 @@ func (g privilegeGuard) requireHolds(ctx context.Context, perms []model.Permissi
 }
 
 // requireRole fails unless the caller may give or take away roleID: they
-// hold all its permissions, and only admins handle the admin role or a
-// system role.
+// hold all its permissions, and only admins handle the admin role. The other
+// system roles follow the same rule as custom ones.
 func (g privilegeGuard) requireRole(ctx context.Context, roleID string) (*model.Role, error) {
 	role, err := g.store.GetRole(ctx, roleID)
 	if err != nil {
@@ -121,8 +135,8 @@ func (g privilegeGuard) requireRole(ctx context.Context, roleID string) (*model.
 	if admin {
 		return role, nil
 	}
-	if role.Name == "admin" || role.IsSystem {
-		return nil, &PrivilegeError{Reason: "Only admins can assign or remove the " + role.Name + " role"}
+	if role.Name == "admin" {
+		return nil, &PrivilegeError{Reason: "Only admins can assign or remove the admin role"}
 	}
 	perms, err := g.store.GetRolePermissions(ctx, roleID)
 	if err != nil {
