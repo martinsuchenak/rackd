@@ -55,8 +55,6 @@ These are only used on first startup when no users exist.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `DISCOVERY_INTERVAL` | duration | `24h` | Interval between scheduled discovery scans |
-| `DISCOVERY_MAX_CONCURRENT` | int | `10` | Max concurrent host probes during a scan |
-| `DISCOVERY_TIMEOUT` | duration | `5s` | Per-host probe timeout |
 | `DISCOVERY_CLEANUP_DAYS` | int | `30` | Auto-delete discovered devices older than this |
 | `DISCOVERY_SCAN_ON_STARTUP` | bool | `false` | Run discovery scans immediately on server start |
 | `DISCOVERY_SNMPV2C_ENABLED` | bool | `false` | Enable SNMPv2c probing during discovery |

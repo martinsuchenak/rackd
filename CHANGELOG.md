@@ -130,6 +130,28 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- The web UI hid the DNS zone Sync and Import buttons from operators, and the
+  provider Test button from viewers and operators. They checked
+  `dns-zone:update` and `dns-provider:update` instead of the `sync`, `import`
+  and `test` permissions the server uses. The Circuits and NAT nav entries now
+  show only to users who can list them.
+- `pool.utilization_high` could be subscribed to but never fired. It now fires
+  when a pool's utilization reaches `POOL_UTILIZATION_ALERT_PERCENT` (default
+  90; `0` turns it off), checked at each snapshot, once per crossing.
+- `search:read` was granted but never checked; global search now requires it, as
+  well as each kind's list permission, and reports errors instead of returning
+  empty results. `dns:import`, which nothing checked, is removed.
+- The pool form's Gateway and DNS Servers fields were silently discarded; they
+  are removed.
+- Users, roles and API keys are timestamped in UTC like everything else.
+- `DISCOVERY_MAX_CONCURRENT` and `DISCOVERY_TIMEOUT` were read but never used;
+  they are removed. Discovery concurrency and timeouts are set in scan profiles.
+- The CLI documentation listed flags and commands that don't exist. Every command
+  and flag is now in `docs/cli-reference.md`, generated from the code
+  (`go run ./tools/clidoc`), with a test that fails when it falls behind. The
+  docs no longer mention settings Rackd doesn't read (`RACKD_*` server variables,
+  `--api-auth-token`, `rackd mcp`, `rackd completion`). The MCP guide describes
+  connecting over HTTP, and exit codes are documented as `0` or `1`.
 - `rackd conflict resolve` always failed: it posted to `/api/v1/conflicts/resolve`,
   which doesn't exist. It now uses `/api/v1/conflicts/{id}/resolve`. That route
   ignored its `{id}` and resolved whatever `conflict_id` the body named; it now

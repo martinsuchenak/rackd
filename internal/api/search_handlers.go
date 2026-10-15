@@ -1,8 +1,10 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -24,42 +26,41 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.svc.Authorize(r.Context(), "search", "read"); err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	// Each kind needs its own list permission; kinds the caller can't list are
+	// left out. Any other failure is an error, not an empty result.
 	var results []SearchResult
+	skip := func(err error) bool { return errors.Is(err, service.ErrForbidden) }
 
-	if h.svc != nil && h.svc.Devices != nil {
-		devices, err := h.svc.Devices.Search(r.Context(), query)
-		if err == nil {
-			for i := range devices {
-				results = append(results, SearchResult{
-					Type:   "device",
-					Device: &devices[i],
-				})
-			}
-		}
+	devices, err := h.svc.Devices.Search(r.Context(), query)
+	if err != nil && !skip(err) {
+		h.handleServiceError(w, err)
+		return
+	}
+	for i := range devices {
+		results = append(results, SearchResult{Type: "device", Device: &devices[i]})
 	}
 
-	if h.svc != nil && h.svc.Networks != nil {
-		networks, err := h.svc.Networks.Search(r.Context(), query)
-		if err == nil {
-			for i := range networks {
-				results = append(results, SearchResult{
-					Type:    "network",
-					Network: &networks[i],
-				})
-			}
-		}
+	networks, err := h.svc.Networks.Search(r.Context(), query)
+	if err != nil && !skip(err) {
+		h.handleServiceError(w, err)
+		return
+	}
+	for i := range networks {
+		results = append(results, SearchResult{Type: "network", Network: &networks[i]})
 	}
 
-	if h.svc != nil && h.svc.Datacenters != nil {
-		datacenters, err := h.svc.Datacenters.Search(r.Context(), query)
-		if err == nil {
-			for i := range datacenters {
-				results = append(results, SearchResult{
-					Type:       "datacenter",
-					Datacenter: &datacenters[i],
-				})
-			}
-		}
+	datacenters, err := h.svc.Datacenters.Search(r.Context(), query)
+	if err != nil && !skip(err) {
+		h.handleServiceError(w, err)
+		return
+	}
+	for i := range datacenters {
+		results = append(results, SearchResult{Type: "datacenter", Datacenter: &datacenters[i]})
 	}
 
 	h.writeJSON(w, http.StatusOK, SearchResponse{Results: results})

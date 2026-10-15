@@ -251,6 +251,12 @@ var migrations = []*Migration{
 		Up:      migrateScrubDeliveryErrorURLsUp,
 		Down:    migrateScrubDeliveryErrorURLsDown,
 	},
+	{
+		Version: "20261015140000",
+		Name:    "remove_unused_dns_import_permission",
+		Up:      migrateRemoveDNSImportUp,
+		Down:    migrateRemoveDNSImportDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3053,4 +3059,31 @@ func migrateScrubDeliveryErrorURLsUp(ctx context.Context, tx sqlTx) error {
 // migrateScrubDeliveryErrorURLsDown is a no-op: the removed URLs are gone.
 func migrateScrubDeliveryErrorURLsDown(ctx context.Context, tx sqlTx) error {
 	return nil
+}
+
+// migrateRemoveDNSImportUp removes dns:import, which nothing checked: importing
+// records into a zone needs dns-zone:import. Granting it did nothing.
+func migrateRemoveDNSImportUp(ctx context.Context, tx sqlTx) error {
+	for _, stmt := range []string{
+		`DELETE FROM role_permissions WHERE permission_id IN (SELECT id FROM permissions WHERE name = 'dns:import')`,
+		`DELETE FROM permissions WHERE name = 'dns:import'`,
+	} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("failed to remove dns:import: %w", err)
+		}
+	}
+	return nil
+}
+
+// migrateRemoveDNSImportDown restores the permission and its admin grant.
+func migrateRemoveDNSImportDown(ctx context.Context, tx sqlTx) error {
+	now := nowUTC()
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at) VALUES (?, 'dns:import', 'dns', 'import', ?)`, newUUID(), now); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ? FROM roles r, permissions p WHERE r.name = 'admin' AND p.name = 'dns:import'
+	`, now)
+	return err
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -132,6 +133,16 @@ func (w *SnapshotWorker) takeSnapshots() error {
 		log.Error("Failed to list pools for snapshot", "error", err)
 		return err
 	}
+	// The previous snapshots say which pools were already over the alert
+	// threshold, so the event fires once per crossing, across restarts too.
+	previous := map[string]float64{}
+	if latest, err := w.storage.GetLatestSnapshots(w.ctx, model.SnapshotTypePool); err == nil {
+		for _, s := range latest {
+			previous[s.ResourceID] = s.Utilization
+		}
+	} else {
+		log.Warn("Failed to read previous pool snapshots", "error", err)
+	}
 
 	for _, pool := range pools {
 		heatmap, err := w.storage.GetPoolHeatmap(w.ctx, pool.ID)
@@ -165,6 +176,21 @@ func (w *SnapshotWorker) takeSnapshots() error {
 
 		if err := w.storage.CreateSnapshot(w.ctx, snapshot); err != nil {
 			log.Error("Failed to create pool snapshot", "pool_id", pool.ID, "error", err)
+		}
+
+		threshold := w.config.PoolUtilizationAlertPercent
+		if threshold > 0 && totalIPs > 0 && utilization >= threshold {
+			if before, seen := previous[pool.ID]; !seen || before < threshold {
+				webhook.Publish(model.EventTypePoolUtilization, map[string]any{
+					"pool_id":     pool.ID,
+					"pool_name":   pool.Name,
+					"network_id":  pool.NetworkID,
+					"used_ips":    usedIPs,
+					"total_ips":   totalIPs,
+					"utilization": utilization,
+					"threshold":   threshold,
+				})
+			}
 		}
 	}
 

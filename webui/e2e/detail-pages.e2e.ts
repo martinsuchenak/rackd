@@ -52,7 +52,6 @@ test('@inventory network detail supports pool create and delete flows', async ({
   await dialog.getByLabel(/^Name/).fill(poolName);
   await dialog.getByLabel(/^Start IP/).fill('10.93.0.20');
   await dialog.getByLabel(/^End IP/).fill('10.93.0.30');
-  await dialog.getByLabel('Gateway').fill('10.93.0.1');
   await dialog.getByRole('button', { name: 'Create Pool' }).click();
   await expect(dialog).toBeHidden();
 

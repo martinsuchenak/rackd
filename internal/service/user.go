@@ -88,8 +88,8 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 		FullName:     req.FullName,
 		PasswordHash: passwordHash,
 		IsActive:     true,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		CreatedAt:    time.Now().UTC(),
+		UpdatedAt:    time.Now().UTC(),
 	}
 
 	// The creator may only give the new user a role they could assign.
@@ -223,7 +223,7 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 			adminRoleChange = func() error { return s.store.RemoveRoleFromUser(ctx, id, adminRole.ID) }
 		}
 	}
-	user.UpdatedAt = time.Now()
+	user.UpdatedAt = time.Now().UTC()
 
 	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
 		return nil, err
@@ -327,7 +327,7 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	}
 
 	user.PasswordHash = passwordHash
-	user.UpdatedAt = time.Now()
+	user.UpdatedAt = time.Now().UTC()
 	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
 		return err
 	}
@@ -368,7 +368,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 	}
 
 	user.PasswordHash = passwordHash
-	user.UpdatedAt = time.Now()
+	user.UpdatedAt = time.Now().UTC()
 	if err := s.store.UpdateUser(enrichAuditCtx(ctx), user); err != nil {
 		return err
 	}

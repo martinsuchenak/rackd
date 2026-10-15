@@ -218,12 +218,8 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/v1/d
 **Solution:**
 
 ```bash
-# Ensure server and client use same token
-# Server
-export RACKD_API_AUTH_TOKEN=mysecret
-rackd server
-
-# Client
+# The CLI authenticates with an API key; create one in the web UI
+# (API Keys) or with `rackd apikey create`, then:
 export RACKD_TOKEN=mysecret
 rackd device list
 ```
@@ -331,12 +327,9 @@ Error: context deadline exceeded
 **Solution:**
 
 ```bash
-# Increase timeout
-export RACKD_TIMEOUT=60s
+# Increase the CLI's request timeout in ~/.config/rackd/config.json:
+#   { "timeout": "60s" }
 rackd device list
-
-# Or in CLI
-rackd device list --timeout 60s
 
 # Check network connectivity
 ping localhost
@@ -354,10 +347,7 @@ curl http://localhost:8080/api/v1/config
 **Solution:**
 
 ```bash
-# Check discovery is enabled
-# In server config
-export RACKD_DISCOVERY_ENABLED=true
-
+# Discovery rules run every DISCOVERY_INTERVAL (default 24h)
 # Check scan status
 rackd discovery list
 
@@ -432,9 +422,6 @@ openssl rand -hex 32
 
 # Check logs for scheduler errors
 journalctl -u rackd | grep scheduler
-
-# Verify discovery is enabled
-# Check RACKD_DISCOVERY_ENABLED=true
 
 # Restart server to reload schedules
 sudo systemctl restart rackd

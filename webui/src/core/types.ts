@@ -80,8 +80,6 @@ export interface NetworkPool {
   name: string;
   start_ip: string;
   end_ip: string;
-  gateway?: string;
-  dns_servers?: string[];
   description: string;
   tags: string[];
   created_at: string;

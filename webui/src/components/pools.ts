@@ -54,8 +54,6 @@ interface PoolDetailData {
   getNetworkName(): string;
   getPoolStartIP(): string;
   getPoolEndIP(): string;
-  getPoolGateway(): string;
-  getPoolDNSServers(): string;
   hasPoolDescription(): boolean;
   getPoolDescription(): string;
   getDeleteReservationAddress(): string;
@@ -333,14 +331,6 @@ export function poolDetail(): PoolDetailData {
 
     getPoolEndIP(): string {
       return this.pool?.end_ip || '';
-    },
-
-    getPoolGateway(): string {
-      return this.pool?.gateway || '-';
-    },
-
-    getPoolDNSServers(): string {
-      return this.pool?.dns_servers?.join(', ') || '-';
     },
 
     hasPoolDescription(): boolean {

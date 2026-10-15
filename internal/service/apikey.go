@@ -63,7 +63,7 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 		return "", err
 	}
 	key.Key = auth.HashToken(plaintextKey)
-	key.CreatedAt = time.Now()
+	key.CreatedAt = time.Now().UTC()
 
 	if err := s.store.CreateAPIKey(ctx, key); err != nil {
 		return "", err

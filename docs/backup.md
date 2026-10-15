@@ -181,8 +181,9 @@ cp /backup/rackd-latest.db "$TEST_DIR/rackd.db"
 # Test database
 sqlite3 "$TEST_DIR/rackd.db" "PRAGMA integrity_check;"
 
-# Test Rackd startup
-RACKD_DATA_DIR="$TEST_DIR" ./rackd server --dry-run
+# Check the backup and its migrations
+./rackd backup verify "$TEST_DIR/rackd.db"
+./rackd migrate status --data-dir "$TEST_DIR"
 
 echo "Recovery test completed"
 rm -rf "$TEST_DIR"

@@ -42,8 +42,8 @@ func (s *RoleService) Create(ctx context.Context, role *model.Role) error {
 	}
 
 	role.ID = uuid.Must(uuid.NewV7()).String()
-	role.CreatedAt = time.Now()
-	role.UpdatedAt = time.Now()
+	role.CreatedAt = time.Now().UTC()
+	role.UpdatedAt = time.Now().UTC()
 
 	if err := s.store.CreateRole(enrichAuditCtx(ctx), role); err != nil {
 		return fromStoreError(err)
@@ -86,7 +86,7 @@ func (s *RoleService) Update(ctx context.Context, id string, role *model.Role) e
 	}
 
 	role.ID = id
-	role.UpdatedAt = time.Now()
+	role.UpdatedAt = time.Now().UTC()
 
 	if err := s.store.UpdateRole(ctx, role); err != nil {
 		return err

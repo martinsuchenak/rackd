@@ -17,8 +17,6 @@ type Config struct {
 	LogFormat               string
 	LogLevel                string
 	DiscoveryInterval       time.Duration
-	DiscoveryMaxConcurrent  int
-	DiscoveryTimeout        time.Duration
 	DiscoveryCleanupDays    int
 	DiscoveryScanOnStartup  bool
 	DiscoverySNMPv2cEnabled bool
@@ -52,6 +50,9 @@ type Config struct {
 	// Utilization snapshots
 	SnapshotInterval      time.Duration
 	SnapshotRetentionDays int
+	// PoolUtilizationAlertPercent is the pool utilization at which
+	// pool.utilization_high is published; 0 turns it off.
+	PoolUtilizationAlertPercent float64
 
 	// DNS sync
 	DNSSyncInterval time.Duration
@@ -76,8 +77,6 @@ func Load() *Config {
 		LogFormat:               getEnv("LOG_FORMAT", "text"),
 		LogLevel:                getEnv("LOG_LEVEL", "info"),
 		DiscoveryInterval:       getDurationEnv("DISCOVERY_INTERVAL", 24*time.Hour),
-		DiscoveryMaxConcurrent:  getIntEnv("DISCOVERY_MAX_CONCURRENT", 10),
-		DiscoveryTimeout:        getDurationEnv("DISCOVERY_TIMEOUT", 5*time.Second),
 		DiscoveryCleanupDays:    getIntEnv("DISCOVERY_CLEANUP_DAYS", 30),
 		DiscoveryScanOnStartup:  getBoolEnv("DISCOVERY_SCAN_ON_STARTUP", false),
 		DiscoverySNMPv2cEnabled: getBoolEnv("DISCOVERY_SNMPV2C_ENABLED", false),
@@ -107,8 +106,9 @@ func Load() *Config {
 		MCPOAuthAccessTokenTTL:  getDurationEnv("MCP_OAUTH_ACCESS_TOKEN_TTL", 1*time.Hour),
 		MCPOAuthRefreshTokenTTL: getDurationEnv("MCP_OAUTH_REFRESH_TOKEN_TTL", 30*24*time.Hour),
 
-		SnapshotInterval:      getDurationEnv("SNAPSHOT_INTERVAL", 1*time.Hour),
-		SnapshotRetentionDays: getIntEnv("SNAPSHOT_RETENTION_DAYS", 90),
+		SnapshotInterval:            getDurationEnv("SNAPSHOT_INTERVAL", 1*time.Hour),
+		SnapshotRetentionDays:       getIntEnv("SNAPSHOT_RETENTION_DAYS", 90),
+		PoolUtilizationAlertPercent: float64(getIntEnv("POOL_UTILIZATION_ALERT_PERCENT", 90)),
 
 		DNSSyncInterval: getDurationEnv("DNS_SYNC_INTERVAL", 1*time.Hour),
 
@@ -139,14 +139,6 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("DISCOVERY_INTERVAL must be positive, got %v", c.DiscoveryInterval)
 	}
 
-	if c.DiscoveryMaxConcurrent <= 0 {
-		return fmt.Errorf("DISCOVERY_MAX_CONCURRENT must be positive, got %d", c.DiscoveryMaxConcurrent)
-	}
-
-	if c.DiscoveryTimeout <= 0 {
-		return fmt.Errorf("DISCOVERY_TIMEOUT must be positive, got %v", c.DiscoveryTimeout)
-	}
-
 	if c.DiscoveryCleanupDays <= 0 {
 		return fmt.Errorf("DISCOVERY_CLEANUP_DAYS must be positive, got %d", c.DiscoveryCleanupDays)
 	}
@@ -172,14 +164,12 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryMaxConcurrent:%d, DiscoveryTimeout:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v, DiscoverySNMPv2cEnabled:%v, RateLimitEnabled:%v, RateLimitRequests:%d, RateLimitWindow:%v}",
+	return fmt.Sprintf("Config{DataDir:%s, ListenAddr:%s, LogFormat:%s, LogLevel:%s, DiscoveryInterval:%v, DiscoveryCleanupDays:%d, DiscoveryScanOnStartup:%v, DiscoverySNMPv2cEnabled:%v, RateLimitEnabled:%v, RateLimitRequests:%d, RateLimitWindow:%v}",
 		c.DataDir,
 		c.ListenAddr,
 		c.LogFormat,
 		c.LogLevel,
 		c.DiscoveryInterval,
-		c.DiscoveryMaxConcurrent,
-		c.DiscoveryTimeout,
 		c.DiscoveryCleanupDays,
 		c.DiscoveryScanOnStartup,
 		c.DiscoverySNMPv2cEnabled,

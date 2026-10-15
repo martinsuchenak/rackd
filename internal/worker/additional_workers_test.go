@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -195,3 +197,52 @@ func TestSchedulerCleanupRunsWithoutRules(t *testing.T) {
 }
 
 var _ discovery.AdvancedScanner = (*mockAdvancedScanner)(nil)
+
+// pool.utilization_high fires when a pool crosses the threshold, once, not on
+// every snapshot while it stays above it.
+func TestSnapshotWorkerPublishesPoolUtilizationOnce(t *testing.T) {
+	store, err := storage.NewSQLiteStorage(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	ctx := context.Background()
+	network := &model.Network{Name: "n", Subnet: "10.9.0.0/24"}
+	if err := store.CreateNetwork(ctx, network); err != nil {
+		t.Fatal(err)
+	}
+	pool := &model.NetworkPool{Name: "p", NetworkID: network.ID, StartIP: "10.9.0.10", EndIP: "10.9.0.13"}
+	if err := store.CreateNetworkPool(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	for _, ip := range []string{"10.9.0.10", "10.9.0.11", "10.9.0.12"} {
+		if err := store.CreateDevice(ctx, &model.Device{Name: ip, Addresses: []model.Address{{IP: ip, Type: "ipv4", PoolID: pool.ID, NetworkID: network.ID}}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var fired []model.Event
+	var mu sync.Mutex
+	unsubscribe := webhook.Subscribe(func(e model.Event) {
+		if e.Type == model.EventTypePoolUtilization {
+			mu.Lock()
+			fired = append(fired, e)
+			mu.Unlock()
+		}
+	})
+	defer unsubscribe()
+
+	worker := NewSnapshotWorker(store, &config.Config{SnapshotRetentionDays: 1, PoolUtilizationAlertPercent: 70})
+	for i := 0; i < 2; i++ {
+		if err := worker.RunOnce(); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(10 * time.Millisecond) // timestamps of the two runs differ
+	}
+	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(fired) != 1 {
+		t.Errorf("pool.utilization_high fired %d times over two snapshots at 75%%, want once", len(fired))
+	}
+}

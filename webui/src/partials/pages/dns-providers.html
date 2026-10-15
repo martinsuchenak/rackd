@@ -82,7 +82,7 @@
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(provider.created_at)"></td>
               <td class="px-6 py-4 text-right">
                 <div class="inline-flex gap-1">
-                  <button x-show="$store.permissions.canUpdate('dns-provider')" @click="openTestModal(provider)"
+                  <button x-show="$store.permissions.can('dns-provider', 'test')" @click="openTestModal(provider)"
                     class="px-3 py-2 text-sm text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 hover:underline cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded transition-colors min-h-[44px] min-w-[44px]"
                     :aria-label="getProviderAriaLabel(provider.name, 'Test connection to')">Test</button>
                   <button x-show="$store.permissions.canUpdate('dns-provider')" @click="openEditModal(provider)"

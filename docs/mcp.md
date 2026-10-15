@@ -249,46 +249,33 @@ Promote a discovered device to inventory.
 
 ## Integration Examples
 
-### Claude Desktop (with OAuth)
+### Connecting a Client
 
-When OAuth is enabled, Claude Desktop can authenticate via the standard MCP OAuth flow. Add to your Claude Desktop MCP configuration:
+Rackd serves MCP over Streamable HTTP at `<server URL>/mcp`, for example `https://rackd.example.com/mcp`. There is no separate MCP command to run.
+
+**With OAuth** (`MCP_OAUTH_ENABLED=true`), give that URL to a client that supports MCP OAuth, such as a custom connector in Claude. The client discovers the endpoints through `/.well-known/oauth-protected-resource`, opens a browser for you to sign in and approve it, and refreshes its tokens.
+
+**With an API key**, send it as a bearer token. In Claude Code:
+
+```bash
+claude mcp add --transport http rackd https://rackd.example.com/mcp \
+  --header "Authorization: Bearer <api key>"
+```
+
+A client that can only launch local commands can use a bridge such as [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
 ```json
 {
   "mcpServers": {
     "rackd": {
-      "command": "rackd",
-      "args": ["mcp"],
-      "env": {
-        "RACKD_URL": "http://localhost:8080"
-      }
+      "command": "npx",
+      "args": ["mcp-remote", "https://rackd.example.com/mcp", "--header", "Authorization: Bearer <api key>"]
     }
   }
 }
 ```
 
-Claude Desktop will automatically:
-1. Discover OAuth endpoints via `/.well-known/oauth-protected-resource`
-2. Open a browser for you to log in to Rackd
-3. Store and refresh tokens automatically
-
-### Claude Desktop (with API Key)
-
-For simpler setups without OAuth, use an API key:
-
-```json
-{
-  "mcpServers": {
-    "rackd": {
-      "command": "rackd",
-      "args": ["mcp"],
-      "env": {
-        "RACKD_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+The key acts with its owner's permissions.
 
 ### Python Client
 
