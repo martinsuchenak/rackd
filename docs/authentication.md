@@ -29,7 +29,7 @@ Session properties:
 - End when the user changes or has their password reset, is deactivated or deleted; every request checks that the user still exists and is active
 - Stored in SQLite or Valkey (`SESSION_STORE_TYPE`)
 
-Sign-in is limited per address (`LOGIN_RATE_LIMIT_REQUESTS` per `LOGIN_RATE_LIMIT_WINDOW`) and per account: after `LOGIN_ACCOUNT_MAX_FAILURES` failed attempts (default 10) within `LOGIN_ACCOUNT_WINDOW` (default 15 minutes), further attempts on that account get `429 TOO_MANY_ATTEMPTS`, even with the right password, until the window passes. Unknown usernames are counted the same way. Each Rackd instance counts separately.
+Sign-in is limited per address (`LOGIN_RATE_LIMIT_REQUESTS` per `LOGIN_RATE_LIMIT_WINDOW`) and per account: after `LOGIN_ACCOUNT_MAX_FAILURES` failed attempts (default 10) within `LOGIN_ACCOUNT_WINDOW` (default 15 minutes), further attempts on that account get `429 TOO_MANY_ATTEMPTS`, even with the right password, until the window passes. Unknown usernames are counted the same way. Each Rackd instance counts separately. Like any account lockout, this lets someone who knows a username keep that account locked by failing on purpose; if that is a bigger risk for you than password guessing, set `LOGIN_ACCOUNT_MAX_FAILURES=0` and rely on the per-address limit.
 
 Related endpoints:
 - `POST /api/v1/auth/logout` — destroy session

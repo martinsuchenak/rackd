@@ -324,7 +324,7 @@ func (h *Handler) getSessionFromCookie(r *http.Request) *auth.Session {
 	if err != nil {
 		return nil
 	}
-	session, err := h.sessionManager.GetSession(cookie.Value)
+	session, err := activeSession(r.Context(), h.store, h.sessionManager, cookie.Value, false)
 	if err != nil {
 		return nil
 	}

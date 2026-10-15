@@ -804,3 +804,24 @@ func TestLoginRequiresJSON(t *testing.T) {
 		}
 	}
 }
+
+// The consent page accepts the same sessions as the API: none whose user is
+// deactivated.
+func TestConsentRejectsADeactivatedUsersSession(t *testing.T) {
+	ts := newTestServer(t)
+	userID := ts.createAdminUser(t, "admin", "securepassword123")
+	session, err := ts.sessionManager.CreateSession(userID, "admin", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, _ := ts.store.GetUser(context.Background(), userID)
+	user.IsActive = false
+	if err := ts.store.UpdateUser(context.Background(), user); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: session.Token})
+	if got := ts.handler.getSessionFromCookie(req); got != nil {
+		t.Error("the consent page accepted a deactivated user's session")
+	}
+}

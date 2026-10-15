@@ -72,8 +72,8 @@ func (t *loginThrottle) fail(username string) {
 		if len(t.failures) >= maxThrottledAccounts {
 			t.prune(now)
 		}
-		if len(t.failures) >= maxThrottledAccounts {
-			return // full of live entries; the per-IP limit still applies
+		if len(t.failures) >= maxThrottledAccounts && !t.evictOne() {
+			return // every entry is at the limit; keep blocking those
 		}
 		f = &loginFailures{since: now}
 		t.failures[key] = f
@@ -89,6 +89,19 @@ func (t *loginThrottle) reset(username string) {
 	t.mu.Lock()
 	delete(t.failures, throttleKey(username))
 	t.mu.Unlock()
+}
+
+// evictOne drops an account that hasn't reached the limit, so flooding the
+// table with one-off usernames can't stop real accounts being counted, while
+// accounts already blocked stay blocked. It reports whether it made room.
+func (t *loginThrottle) evictOne() bool {
+	for key, f := range t.failures {
+		if f.count < t.max {
+			delete(t.failures, key)
+			return true
+		}
+	}
+	return false
 }
 
 func (t *loginThrottle) prune(now time.Time) {
