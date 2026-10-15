@@ -87,6 +87,7 @@ func (s *CustomFieldService) CreateDefinition(ctx context.Context, req *model.Cr
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "create", "custom_field", def.ID, def)
 	return def, nil
 }
 
@@ -151,6 +152,7 @@ func (s *CustomFieldService) UpdateDefinition(ctx context.Context, id string, re
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "update", "custom_field", def.ID, def)
 	return def, nil
 }
 
@@ -168,6 +170,7 @@ func (s *CustomFieldService) DeleteDefinition(ctx context.Context, id string) er
 		return err
 	}
 
+	recordAudit(ctx, s.store, "delete", "custom_field", id, nil)
 	return nil
 }
 

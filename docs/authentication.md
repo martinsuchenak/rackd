@@ -189,7 +189,7 @@ server, and invalidates all active sessions for the user.
 - Rate limiting is enabled by default (100 req/min API, 5 req/min login). Login, OAuth endpoints, API key and user management, password changes and bulk operations each have their own per-address limit with the login settings, so one can't exhaust another
 - Session cookies are `Secure` by default — use `--dev-mode` for local HTTP
 - API key last-used timestamps are updated asynchronously for auditing, at most once a minute per key, so they are accurate to about a minute
-- All authentication events are recorded in the audit log when `AUDIT_ENABLED=true`
+- Sign-ins (successful, failed and refused, with the address and reason), sign-outs, password changes and resets, and user, role and API key changes are recorded in the [audit log](audit.md)
 
 ## See Also
 

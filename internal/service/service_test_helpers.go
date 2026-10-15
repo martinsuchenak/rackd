@@ -826,3 +826,8 @@ func userContext(userID string) context.Context {
 }
 
 func (s *serviceTestStorage) RevokeOAuthTokensByUser(context.Context, string) error { return nil }
+
+func (s *serviceTestStorage) RecordAudit(context.Context, string, string, string, any) {}
+
+func (s *serviceTestStorage) RecordAuditFailure(context.Context, string, string, string, any, string) {
+}

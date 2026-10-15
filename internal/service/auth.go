@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
+
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -41,8 +43,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	// Refuse before checking the password, so guessing past the limit also
 	// stops costing bcrypt work. The limit applies to unknown usernames too,
 	// so it doesn't reveal which exist.
+	attempt := map[string]string{"username": username}
 	if s.throttle.blocked(username) {
 		log.Warn("Login refused: too many failed sign-ins", "username", username)
+		recordAuditFailure(ctx, s.store, "login", "session", "", attempt, "too many failed sign-ins")
 		return nil, ErrTooManyLoginAttempts
 	}
 
@@ -53,6 +57,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 			// timing does not reveal whether the username exists.
 			auth.VerifyDummyPassword(password)
 			s.throttle.fail(username)
+			recordAuditFailure(ctx, s.store, "login", "session", "", attempt, "unknown user")
 			return nil, ErrUnauthenticated
 		}
 		log.Error("Failed to get user for login", "error", err, "username", username)
@@ -63,11 +68,13 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		// Equalize timing for deactivated accounts too.
 		auth.VerifyDummyPassword(password)
 		s.throttle.fail(username)
+		recordAuditFailure(ctx, s.store, "login", "session", user.ID, attempt, "account is deactivated")
 		return nil, ErrUnauthenticated
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		s.throttle.fail(username)
+		recordAuditFailure(ctx, s.store, "login", "session", user.ID, attempt, "wrong password")
 		return nil, ErrUnauthenticated
 	}
 	s.throttle.reset(username)
@@ -78,6 +85,8 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		log.Error("Failed to create session", "error", err, "user_id", user.ID)
 		return nil, err
 	}
+
+	recordAudit(audit.WithContext(ctx, signedIn(ctx, user)), s.store, "login", "session", user.ID, attempt)
 
 	now := time.Now()
 	if err := s.store.UpdateUserLastLogin(ctx, user.ID, now); err != nil {
@@ -96,7 +105,24 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 }
 
 func (s *AuthService) Logout(ctx context.Context, token string) error {
+	if session, err := s.sessionManager.GetSession(token); err == nil {
+		recordAudit(ctx, s.store, "logout", "session", session.UserID, nil)
+	}
 	return s.sessionManager.InvalidateSession(token)
+}
+
+// signedIn is the audit actor for a successful sign-in: the user, from the
+// address the attempt came from.
+func signedIn(ctx context.Context, user *model.User) *audit.Context {
+	return &audit.Context{UserID: user.ID, Username: user.Username, IPAddress: attemptAddress(ctx), Source: "api"}
+}
+
+// attemptAddress is the client address the handler attached for the audit log.
+func attemptAddress(ctx context.Context) string {
+	if a, ok := audit.FromContext(ctx); ok {
+		return a.IPAddress
+	}
+	return ""
 }
 
 func (s *AuthService) GetCurrentUser(ctx context.Context) (*model.UserResponse, error) {

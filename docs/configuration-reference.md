@@ -65,8 +65,7 @@ These are only used on first startup when no users exist.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `AUDIT_ENABLED` | bool | `false` | Enable audit logging of API operations |
-| `AUDIT_RETENTION_DAYS` | int | `90` | Days to retain audit log entries |
+| `AUDIT_RETENTION_DAYS` | int | `90` | Days to keep audit entries, deleted daily; `0` keeps everything. Auditing is always on (`AUDIT_ENABLED` is ignored) |
 
 ## OAuth 2.1 (MCP)
 

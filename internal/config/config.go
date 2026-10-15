@@ -160,8 +160,8 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if c.AuditEnabled && c.AuditRetentionDays <= 0 {
-		return fmt.Errorf("AUDIT_RETENTION_DAYS must be positive, got %d", c.AuditRetentionDays)
+	if c.AuditRetentionDays < 0 {
+		return fmt.Errorf("AUDIT_RETENTION_DAYS must be 0 (keep everything) or positive, got %d", c.AuditRetentionDays)
 	}
 
 	if c.MCPOAuthEnabled && c.MCPOAuthIssuerURL == "" {

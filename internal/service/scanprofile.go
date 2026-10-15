@@ -10,10 +10,10 @@ import (
 
 type ScanProfileService struct {
 	store storage.ProfileStorage
-	rbac  permissionStore
+	rbac  auditedPermissionStore
 }
 
-func NewScanProfileService(store storage.ProfileStorage, rbac permissionStore) *ScanProfileService {
+func NewScanProfileService(store storage.ProfileStorage, rbac auditedPermissionStore) *ScanProfileService {
 	return &ScanProfileService{store: store, rbac: rbac}
 }
 
@@ -34,6 +34,7 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 		return ValidationErrors{{Field: "profile", Message: err.Error()}}
 	}
 
+	recordAudit(ctx, s.rbac, "create", "scan_profile", profile.ID, profile)
 	return nil
 }
 
@@ -62,6 +63,7 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 		return ValidationErrors{{Field: "profile", Message: err.Error()}}
 	}
 
+	recordAudit(ctx, s.rbac, "update", "scan_profile", id, profile)
 	return nil
 }
 
@@ -74,5 +76,9 @@ func (s *ScanProfileService) Delete(ctx context.Context, id string) error {
 	if errors.Is(err, storage.ErrProfileNotFound) {
 		return ErrNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	recordAudit(ctx, s.rbac, "delete", "scan_profile", id, nil)
+	return nil
 }

@@ -123,6 +123,9 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 	if updated, err := s.store.GetUser(ctx, user.ID); err == nil {
 		user = updated
 	}
+	recordAudit(ctx, s.store, "create", "user", user.ID, map[string]any{
+		"username": user.Username, "email": user.Email, "is_admin": user.IsAdmin, "role_ids": roleIDs,
+	})
 
 	resp := user.ToResponse()
 	if roles, err := s.store.GetUserRoles(ctx, user.ID); err == nil {
@@ -238,6 +241,10 @@ func (s *UserService) Update(ctx context.Context, id string, req *model.UpdateUs
 			user = updated
 		}
 	}
+	recordAudit(ctx, s.store, "update", "user", id, map[string]any{
+		"username": user.Username, "email": user.Email, "full_name": user.FullName,
+		"is_active": user.IsActive, "is_admin": user.IsAdmin,
+	})
 
 	resp := user.ToResponse()
 	if roles, err := s.store.GetUserRoles(ctx, id); err == nil {
@@ -274,6 +281,7 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 	if err := s.store.DeleteUser(enrichAuditCtx(ctx), id); err != nil {
 		return err
 	}
+	recordAudit(ctx, s.store, "delete", "user", id, map[string]string{"username": user.Username})
 
 	s.endAccess(ctx, id)
 
@@ -325,6 +333,7 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *model.
 	}
 
 	// Invalidate all sessions for this user to prevent old sessions from remaining active
+	recordAudit(ctx, s.store, "password_change", "user", id, map[string]string{"username": user.Username})
 	s.endAccess(ctx, id)
 
 	return nil
@@ -365,6 +374,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id string, req *model.R
 	}
 
 	// Invalidate all sessions for this user to prevent old sessions from remaining active
+	recordAudit(ctx, s.store, "password_reset", "user", id, map[string]string{"username": user.Username})
 	s.endAccess(ctx, id)
 
 	return nil

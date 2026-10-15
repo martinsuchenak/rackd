@@ -39,8 +39,7 @@ See [Rate Limiting](ratelimit.md) for detailed documentation.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AUDIT_ENABLED` | `false` | Enable audit logging for all API changes |
-| `AUDIT_RETENTION_DAYS` | `90` | Days to keep audit logs before automatic cleanup |
+| `AUDIT_RETENTION_DAYS` | `90` | Days to keep audit entries before automatic cleanup; `0` keeps everything. Auditing is always on |
 
 See [Audit Trail](audit.md) for detailed documentation.
 
@@ -87,7 +86,6 @@ export DISCOVERY_INTERVAL="12h"
 export DISCOVERY_MAX_CONCURRENT="20"
 export RATE_LIMIT_REQUESTS="100"
 export RATE_LIMIT_WINDOW="1m"
-export AUDIT_ENABLED="true"
 export AUDIT_RETENTION_DAYS="90"
 
 ./rackd server

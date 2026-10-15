@@ -332,6 +332,10 @@ func (s *SQLiteStorage) persistAuditEntry(logEntry *model.AuditLog) {
 
 // auditLog creates an audit log entry asynchronously using a worker pool
 func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resourceID string, changes any) {
+	s.auditEntry(ctx, action, resource, resourceID, changes, "success", "")
+}
+
+func (s *SQLiteStorage) auditEntry(ctx context.Context, action, resource, resourceID string, changes any, status, reason string) {
 	auditCtx, ok := audit.FromContext(ctx)
 	if !ok {
 		return
@@ -359,7 +363,8 @@ func (s *SQLiteStorage) auditLog(ctx context.Context, action, resource, resource
 		IPAddress:  auditCtx.IPAddress,
 		Changes:    changesStr,
 		Source:     auditCtx.Source,
-		Status:     "success",
+		Status:     status,
+		Error:      reason,
 	}
 
 	if s.auditChan == nil {

@@ -5,15 +5,23 @@ import (
 	"errors"
 
 	"github.com/martinsuchenak/rackd/internal/credentials"
+	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type CredentialService struct {
 	store credentials.Storage
-	rbac  permissionStore
+	rbac  auditedPermissionStore
 }
 
-func NewCredentialService(store credentials.Storage, rbac permissionStore) *CredentialService {
+// auditedPermissionStore checks permissions and records audit entries, for
+// services whose own store does neither.
+type auditedPermissionStore interface {
+	permissionStore
+	storage.AuditStorage
+}
+
+func NewCredentialService(store credentials.Storage, rbac auditedPermissionStore) *CredentialService {
 	return &CredentialService{store: store, rbac: rbac}
 }
 
@@ -32,12 +40,9 @@ func (s *CredentialService) Create(ctx context.Context, input *model.CredentialI
 
 	cred := input.ToCredential()
 	if err := s.store.Create(cred); err != nil {
-		if errors.Is(err, credentials.ErrInvalidCredential) {
-			return nil, ValidationErrors{{Field: "credential", Message: err.Error()}}
-		}
-		return nil, err
+		return nil, mapCredentialError(err)
 	}
-
+	recordAudit(ctx, s.rbac, "create", "credential", cred.ID, credentialAudit(cred))
 	return cred, nil
 }
 
@@ -61,15 +66,9 @@ func (s *CredentialService) Update(ctx context.Context, id string, input *model.
 	cred := input.ToCredential()
 	cred.ID = id
 	if err := s.store.Update(cred); err != nil {
-		if errors.Is(err, credentials.ErrCredentialNotFound) {
-			return nil, ErrNotFound
-		}
-		if errors.Is(err, credentials.ErrInvalidCredential) {
-			return nil, ValidationErrors{{Field: "credential", Message: err.Error()}}
-		}
-		return nil, err
+		return nil, mapCredentialError(err)
 	}
-
+	recordAudit(ctx, s.rbac, "update", "credential", id, credentialAudit(cred))
 	return cred, nil
 }
 
@@ -78,9 +77,24 @@ func (s *CredentialService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	err := s.store.Delete(id)
-	if errors.Is(err, credentials.ErrCredentialNotFound) {
+	if err := s.store.Delete(id); err != nil {
+		return mapCredentialError(err)
+	}
+	recordAudit(ctx, s.rbac, "delete", "credential", id, nil)
+	return nil
+}
+
+func mapCredentialError(err error) error {
+	switch {
+	case errors.Is(err, credentials.ErrCredentialNotFound):
 		return ErrNotFound
+	case errors.Is(err, credentials.ErrInvalidCredential):
+		return ValidationErrors{{Field: "credential", Message: err.Error()}}
 	}
 	return err
+}
+
+// credentialAudit describes a credential for the audit log, without secrets.
+func credentialAudit(c *model.Credential) map[string]string {
+	return map[string]string{"name": c.Name, "type": c.Type, "datacenter_id": c.DatacenterID}
 }

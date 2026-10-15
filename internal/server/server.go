@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/api"
@@ -198,9 +199,13 @@ func Run(ctx context.Context, opts Options) error {
 	site.RegisterRoutes(mux)
 
 	httpHandler := buildHandler(mux, cfg, proxyResolver)
-	if cfg.AuditEnabled {
-		log.Info("Audit logging enabled (storage-level)", "retention_days", cfg.AuditRetentionDays)
+	// Changes are always audited; AUDIT_ENABLED no longer does anything.
+	if os.Getenv("AUDIT_ENABLED") != "" {
+		log.Warn("AUDIT_ENABLED has no effect: changes are always audited. Use AUDIT_RETENTION_DAYS to control how long entries are kept")
 	}
+	auditRetention := worker.NewAuditRetentionWorker(store, cfg.AuditRetentionDays)
+	auditRetention.Start()
+	defer auditRetention.Stop()
 
 	if err := runtime.Start(); err != nil {
 		return err

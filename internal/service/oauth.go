@@ -206,6 +206,9 @@ func (s *OAuthService) RegisterClient(ctx context.Context, req *model.OAuthClien
 	if err := s.store.CreateOAuthClient(ctx, client); err != nil {
 		return nil, err
 	}
+	recordAudit(ctx, s.store, "register", "oauth_client", client.ID, map[string]any{
+		"client_name": client.Name, "client_uri": client.ClientURI, "redirect_uris": client.RedirectURIs, "scope": client.Scope,
+	})
 
 	return &model.OAuthClientRegistrationResponse{
 		ClientID:          client.ID,
@@ -341,6 +344,10 @@ func (s *OAuthService) CreateAuthorizationCode(ctx context.Context, clientID, us
 	if err := s.store.CreateAuthorizationCode(ctx, code); err != nil {
 		return "", err
 	}
+	// The user approved the client on the consent page.
+	recordAudit(ctx, s.store, "authorize", "oauth_client", clientID, map[string]string{
+		"client_name": client.Name, "user_id": userID, "redirect_uri": redirectURI, "scope": scope,
+	})
 
 	return plaintext, nil
 }
@@ -777,7 +784,11 @@ func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error 
 	}
 	// Revoke all tokens for this client first
 	_ = s.store.RevokeOAuthTokensByClient(ctx, clientID)
-	return s.store.DeleteOAuthClient(ctx, clientID)
+	if err := s.store.DeleteOAuthClient(ctx, clientID); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "delete", "oauth_client", clientID, nil)
+	return nil
 }
 
 // scopeCatalog returns every scope this authorization server may issue,

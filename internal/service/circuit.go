@@ -117,6 +117,7 @@ func (s *CircuitService) Create(ctx context.Context, req *model.CreateCircuitReq
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "create", "circuit", circuit.ID, circuit)
 	return circuit, nil
 }
 
@@ -221,6 +222,7 @@ func (s *CircuitService) Update(ctx context.Context, id string, req *model.Updat
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "update", "circuit", circuit.ID, circuit)
 	return circuit, nil
 }
 
@@ -237,6 +239,7 @@ func (s *CircuitService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	recordAudit(ctx, s.store, "delete", "circuit", id, nil)
 	return nil
 }
 
