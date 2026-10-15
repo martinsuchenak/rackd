@@ -29,9 +29,10 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 	if err := requirePermission(ctx, s.rbac, "scan-profiles", "create"); err != nil {
 		return err
 	}
+	applyScanProfileDefaults(profile)
 
 	if err := s.store.Create(ctx, profile); err != nil {
-		return fromStoreError(err)
+		return NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "create", "scan_profile", profile.ID, profile)
@@ -56,11 +57,12 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 	}
 
 	profile.ID = id
+	applyScanProfileDefaults(profile)
 	if err := s.store.Update(ctx, profile); err != nil {
 		if errors.Is(err, storage.ErrProfileNotFound) {
 			return ErrNotFound
 		}
-		return fromStoreError(err)
+		return NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "update", "scan_profile", id, profile)
@@ -81,4 +83,20 @@ func (s *ScanProfileService) Delete(ctx context.Context, id string) error {
 	}
 	recordAudit(ctx, s.rbac, "delete", "scan_profile", id, nil)
 	return nil
+}
+
+// Defaults for the scan profile fields the API lets a client leave out; they
+// match the scan_profiles column defaults.
+const (
+	defaultScanTimeoutSec = 30
+	defaultScanMaxWorkers = 10
+)
+
+func applyScanProfileDefaults(p *model.ScanProfile) {
+	if p.TimeoutSec == 0 {
+		p.TimeoutSec = defaultScanTimeoutSec
+	}
+	if p.MaxWorkers == 0 {
+		p.MaxWorkers = defaultScanMaxWorkers
+	}
 }

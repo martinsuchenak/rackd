@@ -696,6 +696,8 @@ func (s *SQLiteStorage) GetDeviceStatusCounts(ctx context.Context) (map[model.De
 
 // escapeFTSQuery escapes special FTS5 characters and adds prefix matching
 func escapeFTSQuery(query string) string {
+	// FTS5 stops reading at a NUL, which would leave the quote unterminated.
+	query = strings.ReplaceAll(query, "\x00", "")
 	// Escape double quotes by doubling them
 	escaped := strings.ReplaceAll(query, `"`, `""`)
 	// Wrap in quotes and add * for prefix matching

@@ -444,8 +444,8 @@ components:
           items: { type: integer }
         enable_snmp: { type: boolean }
         enable_ssh: { type: boolean }
-        timeout_sec: { type: integer }
-        max_workers: { type: integer, minimum: 1, maximum: 100 }
+        timeout_sec: { type: integer, minimum: 1, default: 30 }
+        max_workers: { type: integer, minimum: 1, maximum: 100, default: 10 }
         description: { type: string }
 
     ScheduledScan:

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -63,37 +62,37 @@ var ValidCredentialTypes = map[string]bool{
 
 func (c *Credential) Validate() error {
 	if !ValidCredentialTypes[c.Type] {
-		return fmt.Errorf("invalid credential type: %s (must be one of: snmp_v2c, snmp_v3, ssh_key, ssh_password)", c.Type)
+		return fieldErr("type", "invalid credential type: %s (must be one of: snmp_v2c, snmp_v3, ssh_key, ssh_password)", c.Type)
 	}
 
 	switch c.Type {
 	case "snmp_v2c":
 		if c.SNMPCommunity == "" {
-			return fmt.Errorf("SNMP community required for snmp_v2c credentials")
+			return fieldErr("snmp_community", "SNMP community required for snmp_v2c credentials")
 		}
 	case "snmp_v3":
 		if c.SNMPV3User == "" {
-			return fmt.Errorf("SNMP v3 user required for snmp_v3 credentials")
+			return fieldErr("snmp_v3_user", "SNMP v3 user required for snmp_v3 credentials")
 		}
 		if c.SNMPV3Auth == "" {
-			return fmt.Errorf("SNMP v3 auth password required for snmp_v3 credentials")
+			return fieldErr("snmp_v3_auth", "SNMP v3 auth password required for snmp_v3 credentials")
 		}
 		if c.SNMPV3Priv == "" {
-			return fmt.Errorf("SNMP v3 privacy password required for snmp_v3 credentials")
+			return fieldErr("snmp_v3_priv", "SNMP v3 privacy password required for snmp_v3 credentials")
 		}
 	case "ssh_key":
 		if c.SSHUsername == "" {
-			return fmt.Errorf("SSH username required for ssh_key credentials")
+			return fieldErr("ssh_username", "SSH username required for ssh_key credentials")
 		}
 		if c.SSHKeyID == "" {
-			return fmt.Errorf("SSH key ID required for ssh_key credentials")
+			return fieldErr("ssh_key_id", "SSH key ID required for ssh_key credentials")
 		}
 	case "ssh_password":
 		if c.SSHUsername == "" {
-			return fmt.Errorf("SSH username required for ssh_password credentials")
+			return fieldErr("ssh_username", "SSH username required for ssh_password credentials")
 		}
 		if c.SSHKeyID == "" {
-			return fmt.Errorf("SSH key ID or password reference required for ssh_password credentials")
+			return fieldErr("ssh_key_id", "SSH key ID or password reference required for ssh_password credentials")
 		}
 	}
 

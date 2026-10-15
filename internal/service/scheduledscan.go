@@ -39,7 +39,7 @@ func (s *ScheduledScanService) Create(ctx context.Context, scan *model.Scheduled
 	}
 
 	if err := s.store.Create(scan); err != nil {
-		return fromStoreError(err)
+		return NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "create", "scheduled_scan", scan.ID, scan)
@@ -71,7 +71,7 @@ func (s *ScheduledScanService) Update(ctx context.Context, id string, scan *mode
 		if errors.Is(err, storage.ErrScheduledScanNotFound) {
 			return ErrNotFound
 		}
-		return fromStoreError(err)
+		return NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "update", "scheduled_scan", id, scan)

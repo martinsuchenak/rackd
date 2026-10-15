@@ -415,6 +415,7 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
 	}
+	err = service.NormalizeError(err)
 
 	switch {
 	case errors.Is(err, service.ErrNotFound):
@@ -439,7 +440,7 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "CANNOT_DELETE_SELF", err.Error())
 	case errors.Is(err, service.ErrSystemRole):
 		h.writeError(w, http.StatusBadRequest, "SYSTEM_ROLE", err.Error())
-	case errors.Is(err, service.ErrDNSProviderTestFailed):
+	case errors.Is(err, service.ErrDNSProviderTestFailed), errors.Is(err, service.ErrDNSProviderFailed):
 		// Upstream connectivity failure (SSRF block, timeout, refused, bad
 		// credentials) — not a server bug. Surface the cause to the operator
 		// in both the response and the server log (this path previously had
@@ -447,10 +448,6 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		log.Error("DNS provider test failed", "error", err)
 		h.writeError(w, http.StatusBadGateway, "PROVIDER_UNREACHABLE", err.Error())
 	default:
-		if field, ok := storage.DuplicateField(err); ok {
-			h.writeError(w, http.StatusConflict, "ALREADY_EXISTS", field+" is already in use")
-			return
-		}
 		h.internalError(w, err)
 	}
 }

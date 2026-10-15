@@ -6,7 +6,6 @@ import (
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
-	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/paularlott/mcp"
 )
 
@@ -19,24 +18,13 @@ const (
 	errCodeUpstream        = -32010 // a DNS provider or other outside service failed
 )
 
-// storageNotFound are the not-found errors services can pass through from
-// storage unchanged.
-var storageNotFound = []error{
-	storage.ErrAPIKeyNotFound, storage.ErrCircuitNotFound, storage.ErrConflictNotFound,
-	storage.ErrCustomFieldNotFound, storage.ErrDNSProviderNotFound, storage.ErrDNSRecordNotFound,
-	storage.ErrDNSZoneNotFound, storage.ErrDatacenterNotFound, storage.ErrDeliveryNotFound,
-	storage.ErrDeviceNotFound, storage.ErrDiscoveryNotFound, storage.ErrNATNotFound,
-	storage.ErrNetworkNotFound, storage.ErrPoolNotFound, storage.ErrReservationNotFound,
-	storage.ErrRoleNotFound, storage.ErrScanNotFound, storage.ErrUserNotFound, storage.ErrWebhookNotFound,
-	storage.ErrProfileNotFound, storage.ErrScheduledScanNotFound,
-}
-
 // toolError turns a service error into an MCP error a client can act on:
 // invalid parameters, forbidden, not found or conflict, with the service's
 // message. Anything else is logged and reported only as an internal error, so
 // database and other internal details don't reach the client, as on the REST
 // API.
 func toolError(err error) error {
+	err = service.NormalizeError(err)
 	switch {
 	case errors.Is(err, service.ErrValidation):
 		return mcp.NewToolErrorInvalidParams(err.Error())
@@ -46,10 +34,10 @@ func toolError(err error) error {
 		return mcp.NewToolError(errCodeForbidden, "Forbidden", nil)
 	case errors.Is(err, service.ErrUnauthenticated):
 		return mcp.NewToolError(errCodeUnauthenticated, "Unauthorized", nil)
-	case errors.Is(err, service.ErrDNSProviderTestFailed):
+	case errors.Is(err, service.ErrDNSProviderTestFailed), errors.Is(err, service.ErrDNSProviderFailed):
 		// Like REST's 502: the cause is the outside service's, not Rackd's.
 		return mcp.NewToolError(errCodeUpstream, err.Error(), nil)
-	case errors.Is(err, service.ErrNotFound), isStorageNotFound(err), errors.Is(err, discovery.ErrScanNotFound):
+	case errors.Is(err, service.ErrNotFound), errors.Is(err, discovery.ErrScanNotFound):
 		return mcp.NewToolError(errCodeNotFound, err.Error(), nil)
 	case errors.Is(err, service.ErrAlreadyExists), errors.Is(err, service.ErrLastAdmin),
 		errors.Is(err, service.ErrIPNotAvailable), errors.Is(err, discovery.ErrTooManyScans),
@@ -58,24 +46,12 @@ func toolError(err error) error {
 	case errors.Is(err, service.ErrSystemRole), errors.Is(err, service.ErrSelfDelete):
 		return mcp.NewToolErrorInvalidParams(err.Error())
 	}
-	if field, ok := storage.DuplicateField(err); ok {
-		return mcp.NewToolError(errCodeConflict, field+" is already in use", nil)
-	}
 	var toolErr *mcp.ToolError
 	if errors.As(err, &toolErr) {
 		return err
 	}
 	log.Error("MCP tool failed", "error", err)
 	return mcp.NewToolErrorInternal("Internal error")
-}
-
-func isStorageNotFound(err error) bool {
-	for _, target := range storageNotFound {
-		if errors.Is(err, target) {
-			return true
-		}
-	}
-	return false
 }
 
 // has reports whether the tool call passed the argument, so an update can

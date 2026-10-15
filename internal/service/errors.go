@@ -7,6 +7,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/storage"
 
 	"github.com/martinsuchenak/rackd/pkg/extension"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // The common errors are shared with pkg/extension, so errors from core
@@ -52,16 +53,55 @@ func (e ValidationErrors) Unwrap() error {
 	return ErrValidation
 }
 
-// fromStoreError turns a database constraint failure into the error a client
-// can act on: a duplicate becomes ErrAlreadyExists, a missing required field
-// a validation error. Anything else is returned unchanged, so its text stays
-// out of responses.
-func fromStoreError(err error) error {
+// storageNotFound are the not-found errors storage returns, which services
+// often pass through unchanged.
+var storageNotFound = []error{
+	storage.ErrAPIKeyNotFound, storage.ErrCircuitNotFound, storage.ErrConflictNotFound,
+	storage.ErrCustomFieldNotFound, storage.ErrDNSProviderNotFound, storage.ErrDNSRecordNotFound,
+	storage.ErrDNSZoneNotFound, storage.ErrDatacenterNotFound, storage.ErrDeliveryNotFound,
+	storage.ErrDeviceNotFound, storage.ErrDiscoveryNotFound, storage.ErrNATNotFound,
+	storage.ErrNetworkNotFound, storage.ErrPoolNotFound, storage.ErrReservationNotFound,
+	storage.ErrRoleNotFound, storage.ErrScanNotFound, storage.ErrUserNotFound, storage.ErrWebhookNotFound,
+	storage.ErrProfileNotFound, storage.ErrScheduledScanNotFound, storage.ErrRuleNotFound,
+	storage.ErrPermissionNotFound, storage.ErrAuditLogNotFound,
+}
+
+// notFound keeps a storage error's message while matching ErrNotFound.
+type notFound struct{ error }
+
+func (e notFound) Is(target error) bool { return target == ErrNotFound }
+func (e notFound) Unwrap() error        { return e.error }
+
+// NormalizeError turns the errors storage and the models return into the
+// service errors a client can act on, so the REST API and MCP answer alike:
+// a model's field error or a missing id becomes a validation error, a storage
+// not-found ErrNotFound, a duplicate ErrAlreadyExists, and a missing required
+// field or a broken reference a validation error. Anything else is returned
+// unchanged, so its text stays out of responses.
+func NormalizeError(err error) error {
+	if err == nil || errors.Is(err, ErrNotFound) || errors.Is(err, ErrValidation) {
+		return err
+	}
+	var fieldErr *model.FieldError
+	if errors.As(err, &fieldErr) {
+		return ValidationErrors{{Field: fieldErr.Field, Message: fieldErr.Message}}
+	}
+	if errors.Is(err, storage.ErrInvalidID) {
+		return ValidationErrors{{Field: "id", Message: "an id is required"}}
+	}
+	for _, target := range storageNotFound {
+		if errors.Is(err, target) {
+			return notFound{err}
+		}
+	}
 	if field, ok := storage.DuplicateField(err); ok {
 		return fmt.Errorf("%w: %s is already in use", ErrAlreadyExists, field)
 	}
 	if field, ok := storage.MissingField(err); ok {
 		return ValidationErrors{{Field: field, Message: field + " is required"}}
+	}
+	if storage.IsForeignKeyFailure(err) {
+		return ValidationErrors{{Field: "", Message: "refers to a record that doesn't exist, or the record is still in use"}}
 	}
 	return err
 }

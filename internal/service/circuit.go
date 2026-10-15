@@ -114,7 +114,7 @@ func (s *CircuitService) Create(ctx context.Context, req *model.CreateCircuitReq
 	}
 
 	if err := s.store.CreateCircuit(ctx, circuit); err != nil {
-		return nil, fromStoreError(err)
+		return nil, NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.store, "create", "circuit", circuit.ID, circuit)
@@ -219,7 +219,7 @@ func (s *CircuitService) Update(ctx context.Context, id string, req *model.Updat
 	}
 
 	if err := s.store.UpdateCircuit(ctx, circuit); err != nil {
-		return nil, fromStoreError(err)
+		return nil, NormalizeError(err)
 	}
 
 	recordAudit(ctx, s.store, "update", "circuit", circuit.ID, circuit)

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"fmt"
+	"strings"
 	"time"
 )
 
@@ -33,21 +33,24 @@ type ScanProfile struct {
 }
 
 func (s *ScanProfile) Validate() error {
+	if strings.TrimSpace(s.Name) == "" {
+		return fieldErr("name", "name is required")
+	}
 	if !ValidScanTypes[s.ScanType] {
-		return fmt.Errorf("invalid scan type: %s (must be one of: quick, full, deep, custom)", s.ScanType)
+		return fieldErr("scan_type", "invalid scan type: %s (must be one of: quick, full, deep, custom)", s.ScanType)
 	}
 
 	if s.MaxWorkers <= 0 || s.MaxWorkers > MaxWorkers {
-		return fmt.Errorf("max_workers must be between 1 and %d, got %d", MaxWorkers, s.MaxWorkers)
+		return fieldErr("max_workers", "max_workers must be between 1 and %d, got %d", MaxWorkers, s.MaxWorkers)
 	}
 
 	if s.TimeoutSec <= 0 {
-		return fmt.Errorf("timeout_sec must be positive, got %d", s.TimeoutSec)
+		return fieldErr("timeout_sec", "timeout_sec must be positive, got %d", s.TimeoutSec)
 	}
 
 	for _, port := range s.Ports {
 		if port < MinPort || port > MaxPort {
-			return fmt.Errorf("port %d is out of valid range (must be %d-%d)", port, MinPort, MaxPort)
+			return fieldErr("ports", "port %d is out of valid range (must be %d-%d)", port, MinPort, MaxPort)
 		}
 	}
 

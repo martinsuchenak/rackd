@@ -110,7 +110,7 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 	}
 
 	if err := s.store.CreateUser(enrichAuditCtx(ctx), user); err != nil {
-		return nil, fromStoreError(err)
+		return nil, NormalizeError(err)
 	}
 
 	for _, roleID := range roleIDs {
@@ -262,7 +262,7 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 	user, err := s.store.GetUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			return nil // Already deleted
+			return ErrNotFound
 		}
 		return err
 	}

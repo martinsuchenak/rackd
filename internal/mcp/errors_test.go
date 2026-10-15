@@ -8,6 +8,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 	"github.com/paularlott/mcp"
 )
 
@@ -22,6 +23,8 @@ func TestToolErrorKeepsUsefulMessagesAndHidesInternalOnes(t *testing.T) {
 		{fmt.Errorf("get: %w", storage.ErrNetworkNotFound), errCodeNotFound, "network not found"},
 		{fmt.Errorf("%w: connection refused", service.ErrDNSProviderTestFailed), errCodeUpstream, "connection refused"},
 		{errors.New("UNIQUE constraint failed: networks.name"), errCodeConflict, "name is already in use"},
+		{&model.FieldError{Field: "type", Message: "invalid credential type"}, mcp.ErrorCodeInvalidParams, "invalid credential type"},
+		{fmt.Errorf("%w: timeout", service.ErrDNSProviderFailed), errCodeUpstream, "timeout"},
 		{errors.New("database is locked: SQLITE_BUSY"), mcp.ErrorCodeInternalError, "Internal error"},
 	} {
 		var toolErr *mcp.ToolError
