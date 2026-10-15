@@ -257,9 +257,12 @@ func (s *SQLiteStorage) DeleteConflict(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM conflicts WHERE id = ?`, id)
+	res, err := s.db.ExecContext(ctx, `DELETE FROM conflicts WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete conflict: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return ErrConflictNotFound
 	}
 
 	return nil

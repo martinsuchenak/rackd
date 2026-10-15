@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 
@@ -226,6 +227,9 @@ func (s *ConflictService) Delete(ctx context.Context, id string) error {
 	}
 
 	if err := s.store.DeleteConflict(ctx, id); err != nil {
+		if errors.Is(err, storage.ErrConflictNotFound) {
+			return ErrNotFound
+		}
 		return err
 	}
 

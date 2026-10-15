@@ -77,17 +77,24 @@ func TestScheduledScanService_CreateUpdateDeleteMapErrors(t *testing.T) {
 	rbac.setPermission("user-1", "scheduled-scans", "delete", true)
 	svc := NewScheduledScanService(store, rbac)
 
-	store.createErr = fmt.Errorf("bad schedule")
-	err := svc.Create(userContext("user-1"), &model.ScheduledScan{ID: "scan-2"})
-	if err == nil || !errors.Is(err, ErrValidation) {
-		t.Fatalf("expected validation-wrapped create error, got %v", err)
+	// Invalid input is refused before it is stored, including a cron
+	// expression the scheduler couldn't run.
+	err := svc.Create(userContext("user-1"), &model.ScheduledScan{ID: "scan-2", Name: "nightly", NetworkID: "net-1", CronExpression: "every night"})
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected a validation error for a bad cron expression, got %v", err)
 	}
 
+	// A duplicate is a conflict; other store errors pass through unchanged.
+	valid := &model.ScheduledScan{ID: "scan-2", Name: "nightly", NetworkID: "net-1", CronExpression: "0 2 * * *"}
+	store.createErr = fmt.Errorf("UNIQUE constraint failed: scheduled_scans.name")
+	if err := svc.Create(userContext("user-1"), valid); !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("expected ErrAlreadyExists, got %v", err)
+	}
 	store.createErr = nil
-	store.updateErr = fmt.Errorf("bad update")
-	err = svc.Update(userContext("user-1"), "scan-1", &model.ScheduledScan{NetworkID: "net-1"})
-	if err == nil || !errors.Is(err, ErrValidation) {
-		t.Fatalf("expected validation-wrapped update error, got %v", err)
+	store.updateErr = fmt.Errorf("disk I/O error")
+	err = svc.Update(userContext("user-1"), "scan-1", valid)
+	if err == nil || errors.Is(err, ErrValidation) {
+		t.Fatalf("expected the store error unchanged, got %v", err)
 	}
 
 	err = svc.Delete(userContext("user-1"), "missing")

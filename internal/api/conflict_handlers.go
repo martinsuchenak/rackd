@@ -43,10 +43,14 @@ func (h *Handler) resolveConflict(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resolution.ConflictID == "" {
-		h.badRequest(w, "conflict_id is required")
+	// The conflict is the one in the path. A body may repeat its ID, but not
+	// name a different conflict.
+	id := r.PathValue("id")
+	if resolution.ConflictID != "" && resolution.ConflictID != id {
+		h.writeValidationErrors(w, ValidationErrors{{Field: "conflict_id", Message: "conflict_id doesn't match the conflict in the path"}})
 		return
 	}
+	resolution.ConflictID = id
 
 	if err := h.svc.Conflicts.Resolve(r.Context(), &resolution); err != nil {
 		h.handleServiceError(w, err)

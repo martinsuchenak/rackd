@@ -110,7 +110,7 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) 
 	}
 
 	if err := s.store.CreateUser(enrichAuditCtx(ctx), user); err != nil {
-		return nil, err
+		return nil, fromStoreError(err)
 	}
 
 	for _, roleID := range roleIDs {

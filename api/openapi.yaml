@@ -786,16 +786,19 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        type: { type: string }
-        severity: { type: string, enum: [low, medium, high, critical] }
+        type: { type: string, enum: [duplicate_ip, overlapping_subnet] }
+        status: { type: string, enum: [active, resolved, ignored] }
         description: { type: string }
-        resource_type: { type: string }
-        resource_id: { type: string, format: uuid }
-        related_resource_id: { type: string, format: uuid }
-        status: { type: string, enum: [open, resolved, dismissed] }
+        ip_address: { type: string, description: For duplicate_ip conflicts }
+        device_ids: { type: array, items: { type: string } }
+        device_names: { type: array, items: { type: string } }
+        network_ids: { type: array, items: { type: string }, description: For overlapping_subnet conflicts }
+        network_names: { type: array, items: { type: string } }
+        subnets: { type: array, items: { type: string } }
+        detected_at: { type: string, format: date-time }
         resolved_at: { type: string, format: date-time }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        resolved_by: { type: string }
+        notes: { type: string }
       additionalProperties: true
 
     ConflictSummary:
@@ -808,32 +811,50 @@ components:
 
     ResolveConflictRequest:
       type: object
-      required: [resolution]
+      description: The conflict is the one in the path; conflict_id may repeat it but not name another.
       properties:
-        resolution: { type: string }
+        conflict_id: { type: string, format: uuid }
+        keep_device_id: { type: string, description: For duplicate_ip, the device that keeps the IP; it is removed from the others }
+        keep_network_id: { type: string, description: For overlapping_subnet, the network to keep }
         notes: { type: string }
 
     Reservation:
       type: object
       properties:
         id: { type: string, format: uuid }
-        ip: { type: string }
         pool_id: { type: string, format: uuid }
-        description: { type: string }
+        ip_address: { type: string }
+        hostname: { type: string }
+        purpose: { type: string }
         reserved_by: { type: string }
+        reserved_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
+        status: { type: string, enum: [active, expired, claimed, released] }
+        notes: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
 
     ReservationInput:
       type: object
-      required: [ip, pool_id]
+      required: [pool_id]
       properties:
-        ip: { type: string }
         pool_id: { type: string, format: uuid }
-        description: { type: string }
-        expires_at: { type: string, format: date-time }
+        ip_address: { type: string, description: Leave out to take the next free address }
+        hostname: { type: string }
+        purpose: { type: string }
+        notes: { type: string }
+        expires_at: { type: string, format: date-time, description: Give this or expires_in_days, not both }
+        expires_in_days: { type: integer, minimum: 1, maximum: 365 }
+
+    ReservationUpdate:
+      type: object
+      properties:
+        hostname: { type: string }
+        purpose: { type: string }
+        notes: { type: string }
+        expires_at: { type: string, format: date-time, description: Give this or expires_in_days, not both }
+        expires_in_days: { type: integer, minimum: 1, maximum: 365 }
 
     Webhook:
       type: object
@@ -3536,7 +3557,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReservationInput'
+              $ref: '#/components/schemas/ReservationUpdate'
       responses:
         '200':
           description: Updated

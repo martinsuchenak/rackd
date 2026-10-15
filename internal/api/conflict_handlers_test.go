@@ -69,11 +69,20 @@ func TestConflictHandlers(t *testing.T) {
 			t.Fatalf("expected 400, got %d", w.Code)
 		}
 
-		req := authReq(httptest.NewRequest("POST", "/api/v1/conflicts/phase2-conflict/resolve", bytes.NewBufferString(`{"notes":"missing id"}`)))
+		// The path names the conflict; a body naming another one is refused.
+		req := authReq(httptest.NewRequest("POST", "/api/v1/conflicts/phase2-conflict/resolve", bytes.NewBufferString(`{"conflict_id":"some-other-conflict"}`)))
 		req.Header.Set("Content-Type", "application/json")
 		w = performRequest(env.mux, req)
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+
+		// Without a conflict_id in the body, the path's conflict is used.
+		req = authReq(httptest.NewRequest("POST", "/api/v1/conflicts/phase2-conflict/resolve", bytes.NewBufferString(`{"notes":"no id in body"}`)))
+		req.Header.Set("Content-Type", "application/json")
+		w = performRequest(env.mux, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 for the unknown conflict in the path, got %d: %s", w.Code, w.Body.String())
 		}
 
 		w = performRequest(env.mux, authReq(httptest.NewRequest("POST", "/api/v1/conflicts/detect?type=invalid", nil)))
@@ -95,9 +104,10 @@ func TestConflictHandlers(t *testing.T) {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 
+		// Deleting something that doesn't exist is a 404, as elsewhere.
 		w = performRequest(env.mux, authReq(httptest.NewRequest("DELETE", "/api/v1/conflicts/nonexistent", nil)))
-		if w.Code != http.StatusNoContent {
-			t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 

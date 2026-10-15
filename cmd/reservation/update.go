@@ -19,7 +19,7 @@ func UpdateCommand() *cli.Command {
 			&cli.StringFlag{Name: "id", Usage: "Reservation ID", Required: true},
 			&cli.StringFlag{Name: "hostname", Usage: "Hostname for the reservation"},
 			&cli.StringFlag{Name: "purpose", Usage: "Purpose of the reservation"},
-			&cli.IntFlag{Name: "expires", Usage: "Days until expiration from now (0 to clear expiration)"},
+			&cli.IntFlag{Name: "expires", Usage: "Days until expiration from now (1-365)"},
 			&cli.StringFlag{Name: "notes", Usage: "Additional notes"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (table/json/yaml)", DefaultValue: "table"},
 		},

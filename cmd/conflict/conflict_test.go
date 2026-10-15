@@ -202,7 +202,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 					{"id": "detected-1", "type": "duplicate_ip", "status": "active"},
 				},
 			})
-		case r.URL.Path == "/api/v1/conflicts/resolve" && r.Method == "POST":
+		case r.URL.Path == "/api/v1/conflicts/conflict-1/resolve" && r.Method == "POST":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
@@ -245,7 +245,7 @@ func TestMockConflictAPIIntegration(t *testing.T) {
 	}
 
 	// Test resolve
-	resp, err = c.DoRequest("POST", "/api/v1/conflicts/resolve", map[string]string{"conflict_id": "conflict-1", "notes": "resolved"})
+	resp, err = c.DoRequest("POST", "/api/v1/conflicts/conflict-1/resolve", map[string]string{"conflict_id": "conflict-1", "notes": "resolved"})
 	if err != nil {
 		t.Fatalf("resolve request failed: %v", err)
 	}

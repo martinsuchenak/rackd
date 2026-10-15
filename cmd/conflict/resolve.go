@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
 	"github.com/paularlott/cli"
@@ -26,7 +27,7 @@ func ResolveCommand() *cli.Command {
 			conflictID := cmd.GetString("id")
 
 			// First, get the conflict to determine its type
-			resp, err := c.DoRequest("GET", "/api/v1/conflicts/"+conflictID, nil)
+			resp, err := c.DoRequest("GET", "/api/v1/conflicts/"+url.PathEscape(conflictID), nil)
 			if err != nil {
 				return err
 			}
@@ -65,7 +66,7 @@ func ResolveCommand() *cli.Command {
 			}
 
 			// Resolve the conflict
-			resp2, err := c.DoRequest("POST", "/api/v1/conflicts/resolve", resolution)
+			resp2, err := c.DoRequest("POST", "/api/v1/conflicts/"+url.PathEscape(conflictID)+"/resolve", resolution)
 			if err != nil {
 				return err
 			}

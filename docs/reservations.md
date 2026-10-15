@@ -16,13 +16,15 @@ IP reservations allow you to:
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Unique identifier |
-| `pool_id` | string | Parent IP pool |
+| `pool_id` | string | Pool the address is reserved in |
 | `ip_address` | string | Reserved IP address |
-| `purpose` | string | Reason for reservation |
+| `hostname` | string | Hostname the address is for (optional) |
+| `purpose` | string | Reason for the reservation (optional) |
+| `notes` | string | Additional notes (optional) |
 | `reserved_by` | string | User who made the reservation |
-| `device_id` | string | Optional linked device |
+| `reserved_at` | timestamp | When it was made |
 | `status` | string | Reservation status |
-| `expires_at` | timestamp | Expiration date (optional) |
+| `expires_at` | timestamp | Expiration (optional) |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
@@ -31,148 +33,74 @@ IP reservations allow you to:
 | Status | Description |
 |--------|-------------|
 | `active` | Reservation is currently active |
-| `expired` | Reservation has passed expiration date |
-| `claimed` | IP has been assigned to a device |
-| `released` | Reservation was manually released |
+| `expired` | Reservation has passed its expiration |
+| `claimed` | The address has been assigned to a device |
+| `released` | Reservation was released |
 
 ## API Endpoints
 
-### List Reservations
-
-```http
-GET /api/v1/pools/{pool_id}/reservations
-```
-
-Query parameters:
-- `status` - Filter by status (active/expired/claimed/released)
-- `reserved_by` - Filter by user
-
-**Response:**
-```json
-[
-  {
-    "id": "res-abc123",
-    "pool_id": "pool-1",
-    "ip_address": "192.168.1.50",
-    "purpose": "New database server",
-    "reserved_by": "admin",
-    "status": "active",
-    "expires_at": "2024-03-30T00:00:00Z",
-    "created_at": "2024-02-27T10:00:00Z"
-  }
-]
-```
-
-### Get Reservation
-
-```http
-GET /api/v1/pools/{pool_id}/reservations/{ip}
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/reservations` | List reservations; filter with `pool_id`, `status`, `reserved_by`, `ip_address` |
+| GET | `/api/v1/pools/{id}/reservations` | List a pool's reservations |
+| POST | `/api/v1/reservations` | Create a reservation |
+| GET | `/api/v1/reservations/{id}` | Get a reservation |
+| PUT | `/api/v1/reservations/{id}` | Update hostname, purpose, notes or expiration |
+| POST | `/api/v1/reservations/{id}/release` | Release a reservation, freeing the address |
+| DELETE | `/api/v1/reservations/{id}` | Delete a reservation |
 
 ### Create Reservation
 
 ```http
-POST /api/v1/pools/{pool_id}/reservations
+POST /api/v1/reservations
 ```
 
-**Request body:**
 ```json
 {
+  "pool_id": "pool-1",
   "ip_address": "192.168.1.50",
+  "hostname": "db-01",
   "purpose": "New database server - ticket #12345",
-  "reserved_by": "john.doe",
-  "expires_at": "2024-03-30T00:00:00Z"
+  "expires_in_days": 30
 }
 ```
 
-If `ip_address` is omitted, the next available IP is automatically assigned.
+If `ip_address` is omitted, the next free address in the pool is reserved. Give the expiration as `expires_in_days` (1 to 365) or as an `expires_at` timestamp, not both; without either, the reservation doesn't expire.
+
+**Response:** `201 Created` with the reservation.
 
 ### Update Reservation
 
 ```http
-PUT /api/v1/pools/{pool_id}/reservations/{ip}
-```
-
-### Release Reservation
-
-```http
-DELETE /api/v1/pools/{pool_id}/reservations/{ip}
-```
-
-Marks the reservation as `released` and frees the IP.
-
-### Claim Reservation
-
-When creating a device with a reserved IP, the reservation is automatically claimed:
-
-```http
-POST /api/v1/devices
+PUT /api/v1/reservations/{id}
 ```
 
 ```json
 {
-  "hostname": "db-server-01",
-  "ip_address": "192.168.1.50"
+  "purpose": "Updated purpose",
+  "expires_at": "2026-12-31T00:00:00Z"
 }
 ```
+
+Fields left out are unchanged. The expiration takes the same two forms as on create.
 
 ## CLI Commands
 
-### List Reservations
-
 ```bash
-# List reservations for a pool
-rackd reservation list --pool pool-1
-
-# Filter by status
+# List reservations, optionally by pool, status or who reserved them
 rackd reservation list --pool pool-1 --status active
 
-# Output as JSON
-rackd reservation list --pool pool-1 --output json
-```
+# Reserve a specific address
+rackd reservation create --pool pool-1 --ip 192.168.1.50 --hostname db-01 --purpose "Database server"
 
-### Get Reservation
+# Reserve the next free address for 30 days
+rackd reservation create --pool pool-1 --purpose "Load balancer" --expires 30
 
-```bash
-rackd reservation get --pool pool-1 --ip 192.168.1.50
-```
-
-### Create Reservation
-
-```bash
-# Reserve specific IP
-rackd reservation create \
-  --pool pool-1 \
-  --ip 192.168.1.50 \
-  --purpose "Database server - ticket #12345" \
-  --reserved-by "john.doe"
-
-# Reserve next available IP
-rackd reservation create \
-  --pool pool-1 \
-  --purpose "Load balancer" \
-  --expires "2024-03-30"
-```
-
-### Update Reservation
-
-```bash
-rackd reservation update \
-  --pool pool-1 \
-  --ip 192.168.1.50 \
-  --purpose "Updated purpose"
-```
-
-### Release Reservation
-
-```bash
-rackd reservation release --pool pool-1 --ip 192.168.1.50
-```
-
-### Delete Reservation
-
-```bash
-rackd reservation delete --pool pool-1 --ip 192.168.1.50
+# Show, update, release or delete a reservation by ID
+rackd reservation get --id res-abc123
+rackd reservation update --id res-abc123 --purpose "Updated purpose" --expires 14
+rackd reservation release --id res-abc123
+rackd reservation delete --id res-abc123
 ```
 
 ## Web UI

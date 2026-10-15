@@ -2,9 +2,11 @@ package client
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -134,5 +136,18 @@ func TestHandleError(t *testing.T) {
 	}
 	if err.Error() != "INVALID_INPUT: bad request" {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestHandleErrorShowsValidationDetails(t *testing.T) {
+	resp := &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(
+		`{"error":"subnet: invalid CIDR notation","code":"VALIDATION_ERROR","details":[{"field":"subnet","message":"invalid CIDR notation"}]}`))}
+	err := HandleError(resp)
+	if err == nil || !strings.Contains(err.Error(), "VALIDATION_ERROR") || !strings.Contains(err.Error(), "subnet: invalid CIDR notation") {
+		t.Errorf("HandleError = %v", err)
+	}
+	resp = &http.Response{StatusCode: 502, Body: io.NopCloser(strings.NewReader("Bad Gateway"))}
+	if err := HandleError(resp); err == nil || err.Error() != "HTTP 502: Bad Gateway" {
+		t.Errorf("plain-text error = %v", err)
 	}
 }

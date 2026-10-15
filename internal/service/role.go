@@ -46,7 +46,7 @@ func (s *RoleService) Create(ctx context.Context, role *model.Role) error {
 	role.UpdatedAt = time.Now()
 
 	if err := s.store.CreateRole(enrichAuditCtx(ctx), role); err != nil {
-		return err
+		return fromStoreError(err)
 	}
 	recordAudit(ctx, s.store, "create", "role", role.ID, map[string]string{"name": role.Name, "description": role.Description})
 	return nil
