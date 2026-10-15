@@ -102,3 +102,21 @@ func TestScheduledScanService_CreateUpdateDeleteMapErrors(t *testing.T) {
 		t.Fatalf("expected not found on missing scheduled scan delete, got %v", err)
 	}
 }
+
+func TestScheduledScansMustBeFiveMinutesApart(t *testing.T) {
+	for expr, ok := range map[string]bool{
+		"*/5 * * * *": true,
+		"0 2 * * *":   true,
+		"@hourly":     true,
+		"* * * * *":   false,
+		"*/2 * * * *": false,
+		"0,1 * * * *": false, // irregular: one gap is a minute
+		"@every 30s":  false,
+		"@every 5m":   true,
+	} {
+		errs := validateScheduledScan(&model.ScheduledScan{Name: "s", NetworkID: "n", CronExpression: expr})
+		if got := len(errs) == 0; got != ok {
+			t.Errorf("%q: allowed = %v (%v), want %v", expr, got, errs, ok)
+		}
+	}
+}

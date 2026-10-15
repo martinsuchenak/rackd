@@ -19,7 +19,7 @@ func UpdateCommand() *cli.Command {
 			&cli.StringFlag{Name: "id", Usage: "Reservation ID", Required: true},
 			&cli.StringFlag{Name: "hostname", Usage: "Hostname for the reservation"},
 			&cli.StringFlag{Name: "purpose", Usage: "Purpose of the reservation"},
-			&cli.IntFlag{Name: "expires", Usage: "Days until expiration from now (1-365)"},
+			&cli.IntFlag{Name: "expires", Usage: "Days until expiration from now (1-365), or 0 to remove the expiration", DefaultValue: -1},
 			&cli.StringFlag{Name: "notes", Usage: "Additional notes"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (table/json/yaml)", DefaultValue: "table"},
 		},
@@ -36,8 +36,11 @@ func UpdateCommand() *cli.Command {
 			if purpose := cmd.GetString("purpose"); purpose != "" {
 				req["purpose"] = purpose
 			}
-			if days := cmd.GetInt("expires"); days > 0 {
+			switch days := cmd.GetInt("expires"); {
+			case days > 0:
 				req["expires_in_days"] = days
+			case days == 0:
+				req["clear_expiry"] = true
 			}
 			if notes := cmd.GetString("notes"); notes != "" {
 				req["notes"] = notes

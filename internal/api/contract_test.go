@@ -62,5 +62,14 @@ func TestContract(t *testing.T) {
 		if w := do("PUT", "/api/v1/reservations/"+res.ID, `{"expires_in_days":5,"expires_at":"2030-01-01T00:00:00Z"}`); w.Code != http.StatusBadRequest {
 			t.Errorf("both forms: %d, want 400", w.Code)
 		}
+
+		// The expiration can be removed.
+		w = do("PUT", "/api/v1/reservations/"+res.ID, `{"clear_expiry":true}`)
+		res.ExpiresAt = nil
+		var cleared map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &cleared)
+		if w.Code != http.StatusOK || cleared["expires_at"] != nil {
+			t.Errorf("clear_expiry: %d %s", w.Code, w.Body.String())
+		}
 	})
 }

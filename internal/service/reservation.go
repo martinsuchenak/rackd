@@ -176,6 +176,12 @@ func (s *ReservationService) Update(ctx context.Context, id string, req *model.U
 	if req.Purpose != "" {
 		reservation.Purpose = req.Purpose
 	}
+	if req.ClearExpiry {
+		if req.ExpiresAt != nil {
+			return nil, ValidationErrors{{Field: "clear_expiry", Message: "give clear_expiry or an expiration, not both"}}
+		}
+		reservation.ExpiresAt = nil
+	}
 	if req.ExpiresAt != nil {
 		reservation.ExpiresAt = req.ExpiresAt
 	}
