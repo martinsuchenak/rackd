@@ -143,7 +143,7 @@ func (b *UIConfigBuilder) HandlerWithSession(sessionManager *auth.SessionManager
 			}
 
 			if token != "" {
-				if session, err := sessionManager.GetSession(token); err == nil {
+				if session, err := activeSession(r.Context(), store, sessionManager, token, false); err == nil {
 					ctx := r.Context()
 
 					user, err := store.GetUser(ctx, session.UserID)

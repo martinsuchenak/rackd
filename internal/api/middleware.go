@@ -228,29 +228,58 @@ func AuthMiddleware(store storage.ExtendedStorage, next http.HandlerFunc) http.H
 	}
 }
 
+// errSessionUserGone means a session's user was deleted or deactivated.
+var errSessionUserGone = errors.New("session user is missing or inactive")
+
+func isSessionMissing(err error) bool {
+	return errors.Is(err, auth.ErrSessionNotFound) || errors.Is(err, auth.ErrSessionExpired)
+}
+
+// activeSession returns the session for token if it is live and its user
+// exists and is active, as API keys require; a session whose user is gone is
+// deleted and errSessionUserGone returned. refresh also slides its expiry.
+// Every place that accepts a session cookie uses it.
+func activeSession(ctx context.Context, store storage.ExtendedStorage, sm *auth.SessionManager, token string, refresh bool) (*auth.Session, error) {
+	var session *auth.Session
+	var err error
+	if refresh {
+		// Fails if the session expired, reached its maximum lifetime or was
+		// deleted (for example by a password reset).
+		session, err = sm.RefreshSession(token)
+	} else {
+		session, err = sm.GetSession(token)
+	}
+	if err != nil {
+		return nil, err
+	}
+	user, err := store.GetUser(ctx, session.UserID)
+	if errors.Is(err, storage.ErrUserNotFound) || (err == nil && !user.IsActive) {
+		_ = sm.InvalidateSession(token)
+		return nil, errSessionUserGone
+	}
+	if err != nil {
+		return nil, fmt.Errorf("loading session user %s: %w", session.UserID, err)
+	}
+	return session, nil
+}
+
 // AuthMiddlewareWithSessions validates API keys and sessions
 func AuthMiddlewareWithSessions(store storage.ExtendedStorage, sessionManager *auth.SessionManager, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Try session authentication via cookie first
 		if sessionManager != nil {
 			if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
-				// Refreshing fails if the session expired, reached its maximum
-				// lifetime or was deleted (for example by a password reset).
-				session, err := sessionManager.RefreshSession(cookie.Value)
+				session, err := activeSession(r.Context(), store, sessionManager, cookie.Value, true)
+				if errors.Is(err, errSessionUserGone) {
+					writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session is no longer valid")
+					return
+				}
+				if err != nil && !isSessionMissing(err) {
+					log.Error("Failed to check session", "error", err)
+					writeAuthError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+					return
+				}
 				if err == nil {
-					// A session lasts only while its user exists and is active, as
-					// API keys do; deactivation can race the session purge.
-					user, userErr := store.GetUser(r.Context(), session.UserID)
-					switch {
-					case errors.Is(userErr, storage.ErrUserNotFound) || (userErr == nil && !user.IsActive):
-						_ = sessionManager.InvalidateSession(cookie.Value)
-						writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session is no longer valid")
-						return
-					case userErr != nil:
-						log.Error("Failed to load session user", "user_id", session.UserID, "error", userErr)
-						writeAuthError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-						return
-					}
 
 					// CSRF Protection for state-changing requests when using sessions (M-6)
 					switch r.Method {

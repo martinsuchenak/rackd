@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -54,5 +55,20 @@ func TestLoginThrottlesAnAccountAfterRepeatedFailures(t *testing.T) {
 	_, _ = svc.Login(ctx, "root", "wrong")
 	if _, err := svc.Login(ctx, "root", "password123"); err != nil {
 		t.Errorf("below the limit: %v", err)
+	}
+}
+
+// Flooding the table with one-off usernames must not switch off counting for
+// the account under attack.
+func TestLoginThrottleSurvivesAFloodOfUsernames(t *testing.T) {
+	th := newLoginThrottle(3, time.Hour)
+	for i := 0; i < maxThrottledAccounts; i++ {
+		th.fail("random-" + strconv.Itoa(i))
+	}
+	for i := 0; i < 3; i++ {
+		th.fail("admin")
+	}
+	if !th.blocked("admin") {
+		t.Error("admin is not throttled after the table was flooded")
 	}
 }
