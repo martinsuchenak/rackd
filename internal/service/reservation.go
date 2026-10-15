@@ -277,25 +277,6 @@ func (s *ReservationService) requireOwnership(ctx context.Context, reservation *
 	return ErrForbidden
 }
 
-// Claim marks a reservation as claimed (used when a device is assigned the IP)
-func (s *ReservationService) Claim(ctx context.Context, poolID, ip string) error {
-	// This is called internally when a device is assigned a reserved IP
-	// No permission check needed as it's an internal operation
-
-	reservation, err := s.store.GetReservationByIP(ctx, poolID, ip)
-	if err != nil {
-		if err == storage.ErrReservationNotFound {
-			return nil // No reservation for this IP, that's fine
-		}
-		return err
-	}
-
-	// Update status to claimed
-	reservation.Status = model.ReservationStatusClaimed
-
-	return s.store.UpdateReservation(enrichAuditCtx(ctx), reservation)
-}
-
 // GetByPool returns all active reservations for a pool
 func (s *ReservationService) GetByPool(ctx context.Context, poolID string) ([]model.Reservation, error) {
 	if err := requirePermission(ctx, s.store, "reservations", "list"); err != nil {

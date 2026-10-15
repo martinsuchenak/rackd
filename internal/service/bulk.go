@@ -62,6 +62,7 @@ func (s *BulkService) afterDeviceWrites(ctx context.Context, devices []*model.De
 	}
 	for _, device := range devices {
 		if ok[device.ID] {
+			s.devices.claimReservations(ctx, device)
 			s.devices.checkForIPConflicts(ctx, device)
 			s.devices.syncDeviceDNSAsync(ctx, device)
 		}

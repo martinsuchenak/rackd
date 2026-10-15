@@ -137,6 +137,20 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Reservations (found by a Strix scan):
+  - Auto-assigning a reservation (`POST /api/v1/reservations` without
+    `ip_address`) failed with "high contention" once the pool had any
+    reservation, because the next free address ignored reservations. It now
+    skips reserved addresses, and so does `GET /api/v1/pools/{id}/next-ip`.
+  - Expired reservations never expired. Their address is now free as soon as
+    the expiry passes, and the status changes to `expired` within a minute.
+    Expiry times given with a UTC offset other than zero are compared
+    correctly.
+  - A device taking a reserved address left the reservation `active`. It
+    becomes `claimed` when the device is created or updated with that address
+    in the pool.
+  - The reservations guide described a configuration block, webhook events and
+    a conflict type that don't exist; it now matches what Rackd does.
 - Bad input and references to missing records got a 500 instead of a 4xx, on
   the REST API and over MCP. Credentials, scan profiles and scheduled scans that
   fail validation, a missing `user_id` or `role_id` when granting a role, and a

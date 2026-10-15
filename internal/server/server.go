@@ -207,6 +207,10 @@ func Run(ctx context.Context, opts Options) error {
 	auditRetention.Start()
 	defer auditRetention.Stop()
 
+	reservationExpiry := worker.NewReservationExpiryWorker(store)
+	reservationExpiry.Start()
+	defer reservationExpiry.Stop()
+
 	if err := runtime.Start(); err != nil {
 		return err
 	}

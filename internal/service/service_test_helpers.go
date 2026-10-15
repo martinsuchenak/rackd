@@ -368,6 +368,16 @@ func (s *serviceTestStorage) GetReservationByIP(_ context.Context, poolID, ip st
 	return nil, storage.ErrReservationNotFound
 }
 
+func (s *serviceTestStorage) ClaimReservation(_ context.Context, poolID, ip string) (bool, error) {
+	for _, r := range s.reservations {
+		if r.PoolID == poolID && r.IPAddress == ip && r.Status == model.ReservationStatusActive {
+			r.Status = model.ReservationStatusClaimed
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *serviceTestStorage) UpdateReservation(_ context.Context, reservation *model.Reservation) error {
 	cloned := *reservation
 	s.reservations[cloned.ID] = &cloned

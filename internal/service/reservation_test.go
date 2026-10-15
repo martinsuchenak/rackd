@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -52,14 +51,6 @@ func TestReservationService_ReleaseAndClaimUpdateStatuses(t *testing.T) {
 	}
 	if store.reservationSet == nil || store.reservationSet.Status != model.ReservationStatusReleased {
 		t.Fatalf("expected released reservation status, got %#v", store.reservationSet)
-	}
-
-	store.reservationSet = nil
-	if err := svc.Claim(context.Background(), "pool-1", "10.0.0.10"); err != nil {
-		t.Fatalf("Claim returned unexpected error: %v", err)
-	}
-	if store.reservationSet == nil || store.reservationSet.Status != model.ReservationStatusClaimed {
-		t.Fatalf("expected claimed reservation status, got %#v", store.reservationSet)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -54,6 +55,13 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	}
 	if !ipInRange(checkIP, poolStartIP, poolEndIP) {
 		return fmt.Errorf("IP address %s is not within pool range", reservation.IPAddress)
+	}
+
+	// A reservation past its expiry no longer holds the address, even if the
+	// expiry sweep hasn't reached it yet.
+	expired, err := expireReservationsTx(ctx, tx, `AND pool_id = ? AND ip_address = ?`, reservation.PoolID, reservation.IPAddress)
+	if err != nil {
+		return err
 	}
 
 	// Check if IP is already used by a device
@@ -113,6 +121,9 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		return err
 	}
 
+	for _, id := range expired {
+		s.auditLog(ctx, "expire", "reservation", id, nil)
+	}
 	s.auditLog(ctx, "create", "reservation", reservation.ID, reservation)
 	return nil
 }
@@ -334,23 +345,107 @@ func (s *SQLiteStorage) GetReservationsByUser(ctx context.Context, userID string
 	return scanReservations(rows)
 }
 
-// ExpireReservations marks all expired reservations as expired
+// ExpireReservations marks active reservations past their expiry as expired,
+// freeing their addresses.
 func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
-	result, err := s.db.ExecContext(ctx, `
-		UPDATE reservations SET status = ?, updated_at = ?
-		WHERE status = ? AND expires_at IS NOT NULL AND expires_at < ?
-	`, string(model.ReservationStatusExpired), nowUTC(),
-		string(model.ReservationStatusActive), nowUTC())
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to expire reservations: %w", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-
-	affected, err := result.RowsAffected()
+	defer func() { _ = tx.Rollback() }()
+	expired, err := expireReservationsTx(ctx, tx, "")
 	if err != nil {
-		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+		return 0, err
 	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	for _, id := range expired {
+		s.auditLog(ctx, "expire", "reservation", id, nil)
+	}
+	return int64(len(expired)), nil
+}
 
-	return affected, nil
+// expireReservationsTx expires the active reservations past their expiry that
+// match the extra WHERE clause, and returns their ids. Expiry is compared in
+// Go: expires_at keeps the offset the client sent, so comparing the stored
+// text in SQL would misorder times in different zones.
+func expireReservationsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id, expires_at FROM reservations
+		WHERE status = ? AND expires_at IS NOT NULL `+where,
+		append([]any{string(model.ReservationStatusActive)}, args...)...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find expired reservations: %w", err)
+	}
+	now := nowUTC()
+	var ids []string
+	for rows.Next() {
+		var id string
+		var expiresAt sql.NullTime
+		if err := rows.Scan(&id, &expiresAt); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		if reservationExpired(expiresAt, now) {
+			ids = append(ids, id)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?`,
+			string(model.ReservationStatusExpired), now, id); err != nil {
+			return nil, fmt.Errorf("failed to expire reservation: %w", err)
+		}
+	}
+	return ids, nil
+}
+
+// reservationExpired reports whether a reservation with this expiry has
+// lapsed by now.
+func reservationExpired(expiresAt sql.NullTime, now time.Time) bool {
+	return expiresAt.Valid && !expiresAt.Time.After(now)
+}
+
+// ClaimReservation marks the active, unexpired reservation for ip in a pool
+// as claimed, because a device now holds the address. It reports whether
+// there was one.
+func (s *SQLiteStorage) ClaimReservation(ctx context.Context, poolID, ip string) (bool, error) {
+	if poolID == "" || ip == "" {
+		return false, ErrInvalidID
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id string
+	var expiresAt sql.NullTime
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, expires_at FROM reservations
+		WHERE pool_id = ? AND ip_address = ? AND status = ?
+	`, poolID, ip, string(model.ReservationStatusActive)).Scan(&id, &expiresAt)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to find reservation: %w", err)
+	}
+	if reservationExpired(expiresAt, nowUTC()) {
+		return false, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?`,
+		string(model.ReservationStatusClaimed), nowUTC(), id); err != nil {
+		return false, fmt.Errorf("failed to claim reservation: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	s.auditLog(ctx, "claim", "reservation", id, map[string]string{"pool_id": poolID, "ip_address": ip})
+	return true, nil
 }
 
 // IsIPReserved checks if an IP address is reserved in a pool
