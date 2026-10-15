@@ -16,34 +16,34 @@ import (
 )
 
 var (
-	once     sync.Once
-	template []byte
-	err      error
+	once         sync.Once
+	templateData []byte
+	templateErr  error
 )
 
 func migrated() ([]byte, error) {
 	once.Do(func() {
 		var dir string
-		if dir, err = os.MkdirTemp("", "rackd-storagetest-*"); err != nil {
+		if dir, templateErr = os.MkdirTemp("", "rackd-storagetest-*"); templateErr != nil {
 			return
 		}
 		defer func() { _ = os.RemoveAll(dir) }()
 		path := filepath.Join(dir, "template.db")
 		var s *storage.SQLiteStorage
-		if s, err = storage.NewSQLiteStorageWithPath(path); err != nil {
+		if s, templateErr = storage.NewSQLiteStorageWithPath(path); templateErr != nil {
 			return
 		}
 		// Fold the WAL into the main file, so its bytes are the whole database.
-		if _, err = s.DB().Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		if _, templateErr = s.DB().Exec("PRAGMA wal_checkpoint(TRUNCATE)"); templateErr != nil {
 			_ = s.Close()
 			return
 		}
-		if err = s.Close(); err != nil {
+		if templateErr = s.Close(); templateErr != nil {
 			return
 		}
-		template, err = os.ReadFile(path)
+		templateData, templateErr = os.ReadFile(path)
 	})
-	return template, err
+	return templateData, templateErr
 }
 
 // New returns a store on a private copy of a freshly migrated database,
