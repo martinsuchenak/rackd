@@ -53,6 +53,7 @@ func TestScanWritesProgressFromOneGoroutine(t *testing.T) {
 	}
 	_, ipNet, _ := net.ParseCIDR(network.Subnet)
 
+	started := time.Now()
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -67,8 +68,10 @@ func TestScanWritesProgressFromOneGoroutine(t *testing.T) {
 	if got := slow.maxInFlight.Load(); got > 1 {
 		t.Errorf("%d progress writes ran at once, want 1", got)
 	}
-	// Start, a few ticks, and the end; not one per host.
-	if got := int(slow.updates.Load()); got >= scan.TotalHosts/2 {
-		t.Errorf("%d progress writes for %d hosts, want a handful", got, scan.TotalHosts)
+	// The start, one per tick at most, and the end; not one per host. The
+	// limit follows the scan's duration, so a slow runner doesn't fail it.
+	limit := int(time.Since(started)/scanProgressInterval) + 2
+	if got := int(slow.updates.Load()); got > limit {
+		t.Errorf("%d progress writes in %v for %d hosts, want at most %d", got, time.Since(started).Round(time.Second), scan.TotalHosts, limit)
 	}
 }
