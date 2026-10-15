@@ -9,6 +9,17 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Changed
+
+- The web UI's menu is grouped into sections: Organization, Inventory, IPAM,
+  DNS, Discovery, Integrations and Administration, with Dashboard above them.
+  Sections collapse, and the browser remembers which. On a phone, only the
+  current page's section starts open, and a collapsed section shows its
+  conflict count on the heading. Inside a section, labels are shorter: DNS
+  Zones and DNS Providers are Zones and Providers, and Discovery is Scans.
+- Extension menu items can name a `Section`: a core section to join, or their
+  own. Without one they go in an Extensions section.
+
 ## [0.2.1] - 2026-10-15
 
 ### Fixed

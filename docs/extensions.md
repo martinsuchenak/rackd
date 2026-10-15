@@ -58,7 +58,7 @@ func (f *Feature) Manifest() extension.Manifest {
 		Events: []extension.EventType{{Type: "inventory_tag.created", Label: "Inventory Tag Created"}},
 		UI: extension.UI{
 			Pages: []extension.Page{{Path: "/inventory-tags", Title: "Inventory Tags"}},
-			Nav:   []extension.NavItem{{Label: "Inventory Tags", Path: "/inventory-tags", Icon: "tag", Order: 95}},
+			Nav:   []extension.NavItem{{Label: "Inventory Tags", Path: "/inventory-tags", Icon: "tag", Section: "inventory", Order: 95}},
 		},
 		Instructions: "Use inventory_tag_list to find a device's inventory tags.",
 	}
@@ -158,7 +158,7 @@ func (f *Feature) Manifest() extension.Manifest {
 		// ...
 		UI: extension.UI{
 			Pages:   []extension.Page{{Path: "/inventory-tags", Title: "Inventory Tags", Permission: read}},
-			Nav:     []extension.NavItem{{Label: "Inventory Tags", Path: "/inventory-tags", Icon: "tag", Order: 95, Permission: read}},
+			Nav:     []extension.NavItem{{Label: "Inventory Tags", Path: "/inventory-tags", Icon: "tag", Section: "inventory", Order: 95, Permission: read}},
 			Assets:  assets,
 			Scripts: []string{"index.js"},
 			Styles:  []string{"index.css"},
@@ -170,6 +170,7 @@ func (f *Feature) Manifest() extension.Manifest {
 - `Assets` are served at `/ext/<name>/`, without authentication, like core's own UI files. A missing file is a 404, never `index.html`.
 - `Scripts` and `Styles` must exist in `Assets`; Rackd refuses to start otherwise.
 - A page owns its path and every route below it, so `/inventory-tags/42` belongs to `/inventory-tags`. Core's routes take precedence over an extension page with the same path.
+- A nav item's `Section` puts it in the menu: a core section's id (`organization`, `inventory`, `ipam`, `dns`, `discovery`, `integrations` or `administration`) to join it, or any other name for a section of the extension's own. Items without one go in an "Extensions" section. Extension sections come after core's daily sections and before Administration. `Order` sorts items within a section.
 - When a page has a `Permission`, users without it get core's Access Denied page and don't see the page's nav entry. The check only hides UI: the feature's API routes still need their own `Require`.
 
 The module uses `window.rackd`, typed in [`webui/src/core/extension-api.ts`](../webui/src/core/extension-api.ts):

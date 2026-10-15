@@ -18,6 +18,8 @@ interface FeatureDefinition {
   nav?: {
     label: string;
     icon: string;
+    /** The menu section; none puts it above the sections (Dashboard). */
+    section?: NavSectionId;
     order: number;
     badgeKey?: FeatureBadgeKey;
   };
@@ -26,38 +28,115 @@ interface FeatureDefinition {
   requires?: 'mcp_oauth';
 }
 
+/** Core's menu sections, in menu order. */
+export const navSections = [
+  { id: 'organization', label: 'Organization' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'ipam', label: 'IPAM' },
+  { id: 'dns', label: 'DNS' },
+  { id: 'discovery', label: 'Discovery' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'administration', label: 'Administration' },
+] as const;
+
+export type NavSectionId = (typeof navSections)[number]['id'];
+
+export interface NavSection {
+  /** '' for the items above the sections, such as Dashboard. */
+  id: string;
+  label: string;
+  items: FeatureNavItem[];
+}
+
+const EXTENSIONS_SECTION = 'Extensions';
+
+/**
+ * Groups menu items into sections, in menu order, each sorted by order and
+ * without empty sections. An extension item with a core section's id joins
+ * it; one with another section name gets a section of that name, and one
+ * with none goes in Extensions. Extension sections come before
+ * Administration, which stays last.
+ */
+export function groupNavItems(items: FeatureNavItem[]): NavSection[] {
+  const core = new Map<string, string>(navSections.map((s) => [s.id, s.label]));
+  const top: NavSection = { id: '', label: '', items: [] };
+  const sections = new Map<string, NavSection>(navSections.map((s) => [s.id, { id: s.id, label: s.label, items: [] }]));
+  const extra = new Map<string, NavSection>();
+  for (const item of items) {
+    const section = item.section ?? '';
+    if (section === '' && item.extension !== true) {
+      top.items.push(item);
+    } else if (core.has(section)) {
+      sections.get(section)!.items.push(item);
+    } else {
+      const label = section || EXTENSIONS_SECTION;
+      const id = 'ext:' + label;
+      if (!extra.has(id)) {
+        extra.set(id, { id, label, items: [] });
+      }
+      extra.get(id)!.items.push(item);
+    }
+  }
+  const admin = sections.get('administration')!;
+  sections.delete('administration');
+  const ordered = [top, ...sections.values(), ...extra.values(), admin];
+  for (const s of ordered) {
+    s.items.sort((a, b) => a.order - b.order);
+  }
+  return ordered.filter((s) => s.items.length > 0);
+}
+
+/** The id of the section whose item is the current route, or ''. */
+export function activeSectionId(sections: NavSection[], route: string): string {
+  for (const s of sections) {
+    if (s.items.some((item) => isActiveNavItem(item, route))) {
+      return s.id;
+    }
+  }
+  return '';
+}
+
+/** Whether a menu item is the current page, or a page under it. */
+export function isActiveNavItem(item: NavItem, route: string): boolean {
+  const path = route.split('?')[0];
+  if (item.path === '/') {
+    return path === '/';
+  }
+  return path === item.path || path.startsWith(item.path + '/') || (item.path === '/networks' && path.startsWith('/pools'));
+}
+
 export interface FeatureNavItem extends NavItem {
   badgeKey?: FeatureBadgeKey;
 }
 
 const featureDefinitions: FeatureDefinition[] = [
   { path: '/', title: 'Dashboard', nav: { label: 'Dashboard', icon: 'home', order: 0 } },
-  { path: '/devices', title: 'Devices', routePrefix: '/devices', nav: { label: 'Devices', icon: 'server', order: 10 }, permission: { resource: 'devices', action: 'list' } },
+  { path: '/devices', title: 'Devices', routePrefix: '/devices', nav: { label: 'Devices', icon: 'server', section: 'inventory', order: 10 }, permission: { resource: 'devices', action: 'list' } },
   { path: '/devices/detail', title: 'Device Details', permission: { resource: 'devices', action: 'list' } },
   { path: '/devices/graph', title: 'Device Relationships Graph', permission: { resource: 'devices', action: 'list' } },
-  { path: '/networks', title: 'Networks', routePrefix: '/networks', nav: { label: 'Networks', icon: 'network', order: 20 }, permission: { resource: 'networks', action: 'list' } },
+  { path: '/networks', title: 'Networks', routePrefix: '/networks', nav: { label: 'Networks', icon: 'network', section: 'ipam', order: 10 }, permission: { resource: 'networks', action: 'list' } },
   { path: '/networks/detail', title: 'Network Details', permission: { resource: 'networks', action: 'list' } },
   { path: '/pools/detail', title: 'Pool Details', routePrefix: '/pools', permission: { resource: 'pools', action: 'list' } },
-  { path: '/datacenters', title: 'Datacenters', routePrefix: '/datacenters', nav: { label: 'Datacenters', icon: 'building', order: 30 }, permission: { resource: 'datacenters', action: 'list' } },
+  { path: '/datacenters', title: 'Datacenters', routePrefix: '/datacenters', nav: { label: 'Datacenters', icon: 'building', section: 'organization', order: 10 }, permission: { resource: 'datacenters', action: 'list' } },
   { path: '/datacenters/detail', title: 'Datacenter Details', permission: { resource: 'datacenters', action: 'list' } },
-  { path: '/discovery', title: 'Discovery', routePrefix: '/discovery', nav: { label: 'Discovery', icon: 'search', order: 40 }, permission: { resource: 'discovery', action: 'list' } },
-  { path: '/credentials', title: 'Credentials', nav: { label: 'Credentials', icon: 'key', order: 42 }, permission: { resource: 'credentials', action: 'list' } },
-  { path: '/scan-profiles', title: 'Scan Profiles', nav: { label: 'Scan Profiles', icon: 'settings', order: 44 }, permission: { resource: 'scan-profiles', action: 'list' } },
-  { path: '/scheduled-scans', title: 'Scheduled Scans', nav: { label: 'Scheduled Scans', icon: 'clock', order: 46 }, permission: { resource: 'scheduled-scans', action: 'list' } },
-  { path: '/conflicts', title: 'IP Conflicts', nav: { label: 'Conflicts', icon: 'warning', order: 50, badgeKey: 'conflicts' }, permission: { resource: 'conflicts', action: 'list' } },
-  { path: '/webhooks', title: 'Webhooks', nav: { label: 'Webhooks', icon: 'zap', order: 51 }, permission: { resource: 'webhooks', action: 'list' } },
-  { path: '/custom-fields', title: 'Custom Fields', nav: { label: 'Custom Fields', icon: 'tag', order: 52 }, permission: { resource: 'custom-fields', action: 'list' } },
-  { path: '/circuits', title: 'Circuits', nav: { label: 'Circuits', icon: 'shuffle', order: 55 }, permission: { resource: 'circuits', action: 'list' } },
-  { path: '/nat', title: 'NAT Mappings', nav: { label: 'NAT', icon: 'git-branch', order: 56 }, permission: { resource: 'nat', action: 'list' } },
-  { path: '/dns/providers', title: 'DNS Providers', routePrefix: '/dns/providers', nav: { label: 'DNS Providers', icon: 'server', order: 57 }, permission: { resource: 'dns-provider', action: 'list' } },
-  { path: '/dns/zones', title: 'DNS Zones', routePrefix: '/dns/zones', nav: { label: 'DNS Zones', icon: 'globe', order: 58 }, permission: { resource: 'dns-zone', action: 'list' } },
+  { path: '/discovery', title: 'Discovery', routePrefix: '/discovery', nav: { label: 'Scans', icon: 'search', section: 'discovery', order: 10 }, permission: { resource: 'discovery', action: 'list' } },
+  { path: '/credentials', title: 'Credentials', nav: { label: 'Credentials', icon: 'key', section: 'discovery', order: 40 }, permission: { resource: 'credentials', action: 'list' } },
+  { path: '/scan-profiles', title: 'Scan Profiles', nav: { label: 'Scan Profiles', icon: 'settings', section: 'discovery', order: 30 }, permission: { resource: 'scan-profiles', action: 'list' } },
+  { path: '/scheduled-scans', title: 'Scheduled Scans', nav: { label: 'Scheduled Scans', icon: 'clock', section: 'discovery', order: 20 }, permission: { resource: 'scheduled-scans', action: 'list' } },
+  { path: '/conflicts', title: 'IP Conflicts', nav: { label: 'Conflicts', icon: 'warning', section: 'ipam', order: 30, badgeKey: 'conflicts' }, permission: { resource: 'conflicts', action: 'list' } },
+  { path: '/webhooks', title: 'Webhooks', nav: { label: 'Webhooks', icon: 'zap', section: 'integrations', order: 10 }, permission: { resource: 'webhooks', action: 'list' } },
+  { path: '/custom-fields', title: 'Custom Fields', nav: { label: 'Custom Fields', icon: 'tag', section: 'integrations', order: 20 }, permission: { resource: 'custom-fields', action: 'list' } },
+  { path: '/circuits', title: 'Circuits', nav: { label: 'Circuits', icon: 'shuffle', section: 'inventory', order: 20 }, permission: { resource: 'circuits', action: 'list' } },
+  { path: '/nat', title: 'NAT Mappings', nav: { label: 'NAT', icon: 'git-branch', section: 'ipam', order: 20 }, permission: { resource: 'nat', action: 'list' } },
+  { path: '/dns/providers', title: 'DNS Providers', routePrefix: '/dns/providers', nav: { label: 'Providers', icon: 'server', section: 'dns', order: 20 }, permission: { resource: 'dns-provider', action: 'list' } },
+  { path: '/dns/zones', title: 'DNS Zones', routePrefix: '/dns/zones', nav: { label: 'Zones', icon: 'globe', section: 'dns', order: 10 }, permission: { resource: 'dns-zone', action: 'list' } },
   { path: '/dns/records', title: 'DNS Records', routePrefix: '/dns/records', permission: { resource: 'dns', action: 'list' } },
-  { path: '/users', title: 'User Management', nav: { label: 'Users', icon: 'user', order: 90 }, permission: { resource: 'users', action: 'list' } },
-  { path: '/roles', title: 'Role Management', nav: { label: 'Roles', icon: 'shield', order: 91 }, permission: { resource: 'roles', action: 'list' } },
-  { path: '/oauth-clients', title: 'OAuth Clients', nav: { label: 'OAuth Clients', icon: 'shield', order: 93 }, permission: { resource: 'users', action: 'list' }, requires: 'mcp_oauth' },
-  { path: '/api-keys', title: 'API Keys', nav: { label: 'API Keys', icon: 'key', order: 94 }, permission: { resource: 'apikeys', action: 'list' } },
-  { path: '/audit', title: 'Audit Logs', nav: { label: 'Audit', icon: 'shield', order: 95 }, permission: { resource: 'audit', action: 'list' } },
-  { path: '/logs', title: 'Application Logs', nav: { label: 'Logs', icon: 'terminal', order: 96 }, permission: { resource: 'logs', action: 'list' } },
+  { path: '/users', title: 'User Management', nav: { label: 'Users', icon: 'user', section: 'administration', order: 10 }, permission: { resource: 'users', action: 'list' } },
+  { path: '/roles', title: 'Role Management', nav: { label: 'Roles', icon: 'shield', section: 'administration', order: 20 }, permission: { resource: 'roles', action: 'list' } },
+  { path: '/oauth-clients', title: 'OAuth Clients', nav: { label: 'OAuth Clients', icon: 'shield', section: 'integrations', order: 40 }, permission: { resource: 'users', action: 'list' }, requires: 'mcp_oauth' },
+  { path: '/api-keys', title: 'API Keys', nav: { label: 'API Keys', icon: 'key', section: 'integrations', order: 30 }, permission: { resource: 'apikeys', action: 'list' } },
+  { path: '/audit', title: 'Audit Logs', nav: { label: 'Audit', icon: 'shield', section: 'administration', order: 30 }, permission: { resource: 'audit', action: 'list' } },
+  { path: '/logs', title: 'Application Logs', nav: { label: 'Logs', icon: 'terminal', section: 'administration', order: 40 }, permission: { resource: 'logs', action: 'list' } },
 ];
 
 function normalizePath(route: string): string {
@@ -87,6 +166,7 @@ export function getFeatureNavItems(settings?: ServerSettings, all = false): Feat
       path: feature.path,
       icon: feature.nav!.icon,
       order: feature.nav!.order,
+      section: feature.nav!.section,
       badgeKey: feature.nav!.badgeKey,
       required_permissions: feature.permission ? [feature.permission] : undefined,
     }));
@@ -154,5 +234,5 @@ export function mergeNavItems(dynamicItems: NavItem[], settings?: ServerSettings
       (base.path === item.path || (base.path === '/' && item.path === '')) || base.label === item.label
     )
   );
-  return [...baseItems, ...dynamic].sort((a, b) => a.order - b.order);
+  return [...baseItems, ...dynamic.map((item) => ({ ...item, extension: true }))].sort((a, b) => a.order - b.order);
 }
