@@ -11,6 +11,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Upgrading from v0.1.0
 
+- `is_admin` now always matches the admin role. A migration sets it for users who
+  hold the role and clears it for users who don't, so users created with
+  `is_admin` but never given the role (and who never had admin rights) no longer
+  show as admins. Grant them the admin role if they should be admins.
 - Upgrade the server before the CLI. The CLI now calls `/api/v1/...`, which v0.1.0
   servers do not serve; against one it fails with "the server did not answer like a
   rackd /api/v1 server".
@@ -102,6 +106,17 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- **Security:** delegated user and role management could be escalated to full
+  admin:
+  - The "only admins can manage admins" checks read the `is_admin` column, which
+    stayed false for admins promoted by granting the admin role. So a user with
+    `users:update` could reset such an admin's password and sign in as them.
+  - `roles:update` could grant any permission, including to the caller's own role.
+  - `users:create` could give a new user any role except the one named `admin`.
+
+  Callers who aren't admins can now only grant, revoke or assign permissions they
+  hold. They can only act on users whose permissions they all hold. The last
+  active admin can't be removed. See [RBAC](docs/rbac.md#delegating-user-and-role-management).
 - The web UI's notifications (such as "Permissions refreshed successfully" and
   permission-denied messages) never appeared: the notification area showed a
   separate, always-empty list.
