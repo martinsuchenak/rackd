@@ -315,22 +315,67 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	// scanCtx and stop when the scan ends.
 	netResults := s.runNetworkScans(scanCtx, network.Subnet, opts.ScanType)
 
-	for i, ip := range ips {
+	// Hosts are probed in parallel, but one goroutine saves what they find
+	// and another writes progress every few seconds, so a scan holds at most
+	// two database connections. Writing from every worker took the whole
+	// pool: on slow storage every API request then timed out waiting for a
+	// connection.
+	found := make(chan *model.DiscoveredDevice, params.Workers)
+	saverDone := make(chan struct{})
+	go func() {
+		defer close(saverDone)
+		for device := range found {
+			created, err := s.storage.SaveDiscoveredDevice(ctx, device)
+			if err != nil {
+				log.Printf("discovery: failed to save device %s: %v", device.IP, err)
+				continue
+			}
+			if created {
+				saved := *device
+				webhook.Publish(model.EventTypeDeviceDiscovered, &saved)
+			}
+		}
+	}()
+
+	progressStop := make(chan struct{})
+	progressDone := make(chan struct{})
+	go func() {
+		defer close(progressDone)
+		ticker := time.NewTicker(scanProgressInterval)
+		defer ticker.Stop()
+		written := -1
+		for {
+			select {
+			case <-progressStop:
+				return
+			case <-ticker.C:
+			}
+			scanMu.Lock()
+			if scan.ScannedHosts == written {
+				scanMu.Unlock()
+				continue
+			}
+			written = scan.ScannedHosts
+			scanCopy := *scan
+			scanMu.Unlock()
+			_ = s.storage.UpdateDiscoveryScan(ctx, &scanCopy)
+		}
+	}()
+
+	cancelled := false
+probe:
+	for _, ip := range ips {
 		select {
 		case <-scanCtx.Done():
-			scan.Status = model.ScanStatusFailed
-			scan.ErrorMessage = "scan cancelled"
-			if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
-				log.Printf("discovery: failed to update cancelled scan: %v", err)
-			}
-			return
+			cancelled = true
+			break probe
 		default:
 		}
 
 		wg.Add(1)
 		semaphore <- struct{}{}
 
-		go func(ip string, index int) {
+		go func(ip string) {
 			defer wg.Done()
 			defer func() { <-semaphore }()
 			// Defense in depth: a panic while parsing hostile device responses
@@ -343,52 +388,58 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 
 			device := s.discoverHostWithOptions(scanCtx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
-				created, err := s.storage.SaveDiscoveredDevice(ctx, device)
-				if err != nil {
-					log.Printf("discovery: failed to save device %s: %v", ip, err)
-				} else if created {
-					found := *device
-					webhook.Publish(model.EventTypeDeviceDiscovered, &found)
-				}
-
-				scanMu.Lock()
-				foundCount++
-				scanMu.Unlock()
+				found <- device
 			}
 
 			scanMu.Lock()
+			if device != nil {
+				foundCount++
+			}
 			// Increment: workers finish out of order, so assigning an
 			// absolute index let late finishers overwrite progress backwards
 			// (scans showed e.g. 97% at completion).
 			scan.ScannedHosts++
 			scan.FoundHosts = foundCount
 			scan.ProgressPercent = float64(scan.ScannedHosts) / float64(scan.TotalHosts) * 100
-			// Copy scan state under lock to avoid race with concurrent reads
-			scanCopy := *scan
 			scanMu.Unlock()
-
-			_ = s.storage.UpdateDiscoveryScan(ctx, &scanCopy)
-		}(ip, i)
+		}(ip)
 	}
 
 	wg.Wait()
+	close(found)
+	<-saverDone
+	close(progressStop)
+	<-progressDone
 
-	completedAt := time.Now()
-	scan.Status = model.ScanStatusCompleted
-	scan.CompletedAt = &completedAt
-	if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
-		log.Printf("discovery: failed to update completed scan: %v", err)
+	if cancelled {
+		scan.Status = model.ScanStatusFailed
+		scan.ErrorMessage = "scan cancelled"
+		if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
+			log.Printf("discovery: failed to update cancelled scan: %v", err)
+		}
+	} else {
+		completedAt := time.Now()
+		scan.Status = model.ScanStatusCompleted
+		scan.CompletedAt = &completedAt
+		if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
+			log.Printf("discovery: failed to update completed scan: %v", err)
+		}
+		completed := *scan
+		webhook.Publish(model.EventTypeDiscoveryCompleted, &completed)
 	}
-	completed := *scan
-	webhook.Publish(model.EventTypeDiscoveryCompleted, &completed)
 
 	// Stop the ARP refresher and broadcast listeners.
 	finishScan()
 	close(arpStop)
 	arpWG.Wait()
 
-	s.cleanupCompletedScans()
+	if !cancelled {
+		s.cleanupCompletedScans()
+	}
 }
+
+// scanProgressInterval is how often a running scan's progress is written.
+const scanProgressInterval = 2 * time.Second
 
 func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, opts *ScanOptions, timeout time.Duration, netResults *networkScanResults) *model.DiscoveredDevice {
 	// Check context at the very start
