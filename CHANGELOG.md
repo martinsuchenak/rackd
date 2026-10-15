@@ -18,7 +18,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   conflict count on the heading. Inside a section, labels are shorter: DNS
   Zones and DNS Providers are Zones and Providers, and Discovery is Scans.
 - Extension menu items can name a `Section`: a core section to join, or their
-  own. Without one they go in an Extensions section.
+  own. Without one they go in an Extensions section. `Order` now sorts items
+  within their section, and an extension item is hidden only when its path is
+  a core page's, not when its label matches one.
 
 ## [0.2.1] - 2026-10-15
 

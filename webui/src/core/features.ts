@@ -230,9 +230,8 @@ export function mergeNavItems(dynamicItems: NavItem[], settings?: ServerSettings
   // fill the slot of a core page the server has off.
   const coreItems = getFeatureNavItems(settings, true);
   const dynamic = dynamicItems.filter(
-    (item) => !coreItems.some((base) =>
-      (base.path === item.path || (base.path === '/' && item.path === '')) || base.label === item.label
-    )
+    // By path: core owns its routes. Labels may repeat across sections.
+    (item) => !coreItems.some((base) => base.path === item.path || (base.path === '/' && item.path === ''))
   );
   return [...baseItems, ...dynamic.map((item) => ({ ...item, extension: true }))].sort((a, b) => a.order - b.order);
 }
