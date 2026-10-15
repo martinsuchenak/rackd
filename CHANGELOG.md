@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-15
+
 ### Fixed
 
 - Pages could take a minute to load on slow or network storage. Every API
@@ -653,7 +655,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/martinsuchenak/rackd/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/martinsuchenak/rackd/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/martinsuchenak/rackd/compare/v0.0.21...v0.1.0
 [0.0.21]: https://github.com/martinsuchenak/rackd/compare/v0.0.20...v0.0.21
