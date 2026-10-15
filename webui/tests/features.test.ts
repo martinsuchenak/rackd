@@ -108,6 +108,9 @@ describe('core/features', () => {
     expect(labels.indexOf('Reporting')).toBeGreaterThan(labels.indexOf('Integrations'));
     expect(labels.indexOf('Extensions')).toBeGreaterThan(labels.indexOf('Integrations'));
     expect(labels[labels.length - 1]).toBe('Administration');
+    // A label that matches a core item's is fine on another path.
+    const providers = groupNavItems(mergeNavItems([{ label: 'Providers', path: '/ext/billing', order: 1, section: 'Billing' }], {}));
+    expect(providers.find((s) => s.label === 'Billing')!.items.map((i) => i.label)).toEqual(['Providers']);
     // An extension item without a section never lands above the sections.
     expect(sections[0].items.map((i) => i.label)).toEqual(['Dashboard']);
   });
