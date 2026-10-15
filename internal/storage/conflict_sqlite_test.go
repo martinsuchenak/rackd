@@ -383,7 +383,7 @@ func TestConflictOperations_FindOverlappingSubnets(t *testing.T) {
 	_ = storage.CreateNetwork(context.Background(), network3)
 
 	// Find overlapping subnets
-	conflicts, err := storage.FindOverlappingSubnets(context.Background())
+	conflicts, err := storage.FindOverlappingSubnets(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("FindOverlappingSubnets failed: %v", err)
 	}
@@ -418,7 +418,7 @@ func TestConflictOperations_FindOverlappingSubnetsIdentical(t *testing.T) {
 	_ = storage.CreateNetwork(context.Background(), network2)
 
 	// Find overlapping subnets
-	conflicts, err := storage.FindOverlappingSubnets(context.Background())
+	conflicts, err := storage.FindOverlappingSubnets(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("FindOverlappingSubnets failed: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestConflictOperations_FindOverlappingSubnetsNoOverlap(t *testing.T) {
 	_ = storage.CreateNetwork(context.Background(), &model.Network{Name: "Network3", Subnet: "172.16.0.0/24"})
 
 	// Find overlapping subnets
-	conflicts, err := storage.FindOverlappingSubnets(context.Background())
+	conflicts, err := storage.FindOverlappingSubnets(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("FindOverlappingSubnets failed: %v", err)
 	}

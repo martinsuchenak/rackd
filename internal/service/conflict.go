@@ -164,12 +164,8 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 		return nil, err
 	}
 
-	conflicts, err := s.store.FindOverlappingSubnets(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Store the conflicts not already recorded, reading the recorded ones once.
+	// Read the recorded conflicts once, and skip them while searching, so the
+	// per-run cap applies to new overlaps only.
 	existing, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
 		Type:   model.ConflictTypeOverlappingSubnet,
 		Status: model.ConflictStatusActive,
@@ -181,15 +177,17 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 	for _, ex := range existing {
 		recorded[networkPairKey(ex.NetworkIDs)] = true
 	}
+
+	conflicts, err := s.store.FindOverlappingSubnets(ctx, func(ids []string) bool {
+		return recorded[networkPairKey(ids)]
+	})
+	if err != nil {
+		return nil, err
+	}
 	for _, conflict := range conflicts {
-		key := networkPairKey(conflict.NetworkIDs)
-		if recorded[key] {
-			continue
-		}
 		if err := s.store.CreateConflict(ctx, &conflict); err != nil {
 			return nil, err
 		}
-		recorded[key] = true
 		publishEvent(model.EventTypeConflictDetected, conflict)
 	}
 

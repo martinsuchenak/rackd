@@ -318,9 +318,10 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 // without a cap, a few thousand networks could exhaust memory.
 const MaxOverlapConflicts = 1000
 
-// FindOverlappingSubnets finds network subnets that overlap, at most
-// MaxOverlapConflicts pairs.
-func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Conflict, error) {
+// FindOverlappingSubnets finds network subnets that overlap. Pairs known
+// reports are skipped and don't count towards the MaxOverlapConflicts cap, so
+// repeated runs record every overlap eventually.
+func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context, known func(networkIDs []string) bool) ([]model.Conflict, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, name, subnet FROM networks`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get networks: %w", err)
@@ -364,12 +365,16 @@ func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context) ([]model.Con
 			if n2.first.BitLen() != n1.first.BitLen() || n1.last.Less(n2.first) {
 				break
 			}
+			ids := []string{n1.ID, n2.ID}
+			if known != nil && known(ids) {
+				continue
+			}
 			conflicts = append(conflicts, model.Conflict{
 				ID:           newUUID(),
 				Type:         model.ConflictTypeOverlappingSubnet,
 				Status:       model.ConflictStatusActive,
 				Description:  fmt.Sprintf("Subnets %s and %s overlap", n1.Subnet, n2.Subnet),
-				NetworkIDs:   []string{n1.ID, n2.ID},
+				NetworkIDs:   ids,
 				NetworkNames: []string{n1.Name, n2.Name},
 				Subnets:      []string{n1.Subnet, n2.Subnet},
 				DetectedAt:   nowUTC(),

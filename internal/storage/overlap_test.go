@@ -61,7 +61,7 @@ func TestFindOverlappingSubnetsMatchesBruteForce(t *testing.T) {
 		t.Fatalf("test data gives %d overlaps; want some, under the cap", len(want))
 	}
 
-	got, err := s.FindOverlappingSubnets(ctx)
+	got, err := s.FindOverlappingSubnets(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +79,27 @@ func TestFindOverlappingSubnetsIsCapped(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := s.FindOverlappingSubnets(ctx)
+	got, err := s.FindOverlappingSubnets(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != MaxOverlapConflicts {
 		t.Errorf("got %d conflicts, want the cap of %d", len(got), MaxOverlapConflicts)
+	}
+
+	// Pairs already recorded are skipped and don't count, so the next run
+	// finds the rest.
+	known := map[string]bool{}
+	for _, p := range overlapPairs(got) {
+		known[p] = true
+	}
+	rest, err := s.FindOverlappingSubnets(ctx, func(ids []string) bool {
+		return known[strings.Join(overlapPairs([]model.Conflict{{NetworkIDs: ids}}), "")]
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rest) != 1770-MaxOverlapConflicts {
+		t.Errorf("second run found %d, want the remaining %d", len(rest), 1770-MaxOverlapConflicts)
 	}
 }
