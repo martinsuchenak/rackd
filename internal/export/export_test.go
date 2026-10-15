@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"encoding/csv"
 	"strings"
 	"testing"
 	"time"
@@ -239,5 +240,31 @@ func TestExportDatacentersCSV(t *testing.T) {
 
 	if !strings.Contains(lines[1], "NYC") {
 		t.Error("Expected CSV data to contain datacenter name")
+	}
+}
+
+// IDs reach exports too, and older databases may hold ids clients chose.
+func TestExportCSVNeutralizesFormulaIDs(t *testing.T) {
+	formula := "=HYPERLINK(\"https://evil.example\",\"x\")"
+	var devices, networks, datacenters bytes.Buffer
+	if err := ExportDevices([]model.Device{{ID: formula, DatacenterID: formula, Name: "d"}}, FormatCSV, &devices); err != nil {
+		t.Fatal(err)
+	}
+	if err := ExportNetworks([]model.Network{{ID: formula, DatacenterID: formula, Name: "n"}}, FormatCSV, &networks); err != nil {
+		t.Fatal(err)
+	}
+	if err := ExportDatacenters([]model.Datacenter{{ID: formula, Name: "dc"}}, FormatCSV, &datacenters); err != nil {
+		t.Fatal(err)
+	}
+	for name, buf := range map[string]*bytes.Buffer{"devices": &devices, "networks": &networks, "datacenters": &datacenters} {
+		rows, err := csv.NewReader(buf).ReadAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, cell := range rows[1] {
+			if strings.HasPrefix(cell, "=") {
+				t.Errorf("%s: cell %q starts a formula", name, cell)
+			}
+		}
 	}
 }

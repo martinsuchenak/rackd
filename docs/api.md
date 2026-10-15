@@ -57,6 +57,10 @@ All API endpoints accept and return JSON data:
 Content-Type: application/json
 ```
 
+## IDs
+
+Rackd assigns IDs (UUIDs) when it creates something. A create request may include its own `id`, for example to keep IDs when importing, but it must be a UUID such as `0190f3c2-7d3e-7a6b-9c1d-2e3f4a5b6c7d`; anything else is a `400 VALIDATION_ERROR` on `id`.
+
 ## Error Handling
 
 ### Error Response Format

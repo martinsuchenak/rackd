@@ -285,6 +285,8 @@ rackd export devices --output devices.json
 
 ## Field Reference
 
+Every type also takes an optional `id`. Leave it empty and Rackd assigns one; to keep IDs from an export, it must be a UUID.
+
 ### Device Fields
 
 | Field | Type | Required | Description |

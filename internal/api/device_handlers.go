@@ -38,7 +38,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		h.invalidJSON(w)
 		return
 	}
-	if errs := ValidateDevice(&device); len(errs) > 0 {
+	if errs := append(ValidateNewID(device.ID), ValidateDevice(&device)...); len(errs) > 0 {
 		h.writeValidationErrors(w, errs)
 		return
 	}
@@ -248,7 +248,7 @@ func (h *Handler) bulkCreateDevices(w http.ResponseWriter, r *http.Request) {
 	// Same field validation as the single-device path, so bulk cannot be used
 	// to bypass name/hostname/length/address checks.
 	for i, device := range devices {
-		if errs := ValidateDevice(device); len(errs) > 0 {
+		if errs := append(ValidateNewID(device.ID), ValidateDevice(device)...); len(errs) > 0 {
 			errs[0].Field = fmt.Sprintf("devices[%d].%s", i, errs[0].Field)
 			h.writeValidationErrors(w, errs)
 			return

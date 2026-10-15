@@ -117,6 +117,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   Callers who aren't admins can now only grant, revoke or assign permissions they
   hold. They can only act on users whose permissions they all hold. The last
   active admin can't be removed. See [RBAC](docs/rbac.md#delegating-user-and-role-management).
+- **Security:** an operator could make an admin's browser delete or rename users,
+  API keys, roles and other records. Creating a device, network, datacenter, pool,
+  scan profile or scheduled scan kept any `id` the client sent, and the web UI put
+  IDs into request paths unescaped. So a device with the id `../users/<admin-id>`
+  sent `DELETE /api/v1/users/<admin-id>` when an admin deleted it from the list.
+  - Client-supplied IDs on create must now be UUIDs.
+  - The web UI escapes every value it puts in a request path, and refuses
+    requests whose path contains `.` or `..` segments, so IDs already stored are
+    harmless too.
+  - CSV exports neutralise formulas in ID columns.
+- Bulk network creation (`POST /networks/bulk`) now validates each network like
+  single creation does, instead of storing empty names and invalid subnets.
 - The web UI's notifications (such as "Permissions refreshed successfully" and
   permission-denied messages) never appeared: the notification area showed a
   separate, always-empty list.
