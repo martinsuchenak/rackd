@@ -257,6 +257,12 @@ var migrations = []*Migration{
 		Up:      migrateRemoveDNSImportUp,
 		Down:    migrateRemoveDNSImportDown,
 	},
+	{
+		Version: "20261015150000",
+		Name:    "add_metrics_read_permission",
+		Up:      migrateAddMetricsReadUp,
+		Down:    migrateAddMetricsReadDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3086,4 +3092,34 @@ func migrateRemoveDNSImportDown(ctx context.Context, tx sqlTx) error {
 		SELECT r.id, p.id, ? FROM roles r, permissions p WHERE r.name = 'admin' AND p.name = 'dns:import'
 	`, now)
 	return err
+}
+
+// migrateAddMetricsReadUp adds metrics:read, so /metrics needs a permission
+// like everything else rather than only a login, and grants it to the
+// built-in roles, which could already read it.
+func migrateAddMetricsReadUp(ctx context.Context, tx sqlTx) error {
+	now := nowUTC()
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO permissions (id, name, resource, action, created_at) VALUES (?, 'metrics:read', 'metrics', 'read', ?)`, newUUID(), now); err != nil {
+		return fmt.Errorf("failed to insert metrics:read: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ? FROM roles r, permissions p
+		WHERE r.name IN ('admin', 'operator', 'viewer') AND p.name = 'metrics:read'
+	`, now); err != nil {
+		return fmt.Errorf("failed to grant metrics:read: %w", err)
+	}
+	return nil
+}
+
+func migrateAddMetricsReadDown(ctx context.Context, tx sqlTx) error {
+	for _, stmt := range []string{
+		`DELETE FROM role_permissions WHERE permission_id IN (SELECT id FROM permissions WHERE name = 'metrics:read')`,
+		`DELETE FROM permissions WHERE name = 'metrics:read'`,
+	} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("failed to remove metrics:read: %w", err)
+		}
+	}
+	return nil
 }

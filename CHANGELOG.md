@@ -63,6 +63,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   such as `GET /api/v1/devices/{id}`, instead of the raw method and path. Update
   dashboards and alerts that filter on old label values. The duration metrics are
   now typed as gauges, since each value is a mean.
+- `/metrics` now needs the new `metrics:read` permission rather than just a login.
+  The built-in roles have it. Give it to the role of the user your Prometheus
+  scraper's API key belongs to if that is a custom role.
 
 ### Added
 
@@ -381,6 +384,15 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   is wrong.
 - The Nomad job's health check probed `/api/datacenters`, which requires
   authentication, so the service never became healthy. It now uses `/healthz`.
+- Any signed-in user, even one with no roles, could read `/metrics`, including
+  inventory counts. It now needs `metrics:read`. The monitoring guide said the
+  endpoint needed no authentication; it shows the scraper an API key now.
+- A webhook ping that didn't reach the receiver answered 200 "Webhook ping sent
+  successfully". It now answers 502 `WEBHOOK_UNREACHABLE` with the cause, and
+  the web UI and CLI report it as a failure.
+- An unparsable `start_time` or `end_time` on the audit and log list and export
+  endpoints was ignored, so the filter quietly returned everything. It is now a
+  400, as is an `end_time` before `start_time`.
 
 ## [0.1.0] - 2026-10-14
 

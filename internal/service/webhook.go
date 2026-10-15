@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -270,9 +272,15 @@ func (s *WebhookService) Ping(ctx context.Context, id string) (*model.WebhookDel
 	if err != nil {
 		return nil, err
 	}
-
+	if delivery.Status == model.DeliveryStatusFailed {
+		return delivery, fmt.Errorf("%w: %s", ErrWebhookPingFailed, delivery.Error)
+	}
 	return delivery, nil
 }
+
+// ErrWebhookPingFailed is returned when a test delivery doesn't reach the
+// webhook's URL, so the API can answer 502 with the cause.
+var ErrWebhookPingFailed = errors.New("webhook ping failed")
 
 // pingWebhook sends a test event in the same format, with the same headers and
 // signature, as real deliveries.

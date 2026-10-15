@@ -289,6 +289,12 @@ Read-only access to view resources:
 |------------|----------|--------|-------------|
 | `dashboard:read` | dashboard | read | View dashboard |
 
+### Metrics
+
+| Permission | Resource | Action | Description |
+|------------|----------|--------|-------------|
+| `metrics:read` | metrics | read | Read Prometheus metrics at `/metrics` |
+
 ## Delegating User and Role Management
 
 A user who isn't an admin can be given `users:*` or `roles:*` permissions, for example a helpdesk role that resets passwords. Such a user can never gain, or hand out, more than they have:

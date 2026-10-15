@@ -2,10 +2,12 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -222,9 +224,16 @@ func TestWebhookHandlers(t *testing.T) {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
-		// Ping may fail since the webhook URL doesn't exist, but it should attempt
-		if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
-			t.Errorf("expected %d or %d, got %d", http.StatusOK, http.StatusInternalServerError, w.Code)
+		// The test URL may not answer; a failed delivery is the receiver's
+		// problem, reported as 502 with the cause, never a 500 or a success.
+		switch w.Code {
+		case http.StatusOK:
+		case http.StatusBadGateway:
+			if !strings.Contains(w.Body.String(), "WEBHOOK_UNREACHABLE") {
+				t.Errorf("502 without WEBHOOK_UNREACHABLE: %s", w.Body.String())
+			}
+		default:
+			t.Errorf("expected 200 or 502, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 
@@ -373,5 +382,26 @@ func TestGetEventLabel(t *testing.T) {
 				t.Errorf("expected '%s', got '%s'", tt.expected, label)
 			}
 		})
+	}
+}
+
+// A ping that doesn't reach the receiver must say so: 502 with the cause, not
+// 200 "delivered" (found by the black-box pass).
+func TestPingWebhookReportsFailedDelivery(t *testing.T) {
+	h, store := setupTestHandler(t)
+	defer func() { _ = store.Close() }()
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	// Stored directly: the API refuses loopback URLs, and the dialer blocks
+	// them too, so this delivery fails without touching the network.
+	webhook := &model.Webhook{Name: "unreachable", URL: "http://127.0.0.1:9/hook", Events: []model.EventType{model.EventTypeDeviceCreated}, Active: true}
+	if err := store.CreateWebhook(context.Background(), webhook); err != nil {
+		t.Fatal(err)
+	}
+
+	w := performRequest(mux, authReq(httptest.NewRequest("POST", "/api/v1/webhooks/"+webhook.ID+"/ping", nil)))
+	if w.Code != http.StatusBadGateway || !strings.Contains(w.Body.String(), "WEBHOOK_UNREACHABLE") {
+		t.Fatalf("got %d %s, want 502 WEBHOOK_UNREACHABLE", w.Code, w.Body.String())
 	}
 }
