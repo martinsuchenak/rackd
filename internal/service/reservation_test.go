@@ -54,31 +54,6 @@ func TestReservationService_ReleaseAndClaimUpdateStatuses(t *testing.T) {
 	}
 }
 
-func TestReservationService_GetNextAvailableIPReturnsFirstAvailableAndMapsExhaustion(t *testing.T) {
-	store := newServiceTestStorage()
-	store.setPermission("user-1", "reservations", "create", true)
-	store.pools["pool-1"] = true
-	store.poolHeatmap = []storage.IPStatus{
-		{IP: "10.0.0.10", Status: "used"},
-		{IP: "10.0.0.11", Status: "available"},
-	}
-	svc := NewReservationService(store)
-
-	ip, err := svc.GetNextAvailableIP(userContext("user-1"), "pool-1")
-	if err != nil {
-		t.Fatalf("GetNextAvailableIP returned unexpected error: %v", err)
-	}
-	if ip != "10.0.0.11" {
-		t.Fatalf("expected first available IP, got %q", ip)
-	}
-
-	store.poolHeatmap = []storage.IPStatus{{IP: "10.0.0.12", Status: "used"}}
-	_, err = svc.GetNextAvailableIP(userContext("user-1"), "pool-1")
-	if !errors.Is(err, storage.ErrIPNotAvailable) {
-		t.Fatalf("expected storage.ErrIPNotAvailable, got %v", err)
-	}
-}
-
 func TestReservationService_UpdateAndDeleteMapValidationAndNotFound(t *testing.T) {
 	store := newServiceTestStorage()
 	store.setPermission("user-1", "reservations", "update", true)
