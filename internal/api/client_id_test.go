@@ -50,3 +50,18 @@ func TestCreateRejectsIDsThatAreNotUUIDs(t *testing.T) {
 		t.Errorf("bulk network with no name and a bad subnet = %d %s, want 400", w.Code, w.Body.String())
 	}
 }
+
+// Scan profile and scheduled scan routes need discovery storage the test
+// handler lacks, so call the handlers directly; the id check comes first.
+func TestProfileAndScheduleCreateRejectIDsThatAreNotUUIDs(t *testing.T) {
+	h, store := setupTestHandler(t)
+	defer func() { _ = store.Close() }()
+	for name, handler := range map[string]http.HandlerFunc{"scan profile": h.createProfile, "scheduled scan": h.createScheduledScan} {
+		req := authReq(httptest.NewRequest("POST", "/", bytes.NewBufferString(`{"id":"../roles/x","name":"p"}`)))
+		w := httptest.NewRecorder()
+		handler(w, req)
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "id must be a UUID") {
+			t.Errorf("%s: %d %s, want 400 on id", name, w.Code, w.Body.String())
+		}
+	}
+}

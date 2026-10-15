@@ -15,6 +15,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   hold the role and clears it for users who don't, so users created with
   `is_admin` but never given the role (and who never had admin rights) no longer
   show as admins. Grant them the admin role if they should be admins.
+- An `id` sent when creating something, including the `id` column of a CSV
+  import, must now be a UUID. Imports of Rackd's own exports are unaffected;
+  clear hand-written ids such as `dev-1` and let Rackd assign them.
 - Upgrade the server before the CLI. The CLI now calls `/api/v1/...`, which v0.1.0
   servers do not serve; against one it fails with "the server did not answer like a
   rackd /api/v1 server".
