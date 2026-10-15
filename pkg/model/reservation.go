@@ -52,7 +52,9 @@ type UpdateReservationRequest struct {
 	Hostname  string     `json:"hostname,omitempty"`
 	Purpose   string     `json:"purpose,omitempty"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
-	Notes     string     `json:"notes,omitempty"`
+	// ClearExpiry removes the expiration, so the reservation doesn't expire.
+	ClearExpiry bool   `json:"clear_expiry,omitempty"`
+	Notes       string `json:"notes,omitempty"`
 }
 
 // IsExpired checks if the reservation has expired

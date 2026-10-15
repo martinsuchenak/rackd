@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/robfig/cron/v3"
 
@@ -103,8 +105,32 @@ func validateScheduledScan(scan *model.ScheduledScan) ValidationErrors {
 	if scan.NetworkID == "" {
 		errs = append(errs, ValidationError{Field: "network_id", Message: "network_id is required"})
 	}
-	if _, err := cron.ParseStandard(scan.CronExpression); err != nil {
+	if schedule, err := cron.ParseStandard(scan.CronExpression); err != nil {
 		errs = append(errs, ValidationError{Field: "cron_expression", Message: "invalid cron expression: " + err.Error()})
+	} else if gap := shortestGap(schedule); gap < minScanInterval {
+		errs = append(errs, ValidationError{Field: "cron_expression", Message: fmt.Sprintf("runs every %s; scheduled scans must be at least %s apart", gap, minScanInterval)})
 	}
 	return errs
+}
+
+// minScanInterval is the shortest time allowed between runs of a schedule: a
+// scan can probe up to 65,536 hosts, and only a few run at once.
+const minScanInterval = 5 * time.Minute
+
+// shortestGap is the shortest time between a schedule's next several runs, so
+// irregular expressions like "0,1 * * * *" are caught too.
+func shortestGap(schedule cron.Schedule) time.Duration {
+	shortest := time.Duration(1<<63 - 1)
+	prev := schedule.Next(time.Now())
+	for i := 0; i < 50; i++ {
+		next := schedule.Next(prev)
+		if next.IsZero() {
+			break
+		}
+		if gap := next.Sub(prev); gap < shortest {
+			shortest = gap
+		}
+		prev = next
+	}
+	return shortest
 }

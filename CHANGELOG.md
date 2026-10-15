@@ -149,7 +149,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   or `204`.
 - Scheduled scans with an invalid cron expression, no name or no network are
   refused when saved, instead of being stored and failing silently in the
-  scheduler.
+  scheduler. The documented 5-minute minimum interval is now enforced.
+- A reservation's expiration can be removed (`clear_expiry`, or
+  `rackd reservation update --expires 0`).
 - The API reference's error section, and the OpenAPI conflict and reservation
   schemas, described fields and codes Rackd doesn't use. They now match, as do
   `docs/conflicts.md` and `docs/reservations.md`.

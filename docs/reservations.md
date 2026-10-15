@@ -82,7 +82,7 @@ PUT /api/v1/reservations/{id}
 }
 ```
 
-Fields left out are unchanged. The expiration takes the same two forms as on create.
+Fields left out are unchanged. The expiration takes the same two forms as on create; send `"clear_expiry": true` to remove it.
 
 ## CLI Commands
 
@@ -99,6 +99,7 @@ rackd reservation create --pool pool-1 --purpose "Load balancer" --expires 30
 # Show, update, release or delete a reservation by ID
 rackd reservation get --id res-abc123
 rackd reservation update --id res-abc123 --purpose "Updated purpose" --expires 14
+rackd reservation update --id res-abc123 --expires 0   # never expires
 rackd reservation release --id res-abc123
 rackd reservation delete --id res-abc123
 ```
