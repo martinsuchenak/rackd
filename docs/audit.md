@@ -4,52 +4,38 @@ Rackd includes comprehensive audit logging to track all changes for compliance, 
 
 ## Overview
 
-The audit trail captures all mutating API operations with full context including user, IP address, resource details, and changes. This provides accountability, compliance support, and troubleshooting capabilities.
+Rackd records every change in the audit log, with who made it, from which address, and what changed. Auditing is always on.
 
 **Key Features:**
-- Automatic capture of all API changes
+- Automatic capture of changes made through the API, the web UI, MCP and the CLI
+- Sign-ins (including failed and refused ones) and sign-outs
 - User and IP address tracking
-- Request body capture for change details
-- Flexible filtering and querying
-- Export to JSON/CSV
+- Filtering, and export to JSON/CSV
 - Automatic retention management
-- Disabled by default (opt-in)
 
 ## Configuration
 
-Audit logging is configured via environment variables:
-
 ```bash
-# Enable audit logging (default: false)
-AUDIT_ENABLED=true
-
-# Retention period in days (default: 90)
+# Days to keep audit entries; 0 keeps everything (default: 90)
 AUDIT_RETENTION_DAYS=90
 ```
 
-### Example Configurations
-
-**Production with compliance:**
-```bash
-export AUDIT_ENABLED=true
-export AUDIT_RETENTION_DAYS=365
-rackd server
-```
-
-**Development (disabled):**
-```bash
-# Default - no audit logging
-rackd server
-```
+Entries older than `AUDIT_RETENTION_DAYS` are deleted when the server starts and once a day after that. `AUDIT_ENABLED` is no longer used: setting it only logs a warning.
 
 ## What Gets Audited
 
-### Captured Operations
+| Resource | Actions |
+|----------|---------|
+| Devices, networks, pools, datacenters, reservations, relationships, DNS, discovery, bulk operations | `create`, `update`, `delete` and the like |
+| Circuits, NAT mappings, custom fields, scan profiles, scheduled scans | `create`, `update`, `delete` |
+| Conflicts | `resolve`, `delete` |
+| Users | `create`, `update`, `delete`, `password_change`, `password_reset`, `assign_role`, `revoke_role` |
+| Roles | `create`, `update`, `delete`, `set_permissions`, `grant_permission`, `revoke_permission` |
+| API keys, credentials, webhooks | `create`, `update`, `delete` |
+| OAuth clients | `register`, `authorize` (a user approving a client), `delete` |
+| Sessions | `login` (`success` or `failure`, with the reason), `logout` |
 
-- ✅ **POST** - Create operations
-- ✅ **PUT/PATCH** - Update operations
-- ✅ **DELETE** - Delete operations
-- ❌ **GET/HEAD** - Read operations (not audited)
+Reads are not audited.
 
 ### Captured Information
 
@@ -59,24 +45,15 @@ Each audit log entry includes:
 |-------|-------------|
 | `id` | Unique audit log ID |
 | `timestamp` | When the operation occurred |
-| `action` | Operation type (create, update, delete) |
-| `resource` | Resource type (device, network, datacenter, etc.) |
+| `action` | Operation type, such as `create` or `password_reset` |
+| `resource` | Resource type (device, user, role, etc.) |
 | `resource_id` | ID of the affected resource |
-| `user_id` | API key ID (if authenticated) |
-| `username` | API key name (if authenticated) |
+| `user_id` | ID of the user who made the change (an API key acts as its owner) |
+| `username` | Their username; for a failed sign-in, the username that was tried |
 | `ip_address` | Client IP address |
-| `changes` | Request body (up to 10KB) |
-| `status` | success or failure |
-| `error` | Error message (if failed) |
-
-### Excluded Endpoints
-
-These endpoints are not audited:
-- Health checks (`/healthz`, `/readyz`)
-- Metrics (`/metrics`)
-- MCP server (`/mcp`)
-- Static files (`/static/`)
-- Search (`/api/v1/search`)
+| `changes` | The record after the change, as JSON. For credentials, API keys, webhooks and OAuth clients only names, IDs and settings are kept: never secrets, keys, passwords or full webhook URLs |
+| `status` | `success` or `failure` |
+| `error` | Why it failed (for a refused sign-in: unknown user, wrong password, deactivated account, or too many failed sign-ins) |
 
 ## API Usage
 
@@ -313,7 +290,7 @@ Old audit logs are automatically deleted based on the retention policy:
 export AUDIT_RETENTION_DAYS=365
 ```
 
-Cleanup runs automatically when the server starts and periodically during operation.
+Cleanup runs when the server starts and once a day after that. Set `AUDIT_RETENTION_DAYS=0` to keep every entry.
 
 ### Manual Cleanup
 
@@ -370,15 +347,7 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 
 ### No audit logs appearing
 
-Check configuration:
-```bash
-# Verify audit logging is enabled
-curl http://localhost:8080/api/v1/config | jq .audit
-
-# Check server logs
-rackd server
-# Should see: "Audit logging enabled retention_days=90"
-```
+Auditing is always on. Check that the change was made by an authenticated caller (entries record who acted), and that the entry isn't older than `AUDIT_RETENTION_DAYS`. The server logs "Audit log channel full, dropping log entry" if writes outpace the database.
 
 ### Audit logs growing too large
 
@@ -395,10 +364,7 @@ sqlite3 data/rackd.db "DELETE FROM audit_logs WHERE timestamp < datetime('now', 
 
 ### Missing audit entries
 
-Verify the operation is being audited:
-- Only POST, PUT, DELETE are audited
-- GET operations are not audited
-- Health checks and metrics are excluded
+Check the table under [What Gets Audited](#what-gets-audited); reads are not audited.
 
 ### Performance impact
 
@@ -434,16 +400,9 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 
 ### Sensitive Data
 
-Audit logs may contain sensitive information:
-- Request bodies (including passwords, tokens)
-- IP addresses
-- User identifiers
-
-**Recommendations:**
-- Restrict access to audit logs
-- Use authentication for audit endpoints
-- Consider encrypting audit log storage
-- Sanitize sensitive data before logging
+Audit entries never hold passwords, secrets, API keys or full webhook URLs, but they do hold IP addresses, usernames and the records' other fields, so:
+- Grant `audit:list` and `audit:read` only to roles that need them (by default, admin and operator)
+- Set `AUDIT_RETENTION_DAYS` to what your policies require
 
 ### Access Control
 

@@ -11,6 +11,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Upgrading from v0.1.0
 
+- **Audit retention now applies.** On the first start, audit entries older than
+  `AUDIT_RETENTION_DAYS` (default 90) are deleted. To keep your full history, set
+  `AUDIT_RETENTION_DAYS=0` before upgrading, or export it first
+  (`rackd audit export`).
 - Rackd now refuses to start if `ENCRYPTION_KEY` is set but malformed. Before,
   it ran without encryption. The docs' `RACKD_ENCRYPTION_KEY` was never read; use
   `ENCRYPTION_KEY`.
@@ -126,6 +130,17 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- **Security:** much of what an attacker would do left no audit trail. Sign-ins
+  (successful, failed and refused), sign-outs, user changes, password changes and
+  resets, role and permission changes, role assignments, API keys, credentials,
+  webhooks, OAuth client registration, approval and deletion, circuits, NAT, custom
+  fields, conflict resolution, scan profiles and scheduled scans are now audited.
+  Entries for credentials, keys, webhooks and OAuth clients hold names and
+  settings, never secrets or full webhook URLs.
+- `AUDIT_RETENTION_DAYS` was never applied, so audit entries were kept forever. They
+  are now deleted once they are older than it, at start and daily. `AUDIT_ENABLED`
+  did nothing, since changes were always audited; it is now documented as unused
+  and logs a warning if set.
 - **Security:** secrets and internal details were easier to reach than they
   should have been:
   - The install guide and CLI reference told operators to set

@@ -100,6 +100,7 @@ func (s *NATService) Create(ctx context.Context, req *model.CreateNATRequest) (*
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "create", "nat", mapping.ID, mapping)
 	return mapping, nil
 }
 
@@ -177,6 +178,7 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 		return nil, err
 	}
 
+	recordAudit(ctx, s.store, "update", "nat", mapping.ID, mapping)
 	return mapping, nil
 }
 
@@ -193,6 +195,7 @@ func (s *NATService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	recordAudit(ctx, s.store, "delete", "nat", id, nil)
 	return nil
 }
 

@@ -157,6 +157,12 @@ type AuditStorage interface {
 	ListAuditLogs(ctx context.Context, filter *model.AuditFilter) ([]model.AuditLog, error)
 	GetAuditLog(ctx context.Context, id string) (*model.AuditLog, error)
 	DeleteOldAuditLogs(ctx context.Context, olderThanDays int) error
+	// RecordAudit queues an audit entry for the actor in ctx (see
+	// audit.WithContext); without one it records nothing. details is stored
+	// as JSON, so it must not hold secrets.
+	RecordAudit(ctx context.Context, action, resource, resourceID string, details any)
+	// RecordAuditFailure is RecordAudit for an attempt that failed.
+	RecordAuditFailure(ctx context.Context, action, resource, resourceID string, details any, reason string)
 }
 
 // OAuthStorage defines OAuth 2.1 persistence operations

@@ -10,10 +10,10 @@ import (
 
 type ScheduledScanService struct {
 	store storage.ScheduledScanStorage
-	rbac  permissionStore
+	rbac  auditedPermissionStore
 }
 
-func NewScheduledScanService(store storage.ScheduledScanStorage, rbac permissionStore) *ScheduledScanService {
+func NewScheduledScanService(store storage.ScheduledScanStorage, rbac auditedPermissionStore) *ScheduledScanService {
 	return &ScheduledScanService{store: store, rbac: rbac}
 }
 
@@ -34,6 +34,7 @@ func (s *ScheduledScanService) Create(ctx context.Context, scan *model.Scheduled
 		return ValidationErrors{{Field: "scheduled_scan", Message: err.Error()}}
 	}
 
+	recordAudit(ctx, s.rbac, "create", "scheduled_scan", scan.ID, scan)
 	return nil
 }
 
@@ -62,6 +63,7 @@ func (s *ScheduledScanService) Update(ctx context.Context, id string, scan *mode
 		return ValidationErrors{{Field: "scheduled_scan", Message: err.Error()}}
 	}
 
+	recordAudit(ctx, s.rbac, "update", "scheduled_scan", id, scan)
 	return nil
 }
 
@@ -74,5 +76,9 @@ func (s *ScheduledScanService) Delete(ctx context.Context, id string) error {
 	if errors.Is(err, storage.ErrScheduledScanNotFound) {
 		return ErrNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	recordAudit(ctx, s.rbac, "delete", "scheduled_scan", id, nil)
+	return nil
 }

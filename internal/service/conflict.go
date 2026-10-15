@@ -82,6 +82,7 @@ func (s *ConflictService) Resolve(ctx context.Context, resolution *model.Conflic
 		publishEvent(model.EventTypeConflictResolved, resolved)
 	}
 
+	recordAudit(ctx, s.store, "resolve", "conflict", resolution.ConflictID, resolution)
 	return nil
 }
 
@@ -224,6 +225,7 @@ func (s *ConflictService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	recordAudit(ctx, s.store, "delete", "conflict", id, nil)
 	return nil
 }
 

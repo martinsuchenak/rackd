@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
+
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -23,7 +25,9 @@ func (h *Handler) oauthRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.OAuth.RegisterClient(r.Context(), &req)
+	// Registration is anonymous; give the audit log the requester's address.
+	auditCtx := audit.WithContext(r.Context(), &audit.Context{IPAddress: getClientIP(r, h.proxyResolver), Source: "oauth"})
+	resp, err := h.svc.OAuth.RegisterClient(auditCtx, &req)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrOAuthClientNameRequired):
@@ -168,8 +172,12 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create authorization code
+	// The consent page has a session but no API caller; record who approved.
+	approvalCtx := audit.WithContext(r.Context(), &audit.Context{
+		UserID: session.UserID, Username: session.Username, IPAddress: getClientIP(r, h.proxyResolver), Source: "oauth",
+	})
 	code, err := h.svc.OAuth.CreateAuthorizationCode(
-		r.Context(),
+		approvalCtx,
 		body.ClientID,
 		session.UserID,
 		body.RedirectURI,

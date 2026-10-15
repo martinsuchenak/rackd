@@ -513,3 +513,7 @@ func TestConfidentialClientSecretRequired(t *testing.T) {
 		t.Fatalf("refresh with correct secret failed: %v", err)
 	}
 }
+
+func (m *mockOAuthStorage) RecordAudit(context.Context, string, string, string, any) {}
+
+func (m *mockOAuthStorage) RecordAuditFailure(context.Context, string, string, string, any, string) {}

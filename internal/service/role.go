@@ -45,7 +45,11 @@ func (s *RoleService) Create(ctx context.Context, role *model.Role) error {
 	role.CreatedAt = time.Now()
 	role.UpdatedAt = time.Now()
 
-	return s.store.CreateRole(enrichAuditCtx(ctx), role)
+	if err := s.store.CreateRole(enrichAuditCtx(ctx), role); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "create", "role", role.ID, map[string]string{"name": role.Name, "description": role.Description})
+	return nil
 }
 
 func (s *RoleService) Get(ctx context.Context, id string) (*model.Role, error) {
@@ -84,7 +88,11 @@ func (s *RoleService) Update(ctx context.Context, id string, role *model.Role) e
 	role.ID = id
 	role.UpdatedAt = time.Now()
 
-	return s.store.UpdateRole(ctx, role)
+	if err := s.store.UpdateRole(ctx, role); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "update", "role", id, map[string]string{"name": existing.Name, "description": role.Description})
+	return nil
 }
 
 func (s *RoleService) Delete(ctx context.Context, id string) error {
@@ -113,7 +121,11 @@ func (s *RoleService) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	return s.store.DeleteRole(ctx, id)
+	if err := s.store.DeleteRole(ctx, id); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "delete", "role", id, map[string]any{"name": role.Name, "permissions": permissionNames(perms)})
+	return nil
 }
 
 func (s *RoleService) GetPermissions(ctx context.Context, id string) ([]model.Permission, error) {
@@ -146,7 +158,11 @@ func (s *RoleService) GrantPermission(ctx context.Context, roleID, permissionID 
 		return err
 	}
 
-	return s.store.AddRolePermission(ctx, roleID, permissionID)
+	if err := s.store.AddRolePermission(ctx, roleID, permissionID); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "grant_permission", "role", roleID, map[string]string{"role": role.Name, "permission": perm.Resource + ":" + perm.Action})
+	return nil
 }
 
 func (s *RoleService) RevokePermission(ctx context.Context, roleID, permissionID string) error {
@@ -171,7 +187,11 @@ func (s *RoleService) RevokePermission(ctx context.Context, roleID, permissionID
 		return err
 	}
 
-	return s.store.RemoveRolePermission(ctx, roleID, permissionID)
+	if err := s.store.RemoveRolePermission(ctx, roleID, permissionID); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "revoke_permission", "role", roleID, map[string]string{"role": role.Name, "permission": perm.Resource + ":" + perm.Action})
+	return nil
 }
 
 // SetPermissions atomically replaces a role's permission set. Permission IDs
@@ -202,7 +222,11 @@ func (s *RoleService) SetPermissions(ctx context.Context, roleID string, permiss
 		return err
 	}
 
-	return s.store.SetRolePermissions(ctx, roleID, permissionIDs)
+	if err := s.store.SetRolePermissions(ctx, roleID, permissionIDs); err != nil {
+		return err
+	}
+	s.auditPermissions(ctx, role, permissionIDs)
+	return nil
 }
 
 // CreateWithPermissions creates a role holding permissionIDs. It checks the
@@ -222,7 +246,28 @@ func (s *RoleService) CreateWithPermissions(ctx context.Context, role *model.Rol
 	if len(permissionIDs) == 0 {
 		return nil
 	}
-	return s.store.SetRolePermissions(ctx, role.ID, permissionIDs)
+	if err := s.store.SetRolePermissions(ctx, role.ID, permissionIDs); err != nil {
+		return err
+	}
+	s.auditPermissions(ctx, role, permissionIDs)
+	return nil
+}
+
+// auditPermissions records a role's new permission set by name.
+func (s *RoleService) auditPermissions(ctx context.Context, role *model.Role, permissionIDs []string) {
+	perms, err := s.store.GetRolePermissions(ctx, role.ID)
+	if err != nil {
+		log.Warn("Failed to read role permissions for the audit log", "role_id", role.ID, "error", err)
+	}
+	recordAudit(ctx, s.store, "set_permissions", "role", role.ID, map[string]any{"role": role.Name, "permissions": permissionNames(perms)})
+}
+
+func permissionNames(perms []model.Permission) []string {
+	names := make([]string, len(perms))
+	for i, p := range perms {
+		names[i] = p.Resource + ":" + p.Action
+	}
+	return names
 }
 
 // checkPermissionChange fails if any of permissionIDs is unknown, or if the
@@ -279,11 +324,16 @@ func (s *RoleService) AssignToUser(ctx context.Context, userID, roleID string) e
 		return err
 	}
 
-	if _, err := s.guard.requireRole(ctx, roleID); err != nil {
+	role, err := s.guard.requireRole(ctx, roleID)
+	if err != nil {
 		return err
 	}
 
-	return s.store.AssignRoleToUser(ctx, userID, roleID)
+	if err := s.store.AssignRoleToUser(ctx, userID, roleID); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "assign_role", "user", userID, map[string]string{"role": role.Name, "role_id": roleID})
+	return nil
 }
 
 func (s *RoleService) RevokeFromUser(ctx context.Context, userID, roleID string) error {
@@ -305,7 +355,11 @@ func (s *RoleService) RevokeFromUser(ctx context.Context, userID, roleID string)
 		}
 	}
 
-	return s.store.RemoveRoleFromUser(ctx, userID, roleID)
+	if err := s.store.RemoveRoleFromUser(ctx, userID, roleID); err != nil {
+		return err
+	}
+	recordAudit(ctx, s.store, "revoke_role", "user", userID, map[string]string{"role": role.Name, "role_id": roleID})
+	return nil
 }
 
 func (s *RoleService) ListPermissions(ctx context.Context, filter *model.PermissionFilter) ([]model.Permission, error) {

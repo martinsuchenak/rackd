@@ -125,6 +125,7 @@ func (s *WebhookService) Create(ctx context.Context, req *model.CreateWebhookReq
 	if err := s.store.CreateWebhook(ctx, webhook); err != nil {
 		return nil, err
 	}
+	recordAudit(ctx, s.store, "create", "webhook", webhook.ID, webhookAudit(webhook))
 
 	return webhook, nil
 }
@@ -183,6 +184,7 @@ func (s *WebhookService) Update(ctx context.Context, id string, req *model.Updat
 	if err := s.store.UpdateWebhook(ctx, webhook); err != nil {
 		return nil, err
 	}
+	recordAudit(ctx, s.store, "update", "webhook", id, webhookAudit(webhook))
 
 	return webhook, nil
 }
@@ -199,8 +201,15 @@ func (s *WebhookService) Delete(ctx context.Context, id string) error {
 		}
 		return err
 	}
+	recordAudit(ctx, s.store, "delete", "webhook", id, nil)
 
 	return nil
+}
+
+// webhookAudit describes a webhook for the audit log: the URL only to its
+// host, since it can be a credential, and never the secret.
+func webhookAudit(w *model.Webhook) map[string]any {
+	return map[string]any{"name": w.Name, "url": RedactWebhookURL(w.URL), "events": w.Events, "active": w.Active, "has_secret": w.Secret != ""}
 }
 
 // ListDeliveries returns delivery records for a webhook

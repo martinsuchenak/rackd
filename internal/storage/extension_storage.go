@@ -144,6 +144,11 @@ func (s *SQLiteStorage) RecordAudit(ctx context.Context, action, resource, resou
 	s.auditLog(ctx, action, resource, resourceID, changes)
 }
 
+// RecordAuditFailure records a failed attempt, such as a refused sign-in.
+func (s *SQLiteStorage) RecordAuditFailure(ctx context.Context, action, resource, resourceID string, details any, reason string) {
+	s.auditEntry(ctx, action, resource, resourceID, details, "failure", reason)
+}
+
 // ExtensionMigrationStatus reports an extension's migrations. Applied versions
 // the steps don't define are reported as Unknown; pass nil steps for a namespace
 // whose extension isn't in this binary.

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
+
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
@@ -64,7 +66,11 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.Auth.Login(r.Context(), req.Username, req.Password)
+	// There is no caller yet, so give the audit log the attempt's address.
+	attemptCtx := audit.WithContext(r.Context(), &audit.Context{
+		Username: req.Username, IPAddress: getClientIP(r, h.proxyResolver), Source: "api",
+	})
+	result, err := h.svc.Auth.Login(attemptCtx, req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrTooManyLoginAttempts) {
 			h.writeError(w, http.StatusTooManyRequests, "TOO_MANY_ATTEMPTS", err.Error())

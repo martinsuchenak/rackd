@@ -152,7 +152,7 @@ rackd user password --id <user-id>
 
 1. **Change Default Password**: After first login, change the initial admin password
 2. **Use Secrets Management**: Store admin credentials in secrets managers (Kubernetes Secrets, Vault, etc.)
-3. **Enable Audit Logging**: Set `AUDIT_ENABLED=true` to track all user actions
+3. **Review the Audit Log**: every change and sign-in is recorded; set `AUDIT_RETENTION_DAYS` to how long you need to keep it
 4. **Use Strong Passwords**: Minimum 8 characters with bcrypt hashing (cost factor 14)
 5. **Set Appropriate Session TTL**: Adjust based on your security requirements
 

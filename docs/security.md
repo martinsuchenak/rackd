@@ -92,15 +92,15 @@ Rackd sets the following headers on all responses:
 
 ## Audit Logging
 
-When `AUDIT_ENABLED=true`, Rackd logs all API operations including:
+Rackd always audits changes and sign-ins (see [Audit Trail](audit.md) for the full list). Each entry records:
 
 - Timestamp, action, resource type, resource ID
 - User ID and username (from API key or session)
 - Client IP address
-- Success/failure status
-- Change details (before/after for updates)
+- Success/failure status, and why a failure failed
+- The record after the change, without secrets, keys, passwords or full webhook URLs
 
-Audit logs are retained for 90 days by default (`AUDIT_RETENTION_DAYS`).
+Audit entries are kept for 90 days by default (`AUDIT_RETENTION_DAYS`; `0` keeps everything).
 
 Query audit logs:
 - `GET /api/v1/audit` — list with filters (action, resource, user, date range)

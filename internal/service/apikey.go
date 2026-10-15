@@ -68,6 +68,7 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	if err := s.store.CreateAPIKey(ctx, key); err != nil {
 		return "", err
 	}
+	recordAudit(ctx, s.store, "create", "apikey", key.ID, map[string]any{"name": key.Name, "user_id": key.UserID, "expires_at": key.ExpiresAt})
 
 	return plaintextKey, nil
 }
@@ -117,6 +118,7 @@ func (s *APIKeyService) Delete(ctx context.Context, id string) error {
 		}
 		return err
 	}
+	recordAudit(ctx, s.store, "delete", "apikey", id, map[string]string{"name": key.Name, "user_id": key.UserID})
 
 	return nil
 }
