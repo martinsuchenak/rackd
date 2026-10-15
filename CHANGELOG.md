@@ -9,6 +9,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Pages could take a minute to load on slow or network storage. Every API
+  request wrote the session's new expiry, so a page load's parallel requests
+  queued for SQLite's write lock while holding database connections, and
+  reads waited behind them. The expiry is now written at most once a minute,
+  and SQLite commits with `synchronous=NORMAL` (the recommended setting with
+  WAL), so commits no longer wait for the disk to sync. A power cut can lose
+  the last few transactions, but not corrupt the database.
+- On Linux, Rackd warns at start when the data directory is on a network
+  filesystem (NFS, SMB/CIFS), where SQLite is slow and its locking unreliable.
+
 ## [0.2.0] - 2026-10-15
 
 ### Upgrading from v0.1.0

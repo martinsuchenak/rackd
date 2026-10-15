@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -42,5 +43,48 @@ func TestSessionsEndAtTheirMaximumLifetime(t *testing.T) {
 	time.Sleep(60 * time.Millisecond)
 	if _, err := sm.RefreshSession(s.Token); !errors.Is(err, ErrSessionExpired) && !errors.Is(err, ErrSessionNotFound) {
 		t.Errorf("refresh after the lifetime: %v, want expired", err)
+	}
+}
+
+// countingStore counts expiry writes.
+type countingStore struct {
+	SessionStore
+	extends int
+}
+
+func (c *countingStore) Extend(ctx context.Context, token string, expiresAt time.Time) error {
+	c.extends++
+	return c.SessionStore.Extend(ctx, token, expiresAt)
+}
+
+// Refreshing on every request wrote to the database on every request; a page
+// load's API calls then queued for the write lock (slow on network storage).
+func TestRefreshWritesAtMostOncePerInterval(t *testing.T) {
+	store := &countingStore{SessionStore: NewMemorySessionStore()}
+	sm := NewSessionManager(time.Hour, store)
+	defer sm.Stop()
+	s, err := sm.CreateSession("u1", "alice", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 20; i++ {
+		if _, err := sm.RefreshSession(s.Token); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if store.extends != 0 {
+		t.Fatalf("%d expiry writes for requests within a minute of creation, want 0", store.extends)
+	}
+
+	// Once the stored expiry is a minute or more behind, a refresh writes it.
+	if err := store.SessionStore.Extend(context.Background(), HashToken(s.Token), time.Now().UTC().Add(50*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	refreshed, err := sm.RefreshSession(s.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.extends != 1 || time.Until(refreshed.ExpiresAt) < 59*time.Minute {
+		t.Fatalf("after the expiry fell behind: %d writes, expires in %v; want 1 write and about an hour", store.extends, time.Until(refreshed.ExpiresAt))
 	}
 }

@@ -181,7 +181,12 @@ func openDB(dbPath string) (*sql.DB, error) {
 	if err := restrictDBFiles(dbPath); err != nil {
 		return nil, err
 	}
-	dsn := dbPath + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_txlock=immediate"
+	warnIfNetworkFS(filepath.Dir(dbPath))
+	// synchronous(NORMAL) is SQLite's recommended setting with WAL: commits
+	// don't wait for the disk to sync, which made every write slow on slow or
+	// network storage. A power cut can lose the last transactions but can't
+	// corrupt the database; a crash of Rackd loses nothing.
+	dsn := dbPath + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)&_txlock=immediate"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)

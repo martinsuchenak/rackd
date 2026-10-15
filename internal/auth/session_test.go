@@ -134,8 +134,11 @@ func TestRefreshSession(t *testing.T) {
 		t.Errorf("RefreshSession() UserID = %v, want %v", refreshed.UserID, session.UserID)
 	}
 
-	if !refreshed.ExpiresAt.After(originalExpiry) {
-		t.Error("RefreshSession() Expiry not extended")
+	// Within a minute of the last write the expiry is left alone, so
+	// requests don't each write; TestRefreshWritesAtMostOncePerInterval
+	// covers the extension.
+	if !refreshed.ExpiresAt.Equal(originalExpiry) {
+		t.Errorf("RefreshSession() moved the expiry within the refresh interval: %v -> %v", originalExpiry, refreshed.ExpiresAt)
 	}
 }
 
