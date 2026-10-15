@@ -235,6 +235,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   fields, conflict resolution, scan profiles and scheduled scans are now audited.
   Entries for credentials, keys, webhooks and OAuth clients hold names and
   settings, never secrets or full webhook URLs.
+- A burst of changes bigger than the audit queue (1,000 entries) silently
+  dropped audit entries while the changes themselves succeeded (found by a
+  Strix scan). Entries are now written in batches, and when the queue is full
+  the request waits for room instead of dropping its entry.
 - `AUDIT_RETENTION_DAYS` was never applied, so audit entries were kept forever. They
   are now deleted once they are older than it, at start and daily. `AUDIT_ENABLED`
   did nothing, since changes were always audited; it is now documented as unused
