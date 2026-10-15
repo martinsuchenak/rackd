@@ -25,6 +25,7 @@ CI runs the same checks, plus the tests with the race detector, on every pull re
 - Keep each pull request to one change, with tests.
 - Add an entry under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for anything users will notice.
 - Schema changes go in a new migration in `internal/storage/migrations.go` with a working Down step. The reversibility test checks that every migration undoes cleanly.
+- If you add or change a CLI command or flag, regenerate the reference with `go run ./tools/clidoc > docs/cli-reference.md`; a test fails until it matches.
 
 ## Reporting security issues
 

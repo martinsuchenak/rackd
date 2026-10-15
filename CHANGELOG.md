@@ -11,6 +11,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Upgrading from v0.1.0
 
+- Global search (`/api/v1/search`, the search box) now requires `search:read`.
+  The built-in roles have it; add it to custom roles that should search.
+- `DISCOVERY_MAX_CONCURRENT` and `DISCOVERY_TIMEOUT` are no longer read (they
+  never did anything); remove them from your configuration.
 - **Audit retention now applies.** On the first start, audit entries older than
   `AUDIT_RETENTION_DAYS` (default 90) are deleted. To keep your full history, set
   `AUDIT_RETENTION_DAYS=0` before upgrading, or export it first
