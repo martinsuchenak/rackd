@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,7 +73,7 @@ func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteSt
 		dbPath = ":memory:"
 	} else {
 		// Ensure data directory exists
-		if err := os.MkdirAll(dataDir, 0755); err != nil {
+		if err := os.MkdirAll(dataDir, 0700); err != nil {
 			return nil, fmt.Errorf("failed to create data directory: %w", err)
 		}
 		dbPath = filepath.Join(dataDir, "rackd.db")
@@ -151,7 +153,32 @@ const maxOpenConns = 8
 // writes takes the write lock up front rather than failing to upgrade a read
 // lock while another connection writes. An in-memory database is private to a
 // connection, so it keeps a single one.
+// restrictDBFiles makes the database file, and the WAL and shared-memory
+// files SQLite keeps beside it, readable only by Rackd's user. The database
+// holds password hashes, webhook secrets and audit history. SQLite creates the
+// -wal and -shm files with the database's mode, so the file is created 0600
+// before SQLite first opens it.
+func restrictDBFiles(dbPath string) error {
+	if dbPath == ":memory:" || strings.HasPrefix(dbPath, "file:") {
+		return nil
+	}
+	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("creating database file: %w", err)
+	}
+	_ = f.Close()
+	for _, path := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		if err := os.Chmod(path, 0600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("restricting %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
 func openDB(dbPath string) (*sql.DB, error) {
+	if err := restrictDBFiles(dbPath); err != nil {
+		return nil, err
+	}
 	dsn := dbPath + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_txlock=immediate"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -170,7 +197,7 @@ func openDB(dbPath string) (*sql.DB, error) {
 // NewSQLiteStorageWithPath creates a new SQLite storage instance with a specific database file path
 func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 	// Ensure parent directory exists
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0700); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 

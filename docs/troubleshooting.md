@@ -414,7 +414,8 @@ ssh user@10.0.1.10
 snmpwalk -v2c -c public 10.0.1.10
 
 # Check credential encryption key is set
-export ENCRYPTION_KEY=your-32-byte-key
+# ENCRYPTION_KEY must be 64 hex characters; generate one with:
+openssl rand -hex 32
 ```
 
 ### Scheduled Scans Not Running

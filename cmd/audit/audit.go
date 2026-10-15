@@ -127,7 +127,7 @@ func exportCommand() *cli.Command {
 			if output == "" {
 				fmt.Println(string(data))
 			} else {
-				if err := os.WriteFile(output, data, 0644); err != nil {
+				if err := os.WriteFile(output, data, 0600); err != nil { // audit history: owner only
 					return err
 				}
 				fmt.Printf("Exported %d audit logs to %s\n", len(data), output)

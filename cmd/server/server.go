@@ -93,11 +93,14 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 			defer stop()
 
 			opts := server.Options{Config: cfg, Store: store, Features: features, Edition: edition, UI: ui}
-			encryptionKey, hasKey := getEncryptionKey(devMode)
+			encryptionKey, err := getEncryptionKey(devMode)
+			if err != nil {
+				return err
+			}
 
 			// If no encryption key, run basic server without advanced features
-			if !hasKey {
-				log.Info("Running without credentials/scan profiles/DNS (set ENCRYPTION_KEY or use --dev-mode to enable)")
+			if encryptionKey == nil {
+				log.Warn("ENCRYPTION_KEY is not set: credentials, scan profiles and DNS are disabled, and webhook secrets are stored unencrypted")
 				return server.Run(ctx, opts)
 			}
 
@@ -128,28 +131,27 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 	}
 }
 
-func getEncryptionKey(devMode bool) ([]byte, bool) {
+// getEncryptionKey returns the key from ENCRYPTION_KEY, a random one in dev
+// mode when it is unset, or nil when it is unset otherwise. A key that is set
+// but malformed is an error: running without encryption the operator asked
+// for would store secrets in plaintext.
+func getEncryptionKey(devMode bool) ([]byte, error) {
 	keyHex := os.Getenv("ENCRYPTION_KEY")
 	if keyHex == "" {
 		if !devMode {
-			return nil, false
+			return nil, nil
 		}
 		fmt.Fprintln(os.Stderr, "Warning: ENCRYPTION_KEY not set - generating random key (credentials will not persist across restarts)")
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
-			return nil, false
+			return nil, err
 		}
-		return key, true
+		return key, nil
 	}
 
 	key, err := hex.DecodeString(keyHex)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: invalid ENCRYPTION_KEY (must be hex-encoded): %v\n", err)
-		return nil, false
+	if err != nil || len(key) != 32 {
+		return nil, fmt.Errorf("ENCRYPTION_KEY must be 64 hex characters (32 bytes), such as the output of: openssl rand -hex 32")
 	}
-	if len(key) != 32 {
-		fmt.Fprintln(os.Stderr, "Warning: invalid ENCRYPTION_KEY (must be 32 bytes / 64 hex chars)")
-		return nil, false
-	}
-	return key, true
+	return key, nil
 }

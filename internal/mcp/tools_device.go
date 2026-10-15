@@ -117,7 +117,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 	if query != "" {
 		devices, err := s.svc.Devices.Search(ctx, query)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(devices), nil
 	}
@@ -132,7 +132,7 @@ func (s *Server) handleDeviceList(ctx context.Context, req *mcp.ToolRequest) (*m
 	}
 	devices, err := s.svc.Devices.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(devices, len(devices), filter.Pagination)), nil
 }
@@ -141,7 +141,7 @@ func (s *Server) handleDeviceGet(ctx context.Context, req *mcp.ToolRequest) (*mc
 	id, _ := req.String("id")
 	device, err := s.svc.Devices.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(device), nil
 }
@@ -175,11 +175,11 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 
 	if id == "" {
 		if err := s.svc.Devices.Create(ctx, device); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	} else {
 		if err := s.svc.Devices.Update(ctx, device); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	}
 
@@ -204,7 +204,7 @@ func (s *Server) handleDeviceSave(ctx context.Context, req *mcp.ToolRequest) (*m
 func (s *Server) handleDeviceDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Devices.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -220,7 +220,7 @@ func (s *Server) handleAddRelationship(ctx context.Context, req *mcp.ToolRequest
 	}
 
 	if err := s.svc.Relationships.Add(ctx, parentID, childID, relType, notes); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "created"}), nil
 }
@@ -229,7 +229,7 @@ func (s *Server) handleGetRelationships(ctx context.Context, req *mcp.ToolReques
 	id, _ := req.String("id")
 	rels, err := s.svc.Relationships.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(rels), nil
 }
@@ -241,7 +241,7 @@ func (s *Server) handleDeviceGetCustomFields(ctx context.Context, req *mcp.ToolR
 	}
 	fields, err := s.svc.CustomFields.GetValuesWithDefinitions(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(fields), nil
 }

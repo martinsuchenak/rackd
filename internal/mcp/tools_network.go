@@ -100,7 +100,7 @@ func (s *Server) handleDatacenterList(ctx context.Context, req *mcp.ToolRequest)
 	filter := &model.DatacenterFilter{Pagination: pg}
 	dcs, err := s.svc.Datacenters.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(dcs, len(dcs), pg)), nil
 }
@@ -109,7 +109,7 @@ func (s *Server) handleDatacenterGet(ctx context.Context, req *mcp.ToolRequest) 
 	id, _ := req.String("id")
 	dc, err := s.svc.Datacenters.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(dc), nil
 }
@@ -127,11 +127,11 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 
 	if id == "" {
 		if err := s.svc.Datacenters.Create(ctx, dc); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	} else {
 		if err := s.svc.Datacenters.Update(ctx, dc); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	}
 	return mcp.NewToolResponseJSON(dc), nil
@@ -140,7 +140,7 @@ func (s *Server) handleDatacenterSave(ctx context.Context, req *mcp.ToolRequest)
 func (s *Server) handleDatacenterDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Datacenters.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -155,7 +155,7 @@ func (s *Server) handleNetworkList(ctx context.Context, req *mcp.ToolRequest) (*
 	}
 	networks, err := s.svc.Networks.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(networks, len(networks), pg)), nil
 }
@@ -164,7 +164,7 @@ func (s *Server) handleNetworkGet(ctx context.Context, req *mcp.ToolRequest) (*m
 	id, _ := req.String("id")
 	network, err := s.svc.Networks.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(network), nil
 }
@@ -185,11 +185,11 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 	if id == "" {
 		if err := s.svc.Networks.Create(ctx, network); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	} else {
 		if err := s.svc.Networks.Update(ctx, network); err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 	}
 	return mcp.NewToolResponseJSON(network), nil
@@ -198,7 +198,7 @@ func (s *Server) handleNetworkSave(ctx context.Context, req *mcp.ToolRequest) (*
 func (s *Server) handleNetworkDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Networks.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -209,7 +209,7 @@ func (s *Server) handlePoolList(ctx context.Context, req *mcp.ToolRequest) (*mcp
 	networkID, _ := req.String("network_id")
 	pools, err := s.svc.Pools.ListByNetwork(ctx, networkID)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(pools), nil
 }
@@ -218,7 +218,7 @@ func (s *Server) handleGetNextIP(ctx context.Context, req *mcp.ToolRequest) (*mc
 	poolID, _ := req.String("pool_id")
 	ip, err := s.svc.Pools.GetNextIP(ctx, poolID)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"ip": ip}), nil
 }

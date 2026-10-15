@@ -10,6 +10,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
+	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -237,8 +238,13 @@ func (h *Handler) oauthToken(w http.ResponseWriter, r *http.Request) {
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", "PKCE verification failed")
 		case errors.Is(err, service.ErrOAuthInvalidClientSecret):
 			h.writeOAuthError(w, http.StatusUnauthorized, "invalid_client", "Invalid client secret")
-		default:
+		case isOAuthGrantError(err):
 			h.writeOAuthError(w, http.StatusBadRequest, "invalid_grant", err.Error())
+		default:
+			// Unexpected: a storage or internal failure, whose text stays in
+			// the log rather than going to an unauthenticated client.
+			log.Error("OAuth token request failed", "grant_type", req.GrantType, "error", err)
+			h.writeOAuthError(w, http.StatusInternalServerError, "server_error", "Token request failed")
 		}
 		return
 	}
@@ -383,4 +389,24 @@ func buildErrorRedirectURL(redirectURI, errorCode, description, state string) st
 	}
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+// oauthGrantErrors are token request failures the client caused, whose
+// messages are safe to return.
+var oauthGrantErrors = []error{
+	service.ErrOAuthInvalidGrantType, service.ErrOAuthInvalidRedirectURI, service.ErrOAuthInvalidScope,
+	service.ErrOAuthCodeRequired, service.ErrOAuthRefreshTokenRequired, service.ErrOAuthClientHasNoUser,
+	service.ErrOAuthUserInactive,
+	storage.ErrOAuthCodeNotFound, storage.ErrOAuthCodeExpired, storage.ErrOAuthCodeUsed,
+	storage.ErrOAuthTokenNotFound, storage.ErrOAuthTokenRevoked, storage.ErrOAuthTokenExpired,
+	storage.ErrOAuthClientNotFound,
+}
+
+func isOAuthGrantError(err error) bool {
+	for _, target := range oauthGrantErrors {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
 }

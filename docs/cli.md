@@ -52,15 +52,14 @@ rackd server [options]
 
 | Flag | Environment Variable | Default | Description |
 |------|---------------------|---------|-------------|
-| `--listen-addr` | `RACKD_LISTEN_ADDR` | `:8080` | Listen address |
-| `--data-dir` | `RACKD_DATA_DIR` | `./data` | Data directory |
-| `--api-auth-token` | `RACKD_API_AUTH_TOKEN` | - | API auth token |
-| `--mcp-auth-token` | `RACKD_MCP_AUTH_TOKEN` | - | MCP auth token |
-| `--log-level` | `RACKD_LOG_LEVEL` | `info` | Log level |
-| `--log-format` | `RACKD_LOG_FORMAT` | `text` | Log format (text/json) |
-| `--discovery-enabled` | `RACKD_DISCOVERY_ENABLED` | `true` | Enable discovery |
-| `--discovery-interval` | `RACKD_DISCOVERY_INTERVAL` | `24h` | Discovery interval |
-| `--encryption-key` | `RACKD_ENCRYPTION_KEY` | - | Credential encryption key |
+| `--listen-addr` | `LISTEN_ADDR` | `:8080` | Listen address |
+| `--data-dir` | `DATA_DIR` | `./data` | Data directory |
+| `--log-level` | `LOG_LEVEL` | `info` | Log level (trace/debug/info/warn/error) |
+| `--log-format` | `LOG_FORMAT` | `text` | Log format (text/json) |
+| `--discovery-interval` | `DISCOVERY_INTERVAL` | `24h` | Discovery interval |
+| `--dev-mode` | - | `false` | Relaxes security for local use: no secure cookies, no rate limiting, and a random `ENCRYPTION_KEY` if none is set |
+
+The encryption key has no flag, so it never appears in the process list: set `ENCRYPTION_KEY` to 64 hex characters (`openssl rand -hex 32`). Every other setting is an environment variable too; see the [configuration reference](configuration-reference.md).
 
 #### Examples
 
@@ -762,24 +761,28 @@ Manage credentials and encryption.
 
 #### credentials rotate-key
 
-Rotate the master encryption key used for credentials.
+Re-encrypt credentials, DNS provider tokens and webhook secrets with a new master key. The current key comes from `ENCRYPTION_KEY`; the new one from an environment variable or a file, never a command-line argument, so neither shows up in the process list or shell history.
+
+Stop the server first. Everything is re-encrypted in one transaction: if any credential or DNS token doesn't decrypt with `ENCRYPTION_KEY`, nothing is changed. Webhook secrets that don't decrypt are left as they are, since they may be stored unencrypted (Rackd does that when it runs without a key).
 
 ```bash
-rackd credentials rotate-key [options]
+rackd credentials rotate-key --yes [options]
 ```
 
 **Options:**
 - `--data-dir <dir>` - Data directory (default: ./data)
-- `--new-key <key>` - New 32-byte hex-encoded encryption key (required)
+- `--new-key-env <name>` - Environment variable holding the new key (default: `NEW_ENCRYPTION_KEY`)
+- `--new-key-file <path>` - File holding the new key, instead of the environment
+- `--yes` - Confirm that the server is stopped (required)
 
 **Examples:**
 
 ```bash
-# Generate a new key
-openssl rand -hex 32
+# Generate a new key into a file only you can read
+(umask 077; openssl rand -hex 32 > new.key)
 
-# Rotate the key (requires ENCRYPTION_KEY env var to be set)
-rackd credentials rotate-key --new-key <new-64-char-hex-string>
+# Rotate, then start the server with ENCRYPTION_KEY set to the new key
+rackd credentials rotate-key --new-key-file new.key --yes
 ```
 
 ### dns

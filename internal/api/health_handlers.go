@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/martinsuchenak/rackd/internal/log"
 )
 
 // HealthStatus represents the health status of the application
@@ -75,9 +77,11 @@ func (h *Handler) checkDatabase() Check {
 
 	// Ping the database
 	if err := db.Ping(); err != nil {
+		// /readyz is unauthenticated: keep the driver's message in the log.
+		log.Error("Readiness check: database ping failed", "error", err)
 		return Check{
 			Status:  "unhealthy",
-			Message: err.Error(),
+			Message: "database unreachable",
 		}
 	}
 

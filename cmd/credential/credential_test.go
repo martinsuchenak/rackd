@@ -59,8 +59,9 @@ func TestRotateKeyCommand(t *testing.T) {
 		Commands: []*cli.Command{cmd},
 	}
 
+	t.Setenv("NEW_ENCRYPTION_KEY", newKeyHex)
 	oldArgs := os.Args
-	os.Args = []string{"rackd", "rotate-key", "--data-dir", tmpDir, "--new-key", newKeyHex}
+	os.Args = []string{"rackd", "rotate-key", "--data-dir", tmpDir, "--yes"}
 	defer func() { os.Args = oldArgs }()
 
 	// Execute the command directly
@@ -98,5 +99,54 @@ func TestRotateKeyCommand(t *testing.T) {
 
 	if decryptedCred.SNMPCommunity != "public123" {
 		t.Errorf("decrypted SNMPCommunity = %v, want %v", decryptedCred.SNMPCommunity, "public123")
+	}
+}
+
+// A wrong current key must change nothing.
+func TestRotateKeyWithTheWrongKeyChangesNothing(t *testing.T) {
+	tmpDir := t.TempDir()
+	realKey, _ := hex.DecodeString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	store, err := storage.NewExtendedStorage(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	credStore, err := credentials.NewSQLiteStorage(store.DB(), realKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cred := &model.Credential{Name: "c", Type: "snmp_v2c", SNMPCommunity: "public123"}
+	if err := credStore.Create(cred); err != nil {
+		t.Fatal(err)
+	}
+	_ = store.Close()
+
+	t.Setenv("ENCRYPTION_KEY", "1111111111111111111111111111111111111111111111111111111111111111")
+	t.Setenv("NEW_ENCRYPTION_KEY", "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
+	app := &cli.Command{Name: "test-app", Commands: []*cli.Command{RotateKeyCommand()}}
+	oldArgs := os.Args
+	os.Args = []string{"rackd", "rotate-key", "--data-dir", tmpDir, "--yes"}
+	defer func() { os.Args = oldArgs }()
+	if err := app.Execute(context.Background()); err == nil {
+		t.Fatal("rotation with the wrong key succeeded")
+	}
+
+	store, err = storage.NewExtendedStorage(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	credStore, _ = credentials.NewSQLiteStorage(store.DB(), realKey)
+	if got, err := credStore.Get(cred.ID); err != nil || got.SNMPCommunity != "public123" {
+		t.Errorf("credential after a refused rotation: %+v, %v", got, err)
+	}
+}
+
+func TestRotateKeyNeedsConfirmation(t *testing.T) {
+	app := &cli.Command{Name: "test-app", Commands: []*cli.Command{RotateKeyCommand()}}
+	oldArgs := os.Args
+	os.Args = []string{"rackd", "rotate-key", "--data-dir", t.TempDir()}
+	defer func() { os.Args = oldArgs }()
+	if err := app.Execute(context.Background()); err == nil {
+		t.Error("rotation ran without --yes")
 	}
 }

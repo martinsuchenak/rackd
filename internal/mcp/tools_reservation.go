@@ -76,7 +76,7 @@ func (s *Server) handleReservationList(ctx context.Context, req *mcp.ToolRequest
 	}
 	reservations, err := s.svc.Reservations.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(reservations, len(reservations), pg)), nil
 }
@@ -85,7 +85,7 @@ func (s *Server) handleReservationGet(ctx context.Context, req *mcp.ToolRequest)
 	id, _ := req.String("id")
 	reservation, err := s.svc.Reservations.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(reservation), nil
 }
@@ -110,7 +110,7 @@ func (s *Server) handleReservationCreate(ctx context.Context, req *mcp.ToolReque
 
 	reservation, err := s.svc.Reservations.Create(ctx, createReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(reservation), nil
 }
@@ -133,7 +133,7 @@ func (s *Server) handleReservationUpdate(ctx context.Context, req *mcp.ToolReque
 
 	reservation, err := s.svc.Reservations.Update(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(reservation), nil
 }
@@ -141,7 +141,7 @@ func (s *Server) handleReservationUpdate(ctx context.Context, req *mcp.ToolReque
 func (s *Server) handleReservationRelease(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Reservations.Release(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "released", "id": id}), nil
 }
@@ -149,7 +149,7 @@ func (s *Server) handleReservationRelease(ctx context.Context, req *mcp.ToolRequ
 func (s *Server) handleReservationDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Reservations.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }

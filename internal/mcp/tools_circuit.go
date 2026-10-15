@@ -76,7 +76,7 @@ func (s *Server) handleCircuitList(ctx context.Context, req *mcp.ToolRequest) (*
 	}
 	circuits, err := s.svc.Circuits.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(circuits, len(circuits), pg)), nil
 }
@@ -85,7 +85,7 @@ func (s *Server) handleCircuitGet(ctx context.Context, req *mcp.ToolRequest) (*m
 	id, _ := req.String("id")
 	circuit, err := s.svc.Circuits.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(circuit), nil
 }
@@ -121,7 +121,7 @@ func (s *Server) handleCircuitSave(ctx context.Context, req *mcp.ToolRequest) (*
 		}
 		circuit, err := s.svc.Circuits.Create(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(circuit), nil
 	}
@@ -145,7 +145,7 @@ func (s *Server) handleCircuitSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 	circuit, err := s.svc.Circuits.Update(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(circuit), nil
 }
@@ -153,7 +153,7 @@ func (s *Server) handleCircuitSave(ctx context.Context, req *mcp.ToolRequest) (*
 func (s *Server) handleCircuitDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Circuits.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }

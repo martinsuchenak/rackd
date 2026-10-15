@@ -54,7 +54,7 @@ func (s *Server) handleAuditList(ctx context.Context, req *mcp.ToolRequest) (*mc
 
 	entries, err := s.svc.Audit.List(ctx, filter)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(entries), nil
 }

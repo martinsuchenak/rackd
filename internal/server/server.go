@@ -285,13 +285,12 @@ func buildHandler(mux *http.ServeMux, cfg *config.Config, proxyResolver *api.Tru
 		limiter := api.NewRateLimiter(cfg.RateLimitRequests, cfg.RateLimitWindow)
 		handler = api.RateLimitMiddleware(limiter, proxyResolver)(handler)
 	}
-	handler = api.LoggingMiddleware(api.SecurityHeaders(handler))
-
-	// Enforce request timeout (M-10)
+	// Enforce request timeout (M-10). It goes inside the security headers so
+	// its timeout response gets them too.
 	if cfg.RequestTimeout > 0 {
 		handler = http.TimeoutHandler(handler, cfg.RequestTimeout, `{"error": "Request timeout"}`)
 	}
-	return handler
+	return api.LoggingMiddleware(api.SecurityHeadersFor(handler, cfg.CookieSecure))
 }
 
 // writeTimeout returns the HTTP server write timeout. It must outlast the

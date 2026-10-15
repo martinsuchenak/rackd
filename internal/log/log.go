@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -22,10 +23,13 @@ var defaultLogger logger.Logger = logger.NewNullLogger()
 const recentLogCapacity = 2000
 
 type capturingLogger struct {
-	inner  logger.Logger
-	fields map[string]string
-	group  string
+	inner    logger.Logger
+	fields   map[string]string
+	group    string
+	minLevel int // entries below this level aren't kept, as the inner logger drops them
 }
+
+var levelRank = map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5}
 
 type recentLogStore struct {
 	mu      sync.RWMutex
@@ -54,9 +58,14 @@ func Init(logFormat string, logLevel string, writer io.Writer) {
 		Format: logFormat,
 		Writer: writer,
 	})
+	minLevel, ok := levelRank[strings.ToLower(logLevel)]
+	if !ok {
+		minLevel = levelRank["info"]
+	}
 	defaultLogger = &capturingLogger{
-		inner:  base,
-		fields: map[string]string{},
+		inner:    base,
+		fields:   map[string]string{},
+		minLevel: minLevel,
 	}
 }
 
@@ -146,9 +155,10 @@ func (l *capturingLogger) With(key string, value any) logger.Logger {
 	fields := cloneFields(l.fields)
 	fields[key] = sanitizeField(key, stringifyValue(value))
 	return &capturingLogger{
-		inner:  l.inner.With(key, value),
-		fields: fields,
-		group:  l.group,
+		inner:    l.inner.With(key, value),
+		fields:   fields,
+		group:    l.group,
+		minLevel: l.minLevel,
 	}
 }
 
@@ -156,9 +166,10 @@ func (l *capturingLogger) WithError(err error) logger.Logger {
 	fields := cloneFields(l.fields)
 	fields["error"] = sanitizeField("error", stringifyValue(err))
 	return &capturingLogger{
-		inner:  l.inner.WithError(err),
-		fields: fields,
-		group:  l.group,
+		inner:    l.inner.WithError(err),
+		fields:   fields,
+		group:    l.group,
+		minLevel: l.minLevel,
 	}
 }
 
@@ -168,13 +179,19 @@ func (l *capturingLogger) WithGroup(group string) logger.Logger {
 		nextGroup = l.group + "." + group
 	}
 	return &capturingLogger{
-		inner:  l.inner.WithGroup(group),
-		fields: cloneFields(l.fields),
-		group:  nextGroup,
+		inner:    l.inner.WithGroup(group),
+		fields:   cloneFields(l.fields),
+		group:    nextGroup,
+		minLevel: l.minLevel,
 	}
 }
 
 func (l *capturingLogger) capture(level, msg string, keysAndValues ...any) {
+	// The in-app log keeps what the configured level shows, no more: debug
+	// and trace entries carry request paths, queries and usernames.
+	if levelRank[level] < l.minLevel {
+		return
+	}
 	fields := cloneFields(l.fields)
 	for i := 0; i < len(keysAndValues); i += 2 {
 		key := fmt.Sprint(keysAndValues[i])
@@ -229,6 +246,9 @@ func stringifyValue(value any) string {
 
 func sanitizeField(key, value string) string {
 	lower := strings.ToLower(key)
+	if lower == "query" {
+		return redactQuery(value)
+	}
 	sensitiveKeys := []string{
 		"password",
 		"secret",
@@ -338,4 +358,19 @@ func (s *recentLogStore) clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.entries = s.entries[:0]
+}
+
+// redactQuery hides the values of sensitive query parameters, such as an
+// OAuth code or token a client put in the URL.
+func redactQuery(raw string) string {
+	values, err := url.ParseQuery(raw)
+	if err != nil {
+		return "[redacted]"
+	}
+	for key := range values {
+		if sanitizeField(key, "") == "[redacted]" || strings.EqualFold(key, "code") {
+			values[key] = []string{"REDACTED"}
+		}
+	}
+	return values.Encode()
 }

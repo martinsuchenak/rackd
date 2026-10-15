@@ -7,9 +7,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -84,7 +86,7 @@ func NewRequest(ctx context.Context, webhook *model.Webhook, eventType model.Eve
 func Send(client *http.Client, req *http.Request) (int, error) {
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to send request: %w", err)
+		return 0, fmt.Errorf("failed to send request: %w", withoutURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	// Drain the body without loading it fully into memory: a hostile target
@@ -94,4 +96,15 @@ func Send(client *http.Client, req *http.Request) (int, error) {
 		return resp.StatusCode, fmt.Errorf("webhook returned status %d", resp.StatusCode)
 	}
 	return resp.StatusCode, nil
+}
+
+// withoutURL drops the request URL net/http puts in its errors. A webhook URL
+// can itself be the secret (Slack and Teams incoming webhooks, a ?token=), and
+// delivery errors are stored and shown to anyone who can read deliveries.
+func withoutURL(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return fmt.Errorf("%s: %w", urlErr.Op, urlErr.Err)
+	}
+	return err
 }

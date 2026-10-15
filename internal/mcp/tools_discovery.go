@@ -43,7 +43,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 
 	scan, err := s.svc.Discovery.StartScan(ctx, networkID, scanType)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(scan), nil
 }
@@ -52,7 +52,7 @@ func (s *Server) handleListDiscovered(ctx context.Context, req *mcp.ToolRequest)
 	networkID := req.StringOr("network_id", "")
 	devices, err := s.svc.Discovery.ListDevices(ctx, networkID)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(devices), nil
 }
@@ -69,7 +69,7 @@ func (s *Server) handlePromoteDevice(ctx context.Context, req *mcp.ToolRequest) 
 
 	promoted, err := s.svc.Discovery.PromoteDevice(ctx, discoveredID, device)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(promoted), nil
 }

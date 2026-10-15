@@ -145,25 +145,29 @@ chown -R rackd:rackd /var/lib/rackd
 Create `/etc/rackd/config.env`:
 
 ```bash
-# Server configuration
-RACKD_LISTEN_ADDR=:8080
-RACKD_DATA_DIR=/var/lib/rackd
+# Server
+LISTEN_ADDR=:8080
+DATA_DIR=/var/lib/rackd
 
-# Authentication (recommended for production)
-RACKD_API_AUTH_TOKEN=your-secret-api-token
-RACKD_MCP_AUTH_TOKEN=your-secret-mcp-token
+# First admin, created only when the database has no users
+INITIAL_ADMIN_USERNAME=admin
+INITIAL_ADMIN_PASSWORD=change-me-now
+INITIAL_ADMIN_EMAIL=admin@example.com
+
+# Encryption for credentials, DNS provider tokens and webhook secrets.
+# Generate with: openssl rand -hex 32
+# Rackd refuses to start if this is set but isn't 64 hex characters.
+ENCRYPTION_KEY=
 
 # Logging
-RACKD_LOG_LEVEL=info
-RACKD_LOG_FORMAT=json
+LOG_LEVEL=info
+LOG_FORMAT=json
 
 # Discovery
-RACKD_DISCOVERY_ENABLED=true
-RACKD_DISCOVERY_INTERVAL=24h
-
-# Credentials encryption
-RACKD_ENCRYPTION_KEY=your-32-byte-encryption-key-here
+DISCOVERY_INTERVAL=24h
 ```
+
+Make the file readable only by the service user (`chmod 600 /etc/rackd/config.env`), since it holds the encryption key.
 
 See [Configuration Guide](configuration.md) for all options.
 

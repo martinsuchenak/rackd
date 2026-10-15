@@ -29,8 +29,33 @@ func (s *WebhookService) List(ctx context.Context, filter *model.WebhookFilter) 
 	if err != nil {
 		return nil, err
 	}
+	if !s.canSeeURLs(ctx) {
+		for i := range webhooks {
+			webhooks[i].URL = RedactWebhookURL(webhooks[i].URL)
+		}
+	}
 
 	return webhooks, nil
+}
+
+// canSeeURLs reports whether the caller may see full webhook URLs: those who
+// can change webhooks. A URL can itself be a credential (an incoming-webhook
+// URL, a ?token= or user:pass@), so readers see only its scheme and host.
+func (s *WebhookService) canSeeURLs(ctx context.Context) bool {
+	return requirePermission(ctx, s.store, "webhooks", "update") == nil
+}
+
+// RedactWebhookURL keeps a URL's scheme and host and hides the rest.
+func RedactWebhookURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return "(hidden)"
+	}
+	redacted := u.Scheme + "://" + u.Host + "/"
+	if u.Path != "" && u.Path != "/" || u.RawQuery != "" || u.User != nil {
+		redacted += "…"
+	}
+	return redacted
 }
 
 // Get returns a single webhook by ID
@@ -45,6 +70,9 @@ func (s *WebhookService) Get(ctx context.Context, id string) (*model.Webhook, er
 			return nil, ErrNotFound
 		}
 		return nil, err
+	}
+	if !s.canSeeURLs(ctx) {
+		webhook.URL = RedactWebhookURL(webhook.URL)
 	}
 
 	return webhook, nil

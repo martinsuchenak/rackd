@@ -34,6 +34,10 @@ var (
 	ErrOAuthScopeNotAllowed      = errors.New("scope must not contain '*'; register explicit scopes")
 	ErrOAuthInvalidScope         = errors.New("requested scope exceeds the client's registered scope")
 	ErrOAuthClientMetadataLimit  = errors.New("client metadata is too large")
+	ErrOAuthCodeRequired         = errors.New("code is required")
+	ErrOAuthRefreshTokenRequired = errors.New("refresh_token is required")
+	ErrOAuthClientHasNoUser      = errors.New("client has no associated user")
+	ErrOAuthUserInactive         = errors.New("user is not active")
 )
 
 type OAuthService struct {
@@ -361,7 +365,7 @@ func (s *OAuthService) verifyClientSecret(ctx context.Context, req *model.OAuthT
 // ExchangeCode exchanges an authorization code for tokens (authorization_code grant).
 func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
 	if req.Code == "" {
-		return nil, errors.New("code is required")
+		return nil, ErrOAuthCodeRequired
 	}
 
 	codeHash := auth.HashToken(req.Code)
@@ -449,7 +453,7 @@ func (s *OAuthService) ExchangeCode(ctx context.Context, req *model.OAuthTokenRe
 // and all tokens in the chain are revoked.
 func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
 	if req.RefreshToken == "" {
-		return nil, errors.New("refresh_token is required")
+		return nil, ErrOAuthRefreshTokenRequired
 	}
 
 	refreshHash := auth.HashToken(req.RefreshToken)
@@ -621,7 +625,7 @@ func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTo
 
 	// For client_credentials, the client must have a created_by_user_id to map to a user
 	if client.CreatedByUserID == "" {
-		return nil, errors.New("client has no associated user")
+		return nil, ErrOAuthClientHasNoUser
 	}
 
 	scope := client.Scope
@@ -699,7 +703,7 @@ func (s *OAuthService) ResolveCallerFromOAuthToken(token *model.OAuthToken, remo
 		return nil, err
 	}
 	if !user.IsActive {
-		return nil, errors.New("user is not active")
+		return nil, ErrOAuthUserInactive
 	}
 
 	scopes := auth.ParseScopes(token.Scope)

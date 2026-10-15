@@ -56,7 +56,7 @@ func (s *Server) handleWebhookList(ctx context.Context, req *mcp.ToolRequest) (*
 	pg := mcpPagination(req)
 	webhooks, err := s.svc.Webhooks.List(ctx, &model.WebhookFilter{Pagination: pg})
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(paginatedResponse(webhooks, len(webhooks), pg)), nil
 }
@@ -65,7 +65,7 @@ func (s *Server) handleWebhookGet(ctx context.Context, req *mcp.ToolRequest) (*m
 	id, _ := req.String("id")
 	webhook, err := s.svc.Webhooks.Get(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(webhook), nil
 }
@@ -93,7 +93,7 @@ func (s *Server) handleWebhookSave(ctx context.Context, req *mcp.ToolRequest) (*
 		}
 		webhook, err := s.svc.Webhooks.Create(ctx, createReq)
 		if err != nil {
-			return nil, mcp.NewToolErrorInternal(err.Error())
+			return nil, toolError(err)
 		}
 		return mcp.NewToolResponseJSON(webhook), nil
 	}
@@ -116,7 +116,7 @@ func (s *Server) handleWebhookSave(ctx context.Context, req *mcp.ToolRequest) (*
 
 	webhook, err := s.svc.Webhooks.Update(ctx, id, updateReq)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(webhook), nil
 }
@@ -124,7 +124,7 @@ func (s *Server) handleWebhookSave(ctx context.Context, req *mcp.ToolRequest) (*
 func (s *Server) handleWebhookDelete(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
 	if err := s.svc.Webhooks.Delete(ctx, id); err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(map[string]string{"status": "deleted", "id": id}), nil
 }
@@ -133,7 +133,7 @@ func (s *Server) handleWebhookPing(ctx context.Context, req *mcp.ToolRequest) (*
 	id, _ := req.String("id")
 	delivery, err := s.svc.Webhooks.Ping(ctx, id)
 	if err != nil {
-		return nil, mcp.NewToolErrorInternal(err.Error())
+		return nil, toolError(err)
 	}
 	return mcp.NewToolResponseJSON(delivery), nil
 }
