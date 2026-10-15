@@ -151,6 +151,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
     in the pool.
   - The reservations guide described a configuration block, webhook events and
     a conflict type that don't exist; it now matches what Rackd does.
+- Concurrent writes could record the same thing twice (found by a Strix scan):
+  - Device writes for one address at the same moment each recorded an active
+    duplicate-IP conflict, so resolving one left the others. There can now be
+    only one active duplicate-IP conflict per address. On upgrade, extra
+    active records are resolved by `system` as duplicates, keeping the first
+    detected.
+  - A duplicate IP that came back after its conflict was resolved was never
+    recorded again. It now gets a new conflict; ignored conflicts still stay
+    ignored.
+  - Overlapping scans of a network each recorded the same host. A network now
+    has one discovered-device record per address. On upgrade, duplicates are
+    removed, keeping the promoted record or else the one seen last.
 - Bad input and references to missing records got a 500 instead of a 4xx, on
   the REST API and over MCP. Credentials, scan profiles and scheduled scans that
   fail validation, a missing `user_id` or `role_id` when granting a role, and a
