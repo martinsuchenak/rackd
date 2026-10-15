@@ -618,6 +618,9 @@ components:
         label: { type: string }
         path: { type: string }
         icon: { type: string }
+        section:
+          type: string
+          description: Menu section; a core section id (organization, inventory, ipam, dns, discovery, integrations, administration) or the name of the extension's own section
         order: { type: integer }
         required_permissions:
           type: array

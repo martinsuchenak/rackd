@@ -49,6 +49,7 @@ type NavItem struct {
 	Label               string            `json:"label"`
 	Path                string            `json:"path"`
 	Icon                string            `json:"icon"`
+	Section             string            `json:"section,omitempty"`
 	Order               int               `json:"order"`
 	RequiredPermissions []PermissionCheck `json:"required_permissions,omitempty"`
 }
@@ -97,7 +98,7 @@ func (b *UIConfigBuilder) AddExtension(m extension.Manifest) {
 	}
 	b.config.Extensions = append(b.config.Extensions, info)
 	for _, n := range m.UI.Nav {
-		item := NavItem{Label: n.Label, Path: n.Path, Icon: n.Icon, Order: n.Order}
+		item := NavItem{Label: n.Label, Path: n.Path, Icon: n.Icon, Section: n.Section, Order: n.Order}
 		if n.Permission != nil {
 			item.RequiredPermissions = []PermissionCheck{{Resource: n.Permission.Resource, Action: n.Permission.Action}}
 		}

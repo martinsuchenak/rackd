@@ -11,6 +11,12 @@ test('@mobile @smoke mobile sidebar navigation opens and routes correctly', asyn
   await expect(page.locator('aside[aria-label="Main navigation"]')).toBeVisible();
   await expect(page.locator('div.bg-black\\/50').first()).toBeVisible();
 
+  // On a phone only the current page's section starts open.
+  const ipam = page.getByRole('button', { name: 'IPAM' });
+  await expect(ipam).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('link', { name: 'Networks' })).toBeHidden();
+  await ipam.click();
+  await expect(ipam).toHaveAttribute('aria-expanded', 'true');
   await page.getByRole('link', { name: 'Networks' }).click();
   await expect(page).toHaveURL('/networks');
   await expect(page.getByRole('heading', { name: 'Networks' })).toBeVisible();

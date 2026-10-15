@@ -311,6 +311,10 @@ export interface NavItem {
   path: string;
   icon?: string;
   order: number;
+  /** The menu section: a core section's id, or a name for its own section. */
+  section?: string;
+  /** Set on items from extensions, which never go above the sections. */
+  extension?: boolean;
   required_permissions?: { resource: string; action: string }[];
 }
 

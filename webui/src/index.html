@@ -62,18 +62,41 @@
               </span>
             </a>
           </div>
-          <nav class="p-4 space-y-1 flex-1 overflow-y-auto" aria-label="Primary">
-            <!-- Sidebar items from router -->
-            <template x-for="item in navItems" :key="item.path">
-              <a :href="item.path" @click.prevent="navigate(item.path)"
-                class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
-                :class="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
-                :aria-current="((item.path === '/' ? route === '/' : route.startsWith(item.path)) || (item.path === '/networks' && route.startsWith('/pools'))) ? 'page' : null">
-                <span x-text="item.label"></span>
-                <span x-show="hasBadge(item)"
-                  class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
-                  x-text="item.badgeValue"></span>
-              </a>
+          <nav class="p-4 flex-1 overflow-y-auto overscroll-contain" aria-label="Primary">
+            <!-- Sidebar sections from router; headings collapse their items -->
+            <template x-for="(section, index) in navSections" :key="section.id">
+              <div :class="section.label ? 'mt-3' : ''">
+                <template x-if="section.label">
+                  <button type="button" @click="toggleSection(section.id)"
+                    :aria-expanded="isSectionOpen(section.id) ? 'true' : 'false'" :aria-controls="'nav-section-' + index"
+                    class="w-full flex items-center justify-between px-3 min-h-[44px] md:min-h-[32px] text-xs font-semibold uppercase tracking-wide rounded-md cursor-pointer text-[var(--sidebar-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--sidebar-accent)] focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors">
+                    <span class="flex items-center gap-2">
+                      <span x-text="section.label"></span>
+                      <span x-show="sectionBadge(section) > 0"
+                        class="px-2 py-0.5 text-xs font-medium normal-case rounded-full bg-red-600 text-white"
+                        x-text="sectionBadge(section)"></span>
+                    </span>
+                    <svg class="w-4 h-4 transition-transform" :class="isSectionOpen(section.id) ? 'rotate-90' : ''"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </template>
+                <div :id="'nav-section-' + index" x-show="isSectionOpen(section.id)" class="space-y-1"
+                  :role="section.label ? 'group' : null" :aria-label="section.label || null">
+                  <template x-for="item in section.items" :key="item.path">
+                    <a :href="item.path" @click.prevent="navigate(item.path)"
+                      class="flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-[var(--sidebar-ring)] transition-colors min-h-[44px]"
+                      :class="isActive(item) ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]' : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]'"
+                      :aria-current="isActive(item) ? 'page' : null">
+                      <span x-text="item.label"></span>
+                      <span x-show="hasBadge(item)"
+                        class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-red-600 text-white"
+                        x-text="item.badgeValue"></span>
+                    </a>
+                  </template>
+                </div>
+              </div>
             </template>
           </nav>
           <!-- Version footer -->

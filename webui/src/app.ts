@@ -6,7 +6,8 @@ import collapse from '@alpinejs/collapse';
 import type { UIConfig, Permission, Role } from './core/types';
 import { api, RackdAPI } from './core/api';
 import { getClosestDataStack, getPermissionsStore, getToastStore, mutateDom, type PermissionsStore } from './core/alpine';
-import { canAccessRoute, getPageTitle, isCoreRoute, mergeNavItems, missingSetting } from './core/features';
+import { activeSectionId, canAccessRoute, getPageTitle, groupNavItems, isActiveNavItem, isCoreRoute, mergeNavItems, missingSetting } from './core/features';
+import type { NavSection } from './core/features';
 import { createUIStore } from './core/ui';
 import { createExtensionAPI, loadExtensionUI, registerExtensionDirectives } from './core/extensions';
 
@@ -207,6 +208,32 @@ declare global {
   }
 }
 
+// Collapsed menu sections, remembered per browser. Storage can be missing or
+// throw (private windows, blocked site data), so every access is guarded.
+const NAV_COLLAPSED_KEY = 'rackd:nav-collapsed';
+
+function loadCollapsedSections(): Record<string, boolean> | null {
+  try {
+    const raw = window.localStorage.getItem(NAV_COLLAPSED_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCollapsedSections(collapsed: Record<string, boolean>): void {
+  try {
+    window.localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(collapsed));
+  } catch {
+    // Not remembered; the menu still works.
+  }
+}
+
+// The sidebar is an overlay below Tailwind's md breakpoint.
+function isSmallScreen(): boolean {
+  return window.matchMedia?.('(max-width: 767px)').matches ?? false;
+}
+
 function checkRoutePermission(path: string): boolean {
   const userPermissions = window.rackdConfig?.user?.permissions ?? [];
   return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? []);
@@ -221,6 +248,7 @@ function router() {
     // The server setting the current page needs that is off, if any.
     unavailable: null as string | null,
     activeConflictCount: 0,
+    collapsedSections: {} as Record<string, boolean>,
 
     // Server version from the UI config (shown in the sidebar footer)
     get serverVersion() {
@@ -246,9 +274,59 @@ function router() {
       }));
     },
 
+    // The menu in sections; see groupNavItems.
+    get navSections(): NavSection[] {
+      return groupNavItems(this.navItems);
+    },
 
+    isActive(item: { path: string }): boolean {
+      return isActiveNavItem(item as any, this.route);
+    },
+
+    isSectionOpen(id: string): boolean {
+      return id === '' || !this.collapsedSections[id];
+    },
+
+    toggleSection(id: string) {
+      this.collapsedSections = { ...this.collapsedSections, [id]: !this.collapsedSections[id] };
+      saveCollapsedSections(this.collapsedSections);
+    },
+
+    // A collapsed section shows its items' badges on its heading, so a
+    // conflict count isn't hidden.
+    sectionBadge(section: NavSection): number {
+      if (this.isSectionOpen(section.id)) {
+        return 0;
+      }
+      return section.items.reduce((sum, item: any) => sum + (item.badgeValue || 0), 0);
+    },
+
+    // Open the section holding the current page, so it's always visible.
+    openActiveSection() {
+      const id = activeSectionId(this.navSections, this.route);
+      if (id && this.collapsedSections[id]) {
+        this.collapsedSections = { ...this.collapsedSections, [id]: false };
+        saveCollapsedSections(this.collapsedSections);
+      }
+    },
+
+    initCollapsedSections() {
+      const stored = loadCollapsedSections();
+      if (stored) {
+        this.collapsedSections = stored;
+      } else if (isSmallScreen()) {
+        // On a phone the open sidebar fills the screen: start with only
+        // the current page's section open, so the menu fits.
+        const active = activeSectionId(this.navSections, this.route);
+        this.collapsedSections = Object.fromEntries(
+          this.navSections.filter((s) => s.id && s.id !== active).map((s) => [s.id, true]),
+        );
+      }
+      this.openActiveSection();
+    },
 
     init() {
+      this.initCollapsedSections();
       this.checkRoute(this.route);
       updatePageTitle(this.route);
       // Load conflict count on init (only if authenticated)
@@ -258,6 +336,7 @@ function router() {
       window.addEventListener('popstate', () => {
         this.route = window.location.pathname + window.location.search;
         this.checkRoute(this.route);
+        this.openActiveSection();
         updatePageTitle(this.route);
       });
     },
@@ -267,6 +346,7 @@ function router() {
         history.pushState({}, '', path);
         this.route = path;
         this.checkRoute(path);
+        this.openActiveSection();
         updatePageTitle(path);
         this.sidebarOpen = false;
       }

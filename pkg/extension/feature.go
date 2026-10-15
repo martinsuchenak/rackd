@@ -89,7 +89,13 @@ type NavItem struct {
 	Label string
 	Path  string
 	Icon  string
-	// Order positions the item among core's; lower comes first.
+	// Section places the item in the menu: the id of a core section
+	// ("organization", "inventory", "ipam", "dns", "discovery",
+	// "integrations" or "administration") to join it, or any other name for
+	// a section of the extension's own. Without one, the item goes in an
+	// "Extensions" section.
+	Section string
+	// Order positions the item within its section; lower comes first.
 	Order int
 	// Permission, if set, is required to see the item.
 	Permission *Permission
