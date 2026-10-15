@@ -76,8 +76,8 @@ rackd profile create \
 - **ports**: Custom port list (for custom scan type)
 - **enable_snmp**: Enable SNMP discovery
 - **enable_ssh**: Enable SSH-based discovery
-- **timeout_sec**: Connection timeout (1-60 seconds)
-- **max_workers**: Concurrent scan workers (1-100)
+- **timeout_sec**: Connection timeout in seconds (default 30)
+- **max_workers**: Concurrent scan workers, 1-100 (default 10)
 
 ### Built-in Profiles
 

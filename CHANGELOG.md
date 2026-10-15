@@ -134,6 +134,16 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- Bad input and references to missing records got a 500 instead of a 4xx, on
+  the REST API and over MCP. Credentials, scan profiles and scheduled scans that
+  fail validation, a missing `user_id` or `role_id` when granting a role, and a
+  relationship to a device that doesn't exist now answer 400; scanning or
+  testing something that doesn't exist answers 404; a zone import the DNS
+  provider fails answers 502, like the provider test. Deleting a user that
+  doesn't exist answers 404 like every other resource, instead of 204.
+- A scan profile created without `timeout_sec` or `max_workers` was rejected;
+  they default to 30 seconds and 10 workers. A scan profile now needs a name.
+- A NUL byte in a search query caused a 500.
 - The web UI hid the DNS zone Sync and Import buttons from operators, and the
   provider Test button from viewers and operators. They checked
   `dns-zone:update` and `dns-provider:update` instead of the `sync`, `import`

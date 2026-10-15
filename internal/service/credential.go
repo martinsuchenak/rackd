@@ -91,7 +91,7 @@ func mapCredentialError(err error) error {
 	case errors.Is(err, credentials.ErrInvalidCredential):
 		return ValidationErrors{{Field: "credential", Message: err.Error()}}
 	}
-	return err
+	return NormalizeError(err)
 }
 
 // credentialAudit describes a credential for the audit log, without secrets.

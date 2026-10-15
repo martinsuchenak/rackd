@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -26,27 +25,27 @@ type ScheduledScan struct {
 
 func (s *ScheduledScan) Validate() error {
 	if s.NetworkID == "" {
-		return fmt.Errorf("network_id is required")
+		return fieldErr("network_id", "network_id is required")
 	}
 
 	if s.ProfileID == "" {
-		return fmt.Errorf("profile_id is required")
+		return fieldErr("profile_id", "profile_id is required")
 	}
 
 	if s.CronExpression == "" {
-		return fmt.Errorf("cron_expression is required")
+		return fieldErr("cron_expression", "cron_expression is required")
 	}
 
 	parts := strings.Split(s.CronExpression, " ")
 	if len(parts) != 5 && len(parts) != 6 {
-		return fmt.Errorf("invalid cron expression: must have 5 or 6 parts, got %d", len(parts))
+		return fieldErr("cron_expression", "invalid cron expression: must have 5 or 6 parts, got %d", len(parts))
 	}
 
 	// Validate cron expression and check minimum interval
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	schedule, err := parser.Parse(s.CronExpression)
 	if err != nil {
-		return fmt.Errorf("invalid cron expression: %w", err)
+		return fieldErr("cron_expression", "invalid cron expression: %v", err)
 	}
 
 	// Check interval between first two runs
@@ -55,7 +54,7 @@ func (s *ScheduledScan) Validate() error {
 	second := schedule.Next(first)
 	interval := second.Sub(first)
 	if interval < MinScanInterval {
-		return fmt.Errorf("scan interval too short: %v (minimum %v)", interval, MinScanInterval)
+		return fieldErr("cron_expression", "scan interval too short: %v (minimum %v)", interval, MinScanInterval)
 	}
 
 	return nil

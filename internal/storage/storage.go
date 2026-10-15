@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"strings"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -404,6 +405,12 @@ func DuplicateField(err error) (string, bool) {
 // MissingField reports whether err is a NOT NULL violation, and its column.
 func MissingField(err error) (string, bool) {
 	return constraintColumn(err, "NOT NULL")
+}
+
+// IsForeignKeyFailure reports whether err is a foreign-key violation: a write
+// that refers to a missing record, or a delete of one still referred to.
+func IsForeignKeyFailure(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
 }
 
 func constraintColumn(err error, kind string) (string, bool) {

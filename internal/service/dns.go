@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -27,15 +28,18 @@ var (
 	// ErrDNSZoneInUse is returned when trying to delete a zone that has records
 	ErrDNSZoneInUse = fmt.Errorf("dns zone is in use")
 	// ErrDNSProviderNotFound is returned when a provider is not found
-	ErrDNSProviderNotFound = fmt.Errorf("dns provider not found")
+	ErrDNSProviderNotFound = fmt.Errorf("dns provider %w", ErrNotFound)
 	// ErrDNSZoneNotFound is returned when a zone is not found
-	ErrDNSZoneNotFound = fmt.Errorf("dns zone not found")
+	ErrDNSZoneNotFound = fmt.Errorf("dns zone %w", ErrNotFound)
 	// ErrDNSProviderTestFailed wraps upstream connectivity failures so the
 	// API layer can distinguish "provider unreachable/refused/blocked" from
 	// internal server errors and surface the cause to the operator.
 	ErrDNSProviderTestFailed = fmt.Errorf("dns provider test failed")
+	// ErrDNSProviderFailed wraps any other failed call to a provider, such
+	// as listing a zone's records for an import.
+	ErrDNSProviderFailed = fmt.Errorf("dns provider request failed")
 	// ErrDNSRecordNotFound is returned when a record is not found
-	ErrDNSRecordNotFound = fmt.Errorf("dns record not found")
+	ErrDNSRecordNotFound = fmt.Errorf("dns record %w", ErrNotFound)
 )
 
 // DNSService handles DNS provider, zone, and record operations
@@ -858,7 +862,7 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 		return &model.ImportResult{
 			Success: false,
 			Error:   err.Error(),
-		}, err
+		}, fmt.Errorf("%w: %w", ErrDNSProviderFailed, err)
 	}
 
 	// Load devices once for auto-matching; if it fails, continue without matching
@@ -965,8 +969,11 @@ func (s *DNSService) getProvider(ctx context.Context, providerID string) (dns.Pr
 
 	// Get provider config from storage
 	config, err := s.store.GetDNSProvider(ctx, providerID)
-	if err != nil {
+	if errors.Is(err, storage.ErrDNSProviderNotFound) {
 		return nil, ErrDNSProviderNotFound
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Decrypt token
