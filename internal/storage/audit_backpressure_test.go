@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/audit"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 // A burst bigger than the audit queue dropped entries while the writes they
@@ -46,5 +47,31 @@ func TestAuditBurstLosesNothing(t *testing.T) {
 	}
 	if n != writers*perWriter {
 		t.Fatalf("%d audit entries recorded, want %d", n, writers*perWriter)
+	}
+}
+
+// One entry the database refuses mustn't take the rest of its batch with it.
+func TestAuditBatchFallsBackPerEntry(t *testing.T) {
+	s := newTestStorage(t)
+	defer func() { _ = s.Close() }()
+	ctx := context.Background()
+
+	taken := &model.AuditLog{ID: "taken", Action: "update", Resource: "device", Status: "success"}
+	if err := s.CreateAuditLog(ctx, taken); err != nil {
+		t.Fatal(err)
+	}
+	batch := []*model.AuditLog{
+		{Action: "update", Resource: "device", ResourceID: "batch", Status: "success"},
+		{ID: "taken", Action: "update", Resource: "device", ResourceID: "batch", Status: "success"}, // duplicate id
+		{Action: "update", Resource: "device", ResourceID: "batch", Status: "success"},
+	}
+	s.persistAuditEntries(batch)
+
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE resource_id = 'batch'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("%d of the batch's good entries recorded, want 2", n)
 	}
 }
