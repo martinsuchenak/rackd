@@ -60,6 +60,14 @@ jobs:
       - name: Vet
         run: task vet
 
+      # The release builds every platform; catch a build that breaks on one
+      # (build tags, OS-specific calls) before a tag, not after it.
+      - name: Cross-compile
+        run: |
+          for target in darwin/amd64 darwin/arm64 windows/amd64 windows/arm64 linux/arm64; do
+            GOOS=${target%/*} GOARCH=${target#*/} go build -o /dev/null . || { echo "build failed for $target"; exit 1; }
+          done
+
       - name: Lint
         run: |
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ env.GOLANGCI_LINT_VERSION }}
