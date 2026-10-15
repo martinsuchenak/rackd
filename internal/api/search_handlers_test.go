@@ -8,15 +8,12 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/service"
-	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func TestSearch(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	handler := NewHandler(store, nil,

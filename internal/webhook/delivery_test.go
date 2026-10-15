@@ -9,15 +9,13 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 func newWebhookTestStore(t *testing.T) *storage.SQLiteStorage {
 	t.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage failed: %v", err)
-	}
+	store := storagetest.New(t)
 	return store
 }
 

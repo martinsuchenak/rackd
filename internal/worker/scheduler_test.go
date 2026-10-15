@@ -9,6 +9,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -41,10 +42,7 @@ func (m *mockScanner) CancelScan(ctx context.Context, scanID string) error {
 }
 
 func newTestScheduler(t *testing.T) (*Scheduler, storage.ExtendedStorage, *mockScanner) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 
 	cfg := &config.Config{
 		DiscoveryInterval:      100 * time.Millisecond,
@@ -223,10 +221,7 @@ func TestScheduler_HandlesNetworkNotFound(t *testing.T) {
 }
 
 func TestScheduler_ScanOnStartup(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
@@ -265,10 +260,7 @@ func TestScheduler_ScanOnStartup(t *testing.T) {
 }
 
 func TestScheduler_TickerTriggersScans(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 

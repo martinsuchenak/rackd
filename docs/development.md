@@ -98,7 +98,7 @@ bun run test:e2e:install
 - `task docker:run` - Run Docker container
 
 #### Release
-- `task release -- v0.1.0` - Tag a version and push it (triggers the goreleaser release workflow)
+- `task release -- v0.1.0` - Wait for CI to pass on the pushed release commit, then tag it and push the tag (triggers the goreleaser release workflow). It doesn't rerun the tests locally: CI already ran them, race detector included, on that exact commit.
 
 ### Build Process
 

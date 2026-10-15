@@ -32,8 +32,11 @@ func TestMDNSScanner_Discover(t *testing.T) {
 		t.Error("Expected error for invalid network, got nil")
 	}
 
-	// Test with valid network (may not find anything)
-	_, err = scanner.Discover(context.Background(), "127.0.0.0/8")
+	// A valid network runs a real query on every interface, waiting a second
+	// after each; a short deadline keeps the test quick (it may find nothing).
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_, err = scanner.Discover(ctx, "127.0.0.0/8")
 	// May not find anything in local network
 	if err != nil {
 		t.Logf("Discover returned error (may be expected): %v", err)

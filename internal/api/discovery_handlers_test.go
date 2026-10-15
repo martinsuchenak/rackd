@@ -14,6 +14,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -45,10 +46,7 @@ func (m *mockScanner) CancelScan(ctx context.Context, scanID string) error {
 
 func setupTestHandlerWithScanner(t *testing.T) (*Handler, storage.ExtendedStorage, discovery.Scanner) {
 	t.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 
 	// Create a test user with admin role for RBAC
 	passwordHash, _ := auth.HashPassword("test-password")

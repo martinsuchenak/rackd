@@ -6,14 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 )
 
 func TestHealthz(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	handler := NewHandler(store, nil)
@@ -33,10 +30,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestReadyz_Healthy(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	handler := NewHandler(store, nil)

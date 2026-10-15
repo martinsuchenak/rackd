@@ -12,7 +12,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/service"
-	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -22,10 +22,7 @@ func TestLoginReturnsPermissions(t *testing.T) {
 	}
 
 	// Setup in-memory database with migrations
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	// Create a test user with operator role

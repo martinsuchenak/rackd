@@ -14,6 +14,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -25,10 +26,7 @@ func init() {
 
 func setupTestHandler(t *testing.T) (*Handler, storage.ExtendedStorage) {
 	t.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 
 	// Create a test user with admin role for RBAC
 	passwordHash, _ := auth.HashPassword("test-password")

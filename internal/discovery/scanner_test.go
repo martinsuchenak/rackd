@@ -10,6 +10,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -18,10 +19,7 @@ func init() {
 }
 
 func newTestUnifiedScanner(t *testing.T) (*UnifiedScanner, storage.ExtendedStorage) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 
 	return NewUnifiedScanner(store, nil, 100*time.Millisecond, true), store
 }
