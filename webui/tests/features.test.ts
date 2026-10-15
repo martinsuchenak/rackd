@@ -81,8 +81,9 @@ describe('core/features', () => {
     expect(missingSetting('/users', { mcp_oauth: false })).toBeNull();
     expect(canAccessRoute('/oauth-clients', permissions)).toBe(true);
 
-    // An extension can't take the slot of the hidden core entry.
-    const extension: NavItem[] = [{ label: 'OAuth Clients', path: '/ext-oauth', order: 5 }];
+    // An extension can't take the slot of the hidden core entry: the same
+    // label in the same section.
+    const extension: NavItem[] = [{ label: 'OAuth Clients', path: '/ext-oauth', order: 5, section: 'integrations' }];
     expect(mergeNavItems(extension, { mcp_oauth: false }).map((item) => item.label)).not.toContain('OAuth Clients');
   });
 

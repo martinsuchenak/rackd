@@ -19,8 +19,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   Zones and DNS Providers are Zones and Providers, and Discovery is Scans.
 - Extension menu items can name a `Section`: a core section to join, or their
   own. Without one they go in an Extensions section. `Order` now sorts items
-  within their section, and an extension item is hidden only when its path is
-  a core page's, not when its label matches one.
+  within their section. An extension item is hidden when its path is a core
+  page's, or its label is a core item's in the same section.
 
 ## [0.2.1] - 2026-10-15
 
