@@ -251,3 +251,51 @@ func TestTheLastAdminCannotBeRemoved(t *testing.T) {
 		t.Errorf("delete the last admin: got %v, want ErrLastAdmin", err)
 	}
 }
+
+func TestSystemRolesFollowTheSubsetRule(t *testing.T) {
+	f := newPrivilegeFixture(t)
+	viewer, err := f.store.GetRoleByName(f.sys(), "viewer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewerPerms, err := f.store.GetRolePermissions(f.sys(), viewer.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A helpdesk that holds everything a viewer can do may create viewers.
+	held := []string{"users:create"}
+	for _, p := range viewerPerms {
+		held = append(held, p.Resource+":"+p.Action)
+	}
+	helpdesk := f.user("helpdesk", f.role("helpdesk", held...))
+	if _, err := f.users.Create(as(helpdesk), &model.CreateUserRequest{Username: "v", Email: "v@example.test", Password: "password123", RoleID: viewer.ID}); err != nil {
+		t.Errorf("create a viewer: %v", err)
+	}
+	// The admin role stays admin-only, whatever the caller holds.
+	wantForbidden(t, "assign the admin role", f.roles.AssignToUser(as(helpdesk), helpdesk, f.adminRole()))
+}
+
+func TestARefusedRoleIsNotCreated(t *testing.T) {
+	f := newPrivilegeFixture(t)
+	manager := f.user("manager", f.role("role-manager", "roles:create", "roles:update", "roles:list"))
+	role := &model.Role{Name: "sneaky"}
+	wantForbidden(t, "create a role with users:update", f.roles.CreateWithPermissions(as(manager), role, []string{f.perms["users:update"]}))
+	if _, err := f.store.GetRoleByName(f.sys(), "sneaky"); err == nil {
+		t.Error("the refused role was created anyway")
+	}
+	if err := f.roles.CreateWithPermissions(as(manager), &model.Role{Name: "fine"}, []string{f.perms["roles:list"]}); err != nil {
+		t.Errorf("create a role with a held permission: %v", err)
+	}
+}
+
+func TestAnOAuthTokenGrantsOnlyWithinItsScope(t *testing.T) {
+	f := newPrivilegeFixture(t)
+	manager := f.user("manager", f.role("role-manager", "roles:update", "users:update"))
+	other := f.role("other")
+	scoped := WithCaller(context.Background(), &Caller{Type: CallerTypeUser, UserID: manager, Scopes: []string{"roles:update"}})
+	// The user holds users:update, but the token doesn't.
+	wantForbidden(t, "grant a permission outside the token's scope", f.roles.GrantPermission(scoped, other, f.perms["users:update"]))
+	if err := f.roles.GrantPermission(scoped, other, f.perms["roles:update"]); err != nil {
+		t.Errorf("grant a permission within the scope: %v", err)
+	}
+}

@@ -293,7 +293,7 @@ Read-only access to view resources:
 
 A user who isn't an admin can be given `users:*` or `roles:*` permissions, for example a helpdesk role that resets passwords. Such a user can never gain, or hand out, more than they have:
 
-- **Granting:** they can only add permissions to a role, or remove them, if they hold those permissions themselves. They can only assign or remove a role whose permissions they all hold, whether on a new user or an existing one, and including themselves. Only admins can assign the admin role or a system role (operator, viewer). Deleting a role needs every permission it grants.
+- **Granting:** they can only add permissions to a role, or remove them, if they hold those permissions themselves. They can only assign or remove a role whose permissions they all hold, whether on a new user or an existing one, and including themselves. Only admins can assign the admin role; the operator and viewer roles follow the same rule as custom ones. Deleting a role needs every permission it grants.
 - **Acting on users:** they can only update, deactivate, delete, reset or change the password of, or remove a role from, a user whose permissions they all hold. They can't act on admins at all.
 
 Admins, meaning holders of the admin role, are exempt. The `is_admin` flag on a user shows whether they hold the admin role; setting it through the API or CLI grants or removes the role.
