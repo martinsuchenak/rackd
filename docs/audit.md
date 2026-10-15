@@ -305,10 +305,11 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 
 ### Write Performance
 
-- Audit logs are written **asynchronously** (via goroutine)
-- No blocking of API requests
-- Failed audit writes are logged but don't fail requests
-- Overhead: <1ms per request
+- Audit entries are queued and written in the background, in batches
+- When a burst fills the queue, the request writes its own entry instead, so
+  entries are never dropped; those requests are slower until the queue drains
+- A failed audit write is logged but doesn't fail the request
+- Overhead: <1ms per request normally
 
 ### Query Performance
 
@@ -347,7 +348,7 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 
 ### No audit logs appearing
 
-Auditing is always on. Check that the change was made by an authenticated caller (entries record who acted), and that the entry isn't older than `AUDIT_RETENTION_DAYS`. The server logs "Audit log channel full, dropping log entry" if writes outpace the database.
+Auditing is always on. Check that the change was made by an authenticated caller (entries record who acted), and that the entry isn't older than `AUDIT_RETENTION_DAYS`. A failed write is logged as "Failed to create audit log", with the database error.
 
 ### Audit logs growing too large
 

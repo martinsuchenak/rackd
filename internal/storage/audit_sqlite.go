@@ -10,6 +10,10 @@ import (
 
 // CreateAuditLog creates a new audit log entry
 func (s *SQLiteStorage) CreateAuditLog(ctx context.Context, log *model.AuditLog) error {
+	return insertAuditLog(ctx, s.db, log)
+}
+
+func insertAuditLog(ctx context.Context, db sqlTx, log *model.AuditLog) error {
 	if log.ID == "" {
 		log.ID = uuid.New().String()
 	}
@@ -17,7 +21,7 @@ func (s *SQLiteStorage) CreateAuditLog(ctx context.Context, log *model.AuditLog)
 		log.Timestamp = nowUTC()
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error, log.Source)
