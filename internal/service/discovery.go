@@ -194,7 +194,9 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 	}
 
 	// Set hostname from discovered device
-	if discovered.Hostname != "" && device.Hostname == "" {
+	// Discovered names (mDNS, NetBIOS) needn't be valid hostnames; keep only
+	// those that are, so promoting doesn't fail validation.
+	if discovered.Hostname != "" && device.Hostname == "" && isValidHostname(discovered.Hostname) {
 		device.Hostname = discovered.Hostname
 	}
 
@@ -236,7 +238,7 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		}
 
 		if device.Description == "" {
-			device.Description = strings.Join(infoParts, " | ")
+			device.Description = truncateRunes(strings.Join(infoParts, " | "), maxDescriptionLen)
 		}
 	}
 

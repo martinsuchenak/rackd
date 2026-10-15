@@ -356,7 +356,9 @@ export class RackdAPI {
       params.set('offset', String(offset));
       const page = (await this.request<Device[]>('GET', `/api/v1/devices?${params}`)) ?? [];
       devices.push(...page);
-      if (page.length < DEVICE_PAGE_SIZE) return devices;
+      // Anything but a full page ends it, so a server that ignores paging
+      // can't keep this looping.
+      if (page.length !== DEVICE_PAGE_SIZE) return devices;
     }
   }
 
