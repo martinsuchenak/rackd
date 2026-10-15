@@ -70,58 +70,69 @@ All errors return a consistent JSON structure:
 ```json
 {
   "code": "ERROR_CODE",
-  "error": "Human-readable error message",
-  "details": {}
+  "error": "Human-readable error message"
 }
 ```
+
+Validation errors add `details`, a list of the fields that failed (see below).
 
 ### HTTP Status Codes
 
 - `200` - Success
 - `201` - Created
 - `204` - No Content (successful deletion)
-- `400` - Bad Request (validation errors)
+- `400` - Bad Request (validation errors, invalid JSON)
 - `401` - Unauthorized (missing or invalid credentials)
 - `403` - Forbidden (authenticated, but the role lacks the permission)
 - `404` - Not Found (unknown resource, or unknown endpoint)
 - `405` - Method Not Allowed (the endpoint exists; the `Allow` header lists its methods)
-- `409` - Conflict (resource already exists or no available IPs)
-- `429` - Too Many Requests (rate limited)
+- `409` - Conflict (a record with that name already exists, no free IPs, or the last admin)
+- `415` - Unsupported Media Type (login without `Content-Type: application/json`)
+- `429` - Too Many Requests (rate limited, too many failed sign-ins, or too many scans running)
 - `500` - Internal Server Error
+- `502` - Bad Gateway (a DNS provider couldn't be reached or refused the request)
 
-### Common Error Codes
+### Error Codes
 
-- `NOT_FOUND` - No such endpoint, or the resource does not exist
-- `METHOD_NOT_ALLOWED` - The endpoint does not accept this method
-- `UNAUTHORIZED` - Missing or invalid credentials
-- `VALIDATION_ERROR` - Request validation failed
-- `INVALID_INPUT` - Invalid JSON or request format
-- `DEVICE_NOT_FOUND` - Device does not exist
-- `NETWORK_NOT_FOUND` - Network does not exist
-- `DATACENTER_NOT_FOUND` - Datacenter does not exist
-- `POOL_NOT_FOUND` - IP pool does not exist
-- `INTERNAL_ERROR` - Server error
+| Code | Status | Meaning |
+|------|--------|---------|
+| `VALIDATION_ERROR` | 400 | Fields failed validation; `details` lists them |
+| `INVALID_JSON` | 400 | The body isn't valid JSON |
+| `INVALID_INPUT` | 400 | A parameter or the request is malformed |
+| `SYSTEM_ROLE` | 400 | System roles can't be changed this way |
+| `CANNOT_DELETE_SELF` | 400 | Users can't delete their own account |
+| `UNAUTHORIZED` | 401 | Missing or invalid credentials, or the session ended |
+| `INVALID_CREDENTIALS` | 401 | Wrong username or password |
+| `FORBIDDEN` | 403 | The caller lacks the permission; for delegated user and role management the message says what is missing |
+| `CSRF_FAILED` | 403 | A session request that changes something lacks `X-Requested-With: XMLHttpRequest` |
+| `NOT_FOUND` | 404 | No such endpoint, or the resource doesn't exist |
+| `METHOD_NOT_ALLOWED` | 405 | The endpoint doesn't accept this method |
+| `ALREADY_EXISTS` | 409 | A record with that name (or other unique field) already exists |
+| `IP_NOT_AVAILABLE` | 409 | The pool has no free addresses |
+| `LAST_ADMIN` | 409 | The change would leave no active admin |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | Login requires `Content-Type: application/json` |
+| `RATE_LIMIT_EXCEEDED`, `LOGIN_RATE_LIMIT_EXCEEDED` | 429 | Too many requests from this address |
+| `TOO_MANY_ATTEMPTS` | 429 | Too many failed sign-ins for this account |
+| `TOO_MANY_SCANS` | 429 | The maximum number of discovery scans is running |
+| `INTERNAL_ERROR` | 500 | Server error; details are in the server log, not the response |
+| `PROVIDER_UNREACHABLE` | 502 | A DNS provider test or sync failed |
 
 ### Validation Errors
 
-Validation errors include detailed field-level information:
+Validation errors list each field that failed:
 
 ```json
 {
   "code": "VALIDATION_ERROR",
-  "error": "name: name is required; ip: invalid IP address",
-  "details": {
-    "name": {
-      "field": "name",
-      "message": "name is required"
-    },
-    "ip": {
-      "field": "ip", 
-      "message": "invalid IP address"
-    }
-  }
+  "error": "name: name is required; subnet: invalid CIDR notation",
+  "details": [
+    {"field": "name", "message": "name is required"},
+    {"field": "subnet", "message": "invalid CIDR notation"}
+  ]
 }
 ```
+
+Fields in bulk requests are prefixed with the item, such as `devices[3].name`.
 
 ## Pagination
 
@@ -725,7 +736,7 @@ GET /api/v1/discovery/scans/{id}
 POST /api/v1/discovery/scans/{id}/cancel
 ```
 
-**Response:** `204 No Content`
+**Response:** `200 OK` with the scan, now `cancelled`
 
 ### Delete Discovery Scan
 

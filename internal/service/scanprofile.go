@@ -31,7 +31,7 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 	}
 
 	if err := s.store.Create(ctx, profile); err != nil {
-		return ValidationErrors{{Field: "profile", Message: err.Error()}}
+		return fromStoreError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "create", "scan_profile", profile.ID, profile)
@@ -60,7 +60,7 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 		if errors.Is(err, storage.ErrProfileNotFound) {
 			return ErrNotFound
 		}
-		return ValidationErrors{{Field: "profile", Message: err.Error()}}
+		return fromStoreError(err)
 	}
 
 	recordAudit(ctx, s.rbac, "update", "scan_profile", id, profile)

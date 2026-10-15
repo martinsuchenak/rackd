@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -390,4 +391,28 @@ func NewExtendedStorage(dataDir string) (ExtendedStorage, error) {
 // NewExtendedStorageWithOptions creates a new extended storage instance with options.
 func NewExtendedStorageWithOptions(dataDir string, opts StorageOptions) (ExtendedStorage, error) {
 	return NewSQLiteStorageWithOptions(dataDir, opts)
+}
+
+var constraintPattern = regexp.MustCompile(`(UNIQUE|NOT NULL) constraint failed: [A-Za-z_]+\.([A-Za-z_]+)`)
+
+// DuplicateField reports whether err is a unique-constraint violation, and the
+// column it was on, such as "name".
+func DuplicateField(err error) (string, bool) {
+	return constraintColumn(err, "UNIQUE")
+}
+
+// MissingField reports whether err is a NOT NULL violation, and its column.
+func MissingField(err error) (string, bool) {
+	return constraintColumn(err, "NOT NULL")
+}
+
+func constraintColumn(err error, kind string) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+	m := constraintPattern.FindStringSubmatch(err.Error())
+	if m == nil || m[1] != kind {
+		return "", false
+	}
+	return m[2], true
 }

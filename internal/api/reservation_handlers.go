@@ -49,11 +49,21 @@ func (h *Handler) getReservation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateReservation(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	var req model.UpdateReservationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var body struct {
+		model.UpdateReservationRequest
+		ExpiresInDays int `json:"expires_in_days,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		h.invalidJSON(w)
 		return
 	}
+	req := body.UpdateReservationRequest
+	expiresAt, errs := reservationExpiry(req.ExpiresAt, body.ExpiresInDays)
+	if len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
+	}
+	req.ExpiresAt = expiresAt
 
 	reservation, err := h.svc.Reservations.Update(r.Context(), id, &req)
 	if err != nil {
@@ -96,14 +106,27 @@ func (h *Handler) listPoolReservations(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, reservations)
 }
 
-// createReservationRequestWithDefaults is used for parsing requests with optional expires_in_days field
+// createReservationRequestWithDefaults is the create body: the expiry may be
+// given as expires_at or expires_in_days.
 type createReservationRequestWithDefaults struct {
-	PoolID        string `json:"pool_id"`
-	IPAddress     string `json:"ip_address,omitempty"`
-	Hostname      string `json:"hostname,omitempty"`
-	Purpose       string `json:"purpose,omitempty"`
-	ExpiresInDays int    `json:"expires_in_days,omitempty"` // Days until expiration
-	Notes         string `json:"notes,omitempty"`
+	model.CreateReservationRequest
+	ExpiresInDays int `json:"expires_in_days,omitempty"` // Days until expiration
+}
+
+// reservationExpiry resolves a reservation's expiry from either expires_at or
+// expires_in_days (1 to 365); giving both is an error. Create and update take
+// the same two forms.
+func reservationExpiry(at *time.Time, days int) (*time.Time, ValidationErrors) {
+	switch {
+	case at != nil && days != 0:
+		return nil, ValidationErrors{{Field: "expires_in_days", Message: "give expires_at or expires_in_days, not both"}}
+	case days < 0 || days > 365:
+		return nil, ValidationErrors{{Field: "expires_in_days", Message: "expires_in_days must be between 1 and 365"}}
+	case days > 0:
+		exp := time.Now().UTC().AddDate(0, 0, days)
+		return &exp, nil
+	}
+	return at, nil
 }
 
 func (h *Handler) createReservationWithDefaults(w http.ResponseWriter, r *http.Request) {
@@ -113,25 +136,13 @@ func (h *Handler) createReservationWithDefaults(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Convert expires_in_days to *time.Time
-	var expiresAt *time.Time
-	if req.ExpiresInDays > 0 {
-		if req.ExpiresInDays > 365 {
-			h.badRequest(w, "expires_in_days cannot exceed 365")
-			return
-		}
-		exp := time.Now().UTC().AddDate(0, 0, req.ExpiresInDays)
-		expiresAt = &exp
+	expiresAt, errs := reservationExpiry(req.ExpiresAt, req.ExpiresInDays)
+	if len(errs) > 0 {
+		h.writeValidationErrors(w, errs)
+		return
 	}
-
-	createReq := &model.CreateReservationRequest{
-		PoolID:    req.PoolID,
-		IPAddress: req.IPAddress,
-		Hostname:  req.Hostname,
-		Purpose:   req.Purpose,
-		ExpiresAt: expiresAt,
-		Notes:     req.Notes,
-	}
+	createReq := &req.CreateReservationRequest
+	createReq.ExpiresAt = expiresAt
 
 	reservation, err := h.svc.Reservations.Create(r.Context(), createReq)
 	if err != nil {

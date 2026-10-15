@@ -785,6 +785,9 @@ func (s *OAuthService) DeleteClient(ctx context.Context, clientID string) error 
 	// Revoke all tokens for this client first
 	_ = s.store.RevokeOAuthTokensByClient(ctx, clientID)
 	if err := s.store.DeleteOAuthClient(ctx, clientID); err != nil {
+		if errors.Is(err, storage.ErrOAuthClientNotFound) {
+			return ErrNotFound
+		}
 		return err
 	}
 	recordAudit(ctx, s.store, "delete", "oauth_client", clientID, nil)

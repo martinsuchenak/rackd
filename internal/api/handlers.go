@@ -447,6 +447,10 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		log.Error("DNS provider test failed", "error", err)
 		h.writeError(w, http.StatusBadGateway, "PROVIDER_UNREACHABLE", err.Error())
 	default:
+		if field, ok := storage.DuplicateField(err); ok {
+			h.writeError(w, http.StatusConflict, "ALREADY_EXISTS", field+" is already in use")
+			return
+		}
 		h.internalError(w, err)
 	}
 }

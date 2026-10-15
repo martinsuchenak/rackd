@@ -112,24 +112,12 @@ POST /api/v1/conflicts/{id}/resolve
 **Request body:**
 ```json
 {
-  "resolution": "Updated device dev-2 to use 192.168.1.11"
+  "keep_device_id": "dev-1",
+  "notes": "dev-1 owns this address; dev-2 was re-addressed"
 }
 ```
 
-### Ignore Conflict
-
-Mark a conflict as acceptable:
-
-```http
-POST /api/v1/conflicts/{id}/ignore
-```
-
-**Request body:**
-```json
-{
-  "reason": "Both devices are in different VLANs"
-}
-```
+For a `duplicate_ip` conflict, `keep_device_id` names the device that keeps the address; it is removed from the others, which needs `devices:update` as well as `conflicts:resolve`. For an `overlapping_subnet` conflict, `keep_network_id` names the network to keep. The body may repeat the conflict as `conflict_id`, but not name a different one.
 
 ### Delete Conflict
 
@@ -172,17 +160,11 @@ rackd conflict detect
 ### Resolve Conflict
 
 ```bash
-rackd conflict resolve \
-  --id conflict-abc123 \
-  --resolution "Updated device IP to 192.168.1.11"
-```
+# Keep the address on dev-1 and remove it from the other devices
+rackd conflict resolve --id conflict-abc123 --keep-device-id dev-1 --notes "dev-2 re-addressed"
 
-### Ignore Conflict
-
-```bash
-rackd conflict ignore \
-  --id conflict-abc123 \
-  --reason "Devices in different broadcast domains"
+# Keep one of two overlapping networks
+rackd conflict resolve --id conflict-def456 --keep-network-id net-1
 ```
 
 ### Delete Conflict

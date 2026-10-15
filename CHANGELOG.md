@@ -130,6 +130,29 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Fixed
 
+- `rackd conflict resolve` always failed: it posted to `/api/v1/conflicts/resolve`,
+  which doesn't exist. It now uses `/api/v1/conflicts/{id}/resolve`. That route
+  ignored its `{id}` and resolved whatever `conflict_id` the body named; it now
+  resolves the conflict in the path, and refuses a body naming another one.
+- Reservations: create took only `expires_in_days` and update only `expires_at`,
+  so `rackd reservation update --expires` did nothing. Both now take either form
+  (and refuse both at once).
+- The CLI printed only "HTTP 400" for validation errors, because it couldn't decode
+  the `details` list. It now shows the code, the message and each field.
+- `rackd device list` returned at most 100 devices, and `--query` was ignored. It
+  now fetches every page unless `--limit` is given, adds `--offset`, and searches
+  with `--query`.
+- Duplicate names and other unique fields now return `409 ALREADY_EXISTS`
+  everywhere. Before, roles, circuits and user emails gave `500`, and scan
+  profiles and scheduled scans gave `400` with the database's message.
+  Deleting an unknown OAuth client or conflict now returns `404` instead of `500`
+  or `204`.
+- Scheduled scans with an invalid cron expression, no name or no network are
+  refused when saved, instead of being stored and failing silently in the
+  scheduler.
+- The API reference's error section, and the OpenAPI conflict and reservation
+  schemas, described fields and codes Rackd doesn't use. They now match, as do
+  `docs/conflicts.md` and `docs/reservations.md`.
 - The web UI showed only the first 100 devices: the device list, the relationship
   graph and the device pickers in NAT, DNS and pools. It now fetches every page.
 - MCP `device_save`, `network_save` and `datacenter_save` replaced the whole record

@@ -21,7 +21,8 @@ func TestToolErrorKeepsUsefulMessagesAndHidesInternalOnes(t *testing.T) {
 		{service.ErrForbidden, errCodeForbidden, "Forbidden"},
 		{fmt.Errorf("get: %w", storage.ErrNetworkNotFound), errCodeNotFound, "network not found"},
 		{fmt.Errorf("%w: connection refused", service.ErrDNSProviderTestFailed), errCodeUpstream, "connection refused"},
-		{errors.New("UNIQUE constraint failed: networks.name"), mcp.ErrorCodeInternalError, "Internal error"},
+		{errors.New("UNIQUE constraint failed: networks.name"), errCodeConflict, "name is already in use"},
+		{errors.New("database is locked: SQLITE_BUSY"), mcp.ErrorCodeInternalError, "Internal error"},
 	} {
 		var toolErr *mcp.ToolError
 		if !errors.As(toolError(tc.err), &toolErr) {
@@ -30,7 +31,7 @@ func TestToolErrorKeepsUsefulMessagesAndHidesInternalOnes(t *testing.T) {
 		if toolErr.Code != tc.code || toolErr.Message == "" || !strings.Contains(toolErr.Message, tc.contains) {
 			t.Errorf("%v -> %d %q, want %d containing %q", tc.err, toolErr.Code, toolErr.Message, tc.code, tc.contains)
 		}
-		if tc.code == mcp.ErrorCodeInternalError && strings.Contains(toolErr.Message, "UNIQUE") {
+		if tc.code == mcp.ErrorCodeInternalError && strings.Contains(toolErr.Message, "SQLITE") {
 			t.Errorf("internal detail reached the client: %q", toolErr.Message)
 		}
 	}

@@ -58,6 +58,9 @@ func toolError(err error) error {
 	case errors.Is(err, service.ErrSystemRole), errors.Is(err, service.ErrSelfDelete):
 		return mcp.NewToolErrorInvalidParams(err.Error())
 	}
+	if field, ok := storage.DuplicateField(err); ok {
+		return mcp.NewToolError(errCodeConflict, field+" is already in use", nil)
+	}
 	var toolErr *mcp.ToolError
 	if errors.As(err, &toolErr) {
 		return err

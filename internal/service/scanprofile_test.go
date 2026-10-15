@@ -74,10 +74,17 @@ func TestScanProfileService_UpdateAndDeleteMapErrors(t *testing.T) {
 	rbac.setPermission("user-1", "scan-profiles", "delete", true)
 	svc := NewScanProfileService(store, rbac)
 
-	store.updateErr = fmt.Errorf("bad profile")
+	// A duplicate name is a conflict; other store errors pass through, so
+	// their text doesn't reach clients as a validation message.
+	store.updateErr = fmt.Errorf("UNIQUE constraint failed: scan_profiles.name")
 	err := svc.Update(userContext("user-1"), "profile-1", &model.ScanProfile{Name: "updated"})
-	if err == nil || !errors.Is(err, ErrValidation) {
-		t.Fatalf("expected validation-wrapped update error, got %v", err)
+	if !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("expected ErrAlreadyExists for a duplicate name, got %v", err)
+	}
+	store.updateErr = fmt.Errorf("disk I/O error")
+	err = svc.Update(userContext("user-1"), "profile-1", &model.ScanProfile{Name: "updated"})
+	if err == nil || errors.Is(err, ErrValidation) {
+		t.Fatalf("expected the store error unchanged, got %v", err)
 	}
 
 	err = svc.Delete(userContext("user-1"), "missing")

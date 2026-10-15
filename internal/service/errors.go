@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/martinsuchenak/rackd/internal/storage"
+
 	"github.com/martinsuchenak/rackd/pkg/extension"
 )
 
@@ -48,4 +50,18 @@ func (e ValidationErrors) Error() string {
 // Unwrap returns ErrValidation so errors.Is(err, ErrValidation) works.
 func (e ValidationErrors) Unwrap() error {
 	return ErrValidation
+}
+
+// fromStoreError turns a database constraint failure into the error a client
+// can act on: a duplicate becomes ErrAlreadyExists, a missing required field
+// a validation error. Anything else is returned unchanged, so its text stays
+// out of responses.
+func fromStoreError(err error) error {
+	if field, ok := storage.DuplicateField(err); ok {
+		return fmt.Errorf("%w: %s is already in use", ErrAlreadyExists, field)
+	}
+	if field, ok := storage.MissingField(err); ok {
+		return ValidationErrors{{Field: field, Message: field + " is required"}}
+	}
+	return err
 }
