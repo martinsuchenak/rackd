@@ -12,7 +12,6 @@ var networkFS = map[uint32]string{
 	0x517B:     "SMB",
 	0xFF534D42: "CIFS",
 	0xFE534D42: "SMB2",
-	0x65735546: "FUSE (possibly a network mount)",
 }
 
 // warnIfNetworkFS logs a warning when the database's directory is on a
