@@ -91,3 +91,21 @@ func TestUIConfigBuilder_Handler(t *testing.T) {
 		t.Errorf("expected edition 'oss', got %q", config.Edition)
 	}
 }
+
+// The web UI hides the OAuth Clients page unless this says MCP OAuth is on;
+// otherwise the page's API calls get 404.
+func TestUIConfigReportsMCPOAuth(t *testing.T) {
+	for _, on := range []bool{false, true} {
+		b := NewUIConfigBuilder()
+		b.SetMCPOAuth(on)
+		w := httptest.NewRecorder()
+		b.HandlerWithSession(nil, nil)(w, httptest.NewRequest(http.MethodGet, "/api/v1/config", nil))
+		var got map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got["mcp_oauth"] != on {
+			t.Errorf("SetMCPOAuth(%v): config says mcp_oauth=%v", on, got["mcp_oauth"])
+		}
+	}
+}

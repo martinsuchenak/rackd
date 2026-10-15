@@ -209,7 +209,7 @@ declare global {
 
 function checkRoutePermission(path: string): boolean {
   const userPermissions = window.rackdConfig?.user?.permissions ?? [];
-  return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? []);
+  return canAccessRoute(path, userPermissions, window.rackdConfig?.pages ?? [], window.rackdConfig);
 }
 
 // Router component for SPA navigation
@@ -227,7 +227,7 @@ function router() {
 
     // Nav items from config, filtered by user permissions
     get navItems() {
-      const allItems = mergeNavItems(window.rackdConfig?.nav_items ?? []);
+      const allItems = mergeNavItems(window.rackdConfig?.nav_items ?? [], window.rackdConfig);
       const userPermissions = window.rackdConfig?.user?.permissions ?? [];
       return allItems.filter((item) => {
         if (!item.required_permissions || item.required_permissions.length === 0) {
