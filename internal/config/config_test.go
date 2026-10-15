@@ -32,7 +32,6 @@ func TestLoadWithEnvVars(t *testing.T) {
 	_ = os.Setenv("LOG_FORMAT", "json")
 	_ = os.Setenv("LOG_LEVEL", "debug")
 	_ = os.Setenv("DISCOVERY_INTERVAL", "1h")
-	_ = os.Setenv("DISCOVERY_MAX_CONCURRENT", "5")
 
 	cfg := Load()
 
@@ -51,16 +50,12 @@ func TestLoadWithEnvVars(t *testing.T) {
 	if cfg.DiscoveryInterval != time.Hour {
 		t.Errorf("Expected DiscoveryInterval 1h, got %v", cfg.DiscoveryInterval)
 	}
-	if cfg.DiscoveryMaxConcurrent != 5 {
-		t.Errorf("Expected DiscoveryMaxConcurrent 5, got %d", cfg.DiscoveryMaxConcurrent)
-	}
 
 	_ = os.Unsetenv("DATA_DIR")
 	_ = os.Unsetenv("LISTEN_ADDR")
 	_ = os.Unsetenv("LOG_FORMAT")
 	_ = os.Unsetenv("LOG_LEVEL")
 	_ = os.Unsetenv("DISCOVERY_INTERVAL")
-	_ = os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
 }
 
 func TestGetIntEnv(t *testing.T) {
@@ -165,19 +160,6 @@ func TestValidate(t *testing.T) {
 		t.Errorf("Expected error message to mention interval, got: %v", err)
 	}
 	_ = os.Unsetenv("DISCOVERY_INTERVAL")
-
-	os.Clearenv()
-	_ = os.Setenv("DISCOVERY_MAX_CONCURRENT", "0")
-	cfg = Load()
-
-	err = cfg.Validate()
-	if err == nil {
-		t.Error("Expected error for zero max concurrent, got nil")
-	}
-	if !strings.Contains(err.Error(), "DISCOVERY_MAX_CONCURRENT") {
-		t.Errorf("Expected error message to mention max concurrent, got: %v", err)
-	}
-	_ = os.Unsetenv("DISCOVERY_MAX_CONCURRENT")
 
 	os.Clearenv()
 	cfg = Load()

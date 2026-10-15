@@ -356,13 +356,15 @@ rackd discovery rule create \
 
 ```bash
 # Discovery settings
-RACKD_DISCOVERY_MAX_CONCURRENT=10    # Max concurrent scans
-RACKD_DISCOVERY_TIMEOUT=5s           # Per-host timeout
-RACKD_DISCOVERY_CLEANUP_INTERVAL=1h  # Cleanup completed scans
+DISCOVERY_INTERVAL=24h          # How often scheduled discovery rules run
+DISCOVERY_CLEANUP_DAYS=30       # Delete discovered devices not seen for this long
+DISCOVERY_SCAN_ON_STARTUP=false # Run discovery rules when the server starts
 
-# Credential encryption
-RACKD_CREDENTIAL_KEY=<32-byte-key>   # Encryption key for credentials
+# Credential encryption (64 hex characters: openssl rand -hex 32)
+ENCRYPTION_KEY=<key>
 ```
+
+At most 4 scans run at once; per-host timeouts and worker counts are set in [scan profiles](#scan-profiles).
 
 ### Performance Tuning
 
@@ -423,7 +425,7 @@ POST /api/v1/discovery/devices/{device-id}/promote
 Enable debug logging for detailed scan information:
 
 ```bash
-RACKD_LOG_LEVEL=debug rackd server
+LOG_LEVEL=debug rackd server
 ```
 
 ### Performance Monitoring

@@ -6,17 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
-)
-
-const (
-	ExitSuccess      = 0
-	ExitGeneric      = 1
-	ExitInvalidUsage = 2
-	ExitNetwork      = 3
-	ExitAuth         = 4
-	ExitServer       = 5
 )
 
 // APIError is the API's error body. details is a list of field errors for
@@ -60,9 +50,4 @@ func HandleError(resp *http.Response) error {
 		msg += " (" + strings.Join(parts, "; ") + ")"
 	}
 	return errors.New(msg)
-}
-
-func PrintError(msg string, code int) {
-	fmt.Fprintln(os.Stderr, "Error:", msg)
-	os.Exit(code)
 }

@@ -55,8 +55,6 @@ See [Audit Trail](audit.md) for detailed documentation.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DISCOVERY_INTERVAL` | `24h` | How often to run automatic network discovery (Go duration format) |
-| `DISCOVERY_MAX_CONCURRENT` | `10` | Maximum number of concurrent discovery operations |
-| `DISCOVERY_TIMEOUT` | `5s` | Timeout for individual device discovery attempts |
 | `DISCOVERY_CLEANUP_DAYS` | `30` | Days to keep discovery history before cleanup |
 | `DISCOVERY_SCAN_ON_STARTUP` | `false` | Whether to run discovery scan immediately on startup |
 | `DISCOVERY_SNMPV2C_ENABLED` | `false` | If false, prevents SNMPv2c discovery scans across the infrastructure. Enable if SNMPv2c required. |
@@ -83,7 +81,6 @@ export MCP_AUTH_TOKEN="your-secure-mcp-token"
 export LOG_FORMAT="json"
 export LOG_LEVEL="info"
 export DISCOVERY_INTERVAL="12h"
-export DISCOVERY_MAX_CONCURRENT="20"
 export RATE_LIMIT_REQUESTS="100"
 export RATE_LIMIT_WINDOW="1m"
 export AUDIT_RETENTION_DAYS="90"
@@ -106,7 +103,7 @@ docker run -d \
 
 ## Duration Format
 
-Duration values (like `DISCOVERY_INTERVAL` and `DISCOVERY_TIMEOUT`) use Go's duration format:
+Duration values (like `DISCOVERY_INTERVAL`) use Go's duration format:
 
 - `s` - seconds
 - `m` - minutes  

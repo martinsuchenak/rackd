@@ -263,7 +263,7 @@ Create `~/Library/LaunchAgents/com.rackd.server.plist`:
     </array>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>RACKD_DATA_DIR</key>
+        <key>DATA_DIR</key>
         <string>/Users/YOUR_USERNAME/.rackd</string>
     </dict>
     <key>RunAtLoad</key>
@@ -295,7 +295,7 @@ Use [NSSM](https://nssm.cc/) to create a Windows service:
 nssm install rackd "C:\Program Files\rackd\rackd.exe" server
 
 # Set data directory
-nssm set rackd AppEnvironmentExtra RACKD_DATA_DIR=C:\ProgramData\rackd
+nssm set rackd AppEnvironmentExtra DATA_DIR=C:\ProgramData\rackd
 
 # Start service
 nssm start rackd

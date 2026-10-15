@@ -272,7 +272,14 @@ export class RackdAPI {
     if (!response.ok) {
       let error: APIError = { code: 'UNKNOWN_ERROR', message: response.statusText };
       try {
-        error = await response.json();
+        // The envelope is {"error", "code", "details"}; normalise it as
+        // request() does, so callers always get a message.
+        const parsed = await response.json();
+        error = {
+          code: parsed?.code ?? 'UNKNOWN_ERROR',
+          message: parsed?.error ?? parsed?.message ?? response.statusText,
+          details: parsed?.details,
+        };
       } catch {
         // Use default error
       }
