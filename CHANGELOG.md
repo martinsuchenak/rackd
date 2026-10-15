@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-15
+
 ### Upgrading from v0.1.0
 
 - Global search (`/api/v1/search`, the search box) now requires `search:read`.
@@ -639,7 +641,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/martinsuchenak/rackd/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/martinsuchenak/rackd/compare/v0.0.21...v0.1.0
 [0.0.21]: https://github.com/martinsuchenak/rackd/compare/v0.0.20...v0.0.21
 [0.0.20]: https://github.com/martinsuchenak/rackd/compare/v0.0.19...v0.0.20
