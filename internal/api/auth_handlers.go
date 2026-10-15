@@ -68,7 +68,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 	// There is no caller yet, so give the audit log the attempt's address.
 	attemptCtx := audit.WithContext(r.Context(), &audit.Context{
-		Username: req.Username, IPAddress: getClientIP(r, h.proxyResolver), Source: "api",
+		IPAddress: getClientIP(r, h.proxyResolver), Source: "api",
 	})
 	result, err := h.svc.Auth.Login(attemptCtx, req.Username, req.Password)
 	if err != nil {

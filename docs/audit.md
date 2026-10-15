@@ -33,7 +33,7 @@ Entries older than `AUDIT_RETENTION_DAYS` are deleted when the server starts and
 | Roles | `create`, `update`, `delete`, `set_permissions`, `grant_permission`, `revoke_permission` |
 | API keys, credentials, webhooks | `create`, `update`, `delete` |
 | OAuth clients | `register`, `authorize` (a user approving a client), `delete` |
-| Sessions | `login` (`success` or `failure`, with the reason), `logout` |
+| Sessions | `login` (`success` or `failure`, with the reason), `logout`. When an account locks after too many failures, one entry says so; refusals while it is locked aren't audited, so they can't flood the log |
 
 Reads are not audited.
 
@@ -49,7 +49,7 @@ Each audit log entry includes:
 | `resource` | Resource type (device, user, role, etc.) |
 | `resource_id` | ID of the affected resource |
 | `user_id` | ID of the user who made the change (an API key acts as its owner) |
-| `username` | Their username; for a failed sign-in, the username that was tried |
+| `username` | Their username. A failed sign-in names the account only if it exists: what was typed for an unknown user isn't stored, since it is often a password entered in the wrong field |
 | `ip_address` | Client IP address |
 | `changes` | The record after the change, as JSON. For credentials, API keys, webhooks and OAuth clients only names, IDs and settings are kept: never secrets, keys, passwords or full webhook URLs |
 | `status` | `success` or `failure` |
