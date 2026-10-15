@@ -181,7 +181,9 @@ func openDB(dbPath string) (*sql.DB, error) {
 	if err := restrictDBFiles(dbPath); err != nil {
 		return nil, err
 	}
-	warnIfNetworkFS(filepath.Dir(dbPath))
+	if dbPath != ":memory:" {
+		warnIfNetworkFS(filepath.Dir(dbPath))
+	}
 	// synchronous(NORMAL) is SQLite's recommended setting with WAL: commits
 	// don't wait for the disk to sync, which made every write slow on slow or
 	// network storage. A power cut can lose the last transactions but can't
