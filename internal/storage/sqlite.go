@@ -310,17 +310,61 @@ func (s *SQLiteStorage) auditWorker() {
 	for {
 		select {
 		case logEntry := <-s.auditChan:
-			s.persistAuditEntry(logEntry)
+			s.persistAuditEntries(s.drainAudit(logEntry))
 		case <-s.auditDone:
 			for {
 				select {
 				case logEntry := <-s.auditChan:
-					s.persistAuditEntry(logEntry)
+					s.persistAuditEntries(s.drainAudit(logEntry))
 				default:
 					return
 				}
 			}
 		}
+	}
+}
+
+// auditBatchSize is the most entries the worker writes in one transaction.
+const auditBatchSize = 200
+
+// drainAudit returns first plus whatever else is already queued, up to a
+// batch.
+func (s *SQLiteStorage) drainAudit(first *model.AuditLog) []*model.AuditLog {
+	batch := []*model.AuditLog{first}
+	for len(batch) < auditBatchSize {
+		select {
+		case logEntry := <-s.auditChan:
+			batch = append(batch, logEntry)
+		default:
+			return batch
+		}
+	}
+	return batch
+}
+
+// persistAuditEntries writes a batch in one transaction, which is much
+// faster than one insert each, so the queue drains ahead of bursts. If the
+// transaction fails, it writes them one at a time so one bad entry doesn't
+// lose the rest.
+func (s *SQLiteStorage) persistAuditEntries(entries []*model.AuditLog) {
+	ctx := context.Background()
+	if len(entries) > 1 {
+		if tx, err := s.db.BeginTx(ctx, nil); err == nil {
+			ok := true
+			for _, e := range entries {
+				if err := insertAuditLog(ctx, tx, e); err != nil {
+					ok = false
+					break
+				}
+			}
+			if ok && tx.Commit() == nil {
+				return
+			}
+			_ = tx.Rollback()
+		}
+	}
+	for _, e := range entries {
+		s.persistAuditEntry(e)
 	}
 }
 
@@ -373,9 +417,19 @@ func (s *SQLiteStorage) auditEntry(ctx context.Context, action, resource, resour
 		return
 	}
 
+	// Never drop an entry. When closing, the worker may already be gone;
+	// when the queue is full, the write would otherwise be lost. In both
+	// cases write it here: slower for this request, but the audit trail
+	// stays complete.
+	select {
+	case <-s.auditDone:
+		s.persistAuditEntry(entry)
+		return
+	default:
+	}
 	select {
 	case s.auditChan <- entry:
 	default:
-		log.Error("Audit log channel full, dropping log entry", "action", action)
+		s.persistAuditEntry(entry)
 	}
 }
