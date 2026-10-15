@@ -195,7 +195,10 @@ type ConflictStorage interface {
 
 	// Detection helpers
 	FindDuplicateIPs(ctx context.Context) ([]model.Conflict, error)
-	FindOverlappingSubnets(ctx context.Context) ([]model.Conflict, error)
+	// FindOverlappingSubnets returns overlapping pairs, skipping those known
+	// reports as already handled (known may be nil), at most
+	// MaxOverlapConflicts.
+	FindOverlappingSubnets(ctx context.Context, known func(networkIDs []string) bool) ([]model.Conflict, error)
 	GetConflictsByDeviceID(ctx context.Context, deviceID string) ([]model.Conflict, error)
 	GetConflictsByIP(ctx context.Context, ip string) ([]model.Conflict, error)
 	DevicesWithIP(ctx context.Context, ip string) ([]DeviceRef, error)

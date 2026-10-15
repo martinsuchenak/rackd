@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/auth"
@@ -102,7 +103,7 @@ const (
 
 func checkClientMetadataLimits(req *model.OAuthClientRegistrationRequest) error {
 	switch {
-	case len(req.ClientName) > maxClientNameLen:
+	case utf8.RuneCountInString(req.ClientName) > maxClientNameLen:
 		return fmt.Errorf("%w: client_name is longer than %d characters", ErrOAuthClientMetadataLimit, maxClientNameLen)
 	case len(req.ClientURI) > maxClientURILen, len(req.LogoURI) > maxClientURILen:
 		return fmt.Errorf("%w: client_uri and logo_uri must be at most %d characters", ErrOAuthClientMetadataLimit, maxClientURILen)
