@@ -46,14 +46,44 @@ func TestReservationLifecycleThroughAPI(t *testing.T) {
 		t.Fatalf("auto-assigned %s, want 10.42.0.11", auto.IPAddress)
 	}
 
-	post("/api/v1/devices", map[string]any{
-		"name":      "takes-reserved",
-		"addresses": []map[string]any{{"ip": "10.42.0.10", "type": "ipv4", "pool_id": pool.ID, "network_id": network.ID}},
-	}, nil)
-	w := performRequest(mux, authReq(httptest.NewRequest("GET", "/api/v1/reservations/"+first.ID, nil)))
-	var got model.Reservation
-	_ = json.Unmarshal(w.Body.Bytes(), &got)
-	if got.Status != model.ReservationStatusClaimed {
-		t.Fatalf("reservation for the device's address is %q, want claimed", got.Status)
+	address := func(ip string) []map[string]any {
+		return []map[string]any{{"ip": ip, "type": "ipv4", "pool_id": pool.ID, "network_id": network.ID}}
 	}
+	wantClaimed := func(how string, r model.Reservation) {
+		t.Helper()
+		w := performRequest(mux, authReq(httptest.NewRequest("GET", "/api/v1/reservations/"+r.ID, nil)))
+		var got model.Reservation
+		_ = json.Unmarshal(w.Body.Bytes(), &got)
+		if got.Status != model.ReservationStatusClaimed {
+			t.Errorf("after %s, the reservation for %s is %q, want claimed", how, r.IPAddress, got.Status)
+		}
+	}
+
+	// Create.
+	post("/api/v1/devices", map[string]any{"name": "takes-reserved", "addresses": address("10.42.0.10")}, nil)
+	wantClaimed("a device create", first)
+
+	// Update.
+	var second model.Reservation
+	post("/api/v1/reservations", map[string]any{"pool_id": pool.ID, "ip_address": "10.42.0.12"}, &second)
+	var dev model.Device
+	post("/api/v1/devices", map[string]any{"name": "moves-later"}, &dev)
+	b, _ := json.Marshal(map[string]any{"name": "moves-later", "addresses": address("10.42.0.12")})
+	req := httptest.NewRequest("PUT", "/api/v1/devices/"+dev.ID, bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	if w := performRequest(mux, authReq(req)); w.Code != http.StatusOK {
+		t.Fatalf("update device: %d %s", w.Code, w.Body.String())
+	}
+	wantClaimed("a device update", second)
+
+	// Bulk create.
+	var third model.Reservation
+	post("/api/v1/reservations", map[string]any{"pool_id": pool.ID, "ip_address": "10.42.0.13"}, &third)
+	b, _ = json.Marshal([]map[string]any{{"name": "bulk-reserved", "addresses": address("10.42.0.13")}})
+	req = httptest.NewRequest("POST", "/api/v1/devices/bulk", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	if w := performRequest(mux, authReq(req)); w.Code >= 300 {
+		t.Fatalf("bulk create: %d %s", w.Code, w.Body.String())
+	}
+	wantClaimed("a bulk create", third)
 }

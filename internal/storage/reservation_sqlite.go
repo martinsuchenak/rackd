@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -121,9 +122,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		return err
 	}
 
-	for _, id := range expired {
-		s.auditLog(ctx, "expire", "reservation", id, nil)
-	}
+	s.auditExpired(ctx, expired)
 	s.auditLog(ctx, "create", "reservation", reservation.ID, reservation)
 	return nil
 }
@@ -348,6 +347,12 @@ func (s *SQLiteStorage) GetReservationsByUser(ctx context.Context, userID string
 // ExpireReservations marks active reservations past their expiry as expired,
 // freeing their addresses.
 func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
+	// Look before opening the transaction, which takes the write lock: the
+	// sweep runs every minute and usually finds nothing.
+	due, err := s.anyReservationExpired(ctx)
+	if err != nil || !due {
+		return 0, err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
@@ -360,10 +365,39 @@ func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	for _, id := range expired {
+	s.auditExpired(ctx, expired)
+	return int64(len(expired)), nil
+}
+
+// anyReservationExpired reports whether an active reservation has passed its
+// expiry.
+func (s *SQLiteStorage) anyReservationExpired(ctx context.Context) (bool, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT expires_at FROM reservations WHERE status = ? AND expires_at IS NOT NULL`,
+		string(model.ReservationStatusActive))
+	if err != nil {
+		return false, fmt.Errorf("failed to find expired reservations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	now := nowUTC()
+	for rows.Next() {
+		var expiresAt sql.NullTime
+		if err := rows.Scan(&expiresAt); err != nil {
+			return false, err
+		}
+		if reservationExpired(expiresAt, now) {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+// auditExpired records expiries as the system's doing, whatever request
+// happened to trigger them.
+func (s *SQLiteStorage) auditExpired(ctx context.Context, ids []string) {
+	ctx = audit.WithContext(ctx, &audit.Context{Source: "system"})
+	for _, id := range ids {
 		s.auditLog(ctx, "expire", "reservation", id, nil)
 	}
-	return int64(len(expired)), nil
 }
 
 // expireReservationsTx expires the active reservations past their expiry that

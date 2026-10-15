@@ -260,7 +260,8 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 	}
 	publishEvent(model.EventTypeDeviceCreated, deviceSnapshot(device))
 
-	// Check for IP conflicts after creation
+	// The device now holds its addresses: claim their reservations, then
+	// check for IP conflicts.
 	s.claimReservations(ctx, device)
 	s.checkForIPConflicts(ctx, device)
 
@@ -317,7 +318,8 @@ func (s *DeviceService) Update(ctx context.Context, device *model.Device) error 
 	}
 	publishEvent(model.EventTypeDeviceUpdated, deviceSnapshot(device))
 
-	// Check for IP conflicts after update
+	// Claim reservations for the device's addresses, then check for IP
+	// conflicts.
 	s.claimReservations(ctx, device)
 	s.checkForIPConflicts(ctx, device)
 
