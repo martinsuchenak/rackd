@@ -9,6 +9,14 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Changed
+
+- CI's race-detector job is several times faster: tests copy a database
+  migrated once (`internal/storage/storagetest`) instead of migrating a new
+  one each time, and the mDNS test no longer waits on every network
+  interface. `task release` now waits for CI to pass on the release commit
+  instead of rerunning the suite locally.
+
 ## [0.3.0] - 2026-10-15
 
 ### Changed

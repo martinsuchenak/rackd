@@ -16,6 +16,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -31,10 +32,7 @@ type benchEnv struct {
 
 func newBenchEnv(b *testing.B) *benchEnv {
 	b.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		b.Fatalf("storage: %v", err)
-	}
+	store := storagetest.New(b)
 
 	sm := auth.NewSessionManager(24*time.Hour, nil)
 	svc := service.NewServices(store, sm, nil)

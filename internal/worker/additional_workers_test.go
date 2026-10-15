@@ -12,6 +12,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -45,10 +46,7 @@ func init() {
 }
 
 func TestDNSWorkerRunOnceAndStartStop(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage failed: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	services := service.NewServices(store, nil, nil)
@@ -67,10 +65,7 @@ func TestDNSWorkerRunOnceAndStartStop(t *testing.T) {
 }
 
 func TestSnapshotWorkerRunOnceAndCleanup(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage failed: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
@@ -106,10 +101,7 @@ func TestSnapshotWorkerRunOnceAndCleanup(t *testing.T) {
 }
 
 func TestScheduledScanWorkerLifecycle(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage failed: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 
@@ -181,10 +173,7 @@ func TestScheduledScanWorkerLifecycle(t *testing.T) {
 }
 
 func TestSchedulerCleanupRunsWithoutRules(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLiteStorage failed: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	cfg := &config.Config{
@@ -201,10 +190,7 @@ var _ discovery.AdvancedScanner = (*mockAdvancedScanner)(nil)
 // pool.utilization_high fires when a pool crosses the threshold, once, not on
 // every snapshot while it stays above it.
 func TestSnapshotWorkerPublishesPoolUtilizationOnce(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 	ctx := context.Background()
 	network := &model.Network{Name: "n", Subnet: "10.9.0.0/24"}

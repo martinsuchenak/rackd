@@ -174,8 +174,9 @@ tasks:
       - docker run -p 8080:8080 -v {{.USER_WORKING_DIR}}/data:/data {{.APP_NAME}}:{{.VERSION}}
 
   release:
-    desc: 'Create a version tag and push it (usage: task release -- v0.1.0)'
-    deps: [check, build]
+    # CI tests the exact commit, race detector included, so the release waits
+    # for that instead of running the suite again here.
+    desc: 'Tag a commit CI has passed and push the tag (usage: task release -- v0.1.0)'
     preconditions:
       - sh: 'test -n "{{.CLI_ARGS}}"'
         msg: 'version tag required (e.g. task release -- v0.1.0)'
@@ -183,7 +184,10 @@ tasks:
         msg: 'working tree has uncommitted changes'
       - sh: './scripts/changelog-section.sh {{.CLI_ARGS}} >/dev/null'
         msg: 'CHANGELOG.md has no section for {{.CLI_ARGS}}: rename [Unreleased] to the version and date, then commit'
+      - sh: 'git fetch -q origin && test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"'
+        msg: 'HEAD is not origin/main: push the release commit to main first'
     cmds:
+      - ./scripts/wait-for-ci.sh HEAD
       - git tag {{.CLI_ARGS}}
       - git push origin {{.CLI_ARGS}}
       - echo "Tagged and pushed {{.CLI_ARGS}}"

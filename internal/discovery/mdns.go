@@ -92,7 +92,12 @@ func (s *mDNSScanner) Discover(ctx context.Context, network string) ([]mDNSResul
 					_, _ = c.Write(query)
 					_ = c.Close()
 				}
-				time.Sleep(1 * time.Second)
+				// Wait for answers, but stop as soon as the scan is cancelled.
+				select {
+				case <-ctx.Done():
+					goto cleanup
+				case <-time.After(time.Second):
+				}
 			}
 		}
 	}

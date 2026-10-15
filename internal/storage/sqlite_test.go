@@ -2,6 +2,8 @@ package storage
 
 import (
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -169,21 +171,52 @@ func TestWALModeEnabled(t *testing.T) {
 	}
 }
 
-// Helper function to create a test storage
+// Migrating a fresh database takes about half a second under the race
+// detector, and the tests open hundreds, so they copy one migrated once
+// (storagetest does the same for other packages; it can't be imported here).
+var (
+	templateOnce sync.Once
+	templateData []byte
+	templateErr  error
+)
+
+func migratedTemplate() ([]byte, error) {
+	templateOnce.Do(func() {
+		var dir string
+		if dir, templateErr = os.MkdirTemp("", "rackd-test-template-*"); templateErr != nil {
+			return
+		}
+		defer func() { _ = os.RemoveAll(dir) }()
+		path := filepath.Join(dir, "template.db")
+		var s *SQLiteStorage
+		if s, templateErr = NewSQLiteStorageWithPath(path); templateErr != nil {
+			return
+		}
+		// Fold the WAL into the main file, so its bytes are the whole database.
+		if _, templateErr = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); templateErr != nil {
+			_ = s.Close()
+			return
+		}
+		if templateErr = s.Close(); templateErr != nil {
+			return
+		}
+		templateData, templateErr = os.ReadFile(path)
+	})
+	return templateData, templateErr
+}
+
+// Helper function to create a test storage: a private copy of a migrated
+// database, so each test starts from the same fresh state.
 func newTestStorage(t *testing.T) *SQLiteStorage {
 	t.Helper()
-	// Use a temp file for each test to ensure isolation
-	tmpFile, err := os.CreateTemp("", "rackd-test-*.db")
+	data, err := migratedTemplate()
 	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+		t.Fatalf("failed to create template database: %v", err)
 	}
-	_ = tmpFile.Close()
-	dbPath := tmpFile.Name()
-	t.Cleanup(func() {
-		_ = os.Remove(dbPath)
-		_ = os.Remove(dbPath + "-wal")
-		_ = os.Remove(dbPath + "-shm")
-	})
+	dbPath := filepath.Join(t.TempDir(), "rackd.db")
+	if err := os.WriteFile(dbPath, data, 0600); err != nil {
+		t.Fatalf("failed to copy template database: %v", err)
+	}
 
 	storage, err := NewSQLiteStorageWithPath(dbPath)
 	if err != nil {

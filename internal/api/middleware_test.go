@@ -12,7 +12,7 @@ import (
 
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/log"
-	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -21,10 +21,7 @@ func init() {
 }
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	// Create a test user
@@ -75,10 +72,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_InvalidToken(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	called := false
@@ -101,10 +95,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_MissingBearer(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	called := false
@@ -127,10 +118,7 @@ func TestAuthMiddleware_MissingBearer(t *testing.T) {
 }
 
 func TestAuthMiddleware_NoHeader(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	called := false
@@ -152,10 +140,7 @@ func TestAuthMiddleware_NoHeader(t *testing.T) {
 }
 
 func TestAuthMiddleware_ExpiredKey(t *testing.T) {
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	defer func() { _ = store.Close() }()
 
 	// Create expired API key

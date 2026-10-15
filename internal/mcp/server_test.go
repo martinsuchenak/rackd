@@ -15,6 +15,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -51,10 +52,7 @@ func init() {
 
 func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 	t.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	scanner := &mockDiscoveryScanner{store: store}
 	svc := service.NewServices(store, nil, scanner)
 	return NewServer(svc, store, false), store
@@ -62,10 +60,7 @@ func newTestServer(t *testing.T) (*Server, storage.ExtendedStorage) {
 
 func newTestServerWithAuth(t *testing.T) (*Server, storage.ExtendedStorage) {
 	t.Helper()
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create storage: %v", err)
-	}
+	store := storagetest.New(t)
 	scanner := &mockDiscoveryScanner{store: store}
 	svc := service.NewServices(store, nil, scanner)
 	return NewServer(svc, store, true), store

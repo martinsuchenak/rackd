@@ -16,6 +16,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -37,10 +38,7 @@ type testServer struct {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		t.Fatalf("failed to create test storage: %v", err)
-	}
+	store := storagetest.New(t)
 	t.Cleanup(func() { _ = store.Close() })
 
 	sm := auth.NewSessionManager(24*time.Hour, nil)
