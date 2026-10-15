@@ -161,6 +161,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - A scan profile created without `timeout_sec` or `max_workers` was rejected;
   they default to 30 seconds and 10 workers. A scan profile now needs a name.
 - A NUL byte in a search query caused a 500.
+- The web UI showed OAuth Clients in the menu when MCP OAuth was off, and the
+  page failed with a 404. `/api/v1/config` now reports `mcp_oauth`, and the
+  page and its menu entry appear only when it's on.
 - The web UI hid the DNS zone Sync and Import buttons from operators, and the
   provider Test button from viewers and operators. They checked
   `dns-zone:update` and `dns-provider:update` instead of the `sync`, `import`
