@@ -140,7 +140,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   - Webhook URLs, which can themselves be credentials (Slack and Teams incoming
     webhooks, `?token=`), were shown to every role that can read webhooks. Only
     those who can update webhooks now see them in full; others see the scheme and
-    host. Delivery errors no longer repeat the URL.
+    host. Delivery errors no longer repeat the URL, and a migration removes it
+    from errors already stored.
   - The in-app log kept debug and trace entries whatever `LOG_LEVEL` was set to.
     It now keeps what the level shows, and hides sensitive values in logged query
     strings.
@@ -149,7 +150,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
     found, invalid or conflict, with the service's message, and anything else is
     logged and reported as an internal error.
   - HSTS was only sent when Rackd itself served TLS, which it never does. It is
-    now sent whenever `COOKIE_SECURE` is on (the default).
+    now sent whenever `COOKIE_SECURE` is on (the default), without
+    `includeSubDomains`, so it doesn't affect other sites on the same domain.
   - `rackd credentials rotate-key` took the new key as a command-line argument,
     visible in the process list, and updated rows one at a time. It now reads the
     key from `NEW_ENCRYPTION_KEY` or `--new-key-file`, needs `--yes`, and rotates

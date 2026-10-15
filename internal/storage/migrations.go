@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -243,6 +244,12 @@ var migrations = []*Migration{
 		Name:    "sync_is_admin_with_admin_role",
 		Up:      migrateSyncIsAdminUp,
 		Down:    migrateSyncIsAdminDown,
+	},
+	{
+		Version: "20261015130000",
+		Name:    "scrub_urls_from_delivery_errors",
+		Up:      migrateScrubDeliveryErrorURLsUp,
+		Down:    migrateScrubDeliveryErrorURLsDown,
 	},
 }
 
@@ -3005,5 +3012,45 @@ func migrateSyncIsAdminUp(ctx context.Context, tx sqlTx) error {
 // migrateSyncIsAdminDown is a no-op: the previous values were inconsistent
 // and nothing depends on them.
 func migrateSyncIsAdminDown(ctx context.Context, tx sqlTx) error {
+	return nil
+}
+
+// deliveryErrorURL matches the quoted request URL net/http puts in its
+// errors, as in: failed to send request: Post "https://...": dial tcp ...
+var deliveryErrorURL = regexp.MustCompile(`"[a-zA-Z][a-zA-Z0-9+.-]*://[^"]*"`)
+
+// migrateScrubDeliveryErrorURLsUp removes webhook URLs from stored delivery
+// errors. A URL can be the credential itself, and deliveries are readable by
+// roles that may not see webhook URLs; new errors are recorded without it.
+func migrateScrubDeliveryErrorURLsUp(ctx context.Context, tx sqlTx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id, error FROM webhook_deliveries WHERE error LIKE '%://%'`)
+	if err != nil {
+		return fmt.Errorf("failed to read delivery errors: %w", err)
+	}
+	type scrub struct{ id, text string }
+	var scrubs []scrub
+	for rows.Next() {
+		var id, text string
+		if err := rows.Scan(&id, &text); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("failed to read delivery error: %w", err)
+		}
+		if cleaned := deliveryErrorURL.ReplaceAllString(text, `"<webhook URL>"`); cleaned != text {
+			scrubs = append(scrubs, scrub{id, cleaned})
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	for _, s := range scrubs {
+		if _, err := tx.ExecContext(ctx, `UPDATE webhook_deliveries SET error = ? WHERE id = ?`, s.text, s.id); err != nil {
+			return fmt.Errorf("failed to scrub delivery error: %w", err)
+		}
+	}
+	return nil
+}
+
+// migrateScrubDeliveryErrorURLsDown is a no-op: the removed URLs are gone.
+func migrateScrubDeliveryErrorURLsDown(ctx context.Context, tx sqlTx) error {
 	return nil
 }

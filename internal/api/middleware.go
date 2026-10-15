@@ -358,7 +358,9 @@ func SecurityHeadersFor(next http.Handler, httpsDeployment bool) http.Handler {
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 
 		if httpsDeployment || r.TLS != nil {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			// No includeSubDomains: Rackd may run on a host whose other
+			// subdomains aren't served over HTTPS.
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		}
 
 		next.ServeHTTP(w, r)
