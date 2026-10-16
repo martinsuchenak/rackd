@@ -100,11 +100,15 @@ jobs:
         run: go test ./... -count=1 -race -timeout 30m
 
   # The release builds every platform; catch a build that breaks on one
-  # (build tags, OS-specific calls) before a tag, not after it. Its own job,
-  # so it runs alongside the others.
+  # before a tag, not after it. One job per target, in parallel: building all
+  # five in one job took longer than the race tests. linux/amd64 is the
+  # tests' own platform.
   cross:
-    name: Go (cross-compile release platforms)
+    name: Go (cross-compile ${{ matrix.target }})
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target: [darwin/amd64, darwin/arm64, windows/amd64, windows/arm64, linux/arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -126,10 +130,9 @@ jobs:
         run: task ui:build
 
       - name: Cross-compile
-        run: |
-          for target in darwin/amd64 darwin/arm64 windows/amd64 windows/arm64 linux/arm64; do
-            GOOS=${target%/*} GOARCH=${target#*/} go build -o /dev/null . || { echo "build failed for $target"; exit 1; }
-          done
+        env:
+          TARGET: ${{ matrix.target }}
+        run: GOOS=${TARGET%/*} GOARCH=${TARGET#*/} go build -o /dev/null .
 
   webui:
     name: Web UI (typecheck, API types, unit tests)
