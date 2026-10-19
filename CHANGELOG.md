@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
 ### Added
 
 - Discovered hosts that are already in the inventory are recognised: a device
@@ -708,7 +710,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/martinsuchenak/rackd/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/martinsuchenak/rackd/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/martinsuchenak/rackd/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/martinsuchenak/rackd/compare/v0.2.0...v0.2.1
