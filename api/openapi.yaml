@@ -321,6 +321,11 @@ components:
         last_seen: { type: string, format: date-time }
         promoted_to_device_id: { type: string, format: uuid }
         promoted_at: { type: string, format: date-time }
+        matched_device_id:
+          type: string
+          format: uuid
+          description: The inventory device this host already is, by promotion or by holding its IP on its network (or on no network); worked out when read
+        matched_device_name: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
       additionalProperties: true
@@ -2024,6 +2029,11 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The host is already in the inventory (`ALREADY_EXISTS`); the message names the device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /api/v1/discovery/rules:

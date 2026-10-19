@@ -118,89 +118,81 @@ func updateDiscoveredDevice(ctx context.Context, db sqlTx, device *model.Discove
 	return nil
 }
 
-// GetDiscoveredDevice retrieves a discovered device by ID
-func (s *SQLiteStorage) GetDiscoveredDevice(ctx context.Context, id string) (*model.DiscoveredDevice, error) {
-	var d model.DiscoveredDevice
-	var openPorts, services, promotedToDeviceID sql.NullString
-	var promotedAt sql.NullTime
+// discoveredMatch is the SQL condition for discovered host dd being device d:
+// promoted from it, or the device holds the host's IP on the host's network
+// (or on no network). The discovery list, the dashboard and stale-device
+// checks all use it, so they agree on what is already in the inventory.
+func discoveredMatch(dd, d string) string {
+	return `(` + dd + `.promoted_to_device_id = ` + d + `.id OR EXISTS (
+		SELECT 1 FROM addresses a WHERE a.device_id = ` + d + `.id AND a.ip = ` + dd + `.ip
+		AND (a.network_id = ` + dd + `.network_id OR a.network_id IS NULL OR a.network_id = '')))`
+}
 
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, ip, mac_address, hostname, network_id, status, confidence, os_guess, vendor,
-			open_ports, services, first_seen, last_seen, promoted_to_device_id, promoted_at,
-			created_at, updated_at
-		FROM discovered_devices WHERE id = ?
-	`, id).Scan(&d.ID, &d.IP, &d.MACAddress, &d.Hostname, &d.NetworkID, &d.Status, &d.Confidence,
-		&d.OSGuess, &d.Vendor, &openPorts, &services, &d.FirstSeen, &d.LastSeen,
-		&promotedToDeviceID, &promotedAt, &d.CreatedAt, &d.UpdatedAt)
-	if err == sql.ErrNoRows {
-		return nil, ErrDiscoveryNotFound
-	}
-	if err != nil {
+// discoveredSelect reads discovered hosts with the inventory device each one
+// matches, if any: the one it was promoted to, else the first by name.
+var discoveredSelect = `SELECT dd.id, dd.ip, dd.mac_address, dd.hostname, dd.network_id, dd.status,
+	dd.confidence, dd.os_guess, dd.vendor, dd.open_ports, dd.services, dd.first_seen, dd.last_seen,
+	dd.promoted_to_device_id, dd.promoted_at, dd.created_at, dd.updated_at, m.id, m.name
+	FROM discovered_devices dd
+	LEFT JOIN devices m ON m.id = (
+		SELECT d.id FROM devices d WHERE ` + discoveredMatch("dd", "d") + `
+		ORDER BY d.id = dd.promoted_to_device_id DESC, d.name LIMIT 1)`
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanDiscoveredDevice(row rowScanner) (*model.DiscoveredDevice, error) {
+	var d model.DiscoveredDevice
+	var openPorts, services, promotedToDeviceID, matchedID, matchedName sql.NullString
+	var promotedAt sql.NullTime
+	if err := row.Scan(&d.ID, &d.IP, &d.MACAddress, &d.Hostname, &d.NetworkID, &d.Status,
+		&d.Confidence, &d.OSGuess, &d.Vendor, &openPorts, &services, &d.FirstSeen, &d.LastSeen,
+		&promotedToDeviceID, &promotedAt, &d.CreatedAt, &d.UpdatedAt, &matchedID, &matchedName); err != nil {
 		return nil, err
 	}
-
 	if openPorts.Valid {
 		_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
 	}
 	if services.Valid {
 		_ = json.Unmarshal([]byte(services.String), &d.Services)
 	}
-	if promotedToDeviceID.Valid {
-		d.PromotedToDeviceID = promotedToDeviceID.String
-	}
+	d.PromotedToDeviceID = promotedToDeviceID.String
 	if promotedAt.Valid {
 		d.PromotedAt = &promotedAt.Time
 	}
+	d.MatchedDeviceID = matchedID.String
+	d.MatchedDeviceName = matchedName.String
 	return &d, nil
+}
+
+// GetDiscoveredDevice retrieves a discovered device by ID
+func (s *SQLiteStorage) GetDiscoveredDevice(ctx context.Context, id string) (*model.DiscoveredDevice, error) {
+	d, err := scanDiscoveredDevice(s.db.QueryRowContext(ctx, discoveredSelect+` WHERE dd.id = ?`, id))
+	if err == sql.ErrNoRows {
+		return nil, ErrDiscoveryNotFound
+	}
+	return d, err
 }
 
 // GetDiscoveredDeviceByIP retrieves a discovered device by network and IP
 func (s *SQLiteStorage) GetDiscoveredDeviceByIP(ctx context.Context, networkID, ip string) (*model.DiscoveredDevice, error) {
-	var d model.DiscoveredDevice
-	var openPorts, services, promotedToDeviceID sql.NullString
-	var promotedAt sql.NullTime
-
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, ip, mac_address, hostname, network_id, status, confidence, os_guess, vendor,
-			open_ports, services, first_seen, last_seen, promoted_to_device_id, promoted_at,
-			created_at, updated_at
-		FROM discovered_devices WHERE network_id = ? AND ip = ?
-	`, networkID, ip).Scan(&d.ID, &d.IP, &d.MACAddress, &d.Hostname, &d.NetworkID, &d.Status,
-		&d.Confidence, &d.OSGuess, &d.Vendor, &openPorts, &services, &d.FirstSeen, &d.LastSeen,
-		&promotedToDeviceID, &promotedAt, &d.CreatedAt, &d.UpdatedAt)
+	d, err := scanDiscoveredDevice(s.db.QueryRowContext(ctx, discoveredSelect+` WHERE dd.network_id = ? AND dd.ip = ?`, networkID, ip))
 	if err == sql.ErrNoRows {
 		return nil, ErrDiscoveryNotFound
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	if openPorts.Valid {
-		_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
-	}
-	if services.Valid {
-		_ = json.Unmarshal([]byte(services.String), &d.Services)
-	}
-	if promotedToDeviceID.Valid {
-		d.PromotedToDeviceID = promotedToDeviceID.String
-	}
-	if promotedAt.Valid {
-		d.PromotedAt = &promotedAt.Time
-	}
-	return &d, nil
+	return d, err
 }
 
 // ListDiscoveredDevices returns all discovered devices for a network
 func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID string) ([]model.DiscoveredDevice, error) {
-	query := `SELECT id, ip, mac_address, hostname, network_id, status, confidence, os_guess, vendor,
-		open_ports, services, first_seen, last_seen, promoted_to_device_id, promoted_at,
-		created_at, updated_at FROM discovered_devices`
+	query := discoveredSelect
 	var args []any
 	if networkID != "" {
-		query += " WHERE network_id = ?"
+		query += " WHERE dd.network_id = ?"
 		args = append(args, networkID)
 	}
-	query += " ORDER BY last_seen DESC"
+	query += " ORDER BY dd.last_seen DESC"
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -210,27 +202,11 @@ func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID str
 
 	var devices []model.DiscoveredDevice
 	for rows.Next() {
-		var d model.DiscoveredDevice
-		var openPorts, services, promotedToDeviceID sql.NullString
-		var promotedAt sql.NullTime
-		if err := rows.Scan(&d.ID, &d.IP, &d.MACAddress, &d.Hostname, &d.NetworkID, &d.Status,
-			&d.Confidence, &d.OSGuess, &d.Vendor, &openPorts, &services, &d.FirstSeen, &d.LastSeen,
-			&promotedToDeviceID, &promotedAt, &d.CreatedAt, &d.UpdatedAt); err != nil {
+		d, err := scanDiscoveredDevice(rows)
+		if err != nil {
 			return nil, err
 		}
-		if openPorts.Valid {
-			_ = json.Unmarshal([]byte(openPorts.String), &d.OpenPorts)
-		}
-		if services.Valid {
-			_ = json.Unmarshal([]byte(services.String), &d.Services)
-		}
-		if promotedToDeviceID.Valid {
-			d.PromotedToDeviceID = promotedToDeviceID.String
-		}
-		if promotedAt.Valid {
-			d.PromotedAt = &promotedAt.Time
-		}
-		devices = append(devices, d)
+		devices = append(devices, *d)
 	}
 	return devices, rows.Err()
 }

@@ -190,6 +190,9 @@ export interface DiscoveredDevice {
   last_seen: string;
   promoted_to_device_id?: string;
   promoted_at?: string;
+  /** The inventory device this host already is, by promotion or by IP. */
+  matched_device_id?: string;
+  matched_device_name?: string;
   created_at: string;
   updated_at: string;
 }

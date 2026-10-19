@@ -506,7 +506,7 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 			staleCutoff := nowUTC().AddDate(0, 0, -filter.StaleDays)
 			conditions = append(conditions, `status = 'active' AND NOT EXISTS (
 				SELECT 1 FROM discovered_devices dd
-				WHERE dd.promoted_to_device_id = devices.id
+				WHERE `+discoveredMatch("dd", "devices")+`
 				AND dd.last_seen >= ?
 			)`)
 			args = append(args, staleCutoff)
