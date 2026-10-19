@@ -55,12 +55,14 @@ func New(tb testing.TB) *storage.SQLiteStorage {
 		tb.Fatalf("storagetest: migrating the template database: %v", err)
 	}
 	// Not tb.TempDir: a background write still finishing after the test (an
-	// API key's last-used time, a session cleanup) can recreate the WAL file
-	// while the directory is removed, and TempDir fails the test for that.
+	// API key's last-used time is written asynchronously) can recreate the
+	// WAL file while the directory is removed, and TempDir fails the test for
+	// that.
 	dir, err := os.MkdirTemp("", "rackd-storagetest-*")
 	if err != nil {
 		tb.Fatalf("storagetest: creating a directory: %v", err)
 	}
+	tb.Cleanup(func() { _ = os.RemoveAll(dir) })
 	path := filepath.Join(dir, "rackd.db")
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		tb.Fatalf("storagetest: copying the template database: %v", err)
@@ -69,9 +71,7 @@ func New(tb testing.TB) *storage.SQLiteStorage {
 	if err != nil {
 		tb.Fatalf("storagetest: opening the database: %v", err)
 	}
-	tb.Cleanup(func() {
-		_ = s.Close()
-		_ = os.RemoveAll(dir)
-	})
+	// Registered after the directory's removal, so it runs first.
+	tb.Cleanup(func() { _ = s.Close() })
 	return s
 }
