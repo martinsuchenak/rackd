@@ -213,7 +213,15 @@ func newTestStorage(t *testing.T) *SQLiteStorage {
 	if err != nil {
 		t.Fatalf("failed to create template database: %v", err)
 	}
-	dbPath := filepath.Join(t.TempDir(), "rackd.db")
+	// Not t.TempDir: a background write finishing after the test can recreate
+	// the WAL file while the directory is removed, which TempDir reports as a
+	// failure.
+	dir, err := os.MkdirTemp("", "rackd-test-*")
+	if err != nil {
+		t.Fatalf("failed to create test directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	dbPath := filepath.Join(dir, "rackd.db")
 	if err := os.WriteFile(dbPath, data, 0600); err != nil {
 		t.Fatalf("failed to copy template database: %v", err)
 	}
