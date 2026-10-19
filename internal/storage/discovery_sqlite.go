@@ -118,25 +118,45 @@ func updateDiscoveredDevice(ctx context.Context, db sqlTx, device *model.Discove
 	return nil
 }
 
-// discoveredMatch is the SQL condition for discovered host dd being device d:
-// promoted from it, or the device holds the host's IP on the host's network
-// (or on no network). The discovery list, the dashboard and stale-device
-// checks all use it, so they agree on what is already in the inventory.
-func discoveredMatch(dd, d string) string {
-	return `(` + dd + `.promoted_to_device_id = ` + d + `.id OR EXISTS (
-		SELECT 1 FROM addresses a WHERE a.device_id = ` + d + `.id AND a.ip = ` + dd + `.ip
-		AND (a.network_id = ` + dd + `.network_id OR a.network_id IS NULL OR a.network_id = '')))`
+// A discovered host is in the inventory when a device is already it: the
+// device it was promoted to, or a device with an address on the host's IP, on
+// the host's network or with no network. The discovery list, the dashboard
+// and the stale-device checks all use this rule, in forms that start from the
+// indexed IP columns rather than scanning every device for every host.
+
+// addressMatchesHost is the condition for address a being on discovered
+// host dd's IP and network.
+func addressMatchesHost(a, dd string) string {
+	return a + `.ip = ` + dd + `.ip AND (` + a + `.network_id = ` + dd + `.network_id OR ` +
+		a + `.network_id IS NULL OR ` + a + `.network_id = '')`
+}
+
+// hostInInventory is the condition for discovered host dd being in the
+// inventory.
+func hostInInventory(dd string) string {
+	return `(EXISTS (SELECT 1 FROM devices p WHERE p.id = ` + dd + `.promoted_to_device_id)
+		OR EXISTS (SELECT 1 FROM addresses a WHERE ` + addressMatchesHost("a", dd) + `))`
+}
+
+// deviceSeenSince is the condition for device d having been found by a scan
+// since a time; it takes that time twice as arguments.
+func deviceSeenSince(d string) string {
+	return `(EXISTS (SELECT 1 FROM discovered_devices dd WHERE dd.promoted_to_device_id = ` + d + `.id AND dd.last_seen >= ?)
+		OR EXISTS (SELECT 1 FROM addresses a JOIN discovered_devices dd ON ` + addressMatchesHost("a", "dd") + `
+			WHERE a.device_id = ` + d + `.id AND dd.last_seen >= ?))`
 }
 
 // discoveredSelect reads discovered hosts with the inventory device each one
-// matches, if any: the one it was promoted to, else the first by name.
+// is, if any: the one it was promoted to, else the first by name holding its
+// address.
 var discoveredSelect = `SELECT dd.id, dd.ip, dd.mac_address, dd.hostname, dd.network_id, dd.status,
 	dd.confidence, dd.os_guess, dd.vendor, dd.open_ports, dd.services, dd.first_seen, dd.last_seen,
 	dd.promoted_to_device_id, dd.promoted_at, dd.created_at, dd.updated_at, m.id, m.name
 	FROM discovered_devices dd
-	LEFT JOIN devices m ON m.id = (
-		SELECT d.id FROM devices d WHERE ` + discoveredMatch("dd", "d") + `
-		ORDER BY d.id = dd.promoted_to_device_id DESC, d.name LIMIT 1)`
+	LEFT JOIN devices m ON m.id = COALESCE(
+		(SELECT p.id FROM devices p WHERE p.id = dd.promoted_to_device_id),
+		(SELECT a.device_id FROM addresses a JOIN devices ad ON ad.id = a.device_id
+			WHERE ` + addressMatchesHost("a", "dd") + ` ORDER BY ad.name LIMIT 1))`
 
 type rowScanner interface {
 	Scan(dest ...any) error

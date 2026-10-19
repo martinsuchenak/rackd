@@ -504,12 +504,8 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 		if filter.StaleDays > 0 {
 			// Filter devices not seen in discovery for X days
 			staleCutoff := nowUTC().AddDate(0, 0, -filter.StaleDays)
-			conditions = append(conditions, `status = 'active' AND NOT EXISTS (
-				SELECT 1 FROM discovered_devices dd
-				WHERE `+discoveredMatch("dd", "devices")+`
-				AND dd.last_seen >= ?
-			)`)
-			args = append(args, staleCutoff)
+			conditions = append(conditions, `status = 'active' AND NOT `+deviceSeenSince("devices"))
+			args = append(args, staleCutoff, staleCutoff)
 		}
 	}
 
