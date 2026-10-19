@@ -157,8 +157,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 	// Discovered devices count
 	// Discovered hosts not yet in the inventory.
 	_ = s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM discovered_devices dd WHERE NOT EXISTS (
-			SELECT 1 FROM devices d WHERE `+discoveredMatch("dd", "d")+`)`).Scan(&stats.DiscoveredDevices)
+		`SELECT COUNT(*) FROM discovered_devices dd WHERE NOT `+hostInInventory("dd")).Scan(&stats.DiscoveredDevices)
 
 	// Stale devices (active devices not seen in discovery for X days)
 	staleCutoff := nowUTC().AddDate(0, 0, -staleDays)
@@ -167,26 +166,18 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 	_ = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT d.id) FROM devices d
 		WHERE d.status = 'active'
-		AND NOT EXISTS (
-			SELECT 1 FROM discovered_devices dd
-			WHERE `+discoveredMatch("dd", "d")+`
-			AND dd.last_seen >= ?
-		)
-	`, staleCutoff).Scan(&stats.StaleDevices)
+		AND NOT `+deviceSeenSince("d")+`
+	`, staleCutoff, staleCutoff).Scan(&stats.StaleDevices)
 
 	// Get list of stale devices (limit to 20 for dashboard)
 	staleRows, err := s.db.QueryContext(ctx, `
 		SELECT d.id, d.name, d.hostname
 		FROM devices d
 		WHERE d.status = 'active'
-		AND NOT EXISTS (
-			SELECT 1 FROM discovered_devices dd
-			WHERE `+discoveredMatch("dd", "d")+`
-			AND dd.last_seen >= ?
-		)
+		AND NOT `+deviceSeenSince("d")+`
 		ORDER BY d.name
 		LIMIT 20
-	`, staleCutoff)
+	`, staleCutoff, staleCutoff)
 	if err == nil {
 		defer func() { _ = staleRows.Close() }()
 		for staleRows.Next() {

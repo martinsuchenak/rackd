@@ -275,6 +275,12 @@ var migrations = []*Migration{
 		Up:      migrateUniqueDiscoveredDeviceUp,
 		Down:    migrateUniqueDiscoveredDeviceDown,
 	},
+	{
+		Version: "20261019120000",
+		Name:    "index_discovered_devices_by_promoted_device",
+		Up:      migrateIndexDiscoveredPromotedUp,
+		Down:    migrateIndexDiscoveredPromotedDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3196,5 +3202,17 @@ func migrateUniqueDiscoveredDeviceUp(ctx context.Context, tx sqlTx) error {
 
 func migrateUniqueDiscoveredDeviceDown(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_discovered_devices_network_ip`)
+	return err
+}
+
+// migrateIndexDiscoveredPromotedUp indexes discovered hosts by the device they
+// were promoted to, which the stale-device checks look up for every device.
+func migrateIndexDiscoveredPromotedUp(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_discovered_devices_promoted ON discovered_devices(promoted_to_device_id)`)
+	return err
+}
+
+func migrateIndexDiscoveredPromotedDown(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_discovered_devices_promoted`)
 	return err
 }
