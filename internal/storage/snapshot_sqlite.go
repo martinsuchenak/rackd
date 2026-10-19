@@ -155,8 +155,10 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 		&stats.DeviceStatusCounts.Maintenance, &stats.DeviceStatusCounts.Decommissioned)
 
 	// Discovered devices count
+	// Discovered hosts not yet in the inventory.
 	_ = s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM discovered_devices WHERE promoted_to_device_id IS NULL`).Scan(&stats.DiscoveredDevices)
+		`SELECT COUNT(*) FROM discovered_devices dd WHERE NOT EXISTS (
+			SELECT 1 FROM devices d WHERE `+discoveredMatch("dd", "d")+`)`).Scan(&stats.DiscoveredDevices)
 
 	// Stale devices (active devices not seen in discovery for X days)
 	staleCutoff := nowUTC().AddDate(0, 0, -staleDays)
@@ -167,7 +169,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 		WHERE d.status = 'active'
 		AND NOT EXISTS (
 			SELECT 1 FROM discovered_devices dd
-			WHERE dd.promoted_to_device_id = d.id
+			WHERE `+discoveredMatch("dd", "d")+`
 			AND dd.last_seen >= ?
 		)
 	`, staleCutoff).Scan(&stats.StaleDevices)
@@ -179,7 +181,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 		WHERE d.status = 'active'
 		AND NOT EXISTS (
 			SELECT 1 FROM discovered_devices dd
-			WHERE dd.promoted_to_device_id = d.id
+			WHERE `+discoveredMatch("dd", "d")+`
 			AND dd.last_seen >= ?
 		)
 		ORDER BY d.name

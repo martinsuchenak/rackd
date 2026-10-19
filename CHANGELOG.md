@@ -9,6 +9,25 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- Discovered hosts that are already in the inventory are recognised: a device
+  with an address on the host's IP (on its network, or with no network) is a
+  match, as is the device a host was promoted to. The discovery list shows
+  "In inventory: <device>" instead of Promote, a **New only** filter hides
+  them, the API returns `matched_device_id` and `matched_device_name`, and
+  `rackd discovery list` has an IN INVENTORY column.
+
+### Fixed
+
+- Promoting a host that was already in the inventory created a second device
+  with the same address; it now answers `409` naming the device.
+- The dashboard counted hosts already in the inventory as discovered, and
+  called a device stale even when every scan found it, unless it had been
+  promoted from discovery.
+- The discovery guide described automatic promotion rules and `promote`
+  flags that don't exist.
+
 ## [0.3.1] - 2026-10-16
 
 ### Changed

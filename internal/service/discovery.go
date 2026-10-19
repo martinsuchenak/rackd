@@ -181,6 +181,12 @@ func (s *DiscoveryService) PromoteDevice(ctx context.Context, discoveredID strin
 		}
 		return nil, err
 	}
+	// Promoting a host the inventory already has would only create a second
+	// device with the same address.
+	if discovered.MatchedDeviceID != "" {
+		return nil, fmt.Errorf("%w: %s is already in the inventory as %s (%s)", ErrAlreadyExists,
+			discovered.IP, discovered.MatchedDeviceName, discovered.MatchedDeviceID)
+	}
 
 	// Carry over all discovered device data to supported Device fields
 	device.ID = uuid.Must(uuid.NewV7()).String()

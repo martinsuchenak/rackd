@@ -47,6 +47,9 @@ interface DiscoveryListData {
   getConfidenceBadgeClass(confidence: number): any;
   getScanStatusClass(status: string): any;
   getDiscoveredDevicesCountLabel(): string;
+  isInInventory(d: DiscoveredDevice): boolean;
+  inventoryDeviceURL(d: DiscoveredDevice): string;
+  inventoryDeviceLabel(d: DiscoveredDevice): string;
   hasOldScans(): boolean;
   getPromoteVendorPlaceholder(): string;
   getNetworkOptionLabel(network: Network): string;
@@ -78,6 +81,8 @@ export function discoveryList() {
     error: '',
     pollInterval: null as ReturnType<typeof setInterval> | null,
     deviceFilter: '',
+    // Show only hosts that aren't in the inventory yet.
+    newOnly: false,
     deviceSortColumn: 'confidence' as 'confidence' | 'last_seen' | 'ip',
     deviceSortDirection: 'desc' as 'asc' | 'desc',
     // Scan modal
@@ -105,9 +110,12 @@ export function discoveryList() {
     // Computed property for filtered devices
     get filteredDevices() {
       const filter = this.deviceFilter.toLowerCase().trim();
+      const candidates = this.newOnly
+        ? this.discoveredDevices.filter((d) => !this.isInInventory(d))
+        : this.discoveredDevices;
       const devices = !filter
-        ? [...this.discoveredDevices]
-        : this.discoveredDevices.filter(d =>
+        ? [...candidates]
+        : candidates.filter(d =>
         d.ip.toLowerCase().includes(filter) ||
         (d.hostname && d.hostname.toLowerCase().includes(filter)) ||
         (d.mac_address && d.mac_address.toLowerCase().includes(filter)) ||
@@ -519,7 +527,20 @@ export function discoveryList() {
       };
     },
     getDiscoveredDevicesCountLabel(): string {
-      return this.discoveredDevices.length + ' devices found';
+      const total = this.discoveredDevices.length;
+      const unknown = this.discoveredDevices.filter((d) => !this.isInInventory(d)).length;
+      return `${total} devices found, ${unknown} not in the inventory`;
+    },
+    // A host is in the inventory when a device already is it: promoted from
+    // it, or holding its IP on its network (worked out by the server).
+    isInInventory(d: DiscoveredDevice): boolean {
+      return !!(d.matched_device_id || d.promoted_to_device_id);
+    },
+    inventoryDeviceURL(d: DiscoveredDevice): string {
+      return '/devices/detail?id=' + encodeURIComponent(d.matched_device_id || d.promoted_to_device_id || '');
+    },
+    inventoryDeviceLabel(d: DiscoveredDevice): string {
+      return 'In inventory: ' + (d.matched_device_name || 'device');
     },
     hasOldScans(): boolean {
       return this.scans.some((s) => s.status === 'completed' || s.status === 'failed');

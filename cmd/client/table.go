@@ -50,13 +50,19 @@ func PrintDatacenterTable(datacenters []map[string]interface{}) {
 
 func PrintDiscoveredTable(devices []map[string]interface{}) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "ID\tIP\tHOSTNAME\tSTATUS")
+	_, _ = fmt.Fprintln(w, "ID\tIP\tHOSTNAME\tSTATUS\tIN INVENTORY")
 	for _, d := range devices {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		// The device this host already is, if any; "-" for a new host.
+		inventory := getString(d, "matched_device_name")
+		if inventory == "" {
+			inventory = "-"
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			getString(d, "id"),
 			getString(d, "ip"),
 			getString(d, "hostname"),
-			getString(d, "status"))
+			getString(d, "status"),
+			inventory)
 	}
 	_ = w.Flush()
 }

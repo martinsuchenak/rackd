@@ -320,28 +320,31 @@ SNMP scanning discovers network infrastructure devices and detailed system infor
 
 Convert discovered devices to managed inventory items.
 
+### Hosts already in the inventory
+
+A discovered host is in the inventory when a device is already it: the device
+it was promoted to, or a device with an address on the host's IP, on the
+host's network or with no network set. This is worked out when the list is
+read, so a device added after a scan matches straight away.
+
+- The web UI shows "In inventory: <device>" instead of Promote, linking to the
+  device, and **New only** hides those hosts.
+- `rackd discovery list` shows the device in its IN INVENTORY column, and the
+  API returns it as `matched_device_id` and `matched_device_name`.
+- Promoting such a host answers `409 ALREADY_EXISTS`, naming the device,
+  instead of creating a second device with the same address.
+- The dashboard counts only hosts that aren't in the inventory, and a device a
+  scan keeps finding isn't counted as stale.
+
 ### Promotion Process
 
 ```bash
 # Promote discovered device to inventory
-rackd discovery promote <discovered-device-id> \
-  --name "Web Server 01" \
-  --type server \
-  --datacenter-id <datacenter-id>
+rackd discovery promote --discovered-id <discovered-device-id> --name "Web Server 01"
 ```
 
-### Automatic Promotion Rules
-
-Configure rules for automatic device promotion:
-
-```bash
-# Create promotion rule
-rackd discovery rule create \
-  --network-id <network-id> \
-  --condition "port:22,80" \
-  --device-type server \
-  --auto-promote
-```
+The device gets the host's IP, hostname, OS and vendor; open ports, services
+and the MAC address go in its description.
 
 ### Promotion Benefits
 

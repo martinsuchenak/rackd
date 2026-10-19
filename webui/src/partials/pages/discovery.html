@@ -85,6 +85,11 @@
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <span class="font-semibold text-gray-900 dark:text-white">Discovered Devices</span>
           <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" x-model="newOnly"
+                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+              New only
+            </label>
             <input type="text" x-model="deviceFilter" placeholder="Filter devices..."
               class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
             <button x-show="hasDiscoveredDevices()" @click="deleteAllDevices()"
@@ -208,7 +213,11 @@
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
                     <div class="flex justify-end gap-2">
-                      <button @click="openPromoteModal(d)" x-show="!d.promoted_to_device_id"
+                      <template x-if="isInInventory(d)">
+                        <a :href="inventoryDeviceURL(d)" @click.prevent="$dispatch('nav', inventoryDeviceURL(d))"
+                          class="text-gray-600 dark:text-gray-300 hover:underline text-sm" x-text="inventoryDeviceLabel(d)"></a>
+                      </template>
+                      <button @click="openPromoteModal(d)" x-show="!isInInventory(d)"
                         class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
                         Promote
                       </button>

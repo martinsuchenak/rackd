@@ -18,8 +18,13 @@ type DiscoveredDevice struct {
 	LastSeen           time.Time     `json:"last_seen"`
 	PromotedToDeviceID string        `json:"promoted_to_device_id,omitempty"`
 	PromotedAt         *time.Time    `json:"promoted_at,omitempty"`
-	CreatedAt          time.Time     `json:"created_at"`
-	UpdatedAt          time.Time     `json:"updated_at"`
+	// MatchedDeviceID and MatchedDeviceName name the inventory device this
+	// host already is: the one it was promoted to, or one holding its IP on
+	// its network. Worked out when read, not stored.
+	MatchedDeviceID   string    `json:"matched_device_id,omitempty"`
+	MatchedDeviceName string    `json:"matched_device_name,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type ServiceInfo struct {

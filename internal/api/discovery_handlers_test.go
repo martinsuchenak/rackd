@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -577,4 +578,34 @@ func TestPromoteDevice(t *testing.T) {
 			t.Errorf("expected %d, got %d", http.StatusBadRequest, w.Code)
 		}
 	})
+}
+
+// Promoting a host the inventory already has would create a second device
+// with the same address.
+func TestPromoteRefusesHostAlreadyInInventory(t *testing.T) {
+	h, store, _ := setupTestHandlerWithScanner(t)
+	defer func() { _ = store.Close() }()
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+	ctx := context.Background()
+
+	network := &model.Network{Name: "promote-lan", Subnet: "192.168.88.0/24"}
+	if err := store.CreateNetwork(ctx, network); err != nil {
+		t.Fatal(err)
+	}
+	existing := &model.Device{Name: "mikrotik", Addresses: []model.Address{{IP: "192.168.88.2", Type: "ipv4", NetworkID: network.ID}}}
+	if err := store.CreateDevice(ctx, existing); err != nil {
+		t.Fatal(err)
+	}
+	host := &model.DiscoveredDevice{IP: "192.168.88.2", NetworkID: network.ID, Status: "online"}
+	if _, err := store.SaveDiscoveredDevice(ctx, host); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("POST", "/api/v1/discovery/devices/"+host.ID+"/promote", strings.NewReader(`{"name":"duplicate"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := performRequest(mux, authReq(req))
+	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "mikrotik") {
+		t.Fatalf("got %d %s, want 409 naming the existing device", w.Code, w.Body.String())
+	}
 }
