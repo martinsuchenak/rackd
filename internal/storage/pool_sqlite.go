@@ -309,8 +309,8 @@ func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.Netw
 // network (the web UI's device form sets neither). The caller checks the IP
 // is in the pool's range; the condition takes the pool's ID and network ID.
 func addressInPool(a string) string {
-	return `(` + a + `.pool_id = ? OR ((` + a + `.pool_id IS NULL OR ` + a + `.pool_id = '') AND (` +
-		a + `.network_id = ? OR ` + a + `.network_id IS NULL OR ` + a + `.network_id = '')))`
+	return `(` + a + `.pool_id = ? OR ((` + a + `.pool_id IS NULL OR ` + a + `.pool_id = '') AND ` +
+		onNetworkOrNone(a, "?") + `))`
 }
 
 // GetNextAvailableIP finds the first unused IP address in a pool's range.

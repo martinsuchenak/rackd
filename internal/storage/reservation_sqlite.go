@@ -453,13 +453,10 @@ func (s *SQLiteStorage) ClaimReservation(ctx context.Context, addr model.Address
 	if addr.IP == "" {
 		return false, ErrInvalidID
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return false, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	rows, err := tx.QueryContext(ctx, `
+	// This runs for every address a device is saved with, and usually finds
+	// nothing, so look first without taking the write lock; the update below
+	// only claims a reservation that is still active.
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT r.id, r.pool_id, r.expires_at FROM reservations r
 		JOIN network_pools p ON p.id = r.pool_id
 		WHERE r.ip_address = ? AND r.status = ?
@@ -490,12 +487,13 @@ func (s *SQLiteStorage) ClaimReservation(ctx context.Context, addr model.Address
 	if found != 1 {
 		return false, nil
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?`,
-		string(model.ReservationStatusClaimed), now, id); err != nil {
+	res, err := s.db.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
+		string(model.ReservationStatusClaimed), now, id, string(model.ReservationStatusActive))
+	if err != nil {
 		return false, fmt.Errorf("failed to claim reservation: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return false, err
+	if n, _ := res.RowsAffected(); n != 1 {
+		return false, nil // claimed or released meanwhile
 	}
 	s.auditLog(ctx, "claim", "reservation", id, map[string]string{"pool_id": poolID, "ip_address": addr.IP})
 	return true, nil
