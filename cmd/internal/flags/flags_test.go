@@ -3,6 +3,8 @@ package flags
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/paularlott/cli"
@@ -35,5 +37,41 @@ func TestDataDirFallsBackToConfig(t *testing.T) {
 	}
 	if got := run("--data-dir", "/flag/wins"); got != "/flag/wins" {
 		t.Errorf("with the flag: %q, want the flag", got)
+	}
+}
+
+// A DATA_DIR that was ignored until now must not quietly start an empty
+// inventory beside the real database in ./data.
+func TestCheckDataDirMove(t *testing.T) {
+	work := t.TempDir()
+	t.Chdir(work)
+	if err := os.MkdirAll("data", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := &cli.Command{Name: "rackd", Flags: []cli.Flag{DataDir()}}
+	target := filepath.Join(work, "moved")
+
+	t.Setenv("DATA_DIR", target)
+	if err := CheckDataDirMove(cmd, target); err != nil {
+		t.Errorf("no database anywhere (a new install): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join("data", "rackd.db"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckDataDirMove(cmd, target); err == nil || !strings.Contains(err.Error(), "ignored DATA_DIR") {
+		t.Errorf("database only in ./data: %v, want a refusal", err)
+	}
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "rackd.db"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckDataDirMove(cmd, target); err != nil {
+		t.Errorf("database moved: %v", err)
+	}
+	t.Setenv("DATA_DIR", "./data")
+	if err := CheckDataDirMove(cmd, "./data"); err != nil {
+		t.Errorf("DATA_DIR=./data: %v", err)
 	}
 }

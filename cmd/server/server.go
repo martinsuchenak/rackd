@@ -83,6 +83,9 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 			if err := cfg.Validate(); err != nil {
 				return err
 			}
+			if err := flags.CheckDataDirMove(cmd, cfg.DataDir); err != nil {
+				return err
+			}
 
 			// Configure the shared SSRF guard before any outbound
 			// integration request can be issued.
