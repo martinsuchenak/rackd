@@ -80,7 +80,7 @@ test('@users the roles column shows roles without opening the role manager', asy
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
 
   const adminRow = page.locator('tbody tr').filter({ has: page.getByText('admin', { exact: true }) }).first();
-  const rolesCell = adminRow.locator('td').nth(3); // User, Email, Full Name, Roles
-  await expect(rolesCell.getByText('admin', { exact: true })).toBeVisible();
-  await expect(rolesCell.getByText('No roles')).toBeHidden();
+  const roles = adminRow.getByRole('list', { name: 'Roles' });
+  await expect(roles.getByRole('listitem').filter({ hasText: /^\s*admin\s*$/ })).toBeVisible();
+  await expect(roles.getByText('No roles')).toBeHidden();
 });

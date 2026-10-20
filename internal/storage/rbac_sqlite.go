@@ -447,34 +447,44 @@ func (s *SQLiteStorage) GetUserRoles(ctx context.Context, userID string) ([]mode
 // empty list.
 func (s *SQLiteStorage) GetRolesForUsers(ctx context.Context, userIDs []string) (map[string][]model.Role, error) {
 	result := make(map[string][]model.Role, len(userIDs))
-	if len(userIDs) == 0 {
-		return result, nil
-	}
-	args := make([]any, len(userIDs))
-	for i, id := range userIDs {
-		args[i] = id
+	for _, id := range userIDs {
 		result[id] = []model.Role{}
 	}
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT ur.user_id, r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at
-		FROM roles r
-		JOIN user_roles ur ON r.id = ur.role_id
-		WHERE ur.user_id IN (?`+strings.Repeat(",?", len(userIDs)-1)+`)
-		ORDER BY r.name
-	`, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get roles for users: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var userID string
-		var role model.Role
-		if err := rows.Scan(&userID, &role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan role: %w", err)
+	// Batches stay well inside SQLite's limit on bound parameters, since an
+	// unpaginated list asks for every user.
+	const batch = 500
+	for start := 0; start < len(userIDs); start += batch {
+		ids := userIDs[start:min(start+batch, len(userIDs))]
+		args := make([]any, len(ids))
+		for i, id := range ids {
+			args[i] = id
 		}
-		result[userID] = append(result[userID], role)
+		rows, err := s.db.QueryContext(ctx, `
+			SELECT ur.user_id, r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at
+			FROM roles r
+			JOIN user_roles ur ON r.id = ur.role_id
+			WHERE ur.user_id IN (?`+strings.Repeat(",?", len(ids)-1)+`)
+			ORDER BY r.name
+		`, args...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get roles for users: %w", err)
+		}
+		for rows.Next() {
+			var userID string
+			var role model.Role
+			if err := rows.Scan(&userID, &role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt); err != nil {
+				_ = rows.Close()
+				return nil, fmt.Errorf("failed to scan role: %w", err)
+			}
+			result[userID] = append(result[userID], role)
+		}
+		err = rows.Err()
+		_ = rows.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 // GetUserPermissions returns the permissions the user's roles grant, as

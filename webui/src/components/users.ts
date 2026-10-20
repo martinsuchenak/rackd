@@ -309,7 +309,9 @@ export function usersList() {
     async openRoleManager(user: User): Promise<void> {
       this.modalType = '';
       this.selectedUser = user;
-      // Load roles and assign to selectedUser for hasRole() to work
+      // Load roles and assign to selectedUser for hasRole() to work. Fetch
+      // them afresh: a cached set can be older than the list beside it.
+      this.userRolesCache.delete(user.id);
       this.selectedUser.roles = await this.loadUserRoles(user.id);
       this.modalType = 'roles';
     },
