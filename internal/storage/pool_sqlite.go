@@ -304,6 +304,15 @@ func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.Netw
 	return pools, nil
 }
 
+// addressInPool is the condition for address a counting toward a pool: it is
+// bound to the pool, or bound to none and on the pool's network or on no
+// network (the web UI's device form sets neither). The caller checks the IP
+// is in the pool's range; the condition takes the pool's ID and network ID.
+func addressInPool(a string) string {
+	return `(` + a + `.pool_id = ? OR ((` + a + `.pool_id IS NULL OR ` + a + `.pool_id = '') AND (` +
+		a + `.network_id = ? OR ` + a + `.network_id IS NULL OR ` + a + `.network_id = '')))`
+}
+
 // GetNextAvailableIP finds the first unused IP address in a pool's range.
 // The pool read and used-IP scan run in one transaction so two concurrent
 // callers cannot be handed the same "free" IP.
@@ -343,7 +352,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 
 	// Get all used IPs in this pool
 	usedIPs := make(map[string]bool)
-	rows, err := tx.QueryContext(ctx, `SELECT ip FROM addresses WHERE pool_id = ?`, poolID)
+	rows, err := tx.QueryContext(ctx, `SELECT a.ip FROM addresses a WHERE `+addressInPool("a"), poolID, pool.NetworkID)
 	if err != nil {
 		return "", fmt.Errorf("failed to query used IPs: %w", err)
 	}
@@ -538,7 +547,7 @@ func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IP
 
 	// Get all addresses in this pool with their device IDs
 	addressMap := make(map[string]string) // ip -> device_id
-	rows, err := s.db.QueryContext(ctx, `SELECT ip, device_id FROM addresses WHERE pool_id = ?`, poolID)
+	rows, err := s.db.QueryContext(ctx, `SELECT a.ip, a.device_id FROM addresses a WHERE `+addressInPool("a"), poolID, pool.NetworkID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query addresses: %w", err)
 	}

@@ -212,15 +212,22 @@ rackd reservation create \
 
 ### Devices
 
+An address is in a pool when its IP is in the pool's range and it is bound to
+the pool, or bound to no pool and on the pool's network or on no network. The
+web UI's device form creates addresses with neither, and they count too.
+
 When a device is created or updated (including in bulk, and by promoting a
 discovered device) with an address in a pool, the active reservation for that
 address becomes `claimed`. The address is no longer just set aside; it is in
-use. The claim is in the audit log.
+use. The claim is in the audit log. An address on no network claims only when
+a single pool has the IP reserved: with several, they're on different
+networks and the address could belong to any of them.
 
 If the address is already assigned to another device, a duplicate-IP conflict
 is created.
 
-The next free address in a pool skips both assigned and reserved addresses.
+Reserving an address a device already holds is refused. The next free address
+in a pool, and the pool heatmap, count both assigned and reserved addresses.
 
 ### Webhooks
 

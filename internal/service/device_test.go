@@ -86,6 +86,11 @@ func (s *stubStorage) GetUserRoles(_ context.Context, _ string) ([]model.Role, e
 
 func (s *stubStorage) RBACManager() *rbac.Manager { return stubRBACManager }
 
+// Creating a device claims any reservation for its addresses; there are none here.
+func (s *stubStorage) ClaimReservation(context.Context, model.Address) (bool, error) {
+	return false, nil
+}
+
 func (s *stubStorage) DB() *sql.DB  { return nil }
 func (s *stubStorage) Close() error { return nil }
 

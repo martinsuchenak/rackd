@@ -368,9 +368,9 @@ func (s *serviceTestStorage) GetReservationByIP(_ context.Context, poolID, ip st
 	return nil, storage.ErrReservationNotFound
 }
 
-func (s *serviceTestStorage) ClaimReservation(_ context.Context, poolID, ip string) (bool, error) {
+func (s *serviceTestStorage) ClaimReservation(_ context.Context, addr model.Address) (bool, error) {
 	for _, r := range s.reservations {
-		if r.PoolID == poolID && r.IPAddress == ip && r.Status == model.ReservationStatusActive {
+		if r.PoolID == addr.PoolID && r.IPAddress == addr.IP && r.Status == model.ReservationStatusActive {
 			r.Status = model.ReservationStatusClaimed
 			return true, nil
 		}

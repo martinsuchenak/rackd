@@ -40,6 +40,12 @@ func (s *discoveryTestStorage) GetUserRoles(_ context.Context, userID string) ([
 
 func (s *discoveryTestStorage) RBACManager() *rbac.Manager { return s.perms.manager }
 
+// Promoting creates a device, which claims any reservation for its addresses;
+// these tests have none.
+func (s *discoveryTestStorage) ClaimReservation(context.Context, model.Address) (bool, error) {
+	return false, nil
+}
+
 func (s *discoveryTestStorage) GetNetwork(_ context.Context, id string) (*model.Network, error) {
 	network, ok := s.networks[id]
 	if !ok {
