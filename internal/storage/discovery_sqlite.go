@@ -127,8 +127,14 @@ func updateDiscoveredDevice(ctx context.Context, db sqlTx, device *model.Discove
 // addressMatchesHost is the condition for address a being on discovered
 // host dd's IP and network.
 func addressMatchesHost(a, dd string) string {
-	return a + `.ip = ` + dd + `.ip AND (` + a + `.network_id = ` + dd + `.network_id OR ` +
-		a + `.network_id IS NULL OR ` + a + `.network_id = '')`
+	return a + `.ip = ` + dd + `.ip AND ` + onNetworkOrNone(a, dd+`.network_id`)
+}
+
+// onNetworkOrNone is the condition for address a being on network (an SQL
+// expression) or on no network. An address without a network could be on
+// any, so pools and discovery both treat it as on theirs.
+func onNetworkOrNone(a, network string) string {
+	return `(` + a + `.network_id = ` + network + ` OR ` + a + `.network_id IS NULL OR ` + a + `.network_id = '')`
 }
 
 // hostInInventory is the condition for discovered host dd being in the
