@@ -71,3 +71,16 @@ test('@users edit user active status round-trips a boolean', async ({ page }) =>
   await expect(dialog).toBeHidden();
   await expect(row).toContainText('Active');
 });
+
+// Regression: the user list left out roles, so the Roles column stayed empty
+// until a user's roles were opened in the role manager.
+test('@users the roles column shows roles without opening the role manager', async ({ page }) => {
+  await login(page);
+  await page.goto('/users');
+  await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
+
+  const adminRow = page.locator('tbody tr').filter({ has: page.getByText('admin', { exact: true }) }).first();
+  const rolesCell = adminRow.locator('td').nth(3); // User, Email, Full Name, Roles
+  await expect(rolesCell.getByText('admin', { exact: true })).toBeVisible();
+  await expect(rolesCell.getByText('No roles')).toBeHidden();
+});

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	rbac "github.com/martinsuchenak/go-rbac"
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -30,6 +31,7 @@ type RBACStorage interface {
 	RemoveRolePermission(ctx context.Context, roleID, permissionID string) error
 
 	GetUserRoles(ctx context.Context, userID string) ([]model.Role, error)
+	GetRolesForUsers(ctx context.Context, userIDs []string) (map[string][]model.Role, error)
 	GetUserPermissions(ctx context.Context, userID string) ([]model.Permission, error)
 	AssignRoleToUser(ctx context.Context, userID, roleID string) error
 	RemoveRoleFromUser(ctx context.Context, userID, roleID string) error
@@ -438,6 +440,41 @@ func (s *SQLiteStorage) GetUserRoles(ctx context.Context, userID string) ([]mode
 	}
 
 	return roles, nil
+}
+
+// GetRolesForUsers returns each user's roles, by name, in one query, so a
+// list of users doesn't need a query per user. Users without roles have an
+// empty list.
+func (s *SQLiteStorage) GetRolesForUsers(ctx context.Context, userIDs []string) (map[string][]model.Role, error) {
+	result := make(map[string][]model.Role, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	args := make([]any, len(userIDs))
+	for i, id := range userIDs {
+		args[i] = id
+		result[id] = []model.Role{}
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT ur.user_id, r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at
+		FROM roles r
+		JOIN user_roles ur ON r.id = ur.role_id
+		WHERE ur.user_id IN (?`+strings.Repeat(",?", len(userIDs)-1)+`)
+		ORDER BY r.name
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get roles for users: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var userID string
+		var role model.Role
+		if err := rows.Scan(&userID, &role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan role: %w", err)
+		}
+		result[userID] = append(result[userID], role)
+	}
+	return result, rows.Err()
 }
 
 // GetUserPermissions returns the permissions the user's roles grant, as

@@ -35,7 +35,8 @@ func NewUserService(store storage.ExtendedStorage, sessionManager *auth.SessionM
 	}
 }
 
-func (s *UserService) List(ctx context.Context, filter *model.UserFilter) ([]model.User, error) {
+// List returns users with their roles, like Get.
+func (s *UserService) List(ctx context.Context, filter *model.UserFilter) ([]model.UserResponse, error) {
 	if err := requirePermission(ctx, s.store, "users", "list"); err != nil {
 		return nil, err
 	}
@@ -44,8 +45,21 @@ func (s *UserService) List(ctx context.Context, filter *model.UserFilter) ([]mod
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]string, len(users))
+	for i := range users {
+		ids[i] = users[i].ID
+	}
+	roles, err := s.store.GetRolesForUsers(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 
-	return users, nil
+	resp := make([]model.UserResponse, len(users))
+	for i := range users {
+		resp[i] = users[i].ToResponse()
+		resp[i].Roles = roles[users[i].ID]
+	}
+	return resp, nil
 }
 
 func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) (*model.UserResponse, error) {

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -716,10 +717,34 @@ func TestUserManagementFullStack(t *testing.T) {
 	parseJSON(t, w, &user)
 	newUserID := user["id"].(string)
 
-	// List users
+	// List users: each comes with its roles, which the users page shows
+	// (the list used to leave them out, so the Roles column was empty).
+	viewerID := ts.createReadOnlyUser(t, "viewer", "securepassword789")
 	w = ts.doRequest(t, http.MethodGet, "/api/v1/users", nil, token)
 	if w.Code != http.StatusOK {
 		t.Fatalf("LIST users: expected 200, got %d", w.Code)
+	}
+	var listed []struct {
+		ID    string `json:"id"`
+		Roles []struct {
+			Name string `json:"name"`
+		} `json:"roles"`
+	}
+	parseJSON(t, w, &listed)
+	roleNames := map[string][]string{}
+	for _, u := range listed {
+		for _, r := range u.Roles {
+			roleNames[u.ID] = append(roleNames[u.ID], r.Name)
+		}
+	}
+	if got := roleNames[viewerID]; len(got) != 1 || got[0] != "viewer" {
+		t.Errorf("viewer's listed roles = %v, want [viewer]", got)
+	}
+	if got := roleNames[adminID]; !slices.Contains(got, "admin") {
+		t.Errorf("admin's listed roles = %v, want admin among them", got)
+	}
+	if got := roleNames[newUserID]; len(got) != 0 {
+		t.Errorf("new user's listed roles = %v, want none", got)
 	}
 
 	// Get user
