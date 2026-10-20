@@ -113,7 +113,7 @@ func TestClaimReservation(t *testing.T) {
 	pool := newReservationPool(t, s)
 
 	r := reserve(t, s, pool.ID, "10.0.0.10", nil)
-	claimed, err := s.ClaimReservation(ctx, pool.ID, "10.0.0.10")
+	claimed, err := s.ClaimReservation(ctx, model.Address{PoolID: pool.ID, IP: "10.0.0.10"})
 	if err != nil || !claimed {
 		t.Fatalf("ClaimReservation = %v, %v; want true", claimed, err)
 	}
@@ -123,7 +123,7 @@ func TestClaimReservation(t *testing.T) {
 
 	// Nothing to claim: no reservation, or one already claimed.
 	for _, ip := range []string{"10.0.0.11", "10.0.0.10"} {
-		if claimed, err := s.ClaimReservation(ctx, pool.ID, ip); err != nil || claimed {
+		if claimed, err := s.ClaimReservation(ctx, model.Address{PoolID: pool.ID, IP: ip}); err != nil || claimed {
 			t.Errorf("ClaimReservation(%s) = %v, %v; want false", ip, claimed, err)
 		}
 	}
@@ -135,7 +135,7 @@ func TestClaimReservation(t *testing.T) {
 	if err := s.UpdateReservation(ctx, lapsed); err != nil {
 		t.Fatal(err)
 	}
-	if claimed, err := s.ClaimReservation(ctx, pool.ID, "10.0.0.12"); err != nil || claimed {
+	if claimed, err := s.ClaimReservation(ctx, model.Address{PoolID: pool.ID, IP: "10.0.0.12"}); err != nil || claimed {
 		t.Fatalf("lapsed reservation claimed = %v, %v; want false", claimed, err)
 	}
 }

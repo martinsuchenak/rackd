@@ -26,15 +26,16 @@ func (s *DeviceService) setDNSService(dns *DNSService) {
 	s.dns = dns
 }
 
-// claimReservations marks the reservation for each pool address the device
-// holds as claimed: the address is now in use, not just set aside. A failure
-// doesn't undo the device write.
+// claimReservations marks the reservation for each address the device holds
+// as claimed: the address is now in use, not just set aside. That includes
+// addresses bound to no pool, which the web UI's device form creates. A
+// failure doesn't undo the device write.
 func (s *DeviceService) claimReservations(ctx context.Context, device *model.Device) {
 	for _, addr := range device.Addresses {
-		if addr.PoolID == "" || addr.IP == "" {
+		if addr.IP == "" {
 			continue
 		}
-		if _, err := s.store.ClaimReservation(enrichAuditCtx(ctx), addr.PoolID, addr.IP); err != nil {
+		if _, err := s.store.ClaimReservation(enrichAuditCtx(ctx), addr); err != nil {
 			log.Warn("Failed to claim reservation", "device_id", device.ID, "ip", addr.IP, "error", err)
 		}
 	}

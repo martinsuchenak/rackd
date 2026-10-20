@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -82,8 +84,9 @@ func (s *NATService) Create(ctx context.Context, req *model.CreateNATRequest) (*
 	}
 
 	mapping := &model.NATMapping{
-		Name:         req.Name,
-		ExternalIP:   req.ExternalIP,
+		Name: req.Name,
+		// Canonical, so the same address written two ways is one endpoint.
+		ExternalIP:   net.ParseIP(req.ExternalIP).String(),
 		ExternalPort: req.ExternalPort,
 		InternalIP:   req.InternalIP,
 		InternalPort: req.InternalPort,
@@ -97,7 +100,7 @@ func (s *NATService) Create(ctx context.Context, req *model.CreateNATRequest) (*
 	}
 
 	if err := s.store.CreateNATMapping(ctx, mapping); err != nil {
-		return nil, err
+		return nil, natEndpointError(mapping, err)
 	}
 
 	recordAudit(ctx, s.store, "create", "nat", mapping.ID, mapping)
@@ -129,7 +132,7 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 		if net.ParseIP(*req.ExternalIP) == nil {
 			return nil, ValidationErrors{{Field: "external_ip", Message: "Invalid IP address"}}
 		}
-		mapping.ExternalIP = *req.ExternalIP
+		mapping.ExternalIP = net.ParseIP(*req.ExternalIP).String()
 	}
 	if req.ExternalPort != nil {
 		if *req.ExternalPort < 0 || *req.ExternalPort > 65535 {
@@ -175,7 +178,7 @@ func (s *NATService) Update(ctx context.Context, id string, req *model.UpdateNAT
 	}
 
 	if err := s.store.UpdateNATMapping(ctx, mapping); err != nil {
-		return nil, err
+		return nil, natEndpointError(mapping, err)
 	}
 
 	recordAudit(ctx, s.store, "update", "nat", mapping.ID, mapping)
@@ -215,4 +218,15 @@ func (s *NATService) GetByDatacenter(ctx context.Context, datacenterID string) (
 	}
 
 	return s.store.GetNATMappingsByDatacenter(ctx, datacenterID)
+}
+
+// natEndpointError names the external endpoint when another enabled mapping
+// already uses it, so the API answers 409.
+func natEndpointError(m *model.NATMapping, err error) error {
+	var inUse *storage.NATEndpointInUseError
+	if !errors.As(err, &inUse) {
+		return err
+	}
+	return fmt.Errorf("%w: %s port %d (%s) is already forwarded by NAT mapping %q", ErrAlreadyExists,
+		m.ExternalIP, m.ExternalPort, m.Protocol, inUse.Name)
 }

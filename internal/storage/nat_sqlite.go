@@ -9,7 +9,42 @@ import (
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
-// CreateNATMapping creates a new NAT mapping
+// NATEndpointInUseError is returned when an enabled NAT mapping already
+// forwards the external IP, port and protocol a mapping would use.
+type NATEndpointInUseError struct {
+	ID, Name string
+}
+
+func (e *NATEndpointInUseError) Error() string {
+	return fmt.Sprintf("external endpoint already used by NAT mapping %q", e.Name)
+}
+
+// natEndpointInUse finds another enabled mapping on the same external
+// endpoint as m, when m is enabled. Port 0 forwards every port (1:1 NAT) and
+// protocol "any" both TCP and UDP, so each overlaps the specific ones.
+func natEndpointInUse(ctx context.Context, tx *sql.Tx, m *model.NATMapping) error {
+	if !m.Enabled {
+		return nil
+	}
+	var e NATEndpointInUseError
+	err := tx.QueryRowContext(ctx, `
+		SELECT id, name FROM nat_mappings
+		WHERE id <> ? AND enabled = 1 AND external_ip = ?
+		  AND (protocol = ? OR protocol = 'any' OR ? = 'any')
+		  AND (external_port = ? OR external_port = 0 OR ? = 0)
+		ORDER BY created_at LIMIT 1
+	`, m.ID, m.ExternalIP, m.Protocol, m.Protocol, m.ExternalPort, m.ExternalPort).Scan(&e.ID, &e.Name)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check the NAT endpoint: %w", err)
+	}
+	return &e
+}
+
+// CreateNATMapping creates a new NAT mapping. An enabled mapping can't use
+// an external endpoint another enabled mapping uses.
 func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NATMapping) error {
 	// Generate ID if not provided
 	if mapping.ID == "" {
@@ -21,7 +56,16 @@ func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NAT
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
 
-	_, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := natEndpointInUse(ctx, tx, mapping); err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO nat_mappings (
 			id, name, external_ip, external_port, internal_ip, internal_port,
 			protocol, device_id, description, enabled, datacenter_id, network_id,
@@ -34,8 +78,11 @@ func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NAT
 		nullString(mapping.DatacenterID), nullString(mapping.NetworkID),
 		string(tagsJSON), mapping.CreatedAt, mapping.UpdatedAt,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return tx.Commit()
 }
 
 // GetNATMapping retrieves a NAT mapping by ID
@@ -200,7 +247,32 @@ func (s *SQLiteStorage) UpdateNATMapping(ctx context.Context, mapping *model.NAT
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
 
-	result, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Check the endpoint only when this update moves the mapping onto it or
+	// enables it, so a mapping that already shares one (from before this
+	// check existed) can still be edited otherwise.
+	var old model.NATMapping
+	err = tx.QueryRowContext(ctx, `SELECT external_ip, external_port, protocol, enabled FROM nat_mappings WHERE id = ?`,
+		mapping.ID).Scan(&old.ExternalIP, &old.ExternalPort, &old.Protocol, &old.Enabled)
+	if err == sql.ErrNoRows {
+		return ErrNATNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get NAT mapping: %w", err)
+	}
+	if old.ExternalIP != mapping.ExternalIP || old.ExternalPort != mapping.ExternalPort ||
+		old.Protocol != mapping.Protocol || !old.Enabled {
+		if err := natEndpointInUse(ctx, tx, mapping); err != nil {
+			return err
+		}
+	}
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE nat_mappings SET
 			name = ?, external_ip = ?, external_port = ?, internal_ip = ?, internal_port = ?,
 			protocol = ?, device_id = ?, description = ?, enabled = ?, datacenter_id = ?, network_id = ?,
@@ -223,7 +295,7 @@ func (s *SQLiteStorage) UpdateNATMapping(ctx context.Context, mapping *model.NAT
 		return ErrNATNotFound
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // DeleteNATMapping deletes a NAT mapping

@@ -34,6 +34,17 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   fields are now refused with `400`. The authentication guide also described a
   `--user-id` flag that doesn't exist: a key always belongs to its creator.
 
+- Device addresses bound to no pool, which the web UI's device form creates,
+  were invisible to pools: a device could take a reserved address without
+  claiming the reservation, an address a device held could be reserved, and
+  the next free address and the heatmap could offer it. An address now
+  counts toward a pool when its IP is in the pool's range and it is on the
+  pool's network or on no network.
+- Two enabled NAT mappings could forward the same external IP, port and
+  protocol to different targets. Creating or updating onto an endpoint an
+  enabled mapping uses now answers `409` naming it; port `0` (every port)
+  and protocol `any` count as overlapping.
+
 ### Security
 
 - The OAuth approval is bound to what the consent screen showed. The screen

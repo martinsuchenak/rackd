@@ -20,7 +20,7 @@ Each NAT mapping contains:
 | `id` | string | Unique identifier (auto-generated UUID) |
 | `name` | string | Descriptive name for the mapping |
 | `external_ip` | string | External/public IP address |
-| `external_port` | int | External port number (1-65535) |
+| `external_port` | int | External port number (1-65535), or `0` for every port (1:1 NAT) |
 | `internal_ip` | string | Internal/private IP address |
 | `internal_port` | int | Internal port number (1-65535) |
 | `protocol` | string | Protocol: `tcp`, `udp`, or `any` (default: `tcp`) |
@@ -95,6 +95,12 @@ POST /api/v1/nat
 ```
 
 Required fields: `name`, `external_ip`, `external_port`, `internal_ip`, `internal_port`
+
+Two enabled mappings can't forward the same external endpoint. Creating or
+updating a mapping onto an external IP, port and protocol an enabled mapping
+already uses answers `409` naming that mapping. Port `0` overlaps every port
+and protocol `any` overlaps `tcp` and `udp`. Disabled mappings aren't checked,
+so a replacement can be prepared and swapped in by disabling the old one.
 
 ### Update NAT Mapping
 

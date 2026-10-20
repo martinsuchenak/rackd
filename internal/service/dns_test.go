@@ -461,6 +461,11 @@ func (s *linkTestStorage) GetUserRoles(_ context.Context, _ string) ([]model.Rol
 
 func (s *linkTestStorage) RBACManager() *rbac.Manager { return linkRBACManager }
 
+// Creating a device claims any reservation for its addresses; there are none here.
+func (s *linkTestStorage) ClaimReservation(context.Context, model.Address) (bool, error) {
+	return false, nil
+}
+
 func buildLinkTestService(ss *linkTestStorage) *DNSService {
 	return &DNSService{
 		store:         ss,

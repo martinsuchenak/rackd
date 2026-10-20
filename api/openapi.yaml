@@ -4046,6 +4046,7 @@ paths:
                 $ref: '#/components/schemas/NATRule'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /api/v1/nat/{id}:
@@ -4082,6 +4083,7 @@ paths:
                 $ref: '#/components/schemas/NATRule'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
     delete:

@@ -233,7 +233,7 @@ type ReservationStorage interface {
 	GetReservationsByPool(ctx context.Context, poolID string) ([]model.Reservation, error)
 	GetReservationsByUser(ctx context.Context, userID string) ([]model.Reservation, error)
 	ExpireReservations(ctx context.Context) (int64, error)
-	ClaimReservation(ctx context.Context, poolID, ip string) (bool, error)
+	ClaimReservation(ctx context.Context, addr model.Address) (bool, error)
 	IsIPReserved(ctx context.Context, poolID, ip string) (bool, error)
 }
 

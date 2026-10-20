@@ -32,8 +32,8 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 	defer func() { _ = tx.Rollback() }()
 
 	// Validate pool exists and get IP range for validation
-	var startIP, endIP string
-	err = tx.QueryRowContext(ctx, `SELECT start_ip, end_ip FROM network_pools WHERE id = ?`, reservation.PoolID).Scan(&startIP, &endIP)
+	var startIP, endIP, networkID string
+	err = tx.QueryRowContext(ctx, `SELECT start_ip, end_ip, network_id FROM network_pools WHERE id = ?`, reservation.PoolID).Scan(&startIP, &endIP, &networkID)
 	if err == sql.ErrNoRows {
 		return ErrPoolNotFound
 	}
@@ -67,8 +67,8 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 
 	// Check if IP is already used by a device
 	var usedByDevice bool
-	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM addresses WHERE pool_id = ? AND ip = ?)`,
-		reservation.PoolID, reservation.IPAddress).Scan(&usedByDevice)
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM addresses a WHERE a.ip = ? AND `+addressInPool("a")+`)`,
+		reservation.IPAddress, reservation.PoolID, networkID).Scan(&usedByDevice)
 	if err != nil {
 		return fmt.Errorf("failed to check IP usage: %w", err)
 	}
@@ -443,11 +443,14 @@ func reservationExpired(expiresAt sql.NullTime, now time.Time) bool {
 	return expiresAt.Valid && !expiresAt.Time.After(now)
 }
 
-// ClaimReservation marks the active, unexpired reservation for ip in a pool
-// as claimed, because a device now holds the address. It reports whether
-// there was one.
-func (s *SQLiteStorage) ClaimReservation(ctx context.Context, poolID, ip string) (bool, error) {
-	if poolID == "" || ip == "" {
+// ClaimReservation marks the active, unexpired reservation for a device's
+// address as claimed, because the device now holds it. It reports whether
+// there was one. The reservation is in the address's pool or, for an address
+// bound to no pool, in a pool on its network; an address on no network
+// claims a reservation for its IP only when there is just one, since several
+// would be on different networks.
+func (s *SQLiteStorage) ClaimReservation(ctx context.Context, addr model.Address) (bool, error) {
+	if addr.IP == "" {
 		return false, ErrInvalidID
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -456,29 +459,45 @@ func (s *SQLiteStorage) ClaimReservation(ctx context.Context, poolID, ip string)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var id string
-	var expiresAt sql.NullTime
-	err = tx.QueryRowContext(ctx, `
-		SELECT id, expires_at FROM reservations
-		WHERE pool_id = ? AND ip_address = ? AND status = ?
-	`, poolID, ip, string(model.ReservationStatusActive)).Scan(&id, &expiresAt)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
+	rows, err := tx.QueryContext(ctx, `
+		SELECT r.id, r.pool_id, r.expires_at FROM reservations r
+		JOIN network_pools p ON p.id = r.pool_id
+		WHERE r.ip_address = ? AND r.status = ?
+		  AND (r.pool_id = ? OR (? = '' AND (p.network_id = ? OR ? = '')))
+	`, addr.IP, string(model.ReservationStatusActive), addr.PoolID, addr.PoolID, addr.NetworkID, addr.NetworkID)
 	if err != nil {
 		return false, fmt.Errorf("failed to find reservation: %w", err)
 	}
-	if reservationExpired(expiresAt, nowUTC()) {
+	defer func() { _ = rows.Close() }()
+	now := nowUTC()
+	var id, poolID string
+	found := 0
+	for rows.Next() {
+		var rid, rpool string
+		var expiresAt sql.NullTime
+		if err := rows.Scan(&rid, &rpool, &expiresAt); err != nil {
+			return false, fmt.Errorf("failed to scan reservation: %w", err)
+		}
+		if !reservationExpired(expiresAt, now) {
+			id, poolID = rid, rpool
+			found++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	_ = rows.Close()
+	if found != 1 {
 		return false, nil
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?`,
-		string(model.ReservationStatusClaimed), nowUTC(), id); err != nil {
+		string(model.ReservationStatusClaimed), now, id); err != nil {
 		return false, fmt.Errorf("failed to claim reservation: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return false, err
 	}
-	s.auditLog(ctx, "claim", "reservation", id, map[string]string{"pool_id": poolID, "ip_address": ip})
+	s.auditLog(ctx, "claim", "reservation", id, map[string]string{"pool_id": poolID, "ip_address": addr.IP})
 	return true, nil
 }
 
