@@ -9,6 +9,20 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- Conflicts stayed listed after the devices or networks in them were deleted
+  or changed. Listing, summarising or detecting conflicts now brings the open
+  ones up to date: one that no longer applies is resolved with a note saying
+  why, and one whose devices or networks changed lists the current ones.
+- One device with the same IP on two addresses was detected as a duplicate
+  IP, and device names containing a comma were split in two.
+- **Detect Conflicts** in the web UI emptied the list until the page was
+  reloaded; it now shows the recorded conflicts. The Conflicts page lists
+  active conflicts only, matching its counts.
+- A device page for a device that doesn't exist reloaded it ten times a
+  second, flickering between "Loading..." and the error.
+
 ## [0.5.0] - 2026-10-20
 
 ### Added

@@ -208,6 +208,7 @@ type ConflictStorage interface {
 	GetConflict(ctx context.Context, id string) (*model.Conflict, error)
 	ListConflicts(ctx context.Context, filter *model.ConflictFilter) ([]model.Conflict, error)
 	UpdateConflictStatus(ctx context.Context, id string, status model.ConflictStatus, resolvedBy, notes string) error
+	UpdateConflictParties(ctx context.Context, conflict *model.Conflict) error
 	DeleteConflict(ctx context.Context, id string) error
 
 	// Detection helpers

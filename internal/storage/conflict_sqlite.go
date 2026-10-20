@@ -273,50 +273,87 @@ func (s *SQLiteStorage) DeleteConflict(ctx context.Context, id string) error {
 
 // FindDuplicateIPs finds all IP addresses that are assigned to multiple devices
 func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict, error) {
-	// Find IPs that appear more than once in the addresses table
+	// IPs held by more than one device. A device listing an IP twice isn't a
+	// duplicate, so devices are counted, not addresses, and names are read as
+	// rows rather than split from a list (a name can contain a comma).
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT ip, GROUP_CONCAT(device_id) as device_ids, GROUP_CONCAT(d.name) as device_names, COUNT(*) as count
+		SELECT DISTINCT a.ip, d.id, d.name
 		FROM addresses a
 		JOIN devices d ON a.device_id = d.id
-		WHERE ip != '' AND ip IS NOT NULL
-		GROUP BY ip
-		HAVING count > 1
+		WHERE a.ip IN (
+			SELECT ip FROM addresses
+			WHERE ip != '' AND ip IS NOT NULL
+			GROUP BY ip
+			HAVING COUNT(DISTINCT device_id) > 1
+		)
+		ORDER BY a.ip, d.name, d.id
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find duplicate IPs: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
-	var conflicts []model.Conflict
+	conflicts := []model.Conflict{}
 	for rows.Next() {
-		var ip string
-		var deviceIDsStr, deviceNamesStr string
-		var count int
-
-		if err := rows.Scan(&ip, &deviceIDsStr, &deviceNamesStr, &count); err != nil {
+		var ip, deviceID, deviceName string
+		if err := rows.Scan(&ip, &deviceID, &deviceName); err != nil {
 			return nil, fmt.Errorf("failed to scan duplicate IP: %w", err)
 		}
-
-		deviceIDs := strings.Split(deviceIDsStr, ",")
-		deviceNames := strings.Split(deviceNamesStr, ",")
-
-		conflicts = append(conflicts, model.Conflict{
-			ID:          newUUID(),
-			Type:        model.ConflictTypeDuplicateIP,
-			Status:      model.ConflictStatusActive,
-			Description: fmt.Sprintf("IP address %s is assigned to %d devices", ip, count),
-			IPAddress:   ip,
-			DeviceIDs:   deviceIDs,
-			DeviceNames: deviceNames,
-			DetectedAt:  nowUTC(),
-		})
+		if n := len(conflicts); n == 0 || conflicts[n-1].IPAddress != ip {
+			conflicts = append(conflicts, model.Conflict{
+				ID:         newUUID(),
+				Type:       model.ConflictTypeDuplicateIP,
+				Status:     model.ConflictStatusActive,
+				IPAddress:  ip,
+				DetectedAt: nowUTC(),
+			})
+		}
+		c := &conflicts[len(conflicts)-1]
+		c.DeviceIDs = append(c.DeviceIDs, deviceID)
+		c.DeviceNames = append(c.DeviceNames, deviceName)
 	}
-
-	if conflicts == nil {
-		conflicts = []model.Conflict{}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
-
+	for i := range conflicts {
+		conflicts[i].Description = DuplicateIPDescription(conflicts[i].IPAddress, len(conflicts[i].DeviceIDs))
+	}
 	return conflicts, nil
+}
+
+// DuplicateIPDescription describes a duplicate-IP conflict.
+func DuplicateIPDescription(ip string, devices int) string {
+	return fmt.Sprintf("IP address %s is assigned to %d devices", ip, devices)
+}
+
+// UpdateConflictParties records the devices or networks a conflict now
+// involves, with its description, leaving its status and notes alone.
+func (s *SQLiteStorage) UpdateConflictParties(ctx context.Context, conflict *model.Conflict) error {
+	if conflict.ID == "" {
+		return ErrInvalidID
+	}
+	fields := map[string]any{}
+	for name, v := range map[string]any{"device_ids": conflict.DeviceIDs, "device_names": conflict.DeviceNames,
+		"network_ids": conflict.NetworkIDs, "network_names": conflict.NetworkNames, "subnets": conflict.Subnets} {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("failed to marshal %s: %w", name, err)
+		}
+		fields[name] = string(b)
+	}
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE conflicts SET description = ?, device_ids = ?, device_names = ?,
+		       network_ids = ?, network_names = ?, subnets = ?
+		WHERE id = ?
+	`, conflict.Description, fields["device_ids"], fields["device_names"],
+		fields["network_ids"], fields["network_names"], fields["subnets"], conflict.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update conflict: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrConflictNotFound
+	}
+	return nil
 }
 
 // MaxOverlapConflicts caps how many overlapping pairs one detection run
