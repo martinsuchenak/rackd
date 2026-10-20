@@ -83,7 +83,10 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean ${{ steps.notes.outputs.args }}
+          # --skip=before: the UI was built above, in a step without secrets.
+          # The before hook would run `bun install` again here, where any
+          # dependency's install script could read the signing keys.
+          args: release --clean --skip=before ${{ steps.notes.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
