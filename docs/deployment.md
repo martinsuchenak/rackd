@@ -4,6 +4,8 @@ This guide covers various deployment methods for Rackd in production environment
 
 ## Docker Deployment
 
+Each release publishes a multi-arch image (`linux/amd64`, `linux/arm64`) to `ghcr.io/martinsuchenak/rackd`, tagged with the version (`0.6.0`), the minor version (`0.6`) and `latest`. Images are signed with cosign; see [Verifying the Image](#verifying-the-image). The image keeps its database in `/data`, so mount a volume there.
+
 ### Basic Docker Run
 
 ```bash
@@ -15,9 +17,11 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v /opt/rackd/data:/data \
-  -e DATA_DIR=/data \
-  ghcr.io/martinsuchenak/rackd:latest
+  -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
+  ghcr.io/martinsuchenak/rackd:0.6
 ```
+
+Keep the `ENCRYPTION_KEY` you start with: credentials, scan profiles and DNS provider tokens are encrypted with it. Pin a version tag (`0.6` follows patch releases) rather than `latest`, so an upgrade is a choice you make.
 
 ### Docker with Environment Variables
 
@@ -26,12 +30,21 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v /opt/rackd/data:/data \
-  -e DATA_DIR=/data \
+  -e ENCRYPTION_KEY=your-64-hex-character-key \
   -e LOG_LEVEL=info \
   -e LOG_FORMAT=json \
-  -e API_AUTH_TOKEN=your-secure-token \
-  -e MCP_AUTH_TOKEN=your-mcp-token \
-  ghcr.io/martinsuchenak/rackd:latest
+  -e BACKUP_INTERVAL=24h \
+  ghcr.io/martinsuchenak/rackd:0.6
+```
+
+See the [configuration reference](configuration-reference.md) for every setting.
+
+### Verifying the Image
+
+```bash
+cosign verify ghcr.io/martinsuchenak/rackd:0.6.0 \
+  --certificate-identity-regexp 'https://github.com/martinsuchenak/rackd/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ## Docker Compose
@@ -43,7 +56,7 @@ version: '3.8'
 
 services:
   rackd:
-    image: ghcr.io/martinsuchenak/rackd:latest
+    image: ghcr.io/martinsuchenak/rackd:0.6
     container_name: rackd
     restart: unless-stopped
     ports:
@@ -51,13 +64,11 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - DATA_DIR=/data
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
-      - API_AUTH_TOKEN=${API_AUTH_TOKEN}
-      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/v1/datacenters"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -79,8 +90,7 @@ services:
 Create `.env` file:
 
 ```bash
-API_AUTH_TOKEN=your-secure-api-token
-MCP_AUTH_TOKEN=your-secure-mcp-token
+ENCRYPTION_KEY=your-64-hex-character-key   # openssl rand -hex 32
 ```
 
 Deploy:
@@ -170,11 +180,10 @@ ReadWritePaths=/var/lib/rackd
 WantedBy=multi-user.target
 ```
 
-Create `/etc/rackd/rackd.env`:
+Create `/etc/rackd/rackd.env` (mode `0600`, since it holds the key):
 
 ```bash
-API_AUTH_TOKEN=your-secure-token
-MCP_AUTH_TOKEN=your-mcp-token
+ENCRYPTION_KEY=your-64-hex-character-key   # openssl rand -hex 32
 ```
 
 Enable and start:
@@ -377,7 +386,7 @@ The scrape needs an API key whose user holds `metrics:read`; see the
 ```bash
 #!/bin/bash
 # monitor-rackd.sh
-URL="http://localhost:8080/api/v1/datacenters"
+URL="http://localhost:8080/healthz"
 TIMEOUT=5
 
 if curl -f -s --max-time $TIMEOUT $URL > /dev/null; then
@@ -397,7 +406,8 @@ Configure external monitoring with services like:
 - StatusCake
 
 Monitor these endpoints:
-- `/api/v1/datacenters` - API health
+- `/healthz` - the server is up (no authentication)
+- `/readyz` - the server can serve requests, database included
 - `/` - Web UI availability
 
 ## Troubleshooting

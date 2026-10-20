@@ -92,7 +92,17 @@ See [Development Guide](development.md) for more details.
 
 ### 3. Docker
 
-No pre-built image is published; build it from the repository:
+Each release publishes a multi-arch image to `ghcr.io/martinsuchenak/rackd`. Mount a volume at `/data` for the database:
+
+```bash
+docker run -d --name rackd -p 8080:8080 -v rackd-data:/data \
+  -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
+  ghcr.io/martinsuchenak/rackd:0.6
+```
+
+See the [deployment guide](deployment.md#docker-deployment) for tags, Compose and verifying the image's signature.
+
+To build the image from source instead:
 
 ```bash
 git clone https://github.com/martinsuchenak/rackd.git
@@ -328,7 +338,7 @@ rackd version
 
 ```bash
 # Pull new image
-docker pull martinsuchenak/rackd:latest
+docker pull ghcr.io/martinsuchenak/rackd:0.6
 
 # Stop and remove old container
 docker stop rackd
@@ -339,7 +349,8 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v rackd-data:/data \
-  martinsuchenak/rackd:latest
+  -e ENCRYPTION_KEY=your-64-hex-character-key \
+  ghcr.io/martinsuchenak/rackd:0.6
 ```
 
 ### Database Migrations
@@ -374,7 +385,7 @@ docker stop rackd
 docker rm rackd
 
 # Remove image
-docker rmi martinsuchenak/rackd:latest
+docker rmi ghcr.io/martinsuchenak/rackd:0.6
 
 # Remove volume (deletes all data)
 docker volume rm rackd-data

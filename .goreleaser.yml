@@ -62,6 +62,40 @@ signs:
       - "${artifact}"
       - "--yes"
 
+# Multi-arch image on GitHub's container registry, from the release binaries.
+dockers_v2:
+  - id: rackd
+    ids: [rackd]
+    dockerfile: Dockerfile.release
+    images:
+      - ghcr.io/martinsuchenak/rackd
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: rackd
+      org.opencontainers.image.description: "Device inventory and IPAM management"
+      org.opencontainers.image.source: "https://github.com/martinsuchenak/rackd"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.licenses: Apache-2.0
+
+# Keyless cosign signatures for the images, like the archives. Verify with
+# `cosign verify ghcr.io/martinsuchenak/rackd:<version>
+#  --certificate-identity-regexp 'https://github.com/martinsuchenak/rackd/'
+#  --certificate-oidc-issuer https://token.actions.githubusercontent.com`.
+docker_signs:
+  - cmd: cosign
+    args:
+      - sign
+      - "${artifact}@${digest}"
+      - "--yes"
+
 changelog:
   sort: asc
   filters:
