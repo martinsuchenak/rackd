@@ -157,16 +157,21 @@ func (s *APIKeyService) requireOwnership(ctx context.Context, key *model.APIKey)
 // checkScopes validates a new key's scopes, each a resource:action permission
 // the creator holds (a key can't do more than its owner), and returns them
 // without duplicates, in order. None means the key gets all of its owner's
-// permissions.
+// permissions, unless it's made with a scoped credential (a scoped key or an
+// OAuth token): then it gets that credential's scopes, so it can't escape
+// them.
 func (s *APIKeyService) checkScopes(ctx context.Context, caller *Caller, scopes []string) ([]string, error) {
+	restricted := caller != nil && caller.Scopes != nil && !slices.Contains(caller.Scopes, "*")
+	inherited := false
 	if len(scopes) == 0 {
-		return nil, nil
+		if !restricted {
+			return nil, nil
+		}
+		scopes, inherited = caller.Scopes, true
 	}
 	if caller == nil || caller.UserID == "" {
 		return nil, ErrUnauthenticated
 	}
-	// A key made with a scoped credential can't escape that credential's
-	// scopes either.
 	allowed := map[string]bool{}
 	perms, err := s.store.GetUserPermissions(ctx, caller.UserID)
 	if err != nil {
@@ -174,7 +179,7 @@ func (s *APIKeyService) checkScopes(ctx context.Context, caller *Caller, scopes 
 	}
 	for _, p := range perms {
 		scope := p.Resource + ":" + p.Action
-		if caller.Scopes == nil || slices.Contains(caller.Scopes, scope) || slices.Contains(caller.Scopes, "*") {
+		if !restricted || slices.Contains(caller.Scopes, scope) {
 			allowed[scope] = true
 		}
 	}
@@ -187,7 +192,10 @@ func (s *APIKeyService) checkScopes(ctx context.Context, caller *Caller, scopes 
 		}
 		seen[scope] = true
 		if !allowed[scope] {
-			refused = append(refused, scope)
+			// Inherited scopes the owner no longer holds are just dropped.
+			if !inherited {
+				refused = append(refused, scope)
+			}
 			continue
 		}
 		out = append(out, scope)

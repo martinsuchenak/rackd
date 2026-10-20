@@ -76,6 +76,27 @@ func TestAPIKeyScopes(t *testing.T) {
 		t.Errorf("a devices-only key creating a key: %d %v, want 403", code, resp)
 	}
 
+	// A scoped key that may create keys can't mint one wider than itself:
+	// asking for no scopes gives the new key its own.
+	code, resp = create(adminToken, map[string]any{"name": "key-minter", "scopes": []string{"apikeys:create", "devices:list"}})
+	if code != http.StatusCreated {
+		t.Fatalf("create minter key: %d %v", code, resp)
+	}
+	minter := resp["key"].(string)
+	code, resp = create(minter, map[string]any{"name": "minted"})
+	if code != http.StatusCreated {
+		t.Fatalf("minter creating a key: %d %v", code, resp)
+	}
+	if scopes, _ := resp["scopes"].([]any); len(scopes) != 2 {
+		t.Errorf("a key minted by a scoped key has scopes %v, want the minter's two", resp["scopes"])
+	}
+	if w := ts.doRequest(t, http.MethodGet, "/api/v1/users", nil, resp["key"].(string)); w.Code != http.StatusForbidden {
+		t.Errorf("minted key GET /users: %d, want 403", w.Code)
+	}
+	if code, resp := create(minter, map[string]any{"name": "wider", "scopes": []string{"users:list"}}); code != http.StatusBadRequest {
+		t.Errorf("minter asking for a scope it lacks: %d %v, want 400", code, resp)
+	}
+
 	// Fields that look like they limit the key are refused, not ignored.
 	for _, body := range []map[string]any{
 		{"name": "x", "permissions": []string{"devices:list"}},
