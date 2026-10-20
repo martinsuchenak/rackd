@@ -10,6 +10,9 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
+
+	"github.com/martinsuchenak/rackd/cmd/internal/flags"
 
 	"github.com/martinsuchenak/rackd/internal/config"
 	"github.com/martinsuchenak/rackd/internal/credentials"
@@ -34,28 +37,38 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 		Name:  "server",
 		Usage: "Start the HTTP/MCP server",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"},
-			&cli.StringFlag{Name: "listen-addr", Usage: "Listen address", DefaultValue: ":8080"},
-			&cli.StringFlag{Name: "log-level", Usage: "Log level (trace/debug/info/warn/error)", DefaultValue: "info"},
-			&cli.StringFlag{Name: "log-format", Usage: "Log format (text/json)", DefaultValue: "text"},
-			&cli.StringFlag{Name: "discovery-interval", Usage: "Discovery scan interval", DefaultValue: "24h"},
+			// No flag has a default of its own: an unset flag leaves the
+			// configuration (environment, .env, then built-in defaults) in
+			// charge, which a flag default would always override.
+			flags.DataDir(),
+			&cli.StringFlag{Name: "listen-addr", Usage: "Listen address (default: LISTEN_ADDR, or :8080)"},
+			&cli.StringFlag{Name: "log-level", Usage: "Log level: trace, debug, info, warn or error (default: LOG_LEVEL, or info)"},
+			&cli.StringFlag{Name: "log-format", Usage: "Log format: text or json (default: LOG_FORMAT, or text)"},
+			&cli.StringFlag{Name: "discovery-interval", Usage: "Discovery scan interval (default: DISCOVERY_INTERVAL, or 24h)"},
 			&cli.BoolFlag{Name: "dev-mode", Usage: "Development mode (relaxes security: no TLS cookies, no rate limiting, allows missing ENCRYPTION_KEY)"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := config.Load()
 
-			// Override config with CLI flags
-			if v := cmd.GetString("data-dir"); v != "" {
-				cfg.DataDir = v
+			// Flags that were given override the configuration.
+			if cmd.HasFlag("data-dir") {
+				cfg.DataDir = cmd.GetString("data-dir")
 			}
-			if v := cmd.GetString("listen-addr"); v != "" {
-				cfg.ListenAddr = v
+			if cmd.HasFlag("listen-addr") {
+				cfg.ListenAddr = cmd.GetString("listen-addr")
 			}
-			if v := cmd.GetString("log-level"); v != "" {
-				cfg.LogLevel = v
+			if cmd.HasFlag("log-level") {
+				cfg.LogLevel = cmd.GetString("log-level")
 			}
-			if v := cmd.GetString("log-format"); v != "" {
-				cfg.LogFormat = v
+			if cmd.HasFlag("log-format") {
+				cfg.LogFormat = cmd.GetString("log-format")
+			}
+			if cmd.HasFlag("discovery-interval") {
+				d, err := time.ParseDuration(cmd.GetString("discovery-interval"))
+				if err != nil {
+					return fmt.Errorf("--discovery-interval: %w", err)
+				}
+				cfg.DiscoveryInterval = d
 			}
 
 			// Dev mode: relax security defaults for local development

@@ -20,6 +20,15 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - The macOS binaries are signed with a Developer ID certificate and
   notarized by Apple, so Gatekeeper no longer blocks a downloaded `rackd`.
 
+### Fixed
+
+- `rackd server` ignored `DATA_DIR`, `LISTEN_ADDR`, `LOG_LEVEL` and
+  `LOG_FORMAT`: its flags defaulted to `./data`, `:8080`, `info` and `text`
+  and always overrode them. `rackd backup`, `migrate`, `credentials
+  rotate-key` and `user reset-password` likewise ignored `DATA_DIR`. A flag
+  now overrides its variable only when given. `--discovery-interval` was
+  accepted but never used; it now sets the interval.
+
 ### Security
 
 - Built with Go 1.27.3, which distrusts compromised intermediate certificates

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/cmd/internal/flags"
+
 	"github.com/paularlott/cli"
 	"golang.org/x/term"
 
@@ -23,11 +25,11 @@ func ResetPasswordCommand() *cli.Command {
 		Name:  "reset-password",
 		Usage: "Reset a user's password directly in the database (no server required)",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory containing rackd.db", DefaultValue: "./data"},
+			flags.DataDir(),
 			&cli.StringFlag{Name: "username", Usage: "Username of the account to reset (e.g. admin)", Required: true},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
-			dataDir := cmd.GetString("data-dir")
+			dataDir := flags.ResolveDataDir(cmd)
 			username := cmd.GetString("username")
 
 			// Read the new password from the terminal (hidden), matching the

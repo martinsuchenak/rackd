@@ -14,12 +14,16 @@ Usage:
    rackd server [flags]
 
 Flags:
-       --data-dir string            Data directory (default: ./data)
-       --listen-addr string         Listen address (default: :8080)
-       --log-level string           Log level (trace/debug/info/warn/error)
-                                    (default: info)
-       --log-format string          Log format (text/json) (default: text)
-       --discovery-interval string  Discovery scan interval (default: 24h)
+       --data-dir string            Data directory containing rackd.db
+                                    (default: DATA_DIR, or ./data)
+       --listen-addr string         Listen address
+                                    (default: LISTEN_ADDR, or :8080)
+       --log-level string           Log level: trace, debug, info, warn or error
+                                    (default: LOG_LEVEL, or info)
+       --log-format string          Log format: text or json
+                                    (default: LOG_FORMAT, or text)
+       --discovery-interval string  Discovery scan interval
+                                    (default: DISCOVERY_INTERVAL, or 24h)
        --dev-mode bool              Development mode (relaxes security: no TLS
                                     cookies, no rate limiting, allows missing
                                     ENCRYPTION_KEY)
@@ -635,7 +639,7 @@ Description:
 
 Flags:
        --data-dir string      Data directory containing rackd.db
-                              (default: ./data)
+                              (default: DATA_DIR, or ./data)
        --new-key-env string   Environment variable holding the new
                               64-hex-character key (default: NEW_ENCRYPTION_KEY)
        --new-key-file string  File holding the new key (overrides --new-key-env)
@@ -1537,7 +1541,8 @@ Usage:
    rackd user reset-password [flags]
 
 Flags:
-       --data-dir string  Data directory containing rackd.db (default: ./data)
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
        --username string  Username of the account to reset (e.g. admin)
                           (Required)
 
@@ -2174,8 +2179,8 @@ Available Commands:
    restore         Replace the database with a backup (stop the server first)
 
 Flags:
-       --data-dir string  Data directory (default: from config)
-                          (default: ./data)
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
        --output string    Output file path
                           (default: rackd-backup-<timestamp>.db)
        --overwrite bool   Replace the output file if it exists (only after the
@@ -2211,8 +2216,8 @@ Usage:
    rackd backup restore [flags]
 
 Flags:
-       --data-dir string  Data directory (default: from config)
-                          (default: ./data)
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
        --file string      Backup file to restore (Required)
        --yes bool         Confirm replacing the current database
 
@@ -2581,7 +2586,8 @@ Usage:
    rackd migrate status [flags]
 
 Flags:
-       --data-dir string  Data directory (default: ./data)
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
 
 Global Flags:
    -h, --help  Show help for the command
@@ -2597,7 +2603,8 @@ Usage:
    rackd migrate run [flags]
 
 Flags:
-       --data-dir string  Data directory (default: ./data)
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
        --no-backup bool   Skip the pre-migration backup
 
 Global Flags:
@@ -2614,7 +2621,8 @@ Usage:
    rackd migrate rollback [flags]
 
 Flags:
-       --data-dir string   Data directory (default: ./data)
+       --data-dir string   Data directory containing rackd.db
+                           (default: DATA_DIR, or ./data)
        --namespace string  Migrations to act on: "core" or an extension's name
                            (default: core)
        --steps int         Number of migrations to revert (default: 1)

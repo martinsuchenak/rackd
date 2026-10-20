@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/cmd/internal/flags"
+
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/paularlott/cli"
@@ -47,7 +49,7 @@ func RotateKeyCommand() *cli.Command {
 			"(NEW_ENCRYPTION_KEY by default) or from --new-key-file, so neither appears in the process list or shell history. " +
 			"Stop the server first: everything is re-encrypted in one transaction, and a running server would keep writing with the old key.",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "data-dir", Usage: "Data directory containing rackd.db", DefaultValue: "./data"},
+			flags.DataDir(),
 			&cli.StringFlag{Name: "new-key-env", Usage: "Environment variable holding the new 64-hex-character key", DefaultValue: "NEW_ENCRYPTION_KEY"},
 			&cli.StringFlag{Name: "new-key-file", Usage: "File holding the new key (overrides --new-key-env)"},
 			&cli.BoolFlag{Name: "yes", Usage: "Confirm that the server is stopped"},
@@ -65,7 +67,7 @@ func RotateKeyCommand() *cli.Command {
 				return err
 			}
 
-			store, err := storage.NewExtendedStorage(cmd.GetString("data-dir"))
+			store, err := storage.NewExtendedStorage(flags.ResolveDataDir(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to open database: %w", err)
 			}
