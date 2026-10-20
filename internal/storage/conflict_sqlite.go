@@ -326,6 +326,20 @@ func DuplicateIPDescription(ip string, devices int) string {
 	return fmt.Sprintf("IP address %s is assigned to %d devices", ip, devices)
 }
 
+// ResolveOpenConflict resolves a conflict that isn't resolved yet, and
+// reports whether it did, so concurrent callers resolve it once.
+func (s *SQLiteStorage) ResolveOpenConflict(ctx context.Context, id, resolvedBy, notes string) (bool, error) {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE conflicts SET status = ?, resolved_at = ?, resolved_by = ?, notes = ?
+		WHERE id = ? AND status != ?
+	`, string(model.ConflictStatusResolved), nowUTC(), nullString(resolvedBy), nullString(notes), id, string(model.ConflictStatusResolved))
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve conflict: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}
+
 // UpdateConflictParties records the devices or networks a conflict now
 // involves, with its description, leaving its status and notes alone.
 func (s *SQLiteStorage) UpdateConflictParties(ctx context.Context, conflict *model.Conflict) error {
