@@ -18,7 +18,9 @@ async function apiDevice(page: Page, name: string, ip: string): Promise<string> 
 // Conflicts" emptied the list until a reload brought them back.
 test('@conflicts the list follows the inventory and survives detection', async ({ page }) => {
   await login(page);
-  const ip = '10.97.0.' + (10 + Math.floor(Math.random() * 200));
+  // An address no earlier run used: the e2e database is shared across runs.
+  const now = Date.now();
+  const ip = `10.97.${Math.floor(now / 1000) % 250}.${10 + (now % 200)}`;
   const first = await apiDevice(page, uniqueName('e2e-dup-a'), ip);
   await apiDevice(page, uniqueName('e2e-dup-b'), ip);
 

@@ -140,13 +140,13 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 		return nil, err
 	}
 
-	// Recorded conflicts first catch up with the inventory, so those still
-	// open are the ones that still apply.
-	if err := s.reconcile(ctx); err != nil {
-		return nil, err
-	}
 	conflicts, err := s.store.FindDuplicateIPs(ctx)
 	if err != nil {
+		return nil, err
+	}
+	// Recorded conflicts first catch up with the inventory, so those still
+	// open are the ones that still apply.
+	if err := s.reconcileWith(ctx, conflicts); err != nil {
 		return nil, err
 	}
 
@@ -289,6 +289,12 @@ func hasOpenConflict(conflicts []model.Conflict) bool {
 // ones. It writes only what changed, so reading conflicts can run it; it
 // never records new conflicts, which detection does.
 func (s *ConflictService) reconcile(ctx context.Context) error {
+	return s.reconcileWith(ctx, nil)
+}
+
+// reconcileWith is reconcile with the current duplicate IPs, when the caller
+// has already found them (nil reads them if needed).
+func (s *ConflictService) reconcileWith(ctx context.Context, found []model.Conflict) error {
 	var open []model.Conflict
 	for _, status := range []model.ConflictStatus{model.ConflictStatusActive, model.ConflictStatusIgnored} {
 		cs, err := s.store.ListConflicts(ctx, &model.ConflictFilter{Status: status})
@@ -301,15 +307,19 @@ func (s *ConflictService) reconcile(ctx context.Context) error {
 		return nil
 	}
 
-	var duplicates map[string]model.Conflict // by IP, read when first needed
+	// The current duplicates and networks, each read once when first needed.
+	var duplicates map[string]model.Conflict
+	var networks map[string]*model.Network
 	for i := range open {
 		c := &open[i]
 		switch c.Type {
 		case model.ConflictTypeDuplicateIP:
 			if duplicates == nil {
-				found, err := s.store.FindDuplicateIPs(ctx)
-				if err != nil {
-					return err
+				if found == nil {
+					var err error
+					if found, err = s.store.FindDuplicateIPs(ctx); err != nil {
+						return err
+					}
 				}
 				duplicates = make(map[string]model.Conflict, len(found))
 				for _, f := range found {
@@ -330,7 +340,17 @@ func (s *ConflictService) reconcile(ctx context.Context) error {
 				}
 			}
 		case model.ConflictTypeOverlappingSubnet:
-			if err := s.reconcileOverlap(ctx, c); err != nil {
+			if networks == nil {
+				all, err := s.store.ListNetworks(ctx, &model.NetworkFilter{})
+				if err != nil {
+					return err
+				}
+				networks = make(map[string]*model.Network, len(all))
+				for j := range all {
+					networks[all[j].ID] = &all[j]
+				}
+			}
+			if err := s.reconcileOverlap(ctx, c, networks); err != nil {
 				return err
 			}
 		}
@@ -340,16 +360,13 @@ func (s *ConflictService) reconcile(ctx context.Context) error {
 
 // reconcileOverlap resolves an overlap whose networks are gone or no longer
 // overlap, and otherwise records their current names and subnets.
-func (s *ConflictService) reconcileOverlap(ctx context.Context, c *model.Conflict) error {
+func (s *ConflictService) reconcileOverlap(ctx context.Context, c *model.Conflict, networks map[string]*model.Network) error {
 	var names, subnets []string
 	var prefixes []netip.Prefix
 	for _, id := range c.NetworkIDs {
-		n, err := s.store.GetNetwork(ctx, id)
-		if errors.Is(err, storage.ErrNetworkNotFound) {
+		n, ok := networks[id]
+		if !ok {
 			return s.resolveStale(ctx, c, "A network in this overlap was deleted.")
-		}
-		if err != nil {
-			return err
 		}
 		p, err := netip.ParsePrefix(n.Subnet)
 		if err != nil {
@@ -375,7 +392,9 @@ func (s *ConflictService) resolveStale(ctx context.Context, c *model.Conflict, w
 	if c.Notes != "" {
 		notes = c.Notes + "\n\n" + why
 	}
-	if err := s.store.UpdateConflictStatus(ctx, c.ID, model.ConflictStatusResolved, "rackd", notes); err != nil {
+	// Only one of two reads reconciling at once resolves it and announces it.
+	resolvedNow, err := s.store.ResolveOpenConflict(ctx, c.ID, "rackd", notes)
+	if err != nil || !resolvedNow {
 		return err
 	}
 	if resolved, err := s.store.GetConflict(ctx, c.ID); err == nil {
