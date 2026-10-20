@@ -4,6 +4,8 @@ All configuration is done via environment variables. Variables can be set direct
 
 Use `--dev-mode` flag on `rackd server` to automatically disable `COOKIE_SECURE` and `RATE_LIMIT_ENABLED` for local development.
 
+A few settings also have a command-line flag: `--data-dir` (`DATA_DIR`, on every command that opens the database), and on `rackd server` `--listen-addr`, `--log-level`, `--log-format` and `--discovery-interval`. A flag you pass overrides the variable; one you leave out leaves it in charge.
+
 ## Server
 
 | Variable | Type | Default | Description |

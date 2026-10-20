@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"text/tabwriter"
 
-	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/cmd/internal/flags"
+
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/extension"
 	"github.com/paularlott/cli"
@@ -65,16 +66,9 @@ func namespaceFlag() cli.Flag {
 	return &cli.StringFlag{Name: "namespace", Usage: "Migrations to act on: \"core\" or an extension's name", DefaultValue: storage.CoreMigrationNamespace}
 }
 
-func dataDirFlag() cli.Flag {
-	return &cli.StringFlag{Name: "data-dir", Usage: "Data directory", DefaultValue: "./data"}
-}
+func dataDirFlag() cli.Flag { return flags.DataDir() }
 
-func resolveDataDir(cmd *cli.Command) string {
-	if dataDir := cmd.GetString("data-dir"); dataDir != "" {
-		return dataDir
-	}
-	return config.Load().DataDir
-}
+func resolveDataDir(cmd *cli.Command) string { return flags.ResolveDataDir(cmd) }
 
 func statusCommand(exts []extensionSteps) *cli.Command {
 	return &cli.Command{
