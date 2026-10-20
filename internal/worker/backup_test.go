@@ -37,4 +37,15 @@ func TestBackupWorkerSchedule(t *testing.T) {
 	if got := w.untilNext(); got != time.Hour {
 		t.Errorf("after a failure: wait %v, want an hour", got)
 	}
+	w.failedAt = time.Time{}
+
+	// A backup dated in the future waits one interval from now, not from it.
+	future := now.Add(48 * time.Hour)
+	name = "rackd-scheduled-" + future.Format("20060102T150405.000000000Z") + ".db"
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.untilNext(); got != 24*time.Hour {
+		t.Errorf("backup dated in the future: wait %v, want 24h", got)
+	}
 }

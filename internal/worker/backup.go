@@ -76,6 +76,11 @@ func (w *BackupWorker) untilNext() time.Duration {
 	now := w.now()
 	wait := w.delay
 	if last, ok := storage.LatestScheduledBackup(w.dir); ok {
+		// A backup dated in the future (the clock was ahead, then corrected)
+		// counts as taken now, so it can't hold off the schedule.
+		if last.After(now) {
+			last = now
+		}
 		if due := last.Add(w.interval).Sub(now); due > wait {
 			wait = due
 		}
@@ -101,6 +106,6 @@ func (w *BackupWorker) backup(ctx context.Context) {
 	w.failedAt = time.Time{}
 	log.Info("Scheduled backup taken", "path", info.Path, "size_bytes", info.SizeBytes, "duration", time.Since(start).Round(time.Millisecond))
 	if err != nil {
-		log.Warn("Scheduled backup", "error", err)
+		log.Warn("Scheduled backup taken, but old ones weren't deleted", "dir", w.dir, "error", err)
 	}
 }
