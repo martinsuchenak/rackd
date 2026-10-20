@@ -158,22 +158,25 @@ func TestAllowedPrivateTargets(t *testing.T) {
 			t.Errorf("%s: accepted, want an error", entry)
 		}
 	}
-	nets, err := ParseAllowedTargets([]string{"192.168.88.51", " 10.20.0.0/24 ", "", "fd00::1"})
+	nets, err := ParseAllowedTargets([]string{"192.168.10.53", " 10.20.0.0/24 ", "", "fd00::1"})
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	SetAllowedPrivateTargets(nets)
 
 	for addr, blocked := range map[string]bool{
-		"192.168.88.51":   false,
-		"192.168.88.52":   true,
-		"10.20.0.9":       false,
-		"10.20.1.9":       true,
-		"fd00::1":         false,
-		"fd00::2":         true,
-		"127.0.0.1":       true,
-		"169.254.169.254": true,
-		"203.0.113.10":    false,
+		"192.168.10.53":     false,
+		"192.168.10.54":     true,
+		"10.20.0.9":         false,
+		"10.20.1.9":         true,
+		"fd00::1":           false,
+		"fd00::2":           true,
+		"127.0.0.1":         true,
+		"169.254.169.254":   true,
+		"203.0.113.10":      false,
+		"100.64.0.1":        true,  // CGNAT, not listed
+		"64:ff9b::c0a8:a35": false, // NAT64 for 192.168.10.53
+		"64:ff9b::c0a8:a36": true,  // NAT64 for 192.168.10.54
 	} {
 		if got := blockedIPReason(net.ParseIP(addr)) != ""; got != blocked {
 			t.Errorf("%s: blocked = %v, want %v", addr, got, blocked)
@@ -181,7 +184,7 @@ func TestAllowedPrivateTargets(t *testing.T) {
 	}
 
 	SetAllowedPrivateTargets(nil)
-	if blockedIPReason(net.ParseIP("192.168.88.51")) == "" {
-		t.Error("192.168.88.51 allowed after clearing the list")
+	if blockedIPReason(net.ParseIP("192.168.10.53")) == "" {
+		t.Error("192.168.10.53 allowed after clearing the list")
 	}
 }

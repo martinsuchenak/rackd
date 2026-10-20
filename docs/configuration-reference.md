@@ -93,7 +93,7 @@ Webhooks and DNS providers can't reach loopback, link-local (including cloud met
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SSRF_ALLOWED_TARGETS` | string | _(empty)_ | Comma-separated private IPs or CIDR ranges that webhooks and DNS providers may reach, e.g. `192.168.88.51,10.20.0.0/24`. Each entry must be inside a private range; rackd refuses to start otherwise |
+| `SSRF_ALLOWED_TARGETS` | string | _(empty)_ | Comma-separated private IPs or CIDR ranges that webhooks and DNS providers may reach, e.g. `192.168.10.53,10.20.0.0/24`. Each entry must be inside a private range; rackd refuses to start otherwise |
 | `SSRF_ALLOW_PRIVATE_TARGETS` | bool | `false` | Allow every private range. Prefer `SSRF_ALLOWED_TARGETS`: with this set, anyone who can save a webhook or DNS provider can make rackd send requests anywhere on your network |
 
 ## Duration Format

@@ -444,9 +444,11 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "SYSTEM_ROLE", err.Error())
 	case errors.Is(err, service.ErrDNSProviderTestFailed), errors.Is(err, service.ErrDNSProviderFailed):
 		// Upstream connectivity failure (SSRF block, timeout, refused, bad
-		// credentials) — not a server bug. Surface the cause to the operator
-		// in both the response and the server log.
-		log.Error("DNS provider request failed", "error", err)
+		// credentials) — not a server bug. The service logged a failed test
+		// with its cause, which the response may leave out.
+		if !errors.Is(err, service.ErrDNSProviderTestFailed) {
+			log.Error("DNS provider request failed", "error", err)
+		}
 		h.writeError(w, http.StatusBadGateway, "PROVIDER_UNREACHABLE", err.Error())
 	default:
 		h.internalError(w, err)

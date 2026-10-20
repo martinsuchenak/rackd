@@ -25,7 +25,7 @@ The DNS integration enables:
 
 ```bash
 DNS_SYNC_INTERVAL=1h           # Interval between automatic sync operations
-SSRF_ALLOWED_TARGETS=192.168.88.51  # A provider on a private address must be listed
+SSRF_ALLOWED_TARGETS=192.168.10.53  # A provider on a private address must be listed
 ```
 
 ### SSRF_ALLOWED_TARGETS

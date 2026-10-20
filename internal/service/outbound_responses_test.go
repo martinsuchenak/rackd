@@ -52,3 +52,44 @@ func TestDNSProviderTestRevealsTheCauseOnlyToEditors(t *testing.T) {
 		t.Errorf("admin: %v, want the cause", err)
 	}
 }
+
+// A webhook's delivery records hold what its endpoint answered, which can be
+// an internal service's response, so only those who can edit the webhook see
+// it. Readers still see that a delivery failed.
+func TestWebhookDeliveryResponsesOnlyForEditors(t *testing.T) {
+	f := newPrivilegeFixture(t)
+	hook := &model.Webhook{Name: "hook", URL: "http://192.168.10.53/hook", Events: []model.EventType{"device.created"}, Active: true}
+	if err := f.store.CreateWebhook(f.sys(), hook); err != nil {
+		t.Fatal(err)
+	}
+	delivery := &model.WebhookDelivery{WebhookID: hook.ID, EventType: "device.created", Payload: "{}", ResponseCode: 401,
+		ResponseBody: "Invalid token or session expired.", Error: "webhook returned status 401", Status: model.DeliveryStatusFailed, AttemptNumber: 1}
+	if err := f.store.CreateDelivery(f.sys(), delivery); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewWebhookService(f.store)
+	viewerRole, err := f.store.GetRoleByName(f.sys(), "viewer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewer := f.user("viewer", viewerRole.ID)
+
+	list, err := svc.ListDeliveries(as(viewer), &model.DeliveryFilter{WebhookID: hook.ID})
+	if err != nil || len(list) != 1 {
+		t.Fatalf("viewer list: %v %v", list, err)
+	}
+	one, err := svc.GetDelivery(as(viewer), delivery.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []model.WebhookDelivery{list[0], *one} {
+		if d.ResponseBody != "" || d.ResponseCode != 0 || strings.Contains(d.Error, "401") || d.Error == "" || d.Status != model.DeliveryStatusFailed {
+			t.Errorf("viewer sees %+v, want a failed delivery without the response", d)
+		}
+	}
+
+	one, err = svc.GetDelivery(as(f.admin), delivery.ID)
+	if err != nil || one.ResponseBody == "" || one.ResponseCode != 401 {
+		t.Errorf("admin sees %+v (%v), want the response", one, err)
+	}
+}
