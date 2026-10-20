@@ -17,6 +17,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   deployment and installation guides use it, and no longer list the removed
   `API_AUTH_TOKEN`/`MCP_AUTH_TOKEN` settings or health-check an endpoint
   that needs signing in.
+- The macOS binaries are signed with a Developer ID certificate and
+  notarized by Apple, so Gatekeeper no longer blocks a downloaded `rackd`.
 
 ### Security
 

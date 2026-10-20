@@ -70,6 +70,13 @@ Or check the build provenance with the GitHub CLI:
 gh attestation verify "rackd_${VERSION}_${OS}_${ARCH}.tar.gz" --repo martinsuchenak/rackd
 ```
 
+On macOS, signed releases carry a Developer ID signature and are notarized by Apple, so Gatekeeper lets a downloaded binary run. To check one:
+
+```bash
+codesign --verify --verbose=2 rackd              # "valid on disk" and "satisfies its Designated Requirement"
+spctl --assess --type execute --verbose=2 rackd  # "accepted", "source=Notarized Developer ID"
+```
+
 ### 2. Build from Source
 
 #### Prerequisites
