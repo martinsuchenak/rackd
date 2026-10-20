@@ -29,6 +29,19 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   now overrides its variable only when given. `--discovery-interval` was
   accepted but never used; it now sets the interval.
 
+  **Before upgrading**, check any of these variables you set without the
+  matching flag: they now take effect. If `DATA_DIR` points somewhere other
+  than `./data`, move the database there first, or the server refuses to
+  start rather than create an empty one while `./data/rackd.db` exists.
+
+  **Docker:** the image, `docker-compose.yml` and the deployment guide set
+  `DATA_DIR=/data` and mount the volume there, but the database has been
+  written to `/app/data` inside the container, which is lost when the
+  container is recreated. Before upgrading, copy it into the volume from the
+  running container, for example `docker cp rackd:/app/data/rackd.db ./rackd.db`
+  then into the directory mounted at `/data`. Once upgraded, rackd uses
+  `/data`.
+
 ### Security
 
 - Built with Go 1.27.3, which distrusts compromised intermediate certificates
