@@ -45,6 +45,10 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   enabled mapping uses now answers `409` naming it; port `0` (every port)
   and protocol `any` count as overlapping.
 
+- The users page showed no roles until a user's roles were opened in the
+  role manager: `GET /api/v1/users` left them out, though the API reference
+  lists them. Each user now comes with its roles, loaded in one query.
+
 ### Security
 
 - The OAuth approval is bound to what the consent screen showed. The screen
