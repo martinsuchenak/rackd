@@ -92,7 +92,7 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 	codeChallenge := q.Get("code_challenge")
 	codeChallengeMethod := q.Get("code_challenge_method")
 
-	client, scopes, err := h.svc.OAuth.ValidateAuthRequest(clientID, redirectURI, responseType, scope, codeChallenge, codeChallengeMethod)
+	client, _, err := h.svc.OAuth.ValidateAuthRequest(clientID, redirectURI, responseType, scope, codeChallenge, codeChallengeMethod)
 	if err != nil {
 		// If redirect_uri is invalid, don't redirect — show error directly
 		if errors.Is(err, service.ErrOAuthInvalidRedirectURI) || errors.Is(err, service.ErrOAuthInvalidClient) {
@@ -104,6 +104,15 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Show only what this user can grant, and bind the approval to exactly
+	// that: approving must present consent_token with the same values.
+	scopes, consentToken, err := h.svc.OAuth.PrepareConsent(r.Context(), session.UserID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod)
+	if err != nil {
+		log.Error("Failed to prepare OAuth consent", "error", err)
+		redirectWithError(w, r, redirectURI, "server_error", "Failed to prepare consent", state)
+		return
+	}
+
 	// Return consent page data as JSON (the SPA will render it)
 	h.writeJSON(w, http.StatusOK, map[string]any{
 		"client_name":           client.Name,
@@ -112,9 +121,10 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 		"client_id":             clientID,
 		"redirect_uri":          redirectURI,
 		"state":                 state,
-		"scope":                 scope,
+		"scope":                 auth.JoinScopes(scopes),
 		"code_challenge":        codeChallenge,
 		"code_challenge_method": codeChallengeMethod,
+		"consent_token":         consentToken,
 		"user":                  session.Username,
 	})
 }
@@ -143,6 +153,7 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		State               string `json:"state"`
 		CodeChallenge       string `json:"code_challenge"`
 		CodeChallengeMethod string `json:"code_challenge_method"`
+		ConsentToken        string `json:"consent_token"`
 		Approved            bool   `json:"approved"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -168,6 +179,14 @@ func (h *Handler) oauthAuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		h.writeJSON(w, http.StatusOK, map[string]string{
 			"redirect_uri": buildErrorRedirectURL(body.RedirectURI, "access_denied", "User denied the request", body.State),
 		})
+		return
+	}
+
+	// The approval can grant only what the consent screen showed this user:
+	// a changed scope (or anything else) fails the consent token.
+	if err := h.svc.OAuth.VerifyConsent(body.ConsentToken, session.UserID, body.ClientID, body.RedirectURI,
+		body.Scope, body.CodeChallenge, body.CodeChallengeMethod); err != nil {
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 

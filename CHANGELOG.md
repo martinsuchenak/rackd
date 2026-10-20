@@ -28,6 +28,14 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   fields are now refused with `400`. The authentication guide also described a
   `--user-id` flag that doesn't exist: a key always belongs to its creator.
 
+### Security
+
+- The OAuth approval is bound to what the consent screen showed. The screen
+  now lists only the scopes the client and the signed-in user can actually
+  grant, and approving checks a signed consent token, so a changed scope,
+  redirect URI or PKCE challenge in the approval is refused with `400`
+  instead of granting more than the user saw.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

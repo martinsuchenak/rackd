@@ -145,6 +145,7 @@ Token properties:
 - Refresh token rotation with replay detection: a refresh token works once. If it is used again, or twice at the same moment, every token issued from it is revoked, including those of whoever used it first.
 - A password change or reset, deactivation or deletion revokes the user's OAuth tokens. API keys are kept; delete them separately if they may be compromised.
 - Clients register themselves, so the consent page warns that their name isn't verified and shows the host the approval sends access to.
+- The consent page lists only the scopes the client and the signed-in user can grant, and the approval is bound to that screen: a changed scope, redirect URI or PKCE challenge is refused.
 
 ## RBAC
 

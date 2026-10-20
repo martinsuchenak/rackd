@@ -3290,10 +3290,30 @@ paths:
           schema: { type: string }
       responses:
         '200':
-          description: Authorization page
+          description: >-
+            The web UI page for a browser navigation; consent data for a
+            signed-in fetch (`Accept: application/json`). `scopes` lists only
+            what the client and user can grant, and approving must send back
+            `consent_token` with the same values.
           content:
             text/html:
               schema: { type: string }
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_name: { type: string }
+                  client_uri: { type: string }
+                  client_id: { type: string }
+                  redirect_uri: { type: string }
+                  state: { type: string }
+                  scopes: { type: array, items: { type: string } }
+                  scope: { type: string }
+                  code_challenge: { type: string }
+                  code_challenge_method: { type: string }
+                  consent_token: { type: string }
+                  user: { type: string }
+        '302': { description: Redirect to the login page (no session) }
         '400': { $ref: '#/components/responses/BadRequest' }
     post:
       operationId: postOAuthAuthorize
@@ -3302,7 +3322,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               type: object
               properties:
@@ -3310,9 +3330,24 @@ paths:
                 redirect_uri: { type: string }
                 scope: { type: string }
                 state: { type: string }
-                approve: { type: string }
+                code_challenge: { type: string }
+                code_challenge_method: { type: string }
+                consent_token:
+                  type: string
+                  description: >-
+                    From the consent data. An approval whose user, client,
+                    redirect URI, scope or PKCE challenge differs from what
+                    the consent screen showed is refused.
+                approved: { type: boolean }
       responses:
-        '302': { description: Redirect to client }
+        '200':
+          description: Where to send the browser (with the code, or the error)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redirect_uri: { type: string }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: Not authenticated (no session) }
         '403': { description: "CSRF validation failed (missing X-Requested-With header)" }

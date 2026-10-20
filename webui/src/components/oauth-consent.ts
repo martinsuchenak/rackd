@@ -8,6 +8,8 @@ interface ConsentData {
   scope: string;
   code_challenge: string;
   code_challenge_method: string;
+  /** Approving must send this back unchanged with the same values. */
+  consent_token: string;
   user: string;
 }
 
@@ -114,6 +116,7 @@ export function oauthConsent() {
             state: this.consentData.state,
             code_challenge: this.consentData.code_challenge,
             code_challenge_method: this.consentData.code_challenge_method,
+            consent_token: this.consentData.consent_token,
             approved: true,
           }),
         });
