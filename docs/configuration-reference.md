@@ -11,6 +11,9 @@ A few settings also have a command-line flag: `--data-dir` (`DATA_DIR`, on every
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `DATA_DIR` | string | `./data` | Directory for SQLite database and data files |
+| `BACKUP_INTERVAL` | duration | `0` | Take a verified backup this often (at least `5m`); `0` turns scheduled backups off. See [Backup & Restore](backup.md#scheduled-backups-in-the-server) |
+| `BACKUP_KEEP` | int | `7` | Scheduled backups to keep; older ones are deleted |
+| `BACKUP_DIR` | string | `<DATA_DIR>/backups` | Directory for scheduled backups |
 | `PRE_MIGRATION_BACKUP` | bool | `true` | Back up the database to `<DATA_DIR>/backups/` before pending migrations run at startup; the server does not start if the backup fails. Set `false` to skip it |
 | `LISTEN_ADDR` | string | `:8080` | Address and port to listen on |
 | `REQUEST_TIMEOUT` | duration | `30s` | HTTP request timeout |

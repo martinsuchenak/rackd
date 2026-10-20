@@ -19,6 +19,11 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   that needs signing in.
 - The macOS binaries are signed with a Developer ID certificate and
   notarized by Apple, so Gatekeeper no longer blocks a downloaded `rackd`.
+- Scheduled backups: with `BACKUP_INTERVAL` set (for example `24h`), the
+  server takes a verified backup that often into `BACKUP_DIR` (default
+  `<DATA_DIR>/backups`) and keeps the newest `BACKUP_KEEP` (default 7). The
+  schedule follows the newest backup on disk, so restarts don't take extra
+  ones, and a failed backup is retried after at most an hour. Off by default.
 
 ### Fixed
 

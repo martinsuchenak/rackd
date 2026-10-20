@@ -57,6 +57,12 @@ type Config struct {
 	// DNS sync
 	DNSSyncInterval time.Duration
 
+	// Scheduled backups: every BackupInterval (0 disables them), into
+	// BackupDir (default <DATA_DIR>/backups), keeping the newest BackupKeep.
+	BackupInterval time.Duration
+	BackupDir      string
+	BackupKeep     int
+
 	// SSRF policy for outbound integrations (webhooks, DNS providers).
 	// When false (default), loopback, link-local, multicast and private
 	// ranges (RFC1918/CGNAT/ULA) are rejected. Intentionally internal
@@ -115,6 +121,10 @@ func Load() *Config {
 
 		DNSSyncInterval: getDurationEnv("DNS_SYNC_INTERVAL", 1*time.Hour),
 
+		BackupInterval: getDurationEnv("BACKUP_INTERVAL", 0),
+		BackupDir:      getEnv("BACKUP_DIR", ""),
+		BackupKeep:     getIntEnv("BACKUP_KEEP", 7),
+
 		SSRFAllowPrivateTargets: getBoolEnv("SSRF_ALLOW_PRIVATE_TARGETS", false),
 		SSRFAllowedTargets:      getEnv("SSRF_ALLOWED_TARGETS", ""),
 	}
@@ -162,6 +172,15 @@ func (c *Config) Validate() error {
 
 	if c.MCPOAuthEnabled && c.MCPOAuthIssuerURL == "" {
 		return fmt.Errorf("MCP_OAUTH_ISSUER_URL is required when MCP_OAUTH_ENABLED is true")
+	}
+
+	// Each backup is a full copy of the database, so a very short interval
+	// mostly writes copies.
+	if c.BackupInterval < 0 || (c.BackupInterval > 0 && c.BackupInterval < 5*time.Minute) {
+		return fmt.Errorf("BACKUP_INTERVAL must be 0 (off) or at least 5m, got %v", c.BackupInterval)
+	}
+	if c.BackupInterval > 0 && c.BackupKeep < 1 {
+		return fmt.Errorf("BACKUP_KEEP must be at least 1, got %d", c.BackupKeep)
 	}
 
 	return nil

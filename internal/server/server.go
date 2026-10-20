@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/api"
@@ -119,6 +120,18 @@ func Run(ctx context.Context, opts Options) error {
 	webhookWorker := webhook.NewWorker(store, webhook.DefaultDeliveryConfig())
 	webhookWorker.Start()
 	defer webhookWorker.Stop()
+
+	// Scheduled backups, beside the pre-migration ones unless BACKUP_DIR says
+	// otherwise.
+	if cfg.BackupInterval > 0 {
+		dir := cfg.BackupDir
+		if dir == "" {
+			dir = filepath.Join(cfg.DataDir, "backups")
+		}
+		backupWorker := worker.NewBackupWorker(store.DB(), dir, cfg.BackupInterval, cfg.BackupKeep)
+		backupWorker.Start()
+		defer backupWorker.Stop()
+	}
 
 	// Utilization snapshots feed the dashboard's trend chart.
 	if cfg.SnapshotInterval > 0 {
