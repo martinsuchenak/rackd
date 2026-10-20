@@ -35,6 +35,23 @@ When the server starts (or `rackd migrate run` runs) and there are pending migra
 
 ## Automated Backups
 
+### Scheduled Backups in the Server
+
+The server can back itself up on a schedule:
+
+```bash
+BACKUP_INTERVAL=24h   # how often; 0 (the default) turns scheduled backups off
+BACKUP_KEEP=7         # how many scheduled backups to keep
+BACKUP_DIR=/backups   # where; defaults to <data-dir>/backups
+```
+
+Each backup is the same verified snapshot as `rackd backup`, written as `rackd-scheduled-<timestamp>.db`. Once a new one is taken, the oldest scheduled backups beyond `BACKUP_KEEP` are deleted; manual and pre-migration backups in the same directory are never touched.
+
+- The next backup is due `BACKUP_INTERVAL` after the newest one in the directory, so restarting the server doesn't take an extra one. An overdue backup runs a minute after startup.
+- A failed backup is logged as an error and retried after the shorter of `BACKUP_INTERVAL` and an hour.
+- Each backup is a full copy of the database, so the interval must be at least 5 minutes. On network storage such as NFS, a longer interval, or a `BACKUP_DIR` on another volume, keeps the extra writes down.
+- A backup on the same disk as the database doesn't survive losing that disk. Copy the directory elsewhere, or point `BACKUP_DIR` at other storage.
+
 ### Cron
 
 ```bash
