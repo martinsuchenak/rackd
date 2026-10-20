@@ -2,13 +2,19 @@ package service
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"slices"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -31,6 +37,9 @@ var (
 	ErrOAuthRedirectURIRequired  = errors.New("at least one redirect_uri is required")
 	ErrOAuthRedirectURINotHTTPS  = errors.New("redirect_uri must be an absolute https URI (http is only allowed for loopback hosts)")
 	ErrOAuthScopeRequired        = errors.New("scope is required (an empty scope would grant no access)")
+	// ErrOAuthConsentMismatch is returned when an approval doesn't carry a
+	// valid consent token for exactly what the consent screen showed.
+	ErrOAuthConsentMismatch      = errors.New("the approval doesn't match the consent screen; start the sign-in again")
 	ErrOAuthScopeNotAllowed      = errors.New("scope must not contain '*'; register explicit scopes")
 	ErrOAuthInvalidScope         = errors.New("requested scope exceeds the client's registered scope")
 	ErrOAuthClientMetadataLimit  = errors.New("client metadata is too large")
@@ -48,6 +57,10 @@ type OAuthService struct {
 	refreshTokenTTL time.Duration
 	codeExpiry      time.Duration
 	stopCleanup     chan struct{}
+	// consentKey signs consent tokens, which tie an approval to the consent
+	// screen the user saw. It lives only in memory: a restart just means
+	// pending consent screens have to be opened again.
+	consentKey []byte
 }
 
 func NewOAuthService(store storage.ExtendedStorage, sm *auth.SessionManager, issuerURL string) *OAuthService {
@@ -59,7 +72,16 @@ func NewOAuthService(store storage.ExtendedStorage, sm *auth.SessionManager, iss
 		refreshTokenTTL: 30 * 24 * time.Hour,
 		codeExpiry:      10 * time.Minute,
 		stopCleanup:     make(chan struct{}),
+		consentKey:      newConsentKey(),
 	}
+}
+
+func newConsentKey() []byte {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		panic("oauth: generating the consent key: " + err.Error())
+	}
+	return key
 }
 
 func (s *OAuthService) SetTokenTTLs(accessTTL, refreshTTL time.Duration) {
@@ -292,33 +314,10 @@ func (s *OAuthService) CreateAuthorizationCode(ctx context.Context, clientID, us
 	if err != nil {
 		return "", err
 	}
-	effectiveScopes := auth.ParseScopes(scope)
-	if len(effectiveScopes) == 0 {
-		// Fail closed: fall back to the client's registered default scope;
-		// if the client has none either, refuse to issue a code rather than
-		// mint a token with an empty (historically unrestricted) scope.
-		effectiveScopes = auth.ParseScopes(client.Scope)
-	}
-	registeredScopes := auth.ParseScopes(client.Scope)
-	if !slices.Contains(registeredScopes, "*") {
-		effectiveScopes = auth.IntersectScopes(effectiveScopes, registeredScopes)
-	}
-	// Clamp to the advertised catalog...
-	catalog, err := s.scopeCatalog(ctx)
+	effectiveScopes, err := s.grantableScopes(ctx, client, userID, scope)
 	if err != nil {
 		return "", err
 	}
-	effectiveScopes = auth.IntersectScopes(effectiveScopes, catalog)
-	// ...and to the consenting user's own permissions: a user must never be
-	// able to delegate (or be tricked into granting) more than they hold,
-	// regardless of what the client registered or the authorize request
-	// carried. A legacy "*" registration collapses to the user's permission
-	// set by this same intersection.
-	userScopes, err := s.userScopeSet(ctx, userID)
-	if err != nil {
-		return "", err
-	}
-	effectiveScopes = auth.IntersectScopes(effectiveScopes, userScopes)
 	if len(effectiveScopes) == 0 {
 		return "", ErrOAuthScopeRequired
 	}
@@ -861,4 +860,83 @@ func (s *OAuthService) StartCleanup() {
 // StopCleanup stops the background cleanup goroutine.
 func (s *OAuthService) StopCleanup() {
 	close(s.stopCleanup)
+}
+
+// grantableScopes is what a user can grant a client from a requested scope:
+// the request (or, without one, the client's registered scope), within the
+// client's registration, the advertised catalog and the user's own
+// permissions. A user must never be able to delegate, or be tricked into
+// granting, more than they hold; a legacy "*" registration collapses to the
+// user's permissions by the same intersection.
+func (s *OAuthService) grantableScopes(ctx context.Context, client *model.OAuthClient, userID, scope string) ([]string, error) {
+	effective := auth.ParseScopes(scope)
+	if len(effective) == 0 {
+		// Fail closed: fall back to the client's registered scope; with none
+		// either, nothing is grantable rather than everything.
+		effective = auth.ParseScopes(client.Scope)
+	}
+	registered := auth.ParseScopes(client.Scope)
+	if !slices.Contains(registered, "*") {
+		effective = auth.IntersectScopes(effective, registered)
+	}
+	catalog, err := s.scopeCatalog(ctx)
+	if err != nil {
+		return nil, err
+	}
+	effective = auth.IntersectScopes(effective, catalog)
+	held, err := s.userScopeSet(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return auth.IntersectScopes(effective, held), nil
+}
+
+// PrepareConsent returns the scopes the consent screen should show, those
+// the user can grant the client from the request, and a token that approving
+// must present, so an approval can grant exactly what the screen showed and
+// nothing else.
+func (s *OAuthService) PrepareConsent(ctx context.Context, userID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod string) ([]string, string, error) {
+	client, err := s.store.GetOAuthClient(ctx, clientID)
+	if err != nil {
+		return nil, "", ErrOAuthInvalidClient
+	}
+	scopes, err := s.grantableScopes(ctx, client, userID, scope)
+	if err != nil {
+		return nil, "", err
+	}
+	if scopes == nil {
+		scopes = []string{}
+	}
+	expires := time.Now().Add(s.codeExpiry).Unix()
+	token := strconv.FormatInt(expires, 10) + "." +
+		s.consentMAC(expires, userID, clientID, redirectURI, auth.JoinScopes(scopes), codeChallenge, codeChallengeMethod)
+	return scopes, token, nil
+}
+
+// VerifyConsent checks that a consent token approves exactly these values
+// for this user and hasn't expired.
+func (s *OAuthService) VerifyConsent(token, userID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod string) error {
+	expiresStr, mac, ok := strings.Cut(token, ".")
+	if !ok {
+		return ErrOAuthConsentMismatch
+	}
+	expires, err := strconv.ParseInt(expiresStr, 10, 64)
+	if err != nil || time.Now().Unix() > expires {
+		return ErrOAuthConsentMismatch
+	}
+	want := s.consentMAC(expires, userID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod)
+	if !hmac.Equal([]byte(mac), []byte(want)) {
+		return ErrOAuthConsentMismatch
+	}
+	return nil
+}
+
+func (s *OAuthService) consentMAC(expires int64, fields ...string) string {
+	h := hmac.New(sha256.New, s.consentKey)
+	h.Write([]byte(strconv.FormatInt(expires, 10)))
+	for _, f := range fields {
+		h.Write([]byte{0})
+		h.Write([]byte(f))
+	}
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
