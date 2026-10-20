@@ -493,6 +493,10 @@ components:
         created_at: { type: string, format: date-time }
         last_used_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
+        scopes:
+          type: array
+          items: { type: string }
+          description: resource:action permissions the key is limited to; absent means all of its owner's
       additionalProperties: true
 
     APIKeyWithSecret:
@@ -502,10 +506,16 @@ components:
     APIKeyInput:
       type: object
       required: [name]
+      additionalProperties: false
       properties:
         name: { type: string }
         description: { type: string }
         expires_at: { type: string, format: date-time }
+        scopes:
+          type: array
+          minItems: 1
+          items: { type: string }
+          description: Limit the key to these resource:action permissions, each one the caller holds; leave out for a key with all of the caller's permissions
 
     DashboardSummary:
       type: object

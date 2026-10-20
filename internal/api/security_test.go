@@ -424,17 +424,14 @@ func TestUserCannotDeleteOtherUsersAPIKey(t *testing.T) {
 	parseJSON(t, w, &userB)
 	userBID := userB["id"].(string)
 
-	// Create API key for user B (via admin)
-	w = ts.doRequest(t, http.MethodPost, "/api/v1/keys", map[string]any{
-		"name":    "userB-key",
-		"user_id": userBID,
-	}, adminToken)
-	if w.Code != http.StatusCreated {
-		t.Fatalf("create key for userB: expected 201, got %d: %s", w.Code, w.Body.String())
+	// An API key owned by user B. Stored directly: the API creates keys for
+	// the caller only (it used to ignore a user_id field and give the key to
+	// the admin instead, which made this test check the wrong owner).
+	userBKey := &model.APIKey{Name: "userB-key", Key: auth.HashToken("userB-token"), UserID: userBID}
+	if err := ts.store.CreateAPIKey(context.Background(), userBKey); err != nil {
+		t.Fatalf("create key for userB: %v", err)
 	}
-	var keyResp map[string]any
-	parseJSON(t, w, &keyResp)
-	userBKeyID := keyResp["id"].(string)
+	userBKeyID := userBKey.ID
 
 	// Create a non-admin user A with their own token
 	ctx := service.SystemContext(context.Background(), "test")

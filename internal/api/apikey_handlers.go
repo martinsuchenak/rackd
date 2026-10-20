@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -33,9 +34,20 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		Name        string     `json:"name"`
 		Description string     `json:"description"`
 		ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+		// A pointer, so an empty list (refused) differs from none (a key
+		// with all of the owner's permissions).
+		Scopes *[]string `json:"scopes,omitempty"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Unknown fields are refused, not ignored: a request that asks for
+	// "permissions" or "role" mustn't silently get a full-access key.
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		if strings.HasPrefix(err.Error(), "json: unknown field") {
+			h.badRequest(w, strings.TrimPrefix(err.Error(), "json: ")+"; use scopes to limit what the key can do")
+			return
+		}
 		h.invalidJSON(w)
 		return
 	}
@@ -44,6 +56,13 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		Name:        req.Name,
 		Description: req.Description,
 		ExpiresAt:   req.ExpiresAt,
+	}
+	if req.Scopes != nil {
+		if len(*req.Scopes) == 0 {
+			h.writeValidationErrors(w, ValidationErrors{{Field: "scopes", Message: "give at least one resource:action scope, or leave scopes out for a key with all your permissions"}})
+			return
+		}
+		newKey.Scopes = *req.Scopes
 	}
 
 	plaintextKey, err := h.svc.APIKeys.Create(r.Context(), newKey)

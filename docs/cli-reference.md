@@ -1375,6 +1375,9 @@ Flags:
        --name string         API key name (Required)
        --description string  API key description
        --expires string      Expiration date (YYYY-MM-DD)
+       --scopes string       Limit the key to these permissions (comma-separated
+                             resource:action, e.g. devices:list,devices:read);
+                             default: all of yours
 
 Global Flags:
    -h, --help  Show help for the command

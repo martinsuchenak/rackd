@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -93,6 +94,10 @@ func CreateCommand() *cli.Command {
 				Name:  "expires",
 				Usage: "Expiration date (YYYY-MM-DD)",
 			},
+			&cli.StringFlag{
+				Name:  "scopes",
+				Usage: "Limit the key to these permissions (comma-separated resource:action, e.g. devices:list,devices:read); default: all of yours",
+			},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := client.LoadConfig()
@@ -109,6 +114,15 @@ func CreateCommand() *cli.Command {
 					return fmt.Errorf("invalid expiration date format (use YYYY-MM-DD): %w", err)
 				}
 				req["expires_at"] = t
+			}
+			if scopes := cmd.GetString("scopes"); scopes != "" {
+				var list []string
+				for _, s := range strings.Split(scopes, ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						list = append(list, s)
+					}
+				}
+				req["scopes"] = list
 			}
 
 			resp, err := c.DoRequest("POST", "/api/v1/keys", req)

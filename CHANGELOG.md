@@ -9,6 +9,25 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- API keys can be limited to some of their owner's permissions with
+  `scopes` (`resource:action`, each one the creator holds). A scoped key is
+  checked against its scopes as well as its owner's permissions, on the REST
+  API and over MCP. The web UI's Create API Key dialog offers "All my
+  permissions" or "Only the permissions I choose", the API Keys page shows each
+  key's access and notes keys with full access, and `rackd apikey create` takes
+  `--scopes`. Keys without scopes keep all of their owner's permissions, as
+  before.
+
+### Fixed
+
+- **Security:** creating an API key ignored fields it didn't know, so a
+  request asking for `permissions`, `role` or `is_admin` got a key with all of
+  its creator's permissions and no error (found by a Strix scan). Unknown
+  fields are now refused with `400`. The authentication guide also described a
+  `--user-id` flag that doesn't exist: a key always belongs to its creator.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

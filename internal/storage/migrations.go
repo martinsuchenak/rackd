@@ -281,6 +281,12 @@ var migrations = []*Migration{
 		Up:      migrateIndexDiscoveredPromotedUp,
 		Down:    migrateIndexDiscoveredPromotedDown,
 	},
+	{
+		Version: "20261020120000",
+		Name:    "add_api_key_scopes",
+		Up:      migrateAddAPIKeyScopesUp,
+		Down:    migrateAddAPIKeyScopesDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3214,5 +3220,18 @@ func migrateIndexDiscoveredPromotedUp(ctx context.Context, tx sqlTx) error {
 
 func migrateIndexDiscoveredPromotedDown(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `DROP INDEX IF EXISTS idx_discovered_devices_promoted`)
+	return err
+}
+
+// migrateAddAPIKeyScopesUp lets an API key be limited to some of its owner's
+// permissions. Existing keys get none, which keeps them acting with all of
+// their owner's permissions.
+func migrateAddAPIKeyScopesUp(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `ALTER TABLE api_keys ADD COLUMN scopes TEXT`)
+	return err
+}
+
+func migrateAddAPIKeyScopesDown(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `ALTER TABLE api_keys DROP COLUMN scopes`)
 	return err
 }

@@ -37,16 +37,20 @@ Related endpoints:
 
 ### 2. API Keys (REST API and MCP)
 
-API keys are tied to a user account and inherit that user's RBAC permissions.
+An API key belongs to the user who creates it. By default it can do everything
+that user can; give it **scopes** to limit it to some of their permissions, so
+an integration that only reads inventory can't change anything. Scopes are
+`resource:action` permissions (as in [RBAC](rbac.md)), each one you hold
+yourself, and a scoped key never gains a permission its owner loses.
 
 #### Creating API Keys
 
 ```bash
-# Via CLI
-rackd apikey create --name "ci-pipeline" --user-id USER_ID
+# A key with all your permissions
+rackd apikey create --name "ci-pipeline"
 
-# With expiration
-rackd apikey create --name "temp-key" --user-id USER_ID --expires "2026-12-31"
+# A read-only inventory key that expires
+rackd apikey create --name "inventory-export" --scopes devices:list,devices:read --expires "2026-12-31"
 ```
 
 Or via the API:
@@ -56,8 +60,13 @@ POST /api/v1/keys
 Authorization: Bearer EXISTING_KEY
 Content-Type: application/json
 
-{"name": "my-app", "expires_at": "2026-12-31T23:59:59Z"}
+{"name": "inventory-export", "scopes": ["devices:list", "devices:read"], "expires_at": "2026-12-31T23:59:59Z"}
 ```
+
+The request accepts only `name`, `description`, `expires_at` and `scopes`;
+other fields are refused with `400` rather than ignored. A scope you don't hold,
+or an empty `scopes` list, is refused too. The web UI's Create API Key dialog
+offers the same choice, and the API Keys page marks keys with full access.
 
 The key value is returned only once on creation. Store it securely.
 
@@ -86,7 +95,8 @@ export RACKD_TOKEN=YOUR_API_KEY
 
 #### Key Requirements
 
-- Every API key must be associated with a user (`user_id` field)
+- Every API key belongs to a user (`user_id`), and can do at most what that user can
+- A scoped key is checked against its scopes as well as its owner's permissions, on the REST API and over MCP
 - Legacy keys without a user association are rejected with 401
 - Expired keys are rejected with a specific `EXPIRED_KEY` error code
 - Keys are SHA-256 hashed in the database; comparison is constant-time

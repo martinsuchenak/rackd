@@ -20,6 +20,9 @@ export function apiKeysList() {
     formName: '',
     formDescription: '',
     formExpiresAt: '',
+    // 'full': all of the creator's permissions; 'scoped': only formScopes.
+    formAccess: 'full' as 'full' | 'scoped',
+    formScopes: [] as string[],
 
     validationErrors: {} as Record<string, string>,
     saving: false,
@@ -67,6 +70,8 @@ export function apiKeysList() {
       this.formName = '';
       this.formDescription = '';
       this.formExpiresAt = '';
+      this.formAccess = 'full';
+      this.formScopes = [];
       this.validationErrors = {};
       this.modalType = 'create';
     },
@@ -93,6 +98,9 @@ export function apiKeysList() {
       if (!this.formName.trim()) {
         this.validationErrors.name = 'Name is required';
       }
+      if (this.formAccess === 'scoped' && this.formScopes.length === 0) {
+        this.validationErrors.scopes = 'Choose at least one permission, or give the key all your permissions';
+      }
       return Object.keys(this.validationErrors).length === 0;
     },
 
@@ -108,6 +116,7 @@ export function apiKeysList() {
           expires_at: this.formExpiresAt
             ? new Date(this.formExpiresAt + 'T23:59:59Z').toISOString()
             : undefined,
+          scopes: this.formAccess === 'scoped' ? [...this.formScopes] : undefined,
         };
         const created = await api.createAPIKey(req);
         this.newKeyValue = created.key || '';
@@ -162,6 +171,42 @@ export function apiKeysList() {
 
     getSelectedKeyName(): string {
       return this.selectedKey?.name || '';
+    },
+
+    // The permissions a new key can be limited to: the creator's own,
+    // grouped by resource.
+    get scopeGroups(): { resource: string; scopes: string[] }[] {
+      const groups = new Map<string, string[]>();
+      for (const p of window.rackdConfig?.user?.permissions ?? []) {
+        const list = groups.get(p.resource) ?? [];
+        list.push(p.resource + ':' + p.action);
+        groups.set(p.resource, list);
+      }
+      return [...groups.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([resource, scopes]) => ({ resource, scopes: scopes.sort() }));
+    },
+    get isScoped(): boolean { return this.formAccess === 'scoped'; },
+    hasScope(scope: string): boolean { return this.formScopes.includes(scope); },
+    toggleScope(scope: string): void {
+      this.formScopes = this.hasScope(scope)
+        ? this.formScopes.filter((s) => s !== scope)
+        : [...this.formScopes, scope];
+    },
+    scopeAction(scope: string): string { return scope.slice(scope.indexOf(':') + 1); },
+
+    isFullAccess(key: APIKey): boolean { return !key.scopes || key.scopes.length === 0; },
+    accessLabel(key: APIKey): string {
+      if (this.isFullAccess(key)) return 'Full access';
+      return key.scopes!.length === 1 ? key.scopes![0] : `${key.scopes!.length} permissions`;
+    },
+    accessTitle(key: APIKey): string {
+      return this.isFullAccess(key) ? 'Can do everything its owner can' : key.scopes!.join(', ');
+    },
+    get fullAccessCount(): number { return this.keys.filter((k) => this.isFullAccess(k)).length; },
+    get fullAccessNotice(): string {
+      const n = this.fullAccessCount;
+      return `${n} ${n === 1 ? 'key has' : 'keys have'} full access: ${n === 1 ? 'it can' : 'they can'} do everything ${n === 1 ? 'its owner' : 'their owners'} can. Give integrations a key limited to the permissions they need.`;
     },
   };
 }

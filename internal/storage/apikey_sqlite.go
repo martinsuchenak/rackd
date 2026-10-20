@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -28,8 +29,8 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 		key.CreatedAt = nowUTC()
 	}
 
-	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at)
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at, scopes)
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	var userID sql.NullString
 	if key.UserID != "" {
@@ -38,7 +39,7 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 
 	_, err := s.db.ExecContext(ctx, query,
 		key.ID, key.Name, key.Key, userID, key.Description,
-		key.CreatedAt, key.LastUsedAt, key.ExpiresAt,
+		key.CreatedAt, key.LastUsedAt, key.ExpiresAt, nullString(strings.Join(key.Scopes, " ")),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create API key: %w", err)
@@ -47,37 +48,40 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 	return nil
 }
 
-// GetAPIKey retrieves an API key by ID
-func (s *SQLiteStorage) GetAPIKey(ctx context.Context, id string) (*model.APIKey, error) {
-	if id == "" {
-		return nil, ErrInvalidID
-	}
+// apiKeyColumns are the columns scanAPIKey reads, in order.
+const apiKeyColumns = `id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at, scopes`
 
-	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
-	          FROM api_keys WHERE id = ?`
-
+func scanAPIKey(row interface{ Scan(dest ...any) error }) (*model.APIKey, error) {
 	var key model.APIKey
 	var lastUsedAt, expiresAt sql.NullTime
-
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
-		&key.CreatedAt, &lastUsedAt, &expiresAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, ErrAPIKeyNotFound
+	var scopes sql.NullString
+	if err := row.Scan(&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
+		&key.CreatedAt, &lastUsedAt, &expiresAt, &scopes); err != nil {
+		return nil, err
 	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to get API key: %w", err)
-	}
-
 	if lastUsedAt.Valid {
 		key.LastUsedAt = &lastUsedAt.Time
 	}
 	if expiresAt.Valid {
 		key.ExpiresAt = &expiresAt.Time
 	}
-
+	key.Scopes = strings.Fields(scopes.String)
 	return &key, nil
+}
+
+// GetAPIKey retrieves an API key by ID
+func (s *SQLiteStorage) GetAPIKey(ctx context.Context, id string) (*model.APIKey, error) {
+	if id == "" {
+		return nil, ErrInvalidID
+	}
+	key, err := scanAPIKey(s.db.QueryRowContext(ctx, `SELECT `+apiKeyColumns+` FROM api_keys WHERE id = ?`, id))
+	if err == sql.ErrNoRows {
+		return nil, ErrAPIKeyNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+	return key, nil
 }
 
 // GetAPIKeyByKey retrieves an API key by the key string
@@ -85,38 +89,19 @@ func (s *SQLiteStorage) GetAPIKeyByKey(ctx context.Context, keyStr string) (*mod
 	if keyStr == "" {
 		return nil, fmt.Errorf("key cannot be empty")
 	}
-
-	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
-	          FROM api_keys WHERE key = ?`
-
-	var key model.APIKey
-	var lastUsedAt, expiresAt sql.NullTime
-
-	err := s.db.QueryRowContext(ctx, query, keyStr).Scan(
-		&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
-		&key.CreatedAt, &lastUsedAt, &expiresAt,
-	)
+	key, err := scanAPIKey(s.db.QueryRowContext(ctx, `SELECT `+apiKeyColumns+` FROM api_keys WHERE key = ?`, keyStr))
 	if err == sql.ErrNoRows {
 		return nil, ErrAPIKeyNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key: %w", err)
 	}
-
-	if lastUsedAt.Valid {
-		key.LastUsedAt = &lastUsedAt.Time
-	}
-	if expiresAt.Valid {
-		key.ExpiresAt = &expiresAt.Time
-	}
-
-	return &key, nil
+	return key, nil
 }
 
 // ListAPIKeys retrieves all API keys matching the filter
 func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFilter) ([]model.APIKey, error) {
-	query := `SELECT id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at
-	          FROM api_keys`
+	query := `SELECT ` + apiKeyColumns + ` FROM api_keys`
 	var conditions []string
 	var args []any
 
@@ -154,24 +139,11 @@ func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFil
 
 	var keys []model.APIKey
 	for rows.Next() {
-		var key model.APIKey
-		var lastUsedAt, expiresAt sql.NullTime
-
-		if err := rows.Scan(
-			&key.ID, &key.Name, &key.Key, &key.UserID, &key.Description,
-			&key.CreatedAt, &lastUsedAt, &expiresAt,
-		); err != nil {
+		key, err := scanAPIKey(rows)
+		if err != nil {
 			return nil, fmt.Errorf("failed to scan API key: %w", err)
 		}
-
-		if lastUsedAt.Valid {
-			key.LastUsedAt = &lastUsedAt.Time
-		}
-		if expiresAt.Valid {
-			key.ExpiresAt = &expiresAt.Time
-		}
-
-		keys = append(keys, key)
+		keys = append(keys, *key)
 	}
 
 	if keys == nil {

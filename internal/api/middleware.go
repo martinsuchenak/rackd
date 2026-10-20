@@ -189,13 +189,20 @@ func AuthenticateAPIKey(ctx context.Context, store storage.ExtendedStorage, toke
 	}
 
 	log.Trace("Auth successful (API key)", "key_name", key.Name, "source", source)
-	return &service.Caller{
+	caller := &service.Caller{
 		Type:      service.CallerTypeUser,
 		UserID:    user.ID,
 		Username:  user.Username,
 		IPAddress: ip,
 		Source:    source,
-	}, nil
+	}
+	// A scoped key can do only what its scopes allow, within its owner's
+	// permissions, the same check OAuth tokens get. A key with none acts
+	// with all of its owner's permissions.
+	if len(key.Scopes) > 0 {
+		caller.Scopes = key.Scopes
+	}
+	return caller, nil
 }
 
 // AuthMiddleware validates API keys
