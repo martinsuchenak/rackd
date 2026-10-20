@@ -980,10 +980,14 @@ export interface APIKey {
   created_at: string;
   last_used_at?: string;
   expires_at?: string;
+  /** resource:action permissions the key is limited to; none means all of its owner's. */
+  scopes?: string[];
 }
 
 export interface CreateAPIKeyRequest {
   name: string;
   description?: string;
   expires_at?: string;
+  /** Leave out for a key with all of the creator's permissions. */
+  scopes?: string[];
 }

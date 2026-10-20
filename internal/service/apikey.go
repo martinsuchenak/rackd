@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,6 +56,11 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	if caller != nil && caller.UserID != "" {
 		key.UserID = caller.UserID
 	}
+	scopes, err := s.checkScopes(ctx, caller, key.Scopes)
+	if err != nil {
+		return "", err
+	}
+	key.Scopes = scopes
 
 	key.ID = uuid.Must(uuid.NewV7()).String()
 	// API keys are long-lived bearer credentials: use 32 bytes of crypto/rand
@@ -68,7 +75,7 @@ func (s *APIKeyService) Create(ctx context.Context, key *model.APIKey) (string, 
 	if err := s.store.CreateAPIKey(ctx, key); err != nil {
 		return "", err
 	}
-	recordAudit(ctx, s.store, "create", "apikey", key.ID, map[string]any{"name": key.Name, "user_id": key.UserID, "expires_at": key.ExpiresAt})
+	recordAudit(ctx, s.store, "create", "apikey", key.ID, map[string]any{"name": key.Name, "user_id": key.UserID, "expires_at": key.ExpiresAt, "scopes": key.Scopes})
 
 	return plaintextKey, nil
 }
@@ -145,4 +152,52 @@ func (s *APIKeyService) requireOwnership(ctx context.Context, key *model.APIKey)
 	}
 
 	return ErrForbidden
+}
+
+// checkScopes validates a new key's scopes, each a resource:action permission
+// the creator holds (a key can't do more than its owner), and returns them
+// without duplicates, in order. None means the key gets all of its owner's
+// permissions.
+func (s *APIKeyService) checkScopes(ctx context.Context, caller *Caller, scopes []string) ([]string, error) {
+	if len(scopes) == 0 {
+		return nil, nil
+	}
+	if caller == nil || caller.UserID == "" {
+		return nil, ErrUnauthenticated
+	}
+	// A key made with a scoped credential can't escape that credential's
+	// scopes either.
+	allowed := map[string]bool{}
+	perms, err := s.store.GetUserPermissions(ctx, caller.UserID)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range perms {
+		scope := p.Resource + ":" + p.Action
+		if caller.Scopes == nil || slices.Contains(caller.Scopes, scope) || slices.Contains(caller.Scopes, "*") {
+			allowed[scope] = true
+		}
+	}
+	var out, refused []string
+	seen := map[string]bool{}
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" || seen[scope] {
+			continue
+		}
+		seen[scope] = true
+		if !allowed[scope] {
+			refused = append(refused, scope)
+			continue
+		}
+		out = append(out, scope)
+	}
+	if len(refused) > 0 {
+		return nil, ValidationErrors{{Field: "scopes", Message: "not permissions you hold: " + strings.Join(refused, ", ")}}
+	}
+	if len(out) == 0 {
+		return nil, ValidationErrors{{Field: "scopes", Message: "give at least one resource:action scope, or none for a key with all your permissions"}}
+	}
+	slices.Sort(out)
+	return out, nil
 }

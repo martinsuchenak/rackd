@@ -12,6 +12,10 @@ type APIKey struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	// Scopes limits the key to these resource:action permissions, which its
+	// owner must hold. None means the key acts with all of its owner's
+	// permissions.
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 // APIKeyFilter represents filter criteria for listing API keys
@@ -30,6 +34,7 @@ type APIKeyResponse struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	Scopes      []string   `json:"scopes,omitempty"`
 }
 
 // ToResponse converts an APIKey to APIKeyResponse (hides the key)
@@ -42,5 +47,6 @@ func (k *APIKey) ToResponse() APIKeyResponse {
 		CreatedAt:   k.CreatedAt,
 		LastUsedAt:  k.LastUsedAt,
 		ExpiresAt:   k.ExpiresAt,
+		Scopes:      k.Scopes,
 	}
 }

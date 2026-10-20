@@ -43,8 +43,8 @@ func TestCreateCommand(t *testing.T) {
 	if cmd.Run == nil {
 		t.Error("Run function should not be nil")
 	}
-	if len(cmd.Flags) != 3 {
-		t.Errorf("expected 3 flags, got %d", len(cmd.Flags))
+	if len(cmd.Flags) != 4 { // name, description, expires, scopes
+		t.Errorf("expected 4 flags, got %d", len(cmd.Flags))
 	}
 
 	hasName := false

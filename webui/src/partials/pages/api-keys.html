@@ -11,6 +11,9 @@
     <div x-show="error"
       class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md border border-red-300 dark:border-red-800"
       role="alert" x-text="error"></div>
+    <div x-show="!loading && fullAccessCount > 0"
+      class="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 rounded-md border border-amber-300 dark:border-amber-800 text-sm"
+      x-text="fullAccessNotice"></div>
     <div
       class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-300 dark:border-gray-700 overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -25,6 +28,9 @@
               Owner</th>
             <th scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              Access</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
               Created</th>
             <th scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-800 dark:text-gray-200 uppercase tracking-wider">
@@ -37,12 +43,12 @@
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
           <tr x-show="loading">
-            <td colspan="6" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">
               <span role="status" aria-live="polite">Loading API keys...</span>
             </td>
           </tr>
           <tr x-show="!loading && keys.length === 0">
-            <td colspan="6" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No API keys found</td>
+            <td colspan="7" class="px-6 py-8 text-center text-gray-800 dark:text-gray-200">No API keys found</td>
           </tr>
           <template x-for="key in keys" :key="key.id">
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -52,6 +58,11 @@
                   x-text="key.description"></div>
               </td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="getUserName(key.user_id)"></td>
+              <td class="px-6 py-4">
+                <span class="px-2 py-0.5 text-xs rounded-full"
+                  :class="isFullAccess(key) ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'"
+                  :title="accessTitle(key)" x-text="accessLabel(key)"></span>
+              </td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(key.created_at)"></td>
               <td class="px-6 py-4 text-gray-800 dark:text-gray-200" x-text="formatDate(key.last_used_at)"></td>
               <td class="px-6 py-4">
@@ -83,7 +94,7 @@
         </button>
         <h2 id="create-key-title" class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">Create API Key</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          The key will be linked to your user account and inherit your permissions.
+          The key belongs to your account and can never do more than you can.
         </p>
         <form @submit.prevent="doCreate()">
           <div class="space-y-4">
@@ -110,6 +121,32 @@
               <input id="key-expires" type="date" x-model="formExpiresAt"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-[3px] focus:ring-blue-500 min-h-[44px]">
             </div>
+            <fieldset>
+              <legend class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Access</legend>
+              <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 min-h-[32px] cursor-pointer">
+                <input type="radio" name="key-access" value="full" x-model="formAccess"> All my permissions
+              </label>
+              <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 min-h-[32px] cursor-pointer">
+                <input type="radio" name="key-access" value="scoped" x-model="formAccess"> Only the permissions I choose
+              </label>
+              <div x-show="isScoped" class="mt-2 max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 space-y-2">
+                <template x-for="group in scopeGroups" :key="group.resource">
+                  <div>
+                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide" x-text="group.resource"></div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                      <template x-for="scope in group.scopes" :key="scope">
+                        <label class="flex items-center gap-1.5 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                          <input type="checkbox" :checked="hasScope(scope)" @change="toggleScope(scope)" :aria-label="scope">
+                          <span x-text="scopeAction(scope)"></span>
+                        </label>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <p x-show="validationErrors.scopes" class="mt-1 text-sm text-red-700 dark:text-red-300" role="alert"
+                x-text="validationErrors.scopes"></p>
+            </fieldset>
           </div>
           <div class="flex justify-end gap-3 mt-6">
             <button type="button" @click="closeModal()"
