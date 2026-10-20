@@ -224,8 +224,31 @@ func (s *WebhookService) ListDeliveries(ctx context.Context, filter *model.Deliv
 	if err != nil {
 		return nil, err
 	}
+	if !s.canSeeDeliveryResponses(ctx) {
+		for i := range deliveries {
+			hideDeliveryResponse(&deliveries[i])
+		}
+	}
 
 	return deliveries, nil
+}
+
+// canSeeDeliveryResponses reports whether the caller may see what a
+// webhook's endpoint answered. The answer can be an internal service's own
+// response, so only someone who can set the URL sees it; anyone else could
+// read from wherever the webhook points.
+func (s *WebhookService) canSeeDeliveryResponses(ctx context.Context) bool {
+	return requirePermission(ctx, s.store, "webhooks", "update") == nil
+}
+
+// hideDeliveryResponse keeps whether a delivery failed, but not the
+// endpoint's answer.
+func hideDeliveryResponse(d *model.WebhookDelivery) {
+	d.ResponseCode = 0
+	d.ResponseBody = ""
+	if d.Error != "" {
+		d.Error = "delivery failed (someone who can edit the webhook can see why)"
+	}
 }
 
 // GetDelivery returns a single delivery record
@@ -240,6 +263,9 @@ func (s *WebhookService) GetDelivery(ctx context.Context, id string) (*model.Web
 			return nil, ErrNotFound
 		}
 		return nil, err
+	}
+	if !s.canSeeDeliveryResponses(ctx) {
+		hideDeliveryResponse(delivery)
 	}
 
 	return delivery, nil

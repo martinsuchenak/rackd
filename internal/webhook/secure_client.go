@@ -30,8 +30,8 @@ func SetPrivateRangePolicy(allow bool) {
 // when private ranges as a whole are not allowed (SSRF_ALLOWED_TARGETS).
 var allowedPrivateTargets atomic.Pointer[[]*net.IPNet]
 
-// privateRanges are the ranges blocked unless allowed: RFC 1918, CGNAT and
-// IPv6 unique-local.
+// privateRanges are the ranges blocked unless allowed: RFC 1918, CGNAT
+// (which net.IP.IsPrivate doesn't cover) and IPv6 unique-local.
 var privateRanges = []*net.IPNet{
 	mustCIDR("10.0.0.0/8"), mustCIDR("172.16.0.0/12"), mustCIDR("192.168.0.0/16"),
 	mustCIDR("100.64.0.0/10"), mustCIDR("fc00::/7"),
@@ -101,14 +101,13 @@ func privateTargetAllowed(ip net.IP) bool {
 	return false
 }
 
-// isCGNAT reports whether ip is inside the RFC 6598 carrier-grade NAT range
-// 100.64.0.0/10, which net.IP.IsPrivate does not cover.
-func isCGNAT(ip net.IP) bool {
-	ip4 := ip.To4()
-	if ip4 == nil {
-		return false
+func inPrivateRange(ip net.IP) bool {
+	for _, r := range privateRanges {
+		if r.Contains(ip) {
+			return true
+		}
 	}
-	return ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127
+	return false
 }
 
 // blockedIPReason returns a human-readable reason when the IP must not be
@@ -144,7 +143,7 @@ func blockedIPReason(ip net.IP) string {
 	case ip.IsMulticast():
 		return "multicast address"
 	}
-	if (ip.IsPrivate() || isCGNAT(ip)) && !privateTargetAllowed(ip) {
+	if inPrivateRange(ip) && !privateTargetAllowed(ip) {
 		return "private address"
 	}
 	return ""

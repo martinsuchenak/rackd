@@ -310,8 +310,8 @@ func (s *DNSService) TestProvider(ctx context.Context, id string) error {
 		// who can set the endpoint sees it; anyone else could use the test
 		// to read from wherever it points. Either way the handler answers
 		// 502 rather than a generic 500.
+		log.Warn("DNS provider test failed", "provider_id", id, "error", err)
 		if requirePermission(ctx, s.store, "dns-provider", "update") != nil {
-			log.Warn("DNS provider test failed", "provider_id", id, "error", err)
 			return fmt.Errorf("%w: the provider didn't answer as expected (someone who can edit it can see why)", ErrDNSProviderTestFailed)
 		}
 		return fmt.Errorf("%w: %w", ErrDNSProviderTestFailed, err)
