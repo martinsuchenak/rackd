@@ -30,6 +30,7 @@ Operational access for day-to-day management:
 | Networks | list, create, read, update |
 | Datacenters | list, read |
 | Discovery | list, create, read |
+| DNS providers | list, read, test |
 
 Cannot delete resources or manage users/roles.
 
@@ -43,6 +44,7 @@ Read-only access to view resources:
 | Networks | list, read |
 | Datacenters | list, read |
 | Discovery | list, read |
+| DNS providers | list, read |
 
 ## Permissions Reference
 

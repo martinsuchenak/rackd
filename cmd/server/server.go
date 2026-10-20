@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/martinsuchenak/rackd/internal/config"
@@ -73,6 +74,11 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 			// Configure the shared SSRF guard before any outbound
 			// integration request can be issued.
 			webhook.SetPrivateRangePolicy(cfg.SSRFAllowPrivateTargets)
+			allowedTargets, err := webhook.ParseAllowedTargets(strings.Split(cfg.SSRFAllowedTargets, ","))
+			if err != nil {
+				return fmt.Errorf("SSRF_ALLOWED_TARGETS: %w", err)
+			}
+			webhook.SetAllowedPrivateTargets(allowedTargets)
 
 			if !devMode {
 				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)

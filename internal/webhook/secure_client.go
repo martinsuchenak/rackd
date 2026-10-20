@@ -6,13 +6,15 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 )
 
-// allowPrivateRanges permits dialing RFC1918/CGNAT/ULA destinations for
-// operators who intentionally point integrations at internal services
-// (e.g. a Technitium DNS server on 10.0.0.0/8). Loopback, link-local
+// allowPrivateRanges permits dialing every RFC1918/CGNAT/ULA destination
+// (SSRF_ALLOW_PRIVATE_TARGETS); allowedPrivateTargets permits only listed
+// ones, for operators who point integrations at internal services (e.g. a
+// Technitium DNS server on 10.0.0.0/8). Loopback, link-local
 // (cloud metadata), unspecified and multicast addresses are always blocked.
 // Set via SetPrivateRangePolicy during process startup from configuration.
 var allowPrivateRanges atomic.Bool
@@ -22,6 +24,81 @@ var allowPrivateRanges atomic.Bool
 // once during process startup before any request is issued.
 func SetPrivateRangePolicy(allow bool) {
 	allowPrivateRanges.Store(allow)
+}
+
+// allowedPrivateTargets are the private ranges outbound requests may reach
+// when private ranges as a whole are not allowed (SSRF_ALLOWED_TARGETS).
+var allowedPrivateTargets atomic.Pointer[[]*net.IPNet]
+
+// privateRanges are the ranges blocked unless allowed: RFC 1918, CGNAT and
+// IPv6 unique-local.
+var privateRanges = []*net.IPNet{
+	mustCIDR("10.0.0.0/8"), mustCIDR("172.16.0.0/12"), mustCIDR("192.168.0.0/16"),
+	mustCIDR("100.64.0.0/10"), mustCIDR("fc00::/7"),
+}
+
+// ParseAllowedTargets parses SSRF_ALLOWED_TARGETS entries: IP addresses or
+// CIDR ranges, each inside a private range. Only the private-range block can
+// be lifted this way; loopback, link-local (cloud metadata) and the other
+// always-blocked ranges stay blocked, and a public range needs no entry.
+func ParseAllowedTargets(entries []string) ([]*net.IPNet, error) {
+	var nets []*net.IPNet
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		var n *net.IPNet
+		if ip := net.ParseIP(entry); ip != nil {
+			bits := 128
+			if ip4 := ip.To4(); ip4 != nil {
+				ip, bits = ip4, 32
+			}
+			n = &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)}
+		} else {
+			var err error
+			if _, n, err = net.ParseCIDR(entry); err != nil {
+				return nil, fmt.Errorf("%q is not an IP address or CIDR range", entry)
+			}
+		}
+		if !withinPrivateRange(n) {
+			return nil, fmt.Errorf("%q is not inside a private range (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, fc00::/7)", entry)
+		}
+		nets = append(nets, n)
+	}
+	return nets, nil
+}
+
+func withinPrivateRange(n *net.IPNet) bool {
+	ones, bits := n.Mask.Size()
+	for _, r := range privateRanges {
+		rOnes, rBits := r.Mask.Size()
+		if bits == rBits && ones >= rOnes && r.Contains(n.IP) {
+			return true
+		}
+	}
+	return false
+}
+
+// SetAllowedPrivateTargets sets the private ranges outbound requests may
+// reach (from ParseAllowedTargets). Like SetPrivateRangePolicy, it is meant
+// to be called once at startup.
+func SetAllowedPrivateTargets(nets []*net.IPNet) {
+	allowedPrivateTargets.Store(&nets)
+}
+
+func privateTargetAllowed(ip net.IP) bool {
+	if allowPrivateRanges.Load() {
+		return true
+	}
+	if nets := allowedPrivateTargets.Load(); nets != nil {
+		for _, n := range *nets {
+			if n.Contains(ip) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isCGNAT reports whether ip is inside the RFC 6598 carrier-grade NAT range
@@ -67,13 +144,8 @@ func blockedIPReason(ip net.IP) string {
 	case ip.IsMulticast():
 		return "multicast address"
 	}
-	if !allowPrivateRanges.Load() {
-		if ip.IsPrivate() {
-			return "private address"
-		}
-		if isCGNAT(ip) {
-			return "private address"
-		}
+	if (ip.IsPrivate() || isCGNAT(ip)) && !privateTargetAllowed(ip) {
+		return "private address"
 	}
 	return ""
 }

@@ -62,6 +62,9 @@ type Config struct {
 	// ranges (RFC1918/CGNAT/ULA) are rejected. Intentionally internal
 	// integrations can be enabled explicitly.
 	SSRFAllowPrivateTargets bool
+	// SSRFAllowedTargets lists private IPs or CIDR ranges outbound requests
+	// may reach without allowing every private range (comma-separated).
+	SSRFAllowedTargets string
 }
 
 var cfg Config
@@ -113,6 +116,7 @@ func Load() *Config {
 		DNSSyncInterval: getDurationEnv("DNS_SYNC_INTERVAL", 1*time.Hour),
 
 		SSRFAllowPrivateTargets: getBoolEnv("SSRF_ALLOW_PRIVATE_TARGETS", false),
+		SSRFAllowedTargets:      getEnv("SSRF_ALLOWED_TARGETS", ""),
 	}
 
 	return &cfg

@@ -343,7 +343,7 @@ func validateWebhookURL(rawURL string) error {
 	// authenticated webhook creator can make the server deliver signed
 	// requests to internal services (SSRF).
 	if err := wh.ValidateOutboundHost(u.Hostname()); err != nil {
-		return ValidationErrors{{Field: "url", Message: "Loopback, link-local, multicast and private network addresses are not allowed"}}
+		return ValidationErrors{{Field: "url", Message: "Loopback, link-local, multicast and private network addresses are not allowed (an administrator can allow private ones with SSRF_ALLOWED_TARGETS)"}}
 	}
 
 	return nil

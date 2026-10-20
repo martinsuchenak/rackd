@@ -87,6 +87,15 @@ These are only used on first startup when no users exist.
 |----------|------|---------|-------------|
 | `DNS_SYNC_INTERVAL` | duration | `1h` | Interval between DNS zone sync operations |
 
+## Outbound Requests (SSRF)
+
+Webhooks and DNS providers can't reach loopback, link-local (including cloud metadata), multicast or reserved addresses. Private ranges (RFC 1918, CGNAT `100.64.0.0/10`, IPv6 ULA) are blocked too, unless allowed here.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SSRF_ALLOWED_TARGETS` | string | _(empty)_ | Comma-separated private IPs or CIDR ranges that webhooks and DNS providers may reach, e.g. `192.168.88.51,10.20.0.0/24`. Each entry must be inside a private range; rackd refuses to start otherwise |
+| `SSRF_ALLOW_PRIVATE_TARGETS` | bool | `false` | Allow every private range. Prefer `SSRF_ALLOWED_TARGETS`: with this set, anyone who can save a webhook or DNS provider can make rackd send requests anywhere on your network |
+
 ## Duration Format
 
 Duration values use Go duration syntax: `30s`, `5m`, `1h`, `24h`, `720h`. Combine units: `1h30m`.
