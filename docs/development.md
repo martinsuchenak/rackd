@@ -992,8 +992,40 @@ task build:linux
 task build:darwin
 task build:windows
 
-# Or use GoReleaser (if configured)
-goreleaser release --snapshot --rm-dist
+# Or a full local release with GoReleaser, nothing published
+goreleaser release --snapshot --clean
 ```
+
+A release is cut with `task release -- vX.Y.Z` on a pushed release commit (see Release above). The tag runs `.github/workflows/release.yml`, where GoReleaser builds the archives, the Docker image and the Homebrew cask, and signs them.
+
+### macOS Signing and Notarization
+
+The release signs the macOS binaries with a Developer ID certificate and notarizes them with Apple, on the Linux runner. It needs an Apple Developer Program membership and these repository secrets; while `MACOS_SIGN_P12` is unset, the step is skipped and the binaries ship unsigned.
+
+| Secret | What it is |
+|--------|-----------|
+| `MACOS_SIGN_P12` | The Developer ID Application certificate and its private key, as a base64 `.p12` |
+| `MACOS_SIGN_PASSWORD` | The password the `.p12` was exported with |
+| `MACOS_NOTARY_ISSUER_ID` | The App Store Connect API issuer ID (a UUID) |
+| `MACOS_NOTARY_KEY_ID` | The API key's ID |
+| `MACOS_NOTARY_KEY` | The API key (`AuthKey_<id>.p8`), base64 |
+
+To create them:
+
+1. **Certificate.** In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/certificates/list), add a **Developer ID Application** certificate (only the account holder can). Install it, then in Keychain Access export the certificate together with its private key as a `.p12`, with a password.
+2. **API key.** In [App Store Connect](https://appstoreconnect.apple.com/access/integrations/api), under Users and Access → Integrations → App Store Connect API, create a team key with the Developer role. Note the issuer ID and the key ID, and download the `.p8` (it can only be downloaded once).
+3. **Secrets.** From the files:
+
+   ```bash
+   base64 -i DeveloperID.p12 | gh secret set MACOS_SIGN_P12
+   gh secret set MACOS_SIGN_PASSWORD
+   gh secret set MACOS_NOTARY_ISSUER_ID
+   gh secret set MACOS_NOTARY_KEY_ID
+   base64 -i AuthKey_XXXXXXXXXX.p8 | gh secret set MACOS_NOTARY_KEY
+   ```
+
+   Then delete the local `.p12` and `.p8` copies you no longer need.
+
+The binaries are notarized but not stapled (a bare binary can't carry a ticket), so the first launch of a downloaded copy checks with Apple online.
 
 This development guide provides everything needed to start contributing to Rackd. For specific feature documentation, see the other guides in the `docs/` directory.
