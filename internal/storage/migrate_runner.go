@@ -465,7 +465,9 @@ func pruneBackups(dir, prefix string, keep int) error {
 	}
 	sort.Strings(names)
 	for len(names) > keep {
-		if err := os.Remove(filepath.Join(dir, names[0])); err != nil {
+		// Another rackd (an old and a new instance during a deploy) may have
+		// deleted it already.
+		if err := os.Remove(filepath.Join(dir, names[0])); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		names = names[1:]
