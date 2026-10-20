@@ -9,6 +9,15 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- Releases publish a signed multi-arch Docker image (`linux/amd64`,
+  `linux/arm64`) to `ghcr.io/martinsuchenak/rackd`, tagged with the version,
+  the minor version and `latest`, and built from the release binaries. The
+  deployment and installation guides use it, and no longer list the removed
+  `API_AUTH_TOKEN`/`MCP_AUTH_TOKEN` settings or health-check an endpoint
+  that needs signing in.
+
 ## [0.5.1] - 2026-10-20
 
 ### Fixed
