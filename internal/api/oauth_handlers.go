@@ -106,7 +106,13 @@ func (h *Handler) oauthAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	// Show only what this user can grant, and bind the approval to exactly
 	// that: approving must present consent_token with the same values.
-	scopes, consentToken, err := h.svc.OAuth.PrepareConsent(r.Context(), session.UserID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod)
+	scopes, consentToken, err := h.svc.OAuth.PrepareConsent(r.Context(), client, session.UserID, redirectURI, scope, codeChallenge, codeChallengeMethod)
+	if errors.Is(err, service.ErrOAuthNothingGrantable) {
+		// Answer the consent page rather than redirect: the page fetches
+		// this, and a cross-origin redirect would only show a load failure.
+		h.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", err.Error())
+		return
+	}
 	if err != nil {
 		log.Error("Failed to prepare OAuth consent", "error", err)
 		redirectWithError(w, r, redirectURI, "server_error", "Failed to prepare consent", state)

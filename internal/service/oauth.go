@@ -39,7 +39,10 @@ var (
 	ErrOAuthScopeRequired        = errors.New("scope is required (an empty scope would grant no access)")
 	// ErrOAuthConsentMismatch is returned when an approval doesn't carry a
 	// valid consent token for exactly what the consent screen showed.
-	ErrOAuthConsentMismatch      = errors.New("the approval doesn't match the consent screen; start the sign-in again")
+	ErrOAuthConsentMismatch = errors.New("the approval doesn't match the consent screen; start the sign-in again")
+	// ErrOAuthNothingGrantable is returned when the signed-in user holds none
+	// of the permissions the client asked for.
+	ErrOAuthNothingGrantable     = errors.New("you don't have any of the permissions this client asked for")
 	ErrOAuthScopeNotAllowed      = errors.New("scope must not contain '*'; register explicit scopes")
 	ErrOAuthInvalidScope         = errors.New("requested scope exceeds the client's registered scope")
 	ErrOAuthClientMetadataLimit  = errors.New("client metadata is too large")
@@ -59,7 +62,9 @@ type OAuthService struct {
 	stopCleanup     chan struct{}
 	// consentKey signs consent tokens, which tie an approval to the consent
 	// screen the user saw. It lives only in memory: a restart just means
-	// pending consent screens have to be opened again.
+	// pending consent screens have to be opened again. Each process has its
+	// own key, so a consent screen must be approved on the instance that
+	// served it.
 	consentKey []byte
 }
 
@@ -894,22 +899,20 @@ func (s *OAuthService) grantableScopes(ctx context.Context, client *model.OAuthC
 // PrepareConsent returns the scopes the consent screen should show, those
 // the user can grant the client from the request, and a token that approving
 // must present, so an approval can grant exactly what the screen showed and
-// nothing else.
-func (s *OAuthService) PrepareConsent(ctx context.Context, userID, clientID, redirectURI, scope, codeChallenge, codeChallengeMethod string) ([]string, string, error) {
-	client, err := s.store.GetOAuthClient(ctx, clientID)
-	if err != nil {
-		return nil, "", ErrOAuthInvalidClient
-	}
+// nothing else. When the user can grant none of them it returns
+// ErrOAuthNothingGrantable: an empty approved scope would otherwise fall back
+// to the client's registered scope, which the screen never showed.
+func (s *OAuthService) PrepareConsent(ctx context.Context, client *model.OAuthClient, userID, redirectURI, scope, codeChallenge, codeChallengeMethod string) ([]string, string, error) {
 	scopes, err := s.grantableScopes(ctx, client, userID, scope)
 	if err != nil {
 		return nil, "", err
 	}
-	if scopes == nil {
-		scopes = []string{}
+	if len(scopes) == 0 {
+		return nil, "", ErrOAuthNothingGrantable
 	}
 	expires := time.Now().Add(s.codeExpiry).Unix()
 	token := strconv.FormatInt(expires, 10) + "." +
-		s.consentMAC(expires, userID, clientID, redirectURI, auth.JoinScopes(scopes), codeChallenge, codeChallengeMethod)
+		s.consentMAC(expires, userID, client.ID, redirectURI, auth.JoinScopes(scopes), codeChallenge, codeChallengeMethod)
 	return scopes, token, nil
 }
 
