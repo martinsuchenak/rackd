@@ -287,6 +287,12 @@ var migrations = []*Migration{
 		Up:      migrateAddAPIKeyScopesUp,
 		Down:    migrateAddAPIKeyScopesDown,
 	},
+	{
+		Version: "20261020130000",
+		Name:    "remove_dns_provider_test_from_viewer",
+		Up:      migrateViewerDNSProviderTestUp,
+		Down:    migrateViewerDNSProviderTestDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3233,5 +3239,27 @@ func migrateAddAPIKeyScopesUp(ctx context.Context, tx sqlTx) error {
 
 func migrateAddAPIKeyScopesDown(ctx context.Context, tx sqlTx) error {
 	_, err := tx.ExecContext(ctx, `ALTER TABLE api_keys DROP COLUMN scopes`)
+	return err
+}
+
+// migrateViewerDNSProviderTestUp takes dns-provider:test from the viewer role:
+// testing makes the server send a request to the provider's endpoint, which
+// a read-only role shouldn't be able to trigger.
+func migrateViewerDNSProviderTestUp(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM role_permissions
+		WHERE role_id IN (SELECT id FROM roles WHERE name = 'viewer')
+		  AND permission_id IN (SELECT id FROM permissions WHERE name = 'dns-provider:test')
+	`)
+	return err
+}
+
+func migrateViewerDNSProviderTestDown(ctx context.Context, tx sqlTx) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		SELECT r.id, p.id, ?
+		FROM roles r, permissions p
+		WHERE r.name = 'viewer' AND p.name = 'dns-provider:test'
+	`, time.Now())
 	return err
 }

@@ -38,6 +38,17 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   the requested permissions, the consent page says so instead of offering an
   approval that granted the client's other registered scopes.
 
+- `SSRF_ALLOWED_TARGETS` lets webhooks and DNS providers reach just the
+  private hosts or ranges you list (e.g. `192.168.88.51,10.20.0.0/24`)
+  instead of every private range, as `SSRF_ALLOW_PRIVATE_TARGETS=true` does.
+  Entries must be inside a private range; loopback and link-local addresses
+  stay blocked.
+
+- The viewer role can no longer test DNS providers: a test makes the server
+  call the provider's endpoint. Testers who can't edit the provider see that
+  the test failed but not why, since the cause can include the endpoint's
+  own response; the cause is logged.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

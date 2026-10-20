@@ -92,7 +92,7 @@ func validateDNSProviderEndpoint(rawURL string) error {
 	// RFC1918/CGNAT/ULA destinations. Hostnames are resolved so names that
 	// point at internal infrastructure are rejected too.
 	if err := wh.ValidateOutboundHost(u.Hostname()); err != nil {
-		return ValidationErrors{{Field: "endpoint", Message: "Loopback, link-local, multicast and private network addresses are not allowed"}}
+		return ValidationErrors{{Field: "endpoint", Message: "Loopback, link-local, multicast and private network addresses are not allowed (an administrator can allow private ones with SSRF_ALLOWED_TARGETS)"}}
 	}
 	return nil
 }
@@ -306,8 +306,14 @@ func (s *DNSService) TestProvider(ctx context.Context, id string) error {
 	}
 
 	if err := provider.HealthCheck(ctx); err != nil {
-		// Wrap so the handler can answer 502 with the actual cause (SSRF
-		// block, timeout, refused, bad credentials) instead of a generic 500.
+		// The cause can carry the endpoint's own response, so only someone
+		// who can set the endpoint sees it; anyone else could use the test
+		// to read from wherever it points. Either way the handler answers
+		// 502 rather than a generic 500.
+		if requirePermission(ctx, s.store, "dns-provider", "update") != nil {
+			log.Warn("DNS provider test failed", "provider_id", id, "error", err)
+			return fmt.Errorf("%w: the provider didn't answer as expected (someone who can edit it can see why)", ErrDNSProviderTestFailed)
+		}
 		return fmt.Errorf("%w: %w", ErrDNSProviderTestFailed, err)
 	}
 	return nil

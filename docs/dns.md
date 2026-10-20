@@ -25,7 +25,12 @@ The DNS integration enables:
 
 ```bash
 DNS_SYNC_INTERVAL=1h           # Interval between automatic sync operations
+SSRF_ALLOWED_TARGETS=192.168.88.51  # A provider on a private address must be listed
 ```
+
+### SSRF_ALLOWED_TARGETS
+
+Provider endpoints on private addresses (RFC 1918, CGNAT, IPv6 ULA) are refused unless the address is listed here, as a comma-separated list of IPs or CIDR ranges. Loopback and link-local addresses can't be allowed. See the [configuration reference](configuration-reference.md#outbound-requests-ssrf).
 
 ### DNS_SYNC_INTERVAL
 
