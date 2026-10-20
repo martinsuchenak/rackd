@@ -723,8 +723,9 @@ export class RackdAPI {
   }
 
   // Conflicts
-  async listConflicts(): Promise<Conflict[]> {
-    return this.request<Conflict[]>('GET', '/api/v1/conflicts');
+  async listConflicts(status?: string): Promise<Conflict[]> {
+    const query = status ? `?status=${seg(status)}` : '';
+    return this.request<Conflict[]>('GET', `/api/v1/conflicts${query}`);
   }
 
   async getConflictSummary(): Promise<{ duplicate_ips: number; overlapping_subnets: number } | null> {

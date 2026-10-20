@@ -52,6 +52,13 @@ Creating or updating a device checks each of its addresses. When another device 
 - An IP has at most one active duplicate-IP conflict. While it has an active or ignored one, device writes and detection don't add another, so an ignored conflict stays ignored. Once its conflict is resolved, a new duplicate on that IP is recorded as a new conflict.
 - Overlapping subnets, and duplicates created another way (such as a bulk import), are found by running detection explicitly; see Detect Conflicts below.
 
+Recorded conflicts follow the inventory. Whenever conflicts are listed, summarised or detected, the open ones (active and ignored) are checked against the devices and networks as they are now:
+
+- A duplicate IP that no device shares any more, or an overlap whose network was deleted or whose subnets no longer overlap, is resolved by `rackd`, with a note saying why. Notes already on it are kept.
+- A duplicate IP that other devices still share, or an overlap whose networks were renamed, is updated to list the current devices or networks.
+
+The web UI's Conflicts page lists active conflicts.
+
 ## API Endpoints
 
 ### List Conflicts
@@ -93,7 +100,7 @@ Trigger manual conflict detection scan:
 POST /api/v1/conflicts/detect
 ```
 
-One run records at most 1,000 new overlapping-subnet pairs; pairs already recorded don't count. Networks may overlap freely, so many copies of one subnet would otherwise make an unbounded number of pairs. If a run hits the limit, run detection again to record the next 1,000. The response lists the overlap conflicts this run recorded.
+One run records at most 1,000 new overlapping-subnet pairs; pairs already recorded don't count. Networks may overlap freely, so many copies of one subnet would otherwise make an unbounded number of pairs. If a run hits the limit, run detection again to record the next 1,000. The response lists the active duplicate-IP conflicts, and the overlap conflicts this run recorded.
 
 **Response:**
 ```json

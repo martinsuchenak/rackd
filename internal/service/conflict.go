@@ -3,9 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/netip"
+	"slices"
 	"sort"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -24,6 +28,7 @@ func (s *ConflictService) List(ctx context.Context, filter *model.ConflictFilter
 		return nil, err
 	}
 
+	s.reconcileOrLog(ctx)
 	conflicts, err := s.store.ListConflicts(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -135,24 +140,23 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 		return nil, err
 	}
 
+	// Recorded conflicts first catch up with the inventory, so those still
+	// open are the ones that still apply.
+	if err := s.reconcile(ctx); err != nil {
+		return nil, err
+	}
 	conflicts, err := s.store.FindDuplicateIPs(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Store any new conflicts
+	// Record the duplicates that have no open conflict yet.
 	for _, conflict := range conflicts {
-		// Check if conflict already exists for this IP
 		existing, err := s.store.GetConflictsByIP(ctx, conflict.IPAddress)
-		if err == nil && hasOpenConflict(existing) {
-			// Update existing conflict if still active
-			for _, ex := range existing {
-				if ex.Status == model.ConflictStatusActive {
-					// Mark as detected (refresh timestamp)
-					_ = s.store.UpdateConflictStatus(ctx, ex.ID, ex.Status, "", "")
-				}
-			}
-		} else {
+		if err != nil {
+			return nil, err
+		}
+		if !hasOpenConflict(existing) {
 			// Create new conflict record, unless a concurrent write just did.
 			if err := s.store.CreateConflict(ctx, &conflict); err != nil {
 				if errors.Is(err, storage.ErrConflictRecorded) {
@@ -164,7 +168,8 @@ func (s *ConflictService) DetectDuplicateIPs(ctx context.Context) ([]model.Confl
 		}
 	}
 
-	return conflicts, nil
+	// The recorded conflicts, with their IDs, rather than the scan's rows.
+	return s.store.ListConflicts(ctx, &model.ConflictFilter{Type: model.ConflictTypeDuplicateIP, Status: model.ConflictStatusActive})
 }
 
 // DetectOverlappingSubnets scans for and creates conflict records for overlapping subnets
@@ -173,6 +178,9 @@ func (s *ConflictService) DetectOverlappingSubnets(ctx context.Context) ([]model
 		return nil, err
 	}
 
+	if err := s.reconcile(ctx); err != nil {
+		return nil, err
+	}
 	// Read the recorded conflicts once, and skip them while searching, so the
 	// per-run cap applies to new overlaps only.
 	existing, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
@@ -246,6 +254,7 @@ func (s *ConflictService) GetSummary(ctx context.Context) (map[string]int, error
 		return nil, err
 	}
 
+	s.reconcileOrLog(ctx)
 	conflicts, err := s.store.ListConflicts(ctx, &model.ConflictFilter{
 		Status: model.ConflictStatusActive,
 	})
@@ -271,4 +280,113 @@ func hasOpenConflict(conflicts []model.Conflict) bool {
 		}
 	}
 	return false
+}
+
+// reconcile brings the recorded open conflicts in line with the inventory as
+// it is now. Devices and networks change and get deleted without touching
+// conflicts, so a duplicate IP or an overlap that no longer exists is
+// resolved, and one whose devices or networks changed lists the current
+// ones. It writes only what changed, so reading conflicts can run it; it
+// never records new conflicts, which detection does.
+func (s *ConflictService) reconcile(ctx context.Context) error {
+	var open []model.Conflict
+	for _, status := range []model.ConflictStatus{model.ConflictStatusActive, model.ConflictStatusIgnored} {
+		cs, err := s.store.ListConflicts(ctx, &model.ConflictFilter{Status: status})
+		if err != nil {
+			return err
+		}
+		open = append(open, cs...)
+	}
+	if len(open) == 0 {
+		return nil
+	}
+
+	var duplicates map[string]model.Conflict // by IP, read when first needed
+	for i := range open {
+		c := &open[i]
+		switch c.Type {
+		case model.ConflictTypeDuplicateIP:
+			if duplicates == nil {
+				found, err := s.store.FindDuplicateIPs(ctx)
+				if err != nil {
+					return err
+				}
+				duplicates = make(map[string]model.Conflict, len(found))
+				for _, f := range found {
+					duplicates[f.IPAddress] = f
+				}
+			}
+			now, ok := duplicates[c.IPAddress]
+			if !ok {
+				if err := s.resolveStale(ctx, c, "No longer assigned to more than one device."); err != nil {
+					return err
+				}
+				continue
+			}
+			if !slices.Equal(c.DeviceIDs, now.DeviceIDs) || !slices.Equal(c.DeviceNames, now.DeviceNames) {
+				c.DeviceIDs, c.DeviceNames, c.Description = now.DeviceIDs, now.DeviceNames, now.Description
+				if err := s.store.UpdateConflictParties(ctx, c); err != nil {
+					return err
+				}
+			}
+		case model.ConflictTypeOverlappingSubnet:
+			if err := s.reconcileOverlap(ctx, c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// reconcileOverlap resolves an overlap whose networks are gone or no longer
+// overlap, and otherwise records their current names and subnets.
+func (s *ConflictService) reconcileOverlap(ctx context.Context, c *model.Conflict) error {
+	var names, subnets []string
+	var prefixes []netip.Prefix
+	for _, id := range c.NetworkIDs {
+		n, err := s.store.GetNetwork(ctx, id)
+		if errors.Is(err, storage.ErrNetworkNotFound) {
+			return s.resolveStale(ctx, c, "A network in this overlap was deleted.")
+		}
+		if err != nil {
+			return err
+		}
+		p, err := netip.ParsePrefix(n.Subnet)
+		if err != nil {
+			return s.resolveStale(ctx, c, "A network in this overlap no longer has a valid subnet.")
+		}
+		names, subnets, prefixes = append(names, n.Name), append(subnets, n.Subnet), append(prefixes, p.Masked())
+	}
+	if len(prefixes) != 2 || !prefixes[0].Overlaps(prefixes[1]) {
+		return s.resolveStale(ctx, c, "The subnets no longer overlap.")
+	}
+	if slices.Equal(c.NetworkNames, names) && slices.Equal(c.Subnets, subnets) {
+		return nil
+	}
+	c.NetworkNames, c.Subnets = names, subnets
+	c.Description = fmt.Sprintf("Subnets %s and %s overlap", subnets[0], subnets[1])
+	return s.store.UpdateConflictParties(ctx, c)
+}
+
+// resolveStale resolves a conflict whose condition no longer exists, keeping
+// any notes on it.
+func (s *ConflictService) resolveStale(ctx context.Context, c *model.Conflict, why string) error {
+	notes := why
+	if c.Notes != "" {
+		notes = c.Notes + "\n\n" + why
+	}
+	if err := s.store.UpdateConflictStatus(ctx, c.ID, model.ConflictStatusResolved, "rackd", notes); err != nil {
+		return err
+	}
+	if resolved, err := s.store.GetConflict(ctx, c.ID); err == nil {
+		publishEvent(model.EventTypeConflictResolved, resolved)
+	}
+	return nil
+}
+
+// reconcileOrLog runs reconcile for a read, which still answers if it fails.
+func (s *ConflictService) reconcileOrLog(ctx context.Context) {
+	if err := s.reconcile(ctx); err != nil {
+		log.Warn("Failed to bring conflicts up to date", "error", err)
+	}
 }

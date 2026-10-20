@@ -52,7 +52,9 @@ export function conflictList(): ConflictListData {
       this.loading = true;
       this.error = '';
       try {
-        let conflicts = await api.listConflicts();
+        // Active ones: those resolved, including by the inventory changing,
+        // are no longer something to act on, and the summary counts these.
+        let conflicts = await api.listConflicts('active');
         if (this.filter) {
           conflicts = conflicts.filter((c: Conflict) => c.type === this.filter);
         }
@@ -82,9 +84,10 @@ export function conflictList(): ConflictListData {
       this.detecting = true;
       this.error = '';
       try {
-        const results = await api.detectConflicts('');
-        this.conflicts = results.conflicts || [];
-        await this.loadSummary();
+        await api.detectConflicts('');
+        // Show what is recorded now, as a reload would: the detect response
+        // lists only part of it (the overlaps this run recorded).
+        await Promise.all([this.loadConflicts(), this.loadSummary()]);
       } catch (e) {
         this.error = e instanceof RackdAPIError ? e.message : 'Failed to detect conflicts';
       } finally {

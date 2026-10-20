@@ -740,6 +740,8 @@ export function deviceDetail() {
     // Edit relationship notes
     editingRelationship: null as DeviceRelationship | null,
     editNotes: '',
+    // The device ID last loaded, whether or not it was found.
+    loadedId: '',
 
     async init(): Promise<void> {
       // Wait for next tick to ensure URL is updated after SPA navigation
@@ -755,7 +757,10 @@ export function deviceDetail() {
       // Watch for URL changes
       const checkURL = () => {
         const newId = new URLSearchParams(window.location.search).get('id');
-        if (newId && newId !== this.device?.id) {
+        // Compare with the ID last loaded, not the device: after a failed
+        // load there is no device, and reloading every 100ms made the page
+        // flicker between "Loading" and the error.
+        if (newId && newId !== this.loadedId) {
           this.loading = true;
           this.loadDevice();
         }
@@ -868,7 +873,11 @@ export function deviceDetail() {
     async loadDevice(): Promise<void> {
       const id = new URLSearchParams(window.location.search).get('id');
       if (!id) return;
+      this.loadedId = id;
       this.loading = true;
+      this.error = '';
+      // Another device's details mustn't stay up while this one loads or fails.
+      if (this.device?.id !== id) this.device = null;
       try {
         this.device = await api.getDevice(id);
         await this.loadRelationships();
