@@ -70,8 +70,10 @@ func TestOAuthApprovalGrantsOnlyWhatConsentShowed(t *testing.T) {
 
 	const redirect = "https://client.example.test/callback"
 	w := ts.doRequest(t, http.MethodPost, "/mcp-oauth/register", map[string]any{
-		"client_name":                "consent-client",
-		"redirect_uris":              []string{redirect},
+		"client_name": "consent-client",
+		// A second registered URI, so swapping it in gets past the redirect
+		// check and has to be caught by the consent token.
+		"redirect_uris":              []string{redirect, "https://client.example.test/other"},
 		"scope":                      "devices:list devices:read devices:create devices:update",
 		"token_endpoint_auth_method": "none",
 	}, "")
@@ -85,14 +87,28 @@ func TestOAuthApprovalGrantsOnlyWhatConsentShowed(t *testing.T) {
 	verifier := "consent-test-verifier-0123456789abcdefghijklmnop"
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
-	q := url.Values{"response_type": {"code"}, "client_id": {clientID}, "redirect_uri": {redirect},
-		"scope": {"devices:list"}, "state": {"s1"}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}
-	req := httptest.NewRequest(http.MethodGet, "/mcp-oauth/authorize?"+q.Encode(), nil)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.AddCookie(cookie)
-	w = httptest.NewRecorder()
-	ts.mux.ServeHTTP(w, req)
+	consentFor := func(scope string, cookie *http.Cookie) *httptest.ResponseRecorder {
+		q := url.Values{"response_type": {"code"}, "client_id": {clientID}, "redirect_uri": {redirect},
+			"scope": {scope}, "state": {"s1"}, "code_challenge": {challenge}, "code_challenge_method": {"S256"}}
+		req := httptest.NewRequest(http.MethodGet, "/mcp-oauth/authorize?"+q.Encode(), nil)
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("X-Requested-With", "XMLHttpRequest")
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		ts.mux.ServeHTTP(w, req)
+		return w
+	}
+
+	// A viewer holds none of devices:create, so there is nothing to consent
+	// to. An empty approval would fall back to the client's registered scope
+	// (devices:list among it), which the screen never showed.
+	ts.createReadOnlyUser(t, "viewer", "securepassword123")
+	if w := consentFor("devices:create", ts.loginUser(t, "viewer", "securepassword123")); w.Code != http.StatusBadRequest ||
+		!strings.Contains(w.Body.String(), "invalid_scope") {
+		t.Fatalf("consent with nothing grantable: %d %s, want 400 invalid_scope", w.Code, w.Body.String())
+	}
+
+	w = consentFor("devices:list", cookie)
 	if w.Code != http.StatusOK {
 		t.Fatalf("consent data: %d %s", w.Code, w.Body.String())
 	}
@@ -116,6 +132,7 @@ func TestOAuthApprovalGrantsOnlyWhatConsentShowed(t *testing.T) {
 		"no consent token": {"consent_token": ""},
 		"another redirect": {"redirect_uri": "https://client.example.test/other"},
 		"forged token":     {"consent_token": "9999999999.forged"},
+		"another verifier": {"code_challenge": base64.RawURLEncoding.EncodeToString(make([]byte, 32))},
 	} {
 		if w := approve(changes); w.Code != http.StatusBadRequest {
 			t.Errorf("approve with %s: %d %s, want 400", name, w.Code, w.Body.String())
@@ -135,7 +152,7 @@ func TestOAuthApprovalGrantsOnlyWhatConsentShowed(t *testing.T) {
 	}
 	form := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect},
 		"client_id": {clientID}, "code_verifier": {verifier}}
-	req = httptest.NewRequest(http.MethodPost, "/mcp-oauth/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/mcp-oauth/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w = httptest.NewRecorder()
 	ts.mux.ServeHTTP(w, req)

@@ -34,7 +34,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   now lists only the scopes the client and the signed-in user can actually
   grant, and approving checks a signed consent token, so a changed scope,
   redirect URI or PKCE challenge in the approval is refused with `400`
-  instead of granting more than the user saw.
+  instead of granting more than the user saw. When the user holds none of
+  the requested permissions, the consent page says so instead of offering an
+  approval that granted the client's other registered scopes.
 
 ## [0.4.0] - 2026-10-19
 
