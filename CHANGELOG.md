@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-21
+
 ### Added
 
 - Releases publish a signed multi-arch Docker image (`linux/amd64`,
@@ -842,7 +844,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/martinsuchenak/rackd/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/martinsuchenak/rackd/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/martinsuchenak/rackd/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/martinsuchenak/rackd/compare/v0.3.1...v0.4.0
