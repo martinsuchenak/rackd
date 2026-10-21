@@ -1,6 +1,6 @@
 # Database Schema
 
-Rackd uses SQLite as its embedded database with a comprehensive schema for managing devices, networks, IP addresses, and datacenter resources. This document provides a complete reference of all tables, columns, indexes, foreign keys, and migrations.
+Rackd uses SQLite as its embedded database with a comprehensive schema for managing devices, networks, IP addresses, and datacenter resources. This document details the core inventory and discovery tables, their indexes and foreign keys; other tables are listed in the overview. The migrations in `internal/storage/migrations.go` are the full definition.
 
 ## Database Configuration
 
@@ -11,13 +11,26 @@ Rackd uses SQLite as its embedded database with a comprehensive schema for manag
 
 ## Schema Overview
 
-The database consists of 12 core tables organized into logical groups:
+Tables documented below:
 
-- **Infrastructure**: `datacenters`, `networks`, `network_pools`
+- **Infrastructure**: `datacenters`, `networks`, `network_pools`, `pool_tags`
 - **Devices**: `devices`, `addresses`, `tags`, `domains`
 - **Relationships**: `device_relationships`
-- **Discovery**: `discovered_devices`, `discovery_scans`, `discovery_rules`, `scan_profiles`, `scheduled_scans`, `credentials`
-- **System**: `xdal_migrations`, `schema_migrations` (legacy), `pool_tags`
+- **Discovery**: `discovered_devices`, `discovery_scans`, `discovery_rules`
+- **System**: `xdal_migrations`, `schema_migrations` (legacy)
+
+Other tables:
+
+- **Discovery configuration**: `scan_profiles`, `scheduled_scans`, `credentials`, `ssh_host_keys`
+- **Users and access**: `users`, `sessions`, `api_keys`, `roles`, `permissions`, `role_permissions`, `user_roles`
+- **MCP OAuth**: `oauth_clients`, `oauth_authorization_codes`, `oauth_tokens`
+- **Audit**: `audit_logs`
+- **IPAM**: `conflicts`, `reservations`, `utilization_snapshots`
+- **Webhooks**: `webhooks`, `webhook_deliveries`
+- **Custom fields**: `custom_field_definitions`, `custom_field_values`
+- **Circuits and NAT**: `circuits`, `nat_mappings`
+- **DNS**: `dns_provider_configs`, `dns_zones`, `dns_records`
+- **Search**: FTS5 tables `devices_fts`, `networks_fts`, `datacenters_fts`; see [Full-Text Search](fts.md)
 
 ## Tables
 
@@ -108,6 +121,10 @@ Physical and virtual devices.
 | datacenter_id | TEXT | FOREIGN KEY → datacenters(id) | Associated datacenter |
 | username | TEXT | | Default username for access |
 | location | TEXT | | Physical location within datacenter |
+| status | TEXT | NOT NULL, DEFAULT 'active' | Lifecycle status (planned, active, maintenance, decommissioned) |
+| decommission_date | TIMESTAMP | | Decommission date (optional) |
+| status_changed_at | TIMESTAMP | | Last status change |
+| status_changed_by | TEXT | | ID of the user who made the last status change |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Creation timestamp |
 | updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
@@ -159,6 +176,7 @@ Relationships between devices (dependencies, connections, etc.).
 | child_id | TEXT | PRIMARY KEY, FOREIGN KEY → devices(id) ON DELETE CASCADE | Child device |
 | type | TEXT | PRIMARY KEY, NOT NULL | Relationship type |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Creation timestamp |
+| notes | TEXT | DEFAULT '' | Free-text notes |
 
 **Composite Primary Key**: (parent_id, child_id, type)
 
@@ -229,6 +247,7 @@ Performance indexes for common query patterns:
 -- Device indexes
 CREATE INDEX idx_devices_name ON devices(name);
 CREATE INDEX idx_devices_datacenter ON devices(datacenter_id);
+CREATE INDEX idx_devices_status ON devices(status);
 
 -- Address indexes
 CREATE INDEX idx_addresses_device ON addresses(device_id);
@@ -250,6 +269,8 @@ CREATE INDEX idx_network_pools_network ON network_pools(network_id);
 -- Discovery indexes
 CREATE INDEX idx_discovered_devices_network ON discovered_devices(network_id);
 CREATE INDEX idx_discovered_devices_ip ON discovered_devices(ip);
+CREATE UNIQUE INDEX idx_discovered_devices_network_ip ON discovered_devices(network_id, ip);
+CREATE INDEX idx_discovered_devices_promoted ON discovered_devices(promoted_to_device_id);
 CREATE INDEX idx_discovery_scans_network ON discovery_scans(network_id);
 
 -- Relationship indexes
@@ -286,19 +307,9 @@ devices
 
 ## Migrations
 
-### Migration 20240120080000: initial_schema
-- Creates all core tables
-- Establishes foreign key relationships
-- Creates performance indexes
-- Sets up cascade delete rules
+Core migrations are defined in order in `internal/storage/migrations.go`, starting with `20240120080000_initial_schema`; each has an Up and a Down step. Pending migrations run on server start (or with `rackd migrate run`); on an existing database Rackd takes a pre-migration backup first.
 
-### Migration 20240121080000: add_pool_tags
-- Adds `pool_tags` table for network pool tagging
-- Creates index for pool tag queries
-
-### Migration 20240122080000: add_device_hostname
-- Adds `hostname` column to `devices` table
-- Defaults to empty string for existing records
+`rackd migrate status --data-dir <dir>` lists the applied and pending migrations, and `rackd migrate rollback` reverts them; see the [CLI reference](cli-reference.md#rackd-migrate) and [Backup & Restore](backup.md).
 
 ## Data Types and Constraints
 
@@ -349,9 +360,9 @@ devices
 - Reduced lock contention
 
 ### Backup Strategy
-- Copy main database file + WAL file
-- Use SQLite BACKUP API for consistency
-- Regular VACUUM for optimization
+- Use `rackd backup`: it writes a consistent single-file snapshot with `VACUUM INTO`, safe while the server runs, and verifies it
+- Don't copy `rackd.db` with `cp` while the server runs; the main file and the `-wal` file change independently
+- See [Backup & Restore](backup.md)
 
 ## Security Considerations
 

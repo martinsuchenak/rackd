@@ -68,7 +68,7 @@ rackd device add --input device.json
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/devices \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/devices \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -120,19 +120,19 @@ rackd device list --output yaml
 **API:**
 ```bash
 # Get device by ID
-curl http://localhost:8080/api/v1/devices/device-123
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/devices/device-123
 
 # List all devices
-curl http://localhost:8080/api/v1/devices
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/devices
 
 # Filter by tags
-curl "http://localhost:8080/api/v1/devices?tags=production,web"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices?tags=production,web"
 
 # Filter by datacenter
-curl "http://localhost:8080/api/v1/devices?datacenter_id=dc-east-1"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices?datacenter_id=dc-east-1"
 
 # Search devices
-curl "http://localhost:8080/api/v1/devices/search?q=web+server"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices/search?q=web+server"
 ```
 
 ### Update Device
@@ -143,14 +143,13 @@ curl "http://localhost:8080/api/v1/devices/search?q=web+server"
 rackd device update --id "device-123" \
   --description "Updated web server" \
   --tags "web,production,updated"
-
-# Update from JSON file
-rackd device update --id "device-123" --input updates.json
 ```
+
+Addresses and status can't be changed with the CLI; use the API or the web UI.
 
 **API:**
 ```bash
-curl -X PATCH http://localhost:8080/api/v1/devices/device-123 \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/devices/device-123 \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated production web server",
@@ -175,7 +174,7 @@ rackd device delete --id "device-123"
 
 **API:**
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/devices/device-123
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/devices/device-123
 ```
 
 ## Addresses
@@ -269,7 +268,7 @@ Devices can have relationships with other devices:
 **API:**
 ```bash
 # Add relationship
-curl -X POST http://localhost:8080/api/v1/devices/rack-01/relationships \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/devices/rack-01/relationships \
   -H "Content-Type: application/json" \
   -d '{
     "child_id": "server-01",
@@ -277,13 +276,13 @@ curl -X POST http://localhost:8080/api/v1/devices/rack-01/relationships \
   }'
 
 # Get device relationships
-curl http://localhost:8080/api/v1/devices/server-01/relationships
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/devices/server-01/relationships
 
 # Get related devices
-curl "http://localhost:8080/api/v1/devices/server-01/related?type=depends_on"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices/server-01/related?type=depends_on"
 
 # Remove relationship
-curl -X DELETE http://localhost:8080/api/v1/devices/rack-01/relationships/server-01/contains
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/devices/rack-01/relationships/server-01/contains
 ```
 
 ## Search and Filtering
@@ -312,31 +311,29 @@ rackd device list --query "Dell PowerEdge"
 **API:**
 ```bash
 # Multiple filters
-curl "http://localhost:8080/api/v1/devices?tags=production,web&datacenter_id=dc-east-1&network_id=prod-network"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices?tags=production,web&datacenter_id=dc-east-1&network_id=prod-network"
 
 # Search query
-curl "http://localhost:8080/api/v1/devices/search?q=Dell+PowerEdge"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices/search?q=Dell+PowerEdge"
 ```
 
 ## Web UI Examples
 
 ### Device List View
-- Sortable columns: Name, Type, Location, Status
-- Filter sidebar: Tags, Datacenter, Network
-- Search bar with real-time filtering
-- Bulk operations: Tag assignment, deletion
+- Columns: Name, IP Address, Network, Pool, Model, Status
+- Filters: datacenter (when there is more than one), network, pool, status
+- Search box that filters as you type
+- **View Graph** opens the relationship graph at `/devices/graph`
 
 ### Device Detail View
-- Overview tab: Basic information, addresses, tags
-- Relationships tab: Visual relationship graph
-- History tab: Change audit log
-- Actions: Edit, Clone, Delete
+- Sections: general information, tags, domains, custom fields, addresses, relationships
+- Relationship notes can be edited in place
+- Actions: Edit, Delete
 
-### Device Creation Form
-- Step-by-step wizard
-- Address management with validation
-- Tag autocomplete
-- Datacenter/network selection dropdowns
+### Device Form
+- Modal with tabs: General, Addresses, Tags & Domains, Custom Fields
+- Per-address network and pool selection
+- Datacenter and status dropdowns
 
 ## Validation Rules
 

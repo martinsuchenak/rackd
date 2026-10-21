@@ -42,7 +42,7 @@ rackd datacenter add --name "Edge DC" --output json
 **API:**
 ```bash
 # Create datacenter
-curl -X POST http://localhost:8080/api/v1/datacenters \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/datacenters \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Primary DC",
@@ -80,10 +80,10 @@ rackd datacenter list --output yaml
 **API:**
 ```bash
 # List all datacenters
-curl http://localhost:8080/api/v1/datacenters
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/datacenters
 
 # Filter by name
-curl "http://localhost:8080/api/v1/datacenters?name=Primary"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/datacenters?name=Primary"
 ```
 
 **Response:**
@@ -114,7 +114,7 @@ rackd datacenter get --id dc-123e4567-e89b-12d3-a456-426614174000 --output json
 **API:**
 ```bash
 # Get specific datacenter
-curl http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
 ```
 
 ### Update Datacenter
@@ -130,7 +130,7 @@ rackd datacenter update --id dc-123e4567-e89b-12d3-a456-426614174000 \
 **API:**
 ```bash
 # Update datacenter (partial update)
-curl -X PUT http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000 \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Updated DC Name",
@@ -149,7 +149,7 @@ rackd datacenter delete --id dc-123e4567-e89b-12d3-a456-426614174000
 **API:**
 ```bash
 # Delete datacenter
-curl -X DELETE http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000
 ```
 
 ## Device Associations
@@ -161,7 +161,7 @@ Devices can be associated with datacenters through the `datacenter_id` field. Th
 **API:**
 ```bash
 # Get all devices in a datacenter
-curl http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000/devices
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-426614174000/devices
 ```
 
 **Response:**
@@ -187,17 +187,17 @@ curl http://localhost:8080/api/v1/datacenters/dc-123e4567-e89b-12d3-a456-4266141
 ```bash
 # Create device with datacenter association
 rackd device add --name "web-server-01" \
-  --datacenter-id dc-123e4567-e89b-12d3-a456-426614174000
+  --datacenter dc-123e4567-e89b-12d3-a456-426614174000
 
 # Update existing device
 rackd device update --id dev-456e7890-e89b-12d3-a456-426614174001 \
-  --datacenter-id dc-123e4567-e89b-12d3-a456-426614174000
+  --datacenter dc-123e4567-e89b-12d3-a456-426614174000
 ```
 
 **API:**
 ```bash
 # Create device with datacenter
-curl -X POST http://localhost:8080/api/v1/devices \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/devices \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -214,7 +214,7 @@ Filter datacenters by name using partial matching:
 **API:**
 ```bash
 # Find datacenters with "Primary" in the name
-curl "http://localhost:8080/api/v1/datacenters?name=Primary"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/datacenters?name=Primary"
 ```
 
 The filter supports partial matching, so searching for "DC" would match "Primary DC", "Secondary DC", etc.
@@ -223,19 +223,16 @@ The filter supports partial matching, so searching for "DC" would match "Primary
 
 ### Datacenter List View
 
-The web interface provides a table view of all datacenters with:
-- Name and location
-- Device count per datacenter
-- Creation and update timestamps
-- Actions (view, edit, delete)
+The web interface provides a searchable table of all datacenters with:
+- Name (linking to the detail page) and location
+- Actions (edit, delete)
 
 ### Datacenter Detail View
 
 Individual datacenter pages show:
-- Complete datacenter information
-- List of associated devices
-- Device statistics and summaries
-- Quick actions for device management
+- Location and description
+- Associated devices (the first 10, with a count of the rest)
+- Edit and delete actions
 
 ### Creating Datacenters
 
@@ -243,7 +240,6 @@ The web form includes:
 - Name field (required)
 - Location field (optional)
 - Description textarea (optional)
-- Real-time validation feedback
 
 ## Error Handling
 
@@ -252,8 +248,8 @@ The web form includes:
 **Response (400 Bad Request):**
 ```json
 {
-  "error": "VALIDATION_ERROR",
-  "message": "Validation failed",
+  "error": "name: name is required",
+  "code": "VALIDATION_ERROR",
   "details": [
     {
       "field": "name",
@@ -268,8 +264,8 @@ The web form includes:
 **Response (404 Not Found):**
 ```json
 {
-  "error": "DATACENTER_NOT_FOUND",
-  "message": "Datacenter not found"
+  "error": "not found",
+  "code": "NOT_FOUND"
 }
 ```
 

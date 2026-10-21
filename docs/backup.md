@@ -157,8 +157,10 @@ curl -fsS http://localhost:8080/readyz
 2. **Prepare New Environment**
    ```bash
    # Install Rackd
-   curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-amd64
-   chmod +x rackd-linux-amd64
+   VERSION=x.y.z   # the release to install, without the leading v
+   curl -LO https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_linux_amd64.tar.gz
+   tar -xzf rackd_${VERSION}_linux_amd64.tar.gz rackd
+   sudo install -m 0755 rackd /usr/local/bin/rackd
    
    # Create data directory
    mkdir -p /var/lib/rackd
@@ -166,11 +168,9 @@ curl -fsS http://localhost:8080/readyz
 
 3. **Restore Database**
    ```bash
-   # Copy backup to new location
-   cp /backup/rackd-latest.db /var/lib/rackd/rackd.db
-   
-   # Verify integrity
-   sqlite3 /var/lib/rackd/rackd.db "PRAGMA integrity_check;"
+   # Check the backup, then restore it into the new data directory
+   rackd backup verify --file /backup/rackd-latest.db
+   rackd backup restore --data-dir /var/lib/rackd --file /backup/rackd-latest.db --yes
    ```
 
 4. **Start Services**
@@ -199,7 +199,7 @@ cp /backup/rackd-latest.db "$TEST_DIR/rackd.db"
 sqlite3 "$TEST_DIR/rackd.db" "PRAGMA integrity_check;"
 
 # Check the backup and its migrations
-./rackd backup verify "$TEST_DIR/rackd.db"
+./rackd backup verify --file "$TEST_DIR/rackd.db"
 ./rackd migrate status --data-dir "$TEST_DIR"
 
 echo "Recovery test completed"
@@ -214,27 +214,22 @@ Export specific data types using the CLI:
 
 ```bash
 # Export all devices
-rackd device list --format json > devices.json
+rackd export devices --output devices.json
 
 # Export networks
-rackd network list --format json > networks.json
+rackd export networks --output networks.json
 
 # Export datacenters
-rackd datacenter list --format json > datacenters.json
+rackd export datacenters --output datacenters.json
 ```
 
 ### Import Data
 
 ```bash
-# Import devices
-cat devices.json | jq -r '.[] | @json' | while read device; do
-  echo "$device" | rackd device create --from-json
-done
-
-# Import networks
-cat networks.json | jq -r '.[] | @json' | while read network; do
-  echo "$network" | rackd network create --from-json
-done
+# Import datacenters first, then networks and devices that refer to them
+rackd import datacenters --file datacenters.json
+rackd import networks --file networks.json
+rackd import devices --file devices.json   # add --dry-run to validate first
 ```
 
 ### Full Database Export
@@ -289,7 +284,7 @@ Upgrades run in place: replace the binary and restart. On start, Rackd applies p
 ```bash
 rackd backup --data-dir /var/lib/rackd --output /backup/rackd-pre-upgrade.db   # optional extra copy
 sudo systemctl stop rackd
-sudo install -m 0755 rackd-linux-amd64 /usr/local/bin/rackd
+sudo install -m 0755 rackd /usr/local/bin/rackd   # extracted from rackd_<version>_linux_amd64.tar.gz
 rackd migrate status --data-dir /var/lib/rackd    # shows the pending migrations
 sudo systemctl start rackd
 ```

@@ -65,12 +65,12 @@ Network and subnet management:
 Physical location management:
 - **List View**: All datacenter locations
 - **Add Datacenter**: Modal form for new locations
-- **Datacenter Details**: Associated devices and networks
+- **Datacenter Details**: Location, description and associated devices
 
 **Datacenter Detail Page** (`/datacenters/detail?id=<id>`):
-- Location information and contact details
-- Associated devices and networks
-- Resource utilization overview
+- Location and description
+- Associated devices
+- Edit and delete actions
 
 ### Discovery (`/discovery`)
 Network scanning and device discovery:
@@ -81,23 +81,22 @@ Network scanning and device discovery:
 
 ## Internal Pages
 
-### Pools (`/pools`)
-IP address pool management (when available):
-- Pool configuration and IP ranges
-- Address allocation and availability
-- Pool utilization statistics
+### Pools (`/pools/detail?id=<id>`)
+IP address pool details, opened from a network's detail page:
+- Pool configuration and IP range
+- IP usage heatmap (available, used, reserved)
+- Reservations
 
 ### Credentials (`/credentials`)
-Authentication credential management:
-- SNMP community strings
-- SSH/Telnet credentials
-- Credential assignment to devices
+Discovery credential management:
+- SNMP v2c and v3 credentials
+- SSH key and password credentials
 
 ### Scan Profiles (`/scan-profiles`)
 Network scan configuration:
-- Scan type definitions (Quick, Full, Deep)
-- Port ranges and protocols
-- Timeout and retry settings
+- Scan type (Quick, Full, Deep, Custom)
+- Custom port lists
+- Timeout, max workers and SNMP/SSH toggles
 
 ### Scheduled Scans (`/scheduled-scans`)
 Automated scanning configuration:
@@ -145,7 +144,7 @@ The web UI now has two automated frontend test layers:
 
 ### E2E Workflow
 
-Playwright uses [`webui/playwright.config.ts`](/Users/martinsuchenak/Devel/projects/rackd/webui/playwright.config.ts) and starts Rackd through [`webui/scripts/run-e2e-server.sh`](/Users/martinsuchenak/Devel/projects/rackd/webui/scripts/run-e2e-server.sh). The launcher:
+Playwright uses [`webui/playwright.config.ts`](../webui/playwright.config.ts) and starts Rackd through [`webui/scripts/run-e2e-server.sh`](../webui/scripts/run-e2e-server.sh). The launcher:
 
 - wipes a disposable `.tmp/e2e-data` database
 - bootstraps an initial admin user through `INITIAL_ADMIN_*`
@@ -231,7 +230,7 @@ Maintenance rules:
 - Add new E2E coverage only for high-use, security-sensitive, fragile, or multi-step workflows
 - Reuse existing area tags instead of inventing one-off tags unless a genuinely new feature area appears
 - Keep `@smoke` intentionally small; it should remain the quickest browser confidence check
-- Prefer helper modules by domain under [`webui/e2e`](/Users/martinsuchenak/Devel/projects/rackd/webui/e2e) instead of growing a single shared helper file
+- Prefer helper modules by domain under [`webui/e2e`](../webui/e2e) instead of growing a single shared helper file
 
 ## Alpine.js Components
 
@@ -261,7 +260,6 @@ Maintenance rules:
 **Device List** (`deviceList`):
 - Paginated device listing
 - Search and filtering
-- Bulk operations
 - Modal management
 
 **Device Detail** (`deviceDetail`):
@@ -295,17 +293,15 @@ Maintenance rules:
 
 ### Additional Components
 
-**Credentials** (`credentialsList`, `credentialForm`):
+**Credentials** (`credentialsList`):
 - Credential management
 - Type-specific forms
-- Device assignment
 
-**Profiles** (`profileList`, `profileForm`):
+**Scan Profiles** (`scanProfilesList`):
 - Scan profile configuration
 - Parameter management
-- Template system
 
-**Scheduled Scans** (`scheduledScansList`, `scheduledScanForm`):
+**Scheduled Scans** (`scheduledScansList`):
 - Schedule management
 - Cron expression handling
 - Profile assignment
@@ -410,15 +406,12 @@ bun run build
 ```
 
 ### API Contract Validation
-The shared API-facing TypeScript types are checked against [`api/openapi.yaml`](/Users/martinsuchenak/Devel/projects/rackd/api/openapi.yaml):
+The shared API-facing TypeScript types are checked against [`api/openapi.yaml`](../api/openapi.yaml):
 ```bash
 cd webui
 bun run validate:types
 ```
 This validator covers the frontend's central API contract types and is intended to catch schema drift before UI code starts relying on mismatched fields.
 
-### Hot Reload
-Development server with hot reload:
-```bash
-bun run dev
-```
+### Rebuilding
+There is no development server or hot reload. `bun run build` copies the bundle into `internal/ui/assets`, which is embedded in the Go binary, so rebuild and restart Rackd to see UI changes. (`bun run dev` runs the same build.)

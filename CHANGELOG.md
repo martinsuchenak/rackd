@@ -46,6 +46,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   running container, for example `docker cp rackd:/app/data/rackd.db ./rackd.db`
   then into the directory mounted at `/data`. Once upgraded, rackd uses
   `/data`.
+- The docs still described settings, commands, flags and endpoints that don't
+  exist. `API_AUTH_TOKEN` and `MCP_AUTH_TOKEN` are gone from every example:
+  people sign in with user accounts, and scripts, the CLI and MCP clients use
+  API keys (or OAuth for MCP). CLI examples now match
+  [CLI Reference](docs/cli-reference.md). Endpoints, request and response
+  fields, permission names, error bodies and the release download names now
+  match the code. The docs no longer promise features that aren't there, such
+  as SSH/SNMP credentials being used by scans or AAAA records.
+  [Configuration](docs/configuration.md) now points to
+  [Configuration Reference](docs/configuration-reference.md), which adds
+  `ENCRYPTION_KEY`, `POOL_UTILIZATION_ALERT_PERCENT`, how `.env` is loaded and
+  what stops the server from starting.
 
 ### Security
 

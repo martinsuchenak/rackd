@@ -45,7 +45,7 @@ Events are published after the change is stored. `data` is the record as it was 
 | `discovery.device_found` | A scan finds a host it hasn't seen before | Discovered device |
 | `conflict.detected` | Conflict detection records a new conflict | Conflict |
 | `conflict.resolved` | A conflict is resolved | Conflict |
-| `pool.utilization_high` | Not published yet; subscribing is accepted | |
+| `pool.utilization_high` | A pool's utilization reaches `POOL_UTILIZATION_ALERT_PERCENT` (default 90; `0` turns it off). Checked with each utilization snapshot (`SNAPSHOT_INTERVAL`), and published again only after it drops below and rises again | `pool_id`, `pool_name`, `network_id`, `used_ips`, `total_ips`, `utilization`, `threshold` |
 
 Extensions can add their own event types; `GET /api/v1/webhooks/events` lists every type the server accepts.
 
@@ -159,6 +159,8 @@ The same rules apply to DNS provider endpoints.
 GET /api/v1/webhooks
 ```
 
+`?active=true` (or `false`) filters by state.
+
 ### Get Webhook
 
 ```http
@@ -209,7 +211,24 @@ Sends a test delivery to verify webhook configuration.
 GET /api/v1/webhooks/{id}/deliveries
 ```
 
-Returns delivery history with status and response details.
+Returns delivery history with status and response details, newest first, 100 per page unless `limit` says otherwise.
+
+**Query Parameters:**
+- `status` - `pending`, `success`, `failed`, `retrying` or `abandoned`
+- `event_type` - Filter by event type
+- `limit`, `offset` - Pagination
+
+### Get Delivery
+
+```http
+GET /api/v1/webhooks/{id}/deliveries/{deliveryId}
+```
+
+### List Event Types
+
+```http
+GET /api/v1/webhooks/events
+```
 
 ## CLI Commands
 
@@ -277,11 +296,11 @@ Access webhook management at `/webhooks` in the web interface.
 
 | Permission | Description |
 |------------|-------------|
-| `webhook:list` | View list of webhooks |
-| `webhook:read` | View webhook details (excludes secret) |
-| `webhook:create` | Create new webhooks |
-| `webhook:update` | Modify existing webhooks |
-| `webhook:delete` | Delete webhooks |
+| `webhooks:list` | View list of webhooks |
+| `webhooks:read` | View webhook details (excludes secret) |
+| `webhooks:create` | Create new webhooks |
+| `webhooks:update` | Modify existing webhooks |
+| `webhooks:delete` | Delete webhooks |
 
 ## Integration Examples
 

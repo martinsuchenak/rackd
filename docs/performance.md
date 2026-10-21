@@ -33,10 +33,12 @@ The report lists, for each operation, the operations per second, the p50, p95, p
 
 Run the tool against a disposable server: it writes test data and creates an API key named `loadtest-<timestamp>`.
 
-The bulk endpoints share the login rate limiter, and the general rate limiter would throttle 50 clients, so start the server with both relaxed:
+The bulk endpoints use the login rate limit's settings, and the general rate limiter would throttle 50 clients, so start the server with both relaxed. A fresh data directory has no users, so also create the first admin:
 
 ```bash
-RATE_LIMIT_ENABLED=false LOGIN_RATE_LIMIT_REQUESTS=100000 rackd server --data-dir /tmp/rackd-loadtest
+RATE_LIMIT_ENABLED=false LOGIN_RATE_LIMIT_REQUESTS=100000 \
+  INITIAL_ADMIN_USERNAME=admin INITIAL_ADMIN_PASSWORD='<admin password>' \
+  rackd server --data-dir /tmp/rackd-loadtest
 ```
 
 Build the tool from a checkout:
@@ -50,6 +52,8 @@ Run it with an admin account's password, which it uses once to create the API ke
 ```bash
 RACKD_LOADTEST_PASSWORD='<admin password>' ./loadtest -url http://127.0.0.1:8080 -out results.md
 ```
+
+To use an existing API key instead of signing in, pass it with `-token '<api key>'`.
 
 | Flag | Default | Meaning |
 | --- | --- | --- |

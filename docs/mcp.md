@@ -18,7 +18,7 @@ The simplest method - create an API key via the web UI or CLI and use it as a Be
 Authorization: Bearer <api-key>
 ```
 
-API keys inherit the permissions of the user who created them.
+An API key acts with the permissions of the user who created it, limited to its scopes if it has any.
 
 ### OAuth 2.1 Authentication (Recommended for MCP Clients)
 
@@ -49,19 +49,25 @@ MCP_OAUTH_REFRESH_TOKEN_TTL=720h          # Refresh token lifetime (default: 30 
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 Authorization Server Metadata |
 | `POST /mcp-oauth/register` | Dynamic client registration (limits: `client_name` 200 characters, URIs 2,048, at most 10 `redirect_uris`) |
 | `GET /mcp-oauth/authorize` | Authorization endpoint (shows login/consent) |
+| `POST /mcp-oauth/authorize` | Consent submission |
 | `POST /mcp-oauth/token` | Token endpoint (issues access/refresh tokens) |
 | `POST /mcp-oauth/revoke` | Token revocation |
 
 **Supported Grant Types:**
 - `authorization_code` with PKCE (for public clients like Claude Desktop)
-- `client_credentials` (for service-to-service)
 - `refresh_token` (for token renewal)
+
+`client_credentials` is listed in the server metadata but isn't usable yet: it needs a client tied to a user, and dynamically registered clients never are. For service-to-service access, use an API key.
 
 **Backward Compatibility:**
 
 When OAuth is enabled, both OAuth tokens and API keys are accepted. This allows a gradual migration.
 
 ## Available Tools
+
+`tools/list` returns only the core tools: `search`, `device_list`, `device_get`, `device_save`, `device_delete`, `datacenter_list`, `datacenter_get`, `network_list`, `network_get` and `pool_get_next_ip`, plus `tool_search` and `execute_tool`. The rest are discoverable: `tool_search` (optional `query`, `max_results`) finds them with their input schemas, and `execute_tool` (`name`, `parameters`) runs one. A client can also call a discoverable tool directly by name with `tools/call`. Extensions can add tools of their own.
+
+List tools return `{"count": ..., "has_more": ..., "items": [...]}`.
 
 ### Search
 
@@ -79,17 +85,20 @@ Search across devices, networks, and datacenters using full-text search.
 Create or update a device in the inventory.
 
 **Parameters:**
-- `id` (string, optional): Device ID (omit for new device)
-- `name` (string, required): Device name
+- `id` (string, optional): Device ID (omit for new device). An update changes only the fields passed; passing `addresses`, `tags` or `domains` replaces that whole list
+- `name` (string): Device name (required for a new device)
+- `hostname` (string): Hostname
 - `description` (string): Device description
 - `make_model` (string): Device make and model
 - `os` (string): Operating system
+- `status` (string): `planned`, `active`, `maintenance` or `decommissioned`
 - `datacenter_id` (string): Datacenter ID
 - `username` (string): Login username
 - `location` (string): Physical location
 - `tags` (array): Device tags
-- `addresses` (array): IP addresses with `ip` and `type` fields
+- `addresses` (array): IP addresses with `ip`, `type`, and optional `network_id`, `pool_id`, `port`
 - `domains` (array): Domain names
+- `custom_fields` (array): Custom field values with `field_id` and `value`
 
 **Example:**
 ```json
@@ -120,6 +129,11 @@ List devices with optional filtering.
 - `query` (string): Search query
 - `tags` (array): Filter by tags
 - `datacenter_id` (string): Filter by datacenter
+- `network_id` (string): Filter by network
+- `pool_id` (string): Filter by IP pool
+- `status` (string): Filter by status
+- `limit` (number): Max results (default 100, max 1000)
+- `offset` (number): Results to skip
 
 #### device_delete
 Delete a device from inventory.
@@ -136,6 +150,7 @@ Create a relationship between two devices.
 - `parent_id` (string, required): Parent device ID
 - `child_id` (string, required): Child device ID
 - `type` (string, required): Relationship type: `contains`, `connected_to`, `depends_on`
+- `notes` (string): Optional notes
 
 **Example:**
 ```json
@@ -157,7 +172,9 @@ Get all relationships for a device.
 #### datacenter_list
 List all datacenters.
 
-**Parameters:** None
+**Parameters:**
+- `limit` (number): Max results (default 100, max 1000)
+- `offset` (number): Results to skip
 
 #### datacenter_get
 Get a datacenter by ID.
@@ -169,8 +186,8 @@ Get a datacenter by ID.
 Create or update a datacenter.
 
 **Parameters:**
-- `id` (string, optional): Datacenter ID (omit for new)
-- `name` (string, required): Datacenter name
+- `id` (string, optional): Datacenter ID (omit for new). An update changes only the fields passed
+- `name` (string): Datacenter name (required for a new datacenter)
 - `location` (string): Physical location
 - `description` (string): Description
 
@@ -187,6 +204,8 @@ List all networks.
 
 **Parameters:**
 - `datacenter_id` (string): Filter by datacenter
+- `limit` (number): Max results (default 100, max 1000)
+- `offset` (number): Results to skip
 
 #### network_get
 Get a network by ID.
@@ -198,9 +217,9 @@ Get a network by ID.
 Create or update a network.
 
 **Parameters:**
-- `id` (string, optional): Network ID (omit for new)
-- `name` (string, required): Network name
-- `subnet` (string, required): CIDR subnet (e.g., 192.168.1.0/24)
+- `id` (string, optional): Network ID (omit for new). An update changes only the fields passed
+- `name` (string): Network name (required for a new network)
+- `subnet` (string): CIDR subnet, e.g. 192.168.1.0/24 (required for a new network)
 - `datacenter_id` (string): Datacenter ID
 - `vlan_id` (number): VLAN ID
 - `description` (string): Description
@@ -247,6 +266,31 @@ Promote a discovered device to inventory.
 - `discovered_id` (string, required): Discovered device ID
 - `name` (string, required): Device name for inventory
 
+### Discoverable Tools
+
+Found with `tool_search`; see each tool's schema there for its parameters.
+
+| Tool | Purpose |
+|------|---------|
+| `device_get_custom_fields` | Get a device's custom field values with their definitions |
+| `circuit_list`, `circuit_get`, `circuit_save`, `circuit_delete` | List, get, create or update, and delete circuits |
+| `nat_list`, `nat_get`, `nat_save`, `nat_delete` | List, get, create or update, and delete NAT mappings |
+| `reservation_list`, `reservation_get` | List and get IP reservations |
+| `reservation_create`, `reservation_update` | Reserve an IP from a pool, or update a reservation |
+| `reservation_release`, `reservation_delete` | Release a reservation back to the pool, or delete its record |
+| `webhook_list`, `webhook_get`, `webhook_save`, `webhook_delete` | List, get, create or update, and delete webhooks |
+| `webhook_ping` | Send a test ping to a webhook |
+| `custom_field_list`, `custom_field_get`, `custom_field_save`, `custom_field_delete` | Manage custom field definitions |
+| `conflict_list`, `conflict_detect`, `conflict_resolve` | List conflicts, run detection, resolve one |
+| `audit_list` | List audit log entries |
+| `dns_provider_list`, `dns_provider_get`, `dns_provider_save`, `dns_provider_delete`, `dns_provider_test` | Manage DNS providers and test a connection |
+| `dns_zone_list`, `dns_zone_get`, `dns_zone_save`, `dns_zone_delete` | Manage DNS zones |
+| `dns_zone_sync`, `dns_zone_import` | Sync a zone to its provider, or import records from it |
+| `dns_record_list`, `dns_record_get`, `dns_record_save`, `dns_record_delete` | Manage DNS records in a zone |
+| `dns_record_link` | Link a DNS record to a device |
+
+The DNS tools are present only when `ENCRYPTION_KEY` is set.
+
 ## Integration Examples
 
 ### Connecting a Client
@@ -275,7 +319,7 @@ A client that can only launch local commands can use a bridge such as [`mcp-remo
 }
 ```
 
-The key acts with its owner's permissions.
+The key acts with its owner's permissions, limited to its scopes if it has any.
 
 ### Python Client
 
@@ -285,8 +329,10 @@ import requests
 def call_mcp_tool(tool_name, params):
     response = requests.post(
         "http://localhost:8080/mcp",
-        headers={"Authorization": "Bearer your-secret-token"},
+        headers={"Authorization": "Bearer <api-key>"},
         json={
+            "jsonrpc": "2.0",
+            "id": 1,
             "method": "tools/call",
             "params": {
                 "name": tool_name,
@@ -313,14 +359,15 @@ devices = call_mcp_tool("device_list", {})
 #!/bin/bash
 # Bulk device creation via MCP
 
-TOKEN="your-secret-token"
 ENDPOINT="http://localhost:8080/mcp"
 
 for i in {1..10}; do
   curl -X POST "$ENDPOINT" \
-    -H "Authorization: Bearer $TOKEN" \
+    -H "Authorization: Bearer $RACKD_TOKEN" \
     -H "Content-Type: application/json" \
     -d "{
+      \"jsonrpc\": \"2.0\",
+      \"id\": $i,
       \"method\": \"tools/call\",
       \"params\": {
         \"name\": \"device_save\",
@@ -349,27 +396,34 @@ The AI assistant will automatically translate these requests into appropriate MC
 
 ## Error Handling
 
-All tools return standardized error responses:
+A failed tool call returns a JSON-RPC error:
 
 ```json
 {
+  "jsonrpc": "2.0",
+  "id": 1,
   "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "Device not found"
+    "code": -32004,
+    "message": "not found"
   }
 }
 ```
 
-Common error codes:
-- `INVALID_PARAMS`: Invalid or missing parameters
-- `INTERNAL_ERROR`: Server-side error
-- `NOT_FOUND`: Resource not found
-- `UNAUTHORIZED`: Authentication failed
+Error codes:
+- `-32602`: Invalid or missing parameters
+- `-32603`: Internal error (details are in the server log, not the response)
+- `-32001`: Not authenticated
+- `-32003`: Forbidden (the user or token lacks the permission)
+- `-32004`: Not found
+- `-32009`: Conflict (already exists, no free IPs, last admin, scan limits)
+- `-32010`: An outside service (DNS provider, webhook target) failed
+
+A request without a valid token gets HTTP `401` before any JSON-RPC handling, with a `WWW-Authenticate` header that points OAuth clients to `/.well-known/oauth-protected-resource`.
 
 ## Security Considerations
 
 - **OAuth (recommended)**: Users authenticate with their own credentials; tokens are scoped to their RBAC permissions
-- **API Keys**: Use strong, randomly generated keys; keys inherit creator's permissions
+- **API Keys**: Keys act with their creator's permissions; give them scopes to limit them further
 - Run MCP server on localhost or secure networks only
 - Use HTTPS in production (set `MCP_OAUTH_ISSUER_URL` to your HTTPS URL)
 - Regularly rotate API keys and review OAuth client registrations

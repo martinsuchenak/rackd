@@ -48,22 +48,7 @@ sudo chown -R rackd:rackd /var/lib/rackd/
 sudo -u rackd rackd server
 ```
 
-#### Data Directory Not Found
-
-**Symptom:**
-```
-Error: stat ./data: no such file or directory
-```
-
-**Solution:**
-
-```bash
-# Create data directory
-mkdir -p ./data
-
-# Or specify existing directory
-rackd server --data-dir /var/lib/rackd
-```
+Rackd creates the data directory if it doesn't exist, so a permission error usually means the service user can't write to its parent directory.
 
 ### Server Crashes
 
@@ -82,7 +67,7 @@ free -h
 
 # Increase available memory
 # Or reduce discovery scan size
-# Limit concurrent scans in configuration
+# Lower the workers of the scan profiles in use (rackd scan-profile update --workers)
 ```
 
 #### Database Corruption
@@ -126,16 +111,15 @@ Error: database is locked
 # Check for multiple instances
 ps aux | grep rackd
 
-# Kill duplicate instances
+# Stop duplicate instances
+sudo systemctl stop rackd
 sudo killall rackd
 
-# Remove stale lock files (only if server is stopped)
-rm /var/lib/rackd/rackd.db-wal
-rm /var/lib/rackd/rackd.db-shm
-
 # Restart server
-rackd server
+sudo systemctl start rackd
 ```
+
+Don't delete `rackd.db-wal` or `rackd.db-shm`: the WAL file can hold committed changes that aren't in `rackd.db` yet. Frequent "database is locked" or "context deadline exceeded" errors also happen when the data directory is on a network share (NFS, SMB/CIFS); Rackd logs a warning at start on Linux when it detects one. Move it to a local disk.
 
 ### Slow Queries
 
@@ -191,8 +175,8 @@ journalctl -u rackd -n 100
 **Symptom:**
 ```json
 {
-  "error": "unauthorized",
-  "message": "Missing or invalid authentication token"
+  "error": "Unauthorized",
+  "code": "UNAUTHORIZED"
 }
 ```
 
@@ -202,11 +186,11 @@ journalctl -u rackd -n 100
 # Check token is set
 echo $RACKD_TOKEN
 
-# Set token
-export RACKD_TOKEN=your-secret-token
+# Set token (an API key from the web UI's API Keys page)
+export RACKD_TOKEN='<api key>'
 
 # Or pass in request
-curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/v1/devices
+curl -H "Authorization: Bearer <api key>" http://localhost:8080/api/v1/devices
 ```
 
 #### Token Mismatch
@@ -220,7 +204,7 @@ curl -H "Authorization: Bearer your-secret-token" http://localhost:8080/api/v1/d
 ```bash
 # The CLI authenticates with an API key; create one in the web UI
 # (API Keys) or with `rackd apikey create`, then:
-export RACKD_TOKEN=mysecret
+export RACKD_TOKEN='<api key>'
 rackd device list
 ```
 
@@ -231,9 +215,9 @@ rackd device list
 **Symptom:**
 ```json
 {
-  "error": "validation_error",
-  "message": "Invalid input",
-  "details": [...]
+  "error": "subnet: ...",
+  "code": "VALIDATION_ERROR",
+  "details": [{"field": "subnet", "message": "..."}]
 }
 ```
 
@@ -248,10 +232,10 @@ Check validation errors in response:
 ```bash
 # Example: Fix invalid CIDR
 # Wrong
-rackd network add --name test --cidr 10.0.1.0
+rackd network add --name test --subnet 10.0.1.0
 
 # Correct
-rackd network add --name test --cidr 10.0.1.0/24
+rackd network add --name test --subnet 10.0.1.0/24
 ```
 
 #### 404 Not Found
@@ -259,8 +243,8 @@ rackd network add --name test --cidr 10.0.1.0/24
 **Symptom:**
 ```json
 {
-  "error": "not_found",
-  "message": "Resource not found"
+  "error": "...",
+  "code": "NOT_FOUND"
 }
 ```
 
@@ -272,7 +256,7 @@ rackd device list
 rackd network list
 
 # Check ID is correct
-rackd device get <correct-id>
+rackd device get --id <correct-id>
 ```
 
 #### 500 Internal Server Error
@@ -280,8 +264,8 @@ rackd device get <correct-id>
 **Symptom:**
 ```json
 {
-  "error": "internal_error",
-  "message": "An internal error occurred"
+  "error": "Internal Server Error",
+  "code": "INTERNAL_ERROR"
 }
 ```
 
@@ -333,7 +317,7 @@ rackd device list
 
 # Check network connectivity
 ping localhost
-curl http://localhost:8080/api/v1/config
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/config
 ```
 
 ## Discovery Issues
@@ -349,10 +333,11 @@ curl http://localhost:8080/api/v1/config
 ```bash
 # Discovery rules run every DISCOVERY_INTERVAL (default 24h)
 # Check scan status
-rackd discovery list
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans
 
 # Cancel stuck scan
-curl -X DELETE http://localhost:8080/api/v1/discovery/scans/<scan-id>
+curl -X POST -H "Authorization: Bearer $RACKD_TOKEN" \
+  http://localhost:8080/api/v1/discovery/scans/<scan-id>/cancel
 
 # Check logs for errors
 journalctl -u rackd | grep discovery
@@ -417,6 +402,10 @@ openssl rand -hex 32
 **Solution:**
 
 ```bash
+# Scheduled scans only run when ENCRYPTION_KEY is set; without it the
+# server logs "ENCRYPTION_KEY is not set" at start
+journalctl -u rackd | grep ENCRYPTION_KEY
+
 # Check scheduled scan configuration
 # Verify cron expression is valid
 
@@ -462,10 +451,10 @@ task build:local
 
 ```bash
 # Check API is accessible
-curl http://localhost:8080/api/v1/config
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/config
 
 # Check authentication
-# If API requires token, UI needs it too
+# Sign out and back in; an expired session returns 401
 
 # Check browser console for specific errors
 # Look for CORS issues, network errors, etc.
@@ -518,27 +507,28 @@ chmod +x /usr/local/bin/rackd
 
 ### Config File Not Found
 
-**Symptom:**
-```
-Warning: config file not found
-```
+The CLI reads `$XDG_CONFIG_HOME/rackd/config.json` (by default `~/.config/rackd/config.json`). Without it, the CLI uses `http://localhost:8080` and no token.
 
 **Solution:**
 
 ```bash
 # Create config directory
-mkdir -p ~/.rackd
+mkdir -p ~/.config/rackd
 
 # Create config file
-cat > ~/.rackd/config.yaml <<EOF
-api_url: http://localhost:8080
-api_token: your-secret-token
+cat > ~/.config/rackd/config.json <<EOF
+{
+  "server_url": "http://localhost:8080",
+  "token": "<api key>"
+}
 EOF
 
 # Or use environment variables
 export RACKD_SERVER_URL=http://localhost:8080
-export RACKD_TOKEN=your-secret-token
+export RACKD_TOKEN='<api key>'
 ```
+
+See [CLI](cli.md) for all options.
 
 ## Docker Issues
 
@@ -561,8 +551,7 @@ docker volume inspect rackd-data
 # Remove and recreate container
 docker stop rackd
 docker rm rackd
-# No pre-built image is published; build rackd:local from the repository (see installation.md)
-docker run -d --name rackd -p 8080:8080 -v rackd-data:/data rackd:local
+docker run -d --name rackd -p 8080:8080 -v rackd-data:/data ghcr.io/martinsuchenak/rackd:0.6
 ```
 
 ### Data Not Persisting
@@ -578,10 +567,10 @@ docker run -d --name rackd -p 8080:8080 -v rackd-data:/data rackd:local
 docker inspect rackd | grep Mounts
 
 # Use named volume
-docker run -d -v rackd-data:/data rackd:local
+docker run -d -v rackd-data:/data ghcr.io/martinsuchenak/rackd:0.6
 
 # Or bind mount
-docker run -d -v /var/lib/rackd:/data rackd:local
+docker run -d -v /var/lib/rackd:/data ghcr.io/martinsuchenak/rackd:0.6
 ```
 
 ### Network Issues
@@ -597,7 +586,7 @@ docker run -d -v /var/lib/rackd:/data rackd:local
 docker port rackd
 
 # Ensure port is published
-docker run -d -p 8080:8080 rackd:local
+docker run -d -p 8080:8080 ghcr.io/martinsuchenak/rackd:0.6
 
 # Check firewall
 sudo ufw allow 8080
@@ -644,7 +633,7 @@ ps aux | grep rackd
 top -p $(pgrep rackd)
 
 # Check for active scans
-rackd discovery list
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans
 
 # Cancel unnecessary scans
 # Reduce scan frequency
@@ -700,10 +689,9 @@ journalctl -u rackd -f
 
 # Docker
 docker logs -f rackd
-
-# File
-tail -f /var/log/rackd.log
 ```
+
+Rackd logs to standard output only; it writes no log file of its own.
 
 ### Increase Log Verbosity
 
@@ -737,8 +725,9 @@ journalctl -u rackd -n 100 --no-pager
 sqlite3 /var/lib/rackd/rackd.db "PRAGMA integrity_check;"
 rackd migrate status --data-dir /var/lib/rackd
 
-# Configuration
-env | grep RACKD
+# Configuration (server settings have no prefix; RACKD_* are CLI settings).
+# Leave ENCRYPTION_KEY, tokens and passwords out of reports.
+env | grep -E '^(DATA_DIR|LISTEN_ADDR|LOG_|RATE_LIMIT|SESSION_|TRUST|COOKIE_|DISCOVERY_|RACKD_SERVER_URL)'
 ```
 
 ### Report Issues
@@ -763,6 +752,6 @@ When reporting issues, include:
 ## Related Documentation
 
 - [Installation](installation.md) - Installation guide
-- [Configuration](configuration.md) - Configuration options
+- [Configuration Reference](configuration-reference.md) - Configuration options
 - [Deployment](deployment.md) - Deployment strategies
 - [Security](security.md) - Security best practices

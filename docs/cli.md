@@ -20,7 +20,6 @@ rackd [global options] command [command options] [arguments...]
 | API token | `token` | `RACKD_TOKEN` | - |
 | Verify TLS certificates | `verify_ssl` | `RACKD_VERIFY_SSL` | `true` |
 | Request timeout | `timeout` | - | `30s` |
-| Output format (table, json, yaml) | `output` | - | `table` |
 
 The config file is `$XDG_CONFIG_HOME/rackd/config.json` (by default `~/.config/rackd/config.json`). Environment variables override it. `--help`/`-h` is the only global flag; output and other options are per-command flags.
 
@@ -31,9 +30,8 @@ The CLI reads `$XDG_CONFIG_HOME/rackd/config.json` (by default `~/.config/rackd/
 ```json
 {
   "server_url": "http://localhost:8080",
-  "token": "your-secret-token",
+  "token": "<api key>",
   "timeout": "30s",
-  "output": "table",
   "verify_ssl": true
 }
 ```
@@ -67,9 +65,9 @@ rackd device list
 ```
 
 ```
-ID       NAME      DATACENTER  IP ADDRESSES      TAGS
-dev-001  web-01    dc1         10.0.1.10         production,web
-dev-002  db-01     dc1         10.0.1.20         production,database
+ID       NAME    MAKE/MODEL        OS            DATACENTER
+dev-001  web-01  Dell PowerEdge    Ubuntu 24.04  dc1
+dev-002  db-01   HPE ProLiant      Debian 12     dc1
 ```
 
 ### JSON
@@ -87,7 +85,7 @@ rackd device list --output json
     "name": "web-01",
     "datacenter_id": "dc1",
     "addresses": [
-      {"type": "primary", "address": "10.0.1.10"}
+      {"type": "ipv4", "ip": "10.0.1.10"}
     ],
     "tags": ["production", "web"]
   }
@@ -107,8 +105,8 @@ rackd device list --output yaml
   name: web-01
   datacenter_id: dc1
   addresses:
-    - type: primary
-      address: 10.0.1.10
+    - type: ipv4
+      ip: 10.0.1.10
   tags:
     - production
     - web
@@ -124,7 +122,7 @@ The CLI reads its server connection from environment variables, which override t
 
 ```bash
 export RACKD_SERVER_URL=http://localhost:8080
-export RACKD_TOKEN=mysecret
+export RACKD_TOKEN=<api key>
 export RACKD_VERIFY_SSL=false   # only for self-signed certificates in testing
 
 rackd device list
@@ -155,5 +153,5 @@ rackd discovery promote --discovered-id <discovered id> --name db-01
 ## Related Documentation
 
 - [API Reference](api.md) - REST API documentation
-- [Configuration](configuration.md) - Configuration options
+- [Configuration Reference](configuration-reference.md) - Server configuration options
 - [Quick Start](quickstart.md) - Getting started guide

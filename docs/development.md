@@ -6,9 +6,9 @@ This guide covers everything you need to know to develop and contribute to Rackd
 
 ### Required Tools
 
-- **Go 1.25+**: The project requires Go 1.25 or later
+- **Go 1.27.3+**: The version `go.mod` requires
 - **Bun**: JavaScript runtime and package manager for frontend development
-- **Make**: Build automation tool
+- **Task** ([go-task](https://taskfile.dev)): Build automation (`Taskfile.yml`)
 - **Git**: Version control
 
 ### Optional Tools
@@ -22,7 +22,7 @@ This guide covers everything you need to know to develop and contribute to Rackd
 
 #### Go
 ```bash
-# Install Go 1.25+ from https://golang.org/dl/
+# Install Go 1.27.3+ from https://golang.org/dl/
 # Or using a version manager like g or gvm
 ```
 
@@ -35,8 +35,9 @@ curl -fsSL https://bun.sh/install | bash
 #### Development Tools
 ```bash
 # Install linting and formatting tools
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+go install github.com/go-task/task/v3/cmd/task@latest
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+go install github.com/securego/gosec/v2/cmd/gosec@latest
 go install mvdan.cc/gofumpt@latest
 ```
 
@@ -134,18 +135,29 @@ rackd/
 ├── docs/                   # Documentation
 ├── internal/               # Private application code
 │   ├── api/               # HTTP API handlers
+│   ├── audit/             # Audit logging
+│   ├── auth/              # Sessions, passwords, OAuth
 │   ├── config/            # Configuration management
 │   ├── credentials/       # Credential storage and encryption
 │   ├── discovery/         # Network discovery logic
+│   ├── dns/               # DNS provider integrations
+│   ├── export/            # Data export
+│   ├── extensions/        # Extension runtime
+│   ├── importdata/        # Data import
 │   ├── log/               # Logging utilities
 │   ├── mcp/               # Model Context Protocol server
-│   ├── model/             # Data models and DTOs
+│   ├── metrics/           # Prometheus metrics
 │   ├── server/            # HTTP server setup
+│   ├── service/           # Business logic and RBAC checks
 │   ├── storage/           # Database layer (SQLite)
-│   ├── types/             # Common types
 │   ├── ui/                # Embedded UI assets
+│   ├── version/           # Build version information
+│   ├── webhook/           # Webhook delivery
 │   └── worker/            # Background job processing
 ├── pkg/                    # Public API packages
+│   ├── app/               # Binary entry point (app.Main)
+│   ├── extension/         # Extension API
+│   └── model/             # Data models and DTOs
 ├── webui/                  # Frontend source code
 │   ├── assets/            # Static assets
 │   ├── dist/              # Built frontend (generated)
@@ -196,14 +208,14 @@ Each resource has its own file defining data structures:
 
 ```
 pkg/model/
-├── device.go           # Device, DeviceFilter, DeviceResponse
-├── network.go          # Network, NetworkFilter, Pool
+├── device.go           # Device, Address, DeviceFilter
+├── network.go          # Network, NetworkPool, NetworkFilter
 ├── datacenter.go       # Datacenter, DatacenterFilter
-├── user.go             # User, UserResponse, Session
+├── user.go             # User, UserFilter, UserResponse
 ├── role.go             # Role, Permission, RoleResponse
 ├── audit.go            # AuditLog, AuditFilter
 ├── dns.go              # DNSProvider, DNSZone, DNSRecord
-└── discovery.go        # DiscoveredDevice, ScanConfig
+└── discovery.go        # DiscoveredDevice, DiscoveryScan, DiscoveryRule
 ```
 
 #### Storage Layer (`internal/storage/`)
@@ -212,18 +224,20 @@ Each resource's database operations in a separate file:
 
 ```
 internal/storage/
-├── storage.go          # Interface definitions (DeviceStorage, NetworkStorage, etc.)
-├── sqlite.go           # SQLiteStorage struct, connection management
-├── device.go           # Device CRUD operations
-├── network.go          # Network and Pool CRUD operations
-├── datacenter.go       # Datacenter CRUD operations
-├── user.go             # User and Session operations
-├── role.go             # Role and Permission operations
-├── audit.go            # Audit log operations
-├── dns.go              # DNS provider and zone operations
-├── discovery.go        # Discovery scan operations
-├── migrations.go       # Database schema migrations
-└── *_test.go           # Tests alongside implementation
+├── storage.go           # Interface definitions (DeviceStorage, NetworkStorage, etc.)
+├── sqlite.go            # SQLiteStorage struct, connection management
+├── device_sqlite.go     # Device CRUD operations
+├── network_sqlite.go    # Network CRUD operations
+├── pool_sqlite.go       # Pool CRUD operations
+├── datacenter_sqlite.go # Datacenter CRUD operations
+├── user_sqlite.go       # User operations
+├── session_sqlite.go    # Session operations
+├── rbac_sqlite.go       # Role and Permission operations
+├── audit_sqlite.go      # Audit log operations
+├── dns_sqlite.go        # DNS provider, zone and record operations
+├── discovery_sqlite.go  # Discovery scan operations
+├── migrations.go        # Database schema migrations
+└── *_test.go            # Tests alongside implementation
 ```
 
 #### Service Layer (`internal/service/`)
@@ -238,11 +252,11 @@ internal/service/
 ├── datacenter.go       # DatacenterService with RBAC checks
 ├── user.go             # UserService
 ├── role.go             # RoleService
-├── audit.go            # AuditService
+├── audit_svc.go        # AuditService
 ├── dns.go              # DNSService
 ├── discovery.go        # DiscoveryService
 ├── rbac.go             # Permission checking utilities
-└── context.go          # Request context utilities
+└── caller.go           # Caller and request context utilities
 ```
 
 #### API Layer (`internal/api/`)
@@ -251,17 +265,17 @@ HTTP handlers for each resource:
 
 ```
 internal/api/
-├── handlers.go         # Route registration, handler setup
-├── device.go           # Device HTTP handlers
-├── network.go          # Network HTTP handlers
-├── datacenter.go       # Datacenter HTTP handlers
-├── user.go             # User HTTP handlers
-├── role.go             # Role HTTP handlers
-├── auth.go             # Authentication handlers
-├── dns.go              # DNS HTTP handlers
-├── discovery.go        # Discovery HTTP handlers
-├── middleware.go       # Auth, logging, CORS middleware
-└── *_test.go           # API tests
+├── handlers.go            # Route registration, handler setup
+├── device_handlers.go     # Device HTTP handlers
+├── network_handlers.go    # Network HTTP handlers
+├── datacenter_handlers.go # Datacenter HTTP handlers
+├── user_handlers.go       # User HTTP handlers
+├── role_handlers.go       # Role HTTP handlers
+├── auth_handlers.go       # Authentication handlers
+├── dns_handlers.go        # DNS HTTP handlers
+├── discovery_handlers.go  # Discovery HTTP handlers
+├── middleware.go          # Auth, logging, security header middleware
+└── *_test.go              # API tests
 ```
 
 #### MCP Layer (`internal/mcp/`)
@@ -270,11 +284,11 @@ Model Context Protocol tools for AI integration:
 
 ```
 internal/mcp/
-├── server.go           # MCP server setup
-├── device.go           # Device tools
-├── network.go          # Network tools
-├── datacenter.go       # Datacenter tools
-└── discovery.go        # Discovery tools
+├── server.go           # MCP server setup and tool registration
+├── tools_device.go     # Device tools
+├── tools_network.go    # Network tools
+├── tools_dns.go        # DNS tools
+└── tools_discovery.go  # Discovery tools
 ```
 
 #### CLI Layer (`cmd/`)
@@ -357,23 +371,20 @@ Frontend components organized by feature:
 ```
 webui/src/
 ├── components/         # Alpine.js components (TypeScript)
-│   ├── device.ts       # Device list/edit logic
-│   ├── network.ts      # Network management logic
-│   ├── datacenter.ts   # Datacenter management logic
-│   ├── user.ts         # User management logic
-│   ├── role.ts         # Role management logic
+│   ├── devices.ts      # Device list/edit logic
+│   ├── networks.ts     # Network management logic
+│   ├── datacenters.ts  # Datacenter management logic
+│   ├── users.ts        # User management logic
+│   ├── roles.ts        # Role management logic
 │   └── ...
-├── partials/           # HTML templates (one per view)
-│   ├── device.html     # Device list/edit views
-│   ├── network.html    # Network views
-│   ├── datacenter.html # Datacenter views
-│   ├── user.html       # User views
-│   └── ...
+├── partials/           # HTML templates
+│   ├── pages/          # One per view (devices.html, networks.html, ...)
+│   └── modals/         # Dialogs (device-form.html, network-form.html, ...)
 ├── core/               # Core utilities
 │   ├── api.ts          # API client
-│   ├── router.ts       # Client-side routing
+│   ├── features.ts     # Route, nav and page title definitions
 │   └── utils.ts        # Helper functions
-├── app.ts              # Main application entry
+├── app.ts              # Main application entry and client-side router
 ├── index.html          # Main HTML template
 └── styles.css          # TailwindCSS styles
 ```
@@ -451,22 +462,22 @@ Follow this checklist to add a new resource type:
    }
    ```
 
-3. **Storage Implementation** (`internal/storage/widget.go` and `widget_test.go`)
+3. **Storage Implementation** (`internal/storage/widget_sqlite.go` and `widget_sqlite_test.go`)
 
 4. **Service** (`internal/service/widget.go` and `widget_test.go`)
    - Include RBAC permission checks
    - Business logic validation
 
-5. **API Handlers** (`internal/api/widget.go` and `widget_test.go`)
+5. **API Handlers** (`internal/api/widget_handlers.go` and `widget_handlers_test.go`)
    - Register routes in `handlers.go`
 
-6. **MCP Tools** (`internal/mcp/widget.go`)
+6. **MCP Tools** (`internal/mcp/tools_widget.go`)
    - Register tools in `server.go`
 
 7. **CLI Commands** (`cmd/widget/widget.go`)
-   - Register in `main.go`
+   - Register in `pkg/app/app.go`
 
-8. **Web UI** (`webui/src/components/widget.ts` and `webui/src/partials/widget.html`)
+8. **Web UI** (`webui/src/components/widgets.ts` and `webui/src/partials/pages/widgets.html`)
 
 9. **Database Migration** (`internal/storage/migrations.go`)
    - Add table creation SQL
@@ -482,15 +493,15 @@ Each source file has a corresponding test file in the same directory:
 
 ```
 internal/storage/
-├── device.go
-├── device_test.go
-├── network.go
-├── network_test.go
+├── device_sqlite.go
+├── device_sqlite_test.go
+├── network_sqlite.go
+├── network_sqlite_test.go
 └── ...
 
 internal/api/
-├── device.go
-├── device_test.go
+├── device_handlers.go
+├── device_handlers_test.go
 └── ...
 ```
 
@@ -513,7 +524,7 @@ Tests are organized alongside the code they test, following Go conventions:
 
 - Unit tests: `*_test.go` files in the same package
 - Integration tests: `integration_test.go` files
-- Test utilities: `testutil/` directories where needed
+- Test utilities: `internal/storage/storagetest` (`storagetest.New(t)` gives each test a private copy of a freshly migrated database)
 
 ### Running Tests
 
@@ -524,7 +535,7 @@ task test
 # Run tests with coverage
 task test:cover
 
-# Run only short tests (excludes integration tests)
+# Run short tests (skips tests that check testing.Short())
 task test:short
 
 # Run tests with race detection
@@ -735,7 +746,7 @@ golangci-lint run ./...
 9. **Page Titles (2.4.2 A)**
    - Update document title on route changes
    - Format: "Page Name - Rackd"
-   - Already implemented in router
+   - Already implemented in `app.ts` (`updatePageTitle`)
 
 10. **Table Accessibility (1.3.1 A)**
     - Add `<caption>` to all data tables (can be `sr-only`)
@@ -760,11 +771,8 @@ Before submitting UI changes, verify:
 #### Testing Tools
 
 **Automated Testing:**
-```bash
-# Run accessibility tests (if configured)
-cd webui
-bun test:a11y
-```
+
+There is no dedicated accessibility test suite. The Playwright E2E tests (`task test:e2e`) cover keyboard and focus behaviour in places, such as mobile navigation.
 
 **Manual Testing:**
 - **axe DevTools**: Browser extension for automated scanning
@@ -829,8 +837,6 @@ this.$watch('showModal', (show: boolean) => {
 
 - **WCAG 2.2 Guidelines**: https://www.w3.org/WAI/WCAG22/quickref/
 - **ARIA Authoring Practices**: https://www.w3.org/WAI/ARIA/apg/
-- **Accessibility Audit**: See `ACCESSIBILITY_AUDIT.md`
-- **Implementation Guides**: See `docs/accessibility-*.md`
 
 ### Documentation Style
 
@@ -895,30 +901,22 @@ Rackd uses SQLite for data storage:
 - Migrations run automatically on startup
 - No external database server required
 
-### Hot Reload Development
+### Development Server
 
 ```bash
-# Start development server with hot reload
 task dev
 
 # This will:
 # 1. Build the UI
-# 2. Start the server with debug logging
-# 3. Watch for changes (manual restart required)
+# 2. Start the server with debug logging (go run)
+# There is no file watching: restart it after changes
 ```
 
 ### IDE Configuration
 
 #### VS Code
 
-The project includes VS Code settings in `.vscode/settings.json`:
-
-```json
-{
-    "go.lintTool": "golangci-lint",
-    "go.formatTool": "gofumpt"
-}
-```
+The repository has no editor settings. To match `task lint` and `task fmt`, set `"go.lintTool": "golangci-lint"` and `"go.formatTool": "gofumpt"` in your own settings.
 
 Recommended extensions:
 - Go extension
@@ -950,7 +948,7 @@ dlv debug . -- server
 ### Common Issues
 
 1. **Build Failures**
-   - Ensure Go 1.25+ is installed
+   - Ensure Go 1.27.3+ is installed
    - Run `go mod download` to fetch dependencies
    - Check that Bun is installed for frontend builds
 
@@ -988,9 +986,7 @@ dlv debug . -- server
 
 ```bash
 # Build for all platforms
-task build:linux
-task build:darwin
-task build:windows
+task build
 
 # Or a full local release with GoReleaser, nothing published
 goreleaser release --snapshot --clean

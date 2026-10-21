@@ -19,7 +19,7 @@ internal/
 │   ├── migrations_test.go        # Migration tests
 │   └── integration_test.go       # Storage integration tests
 ├── discovery/
-│   ├── scanner.go
+│   ├── unified_scanner.go
 │   └── scanner_test.go           # Scanner unit tests
 └── ...
 ```
@@ -28,7 +28,7 @@ internal/
 
 1. **Unit Tests**: Test individual functions and methods in isolation
 2. **Integration Tests**: Test component interactions and full workflows
-3. **End-to-End Tests**: Test complete user scenarios (planned)
+3. **End-to-End Tests**: Playwright tests of the web UI in `webui/e2e`, run with `task test:e2e`
 
 ## Unit Tests
 
@@ -42,16 +42,37 @@ Unit tests focus on testing individual functions, methods, and components in iso
 
 ### Example Unit Test
 
+API keys belong to users, so the test creates a user and a key for it first:
+
 ```go
 func TestAuthMiddleware_ValidToken(t *testing.T) {
+    store := storagetest.New(t)
+    defer func() { _ = store.Close() }()
+
+    passwordHash, _ := auth.HashPassword("test-password")
+    user := &model.User{
+        ID: "test-user-id", Username: "testuser", Email: "test@example.com",
+        PasswordHash: passwordHash, IsActive: true, IsAdmin: true,
+        CreatedAt: time.Now(), UpdatedAt: time.Now(),
+    }
+    if err := store.CreateUser(context.Background(), user); err != nil {
+        t.Fatalf("Failed to create test user: %v", err)
+    }
+
+    keySecret := "secret-token"
+    key := &model.APIKey{Name: "test-key", Key: auth.HashToken(keySecret), UserID: user.ID}
+    if err := store.CreateAPIKey(context.Background(), key); err != nil {
+        t.Fatalf("Failed to create API key: %v", err)
+    }
+
     called := false
-    handler := AuthMiddleware("secret-token", func(w http.ResponseWriter, r *http.Request) {
+    handler := AuthMiddleware(store, func(w http.ResponseWriter, r *http.Request) {
         called = true
         w.WriteHeader(http.StatusOK)
     })
 
     r := httptest.NewRequest("GET", "/", nil)
-    r.Header.Set("Authorization", "Bearer secret-token")
+    r.Header.Set("Authorization", "Bearer "+keySecret)
     w := httptest.NewRecorder()
 
     handler(w, r)
@@ -70,7 +91,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 - `internal/api/middleware_test.go` - Authentication and security middleware
 - `internal/api/handlers_test.go` - HTTP handler functions
 - `internal/storage/sqlite_test.go` - Database operations
-- `internal/discovery/scanner_test.go` - Network scanning logic
+- `internal/discovery/scanner_test.go` - Network scanning logic (`unified_scanner.go`)
 - `internal/config/config_test.go` - Configuration management
 
 ## Integration Tests
@@ -79,49 +100,48 @@ Integration tests verify that multiple components work together correctly.
 
 ### Build Tags
 
-Integration tests use build tags to separate them from unit tests:
+The integration, security and benchmark test files in `internal/api` and `internal/storage` start with a build constraint:
 
 ```go
 //go:build !short
 
 package api
-
-import (
-    "testing"
-    // ...
-)
 ```
+
+`go test -short` doesn't set that tag, so these files always build and run. Building with `-tags short` doesn't work either, because other tests in `internal/api` use the helpers in `integration_test.go`. To skip slow tests under `-short`, call `testing.Short()`, as the storage integration tests do.
 
 ### Database Integration Tests
 
-Integration tests use in-memory SQLite databases for isolation:
+Tests get their database from `internal/storage/storagetest`. `storagetest.New(t)` migrates a template database once per test binary and gives each test a private copy of it:
 
 ```go
-func setupTestStorage(t *testing.T) storage.ExtendedStorage {
-    t.Helper()
-    store, err := storage.NewSQLiteStorage(":memory:")
-    if err != nil {
-        t.Fatalf("failed to create test storage: %v", err)
-    }
-    t.Cleanup(func() { store.Close() })
-    return store
-}
+store := storagetest.New(t)
+t.Cleanup(func() { _ = store.Close() })
 ```
+
+For a quick throwaway database, `storage.NewSQLiteStorage(":memory:")` also works.
 
 ### API Integration Tests
 
-API integration tests create full HTTP servers with middleware:
+API integration tests wire a handler with sessions and services, and register every route on a mux (`newTestServer` in `internal/api/integration_test.go`):
 
 ```go
-func setupIntegrationServer(t *testing.T, authToken string) *httptest.Server {
-    t.Helper()
-    store := setupTestStorage(t)
-    
-    mux := http.NewServeMux()
-    RegisterHandlers(mux, store, authToken)
-    
-    return httptest.NewServer(mux)
-}
+store := storagetest.New(t)
+t.Cleanup(func() { _ = store.Close() })
+
+sm := auth.NewSessionManager(24*time.Hour, nil)
+t.Cleanup(func() { sm.Stop() })
+
+svc := service.NewServices(store, sm, nil)
+
+h := NewHandler(store, nil,
+    WithSessionManager(sm),
+    WithCookieConfig(false, 24*time.Hour),
+    WithServices(svc),
+)
+
+mux := http.NewServeMux()
+h.RegisterRoutes(mux)
 ```
 
 ### Key Integration Test Files
@@ -137,7 +157,7 @@ func setupIntegrationServer(t *testing.T, authToken string) *httptest.Server {
 # Run all tests
 task test
 
-# Run only unit tests (short tests)
+# Run short tests (skips tests that check testing.Short())
 task test:short
 
 # Run tests with race detection
@@ -153,7 +173,7 @@ task test:cover
 # Run all tests with verbose output
 go test -v ./...
 
-# Run only unit tests
+# Run short tests
 go test -v -short ./...
 
 # Run specific package tests
@@ -173,11 +193,11 @@ go tool cover -html=coverage.out -o coverage.html
 ### Test Filtering
 
 ```bash
-# Skip integration tests
+# Skip the storage integration tests (they check testing.Short())
 go test -v -short ./...
 
-# Run only integration tests
-go test -v -run Integration ./...
+# Run the API full-stack integration tests
+go test -v -run FullStack ./internal/api
 
 # Run tests matching pattern
 go test -v -run "Test.*Handler" ./internal/api
@@ -216,6 +236,8 @@ Current coverage targets:
 
 #### Table-Driven Tests
 
+`ValidateNetwork` (in `internal/service`) returns a list of `ValidationErrors`, empty when the network is valid:
+
 ```go
 func TestValidateNetwork(t *testing.T) {
     tests := []struct {
@@ -226,16 +248,16 @@ func TestValidateNetwork(t *testing.T) {
         {
             name: "valid network",
             network: &model.Network{
-                Name: "test-net",
-                CIDR: "192.168.1.0/24",
+                Name:   "test-net",
+                Subnet: "192.168.1.0/24",
             },
             wantErr: false,
         },
         {
             name: "invalid CIDR",
             network: &model.Network{
-                Name: "test-net",
-                CIDR: "invalid",
+                Name:   "test-net",
+                Subnet: "invalid",
             },
             wantErr: true,
         },
@@ -243,9 +265,9 @@ func TestValidateNetwork(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            err := ValidateNetwork(tt.network)
-            if (err != nil) != tt.wantErr {
-                t.Errorf("ValidateNetwork() error = %v, wantErr %v", err, tt.wantErr)
+            errs := ValidateNetwork(tt.network)
+            if (len(errs) > 0) != tt.wantErr {
+                t.Errorf("ValidateNetwork() errors = %v, wantErr %v", errs, tt.wantErr)
             }
         })
     }
@@ -258,11 +280,12 @@ func TestValidateNetwork(t *testing.T) {
 func setupTestDevice(t *testing.T) *model.Device {
     t.Helper()
     return &model.Device{
-        ID:       uuid.Must(uuid.NewV7()).String(),
-        Name:     "test-device",
-        IP:       "192.168.1.100",
-        Type:     "server",
-        Status:   "active",
+        ID:     uuid.Must(uuid.NewV7()).String(),
+        Name:   "test-device",
+        Status: model.DeviceStatusActive,
+        Addresses: []model.Address{
+            {IP: "192.168.1.100", Type: "ipv4"},
+        },
     }
 }
 ```
@@ -271,11 +294,9 @@ func setupTestDevice(t *testing.T) *model.Device {
 
 ```go
 func TestDatabaseOperations(t *testing.T) {
-    store := setupTestStorage(t)
-    t.Cleanup(func() {
-        store.Close()
-    })
-    
+    store := storagetest.New(t)
+    t.Cleanup(func() { _ = store.Close() })
+
     // Test implementation
 }
 ```
@@ -302,79 +323,66 @@ func (m *mockScanner) Scan(ctx context.Context, network *model.Network, scanType
 Always test error conditions:
 
 ```go
-func TestCreateDevice_InvalidInput(t *testing.T) {
-    store := setupTestStorage(t)
-    
-    // Test with nil device
-    err := store.CreateDevice(nil)
-    if err == nil {
+func TestCreateDevice_NilDevice(t *testing.T) {
+    store := storagetest.New(t)
+    t.Cleanup(func() { _ = store.Close() })
+
+    if err := store.CreateDevice(context.Background(), nil); err == nil {
         t.Error("expected error for nil device")
-    }
-    
-    // Test with invalid device
-    device := &model.Device{Name: ""} // Invalid: empty name
-    err = store.CreateDevice(device)
-    if err == nil {
-        t.Error("expected error for invalid device")
     }
 }
 ```
+
+Field validation, such as a required name, happens in the service layer (`internal/service`), so test invalid input there rather than against storage.
 
 ## CI/CD Integration
 
 ### GitHub Actions
 
-Tests run automatically on:
+The `ci` workflow (`.github/workflows/ci.yml`) runs on:
 - Pull requests
 - Pushes to main branch
-- Release tags
+
+The release workflow, triggered by a tag, builds and publishes with GoReleaser and doesn't rerun the tests; `task release` waits for CI to pass on the commit before tagging it.
 
 ### Test Pipeline
 
-```yaml
-- name: Run Tests
-  run: |
-    task test:short
-    task test:race
-    task test:cover
-```
+CI runs these jobs (the Go jobs build the UI with `task ui:build` first):
+
+- **Go**: `gofmt` check, `go mod tidy` check, `task vet`, `task lint`, `go test ./... -count=1`, `govulncheck ./...`
+- **Race**: `go test ./... -count=1 -race -timeout 30m`
+- **Cross-compile**: `go build` for each release platform
+- **Web UI**: `bun run typecheck`, `bun run validate:types` (types against the OpenAPI spec), `bun test`
+- **Docker**: builds the image
+
+CI sets `RACKD_BCRYPT_COST=6` to keep the suite fast.
 
 ### Quality Gates
 
 - All tests must pass
-- Coverage must not decrease
 - No race conditions detected
-- Security scans pass
+- No known vulnerabilities (`govulncheck`)
 
 ## Test Data Management
 
 ### Test Fixtures
 
-Store test data in `testdata/` directories:
+Go tests keep their fixtures in a `testdata/` directory next to the package, such as `internal/storage/testdata/fixtures/` (a legacy v0.0.21 database for migration tests).
 
-```
-internal/api/testdata/
-├── devices.json
-├── networks.json
-└── discovery_results.json
-```
+The top-level `testdata/` holds sample data for a running server (`devices.json`, `networks.json`, `datacenters.json` and more), loaded with `testdata/load-testdata.sh`; see `testdata/README.md`.
 
 ### Database Migrations
 
-Test database migrations separately:
+`internal/storage/migrations_test.go` covers migrations: it runs them all on a fresh database (`RunMigrations`), checks they are idempotent, reverts every Down step, upgrades the legacy fixture, and checks that a backup is taken before rollback and upgrade:
 
 ```go
-func TestMigrations(t *testing.T) {
-    db := setupTestDB(t)
-    
-    // Test each migration step
-    for i, migration := range migrations {
-        t.Run(fmt.Sprintf("migration_%d", i), func(t *testing.T) {
-            err := migration.Up(db)
-            if err != nil {
-                t.Fatalf("migration %d failed: %v", i, err)
-            }
-        })
+func TestRunMigrations(t *testing.T) {
+    db := openMemDB(t)
+    if err := RunMigrations(context.Background(), db); err != nil {
+        t.Fatalf("RunMigrations failed: %v", err)
+    }
+    if got := countCoreRecords(t, db); got != len(migrations) {
+        t.Errorf("expected %d migration records, got %d", len(migrations), got)
     }
 }
 ```
@@ -385,20 +393,22 @@ func TestMigrations(t *testing.T) {
 
 ```go
 func BenchmarkDeviceSearch(b *testing.B) {
-    store := setupBenchmarkStorage(b)
-    
+    store := storagetest.New(b)
+    b.Cleanup(func() { _ = store.Close() })
+    ctx := context.Background()
+
     // Insert test data
     for i := 0; i < 1000; i++ {
         device := &model.Device{
             ID:   uuid.Must(uuid.NewV7()).String(),
             Name: fmt.Sprintf("device-%d", i),
         }
-        store.CreateDevice(device)
+        _ = store.CreateDevice(ctx, device)
     }
-    
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        _, err := store.SearchDevices("device-500")
+        _, err := store.SearchDevices(ctx, "device-500")
         if err != nil {
             b.Fatal(err)
         }
@@ -408,11 +418,11 @@ func BenchmarkDeviceSearch(b *testing.B) {
 
 ### Load Testing
 
-Use external tools for load testing:
+`tools/loadtest` seeds a disposable server with test data and measures API latency and throughput; see [Performance](performance.md). External tools work too, with an API key:
 
 ```bash
 # Example with hey
-hey -n 1000 -c 10 http://localhost:8080/api/v1/devices
+hey -n 1000 -c 10 -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/devices
 ```
 
 ## Debugging Tests
@@ -442,7 +452,7 @@ func TestDebugExample(t *testing.T) {
 1. **Race Conditions**: Use `go test -race`
 2. **Resource Leaks**: Ensure proper cleanup
 3. **Flaky Tests**: Use deterministic test data
-4. **Slow Tests**: Use build tags to separate
+4. **Slow Tests**: Skip them under `testing.Short()`
 
 ## Best Practices
 

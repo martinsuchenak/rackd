@@ -1,41 +1,37 @@
 # Discovery
 
-Rackd's discovery system provides automated network scanning and device detection capabilities. It can discover devices across networks using multiple scanning techniques including basic port scanning, SSH, and SNMP.
+Rackd's discovery system scans networks for hosts and lets you promote what it finds into the device inventory. Scans probe TCP ports and, for full and deep scans, also listen for NetBIOS, mDNS and LLDP announcements.
 
 ## Overview
 
 The discovery system consists of:
-- **Network Scanning**: Automated discovery of devices on networks
-- **Scan Types**: Basic, advanced, and custom scanning profiles
-- **Credentials Management**: Secure storage of SSH and SNMP credentials
-- **Scheduled Scans**: Automated recurring discovery
-- **Device Promotion**: Converting discovered devices to managed inventory
+- **Network Scanning**: Discovery of hosts on a network
+- **Scan Types**: Quick, full and deep scans, plus custom port lists in scan profiles
+- **Credentials**: Encrypted storage of SSH and SNMP credentials
+- **Scheduled Scans**: Recurring scans driven by cron expressions
+- **Device Promotion**: Converting discovered hosts to managed inventory
 
 ## Scan Types
 
-### Basic Scan Types
-
 #### Quick Scan
-- **Purpose**: Fast network discovery for basic connectivity
-- **Method**: TCP port scanning on common ports (22, 80, 443, 3389)
-- **Speed**: Fastest option
+- **Ports**: 22, 80, 443, 3389
 - **Use Case**: Initial network discovery, connectivity checks
 
-#### Full Scan  
-- **Purpose**: Comprehensive port scanning
-- **Method**: Scans top 100 most common ports
-- **Speed**: Moderate
+#### Full Scan
+- **Ports**: 21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5432, 8080
+- **Also**: NetBIOS, mDNS and LLDP listeners
 - **Use Case**: Detailed service discovery
 
 #### Deep Scan
-- **Purpose**: Extensive network analysis
-- **Method**: Extended port range scanning with service detection
-- **Speed**: Slowest but most thorough
-- **Use Case**: Security audits, complete network mapping
+- **Ports**: The top 100 most common ports
+- **Also**: NetBIOS, mDNS and LLDP listeners, and OS fingerprinting
+- **Use Case**: Complete network mapping
 
-### Advanced Scanning
+Every scan grabs service banners from the open ports it finds. Rackd picks the number of workers and the per-host timeout itself, based on the subnet size and scan type.
 
-Advanced scans use scan profiles with customizable parameters:
+## Scan Profiles
+
+Scan profiles are used by [scheduled scans](#scheduled-scans). Manual scans take only a scan type.
 
 ```go
 type ScanProfile struct {
@@ -51,123 +47,81 @@ type ScanProfile struct {
 }
 ```
 
-## Scan Profiles
-
-Scan profiles define scanning behavior and can be customized for different network environments.
-
 ### Creating Scan Profiles
 
 ```bash
-# Create a custom scan profile
-rackd profile create \
+rackd scan-profile create \
   --name "Production Network Scan" \
-  --scan-type custom \
+  --type custom \
   --ports 22,80,443,8080,9090 \
-  --enable-snmp \
-  --enable-ssh \
-  --timeout 5 \
-  --max-workers 20 \
   --description "Custom profile for production networks"
 ```
 
 ### Profile Parameters
 
 - **scan_type**: `quick`, `full`, `deep`, or `custom`
-- **ports**: Custom port list (for custom scan type)
-- **enable_snmp**: Enable SNMP discovery
-- **enable_ssh**: Enable SSH-based discovery
-- **timeout_sec**: Connection timeout in seconds (default 30)
-- **max_workers**: Concurrent scan workers, 1-100 (default 10)
+- **ports**: Port list; when set, it replaces the scan type's ports
+- **timeout_sec**: Must be positive (CLI default 30)
+- **max_workers**: 1-100 (CLI default 10)
+- **enable_snmp**, **enable_ssh**: Stored with the profile
+
+Scans currently use only a profile's scan type and ports. `timeout_sec`, `max_workers`, `enable_snmp` and `enable_ssh` are stored but don't change how a scan runs yet.
 
 ### Built-in Profiles
 
-Rackd includes several pre-configured profiles:
+Rackd seeds three profiles:
 
-- **Quick Discovery**: Fast connectivity scan
-- **Standard Network**: Balanced speed and coverage
-- **Security Audit**: Comprehensive port and service scan
-- **Infrastructure**: Focus on network infrastructure devices
+- **Quick Scan** (`default-quick`)
+- **Full Scan** (`default-full`)
+- **Deep Scan** (`default-deep`)
 
-## Credentials Management
+## Credentials
 
-Discovery supports multiple credential types for authenticated scanning.
+Rackd stores SSH and SNMP credentials encrypted with `ENCRYPTION_KEY`. Scans don't use credentials yet: no scan, manual or scheduled, logs in over SSH or queries SNMP.
 
-### SSH Credentials
+Credential types are `ssh_password`, `ssh_key`, `snmp_v2c` and `snmp_v3`. Create them on the web UI's Credentials page or through the API:
 
-#### Password Authentication
 ```bash
-rackd credential create \
-  --type ssh_password \
-  --name "SSH Admin" \
-  --ssh-username admin \
-  --ssh-password "secure_password"
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/credentials \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SNMP Secure",
+    "type": "snmp_v3",
+    "snmp_v3_user": "<user>",
+    "snmp_v3_auth": "<auth-password>",
+    "snmp_v3_priv": "<priv-password>"
+  }'
 ```
 
-#### Key-based Authentication
-```bash
-rackd credential create \
-  --type ssh_key \
-  --name "SSH Key Auth" \
-  --ssh-username root \
-  --ssh-key-file ~/.ssh/id_rsa
-```
+Other fields: `snmp_community` (for `snmp_v2c`), `ssh_username`, `ssh_key_id`, `datacenter_id` and `description`. Secrets are never returned.
 
-### SNMP Credentials
-
-#### SNMPv2c (Community String)
-```bash
-rackd credential create \
-  --type snmp_v2c \
-  --name "SNMP Public" \
-  --snmp-community public
-```
-
-**Security Warning**: SNMPv2c transmits community strings in cleartext. By default, Rackd disables SNMPv2c discovery scans. To use SNMPv2c, you must explicitly set `DISCOVERY_SNMPV2C_ENABLED=true` in your configuration. Use only on trusted networks.
-
-#### SNMPv3 (Secure)
-```bash
-rackd credential create \
-  --type snmp_v3 \
-  --name "SNMP Secure" \
-  --snmpv3-user admin \
-  --snmpv3-auth-pass "auth_password" \
-  --snmpv3-priv-pass "priv_password"
-```
+`DISCOVERY_SNMPV2C_ENABLED` (default `false`) allows SNMPv2c, which sends the community string in cleartext. It has no effect until scans use credentials.
 
 ## Network Scanning
 
 ### Manual Scans
 
-#### Basic Network Scan
 ```bash
 # Quick scan of a network
-rackd discovery scan --network-id <network-id> --type quick
+rackd discovery scan --network <network-id> --type quick
 
 # Full port scan
-rackd discovery scan --network-id <network-id> --type full
-```
-
-#### Advanced Scan with Profile
-```bash
-# Scan using custom profile with credentials
-rackd discovery scan \
-  --network-id <network-id> \
-  --profile-id <profile-id> \
-  --ssh-credential-id <ssh-cred-id> \
-  --snmp-credential-id <snmp-cred-id>
+rackd discovery scan --network <network-id> --type full
 ```
 
 ### Scan Status and Monitoring
 
+The CLI starts scans and lists discovered hosts. Follow and cancel scans with the API or the web UI's Discovery page:
+
 ```bash
-# Check scan status
-rackd discovery status <scan-id>
+# List scans (optionally ?network_id=<network-id>)
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans
 
-# List all scans
-rackd discovery list
+# Check one scan
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans/<scan-id>
 
-# Cancel running scan
-rackd discovery cancel <scan-id>
+# Cancel a running scan
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/discovery/scans/<scan-id>/cancel
 ```
 
 ### Scan Limitations
@@ -175,21 +129,19 @@ rackd discovery cancel <scan-id>
 - **Maximum subnet size**: /16 (65,536 hosts)
 - **Addresses never scanned**: subnets that include loopback (`127.0.0.0/8`, `::1`), link-local (`169.254.0.0/16`, which includes cloud metadata services, and `fe80::/10`), unspecified (`0.0.0.0/8`, `::`), multicast, reserved (`240.0.0.0/4`) or IPv4-mapped IPv6 addresses are refused with `400`. Private ranges can be scanned.
 - **Scans at once**: at most 4 scans run at the same time across the server; another is refused with `429 TOO_MANY_SCANS` until one finishes
-- **Workers per scan**: Configurable per profile (default: 10)
-- **Timeout**: 1-60 seconds per host
-- **Rate limiting**: Prevents network flooding
+- **Workers and timeouts**: chosen automatically per scan (1-100 workers, 0.5-10 seconds per probe)
 
 ## Scheduled Scans
 
-Automated recurring scans using cron expressions.
+Recurring scans that run a scan profile on a network, using cron expressions.
 
 ### Creating Scheduled Scans
 
 ```bash
-rackd scheduled create \
+rackd scheduled-scan create \
   --name "Nightly Network Scan" \
-  --network-id <network-id> \
-  --profile-id <profile-id> \
+  --network <network-id> \
+  --profile <profile-id> \
   --cron "0 2 * * *" \
   --description "Daily scan at 2 AM"
 ```
@@ -205,17 +157,17 @@ rackd scheduled create \
 
 ```bash
 # List scheduled scans
-rackd scheduled list
+rackd scheduled-scan list
 
 # Enable/disable schedule
-rackd scheduled enable <schedule-id>
-rackd scheduled disable <schedule-id>
+rackd scheduled-scan update --id <schedule-id> --enable
+rackd scheduled-scan update --id <schedule-id> --disable
 
 # Update schedule
-rackd scheduled update <schedule-id> --cron "0 3 * * *"
+rackd scheduled-scan update --id <schedule-id> --cron "0 3 * * *"
 
 # Delete schedule
-rackd scheduled delete <schedule-id>
+rackd scheduled-scan delete --id <schedule-id>
 ```
 
 ### Minimum Interval
@@ -224,7 +176,7 @@ Scheduled scans have a minimum interval of 5 minutes to prevent system overload.
 
 ## Discovered Devices
 
-Scan results are stored as discovered devices with detailed information.
+Scan results are stored as discovered devices.
 
 ### Device Information
 
@@ -236,85 +188,28 @@ type DiscoveredDevice struct {
     Hostname           string        `json:"hostname"`
     NetworkID          string        `json:"network_id"`
     Status             string        `json:"status"`
+    Confidence         int           `json:"confidence"`
     OSGuess            string        `json:"os_guess"`
     Vendor             string        `json:"vendor"`
     OpenPorts          []int         `json:"open_ports"`
     Services           []ServiceInfo `json:"services"`
     FirstSeen          time.Time     `json:"first_seen"`
     LastSeen           time.Time     `json:"last_seen"`
+    PromotedToDeviceID string        `json:"promoted_to_device_id,omitempty"`
+    MatchedDeviceID    string        `json:"matched_device_id,omitempty"`
+    MatchedDeviceName  string        `json:"matched_device_name,omitempty"`
 }
 ```
 
 ### Viewing Discovered Devices
 
 ```bash
-# List discovered devices
-rackd discovery devices --network-id <network-id>
+# List discovered devices on a network
+rackd discovery list --network <network-id>
 
-# Get device details
-rackd discovery device <device-id>
-
-# Filter by status
-rackd discovery devices --status online
+# JSON output
+rackd discovery list --output json
 ```
-
-## SSH Scanning
-
-SSH scanning provides detailed system information through authenticated connections.
-
-### Capabilities
-
-- **OS Detection**: Operating system and version
-- **System Information**: Hostname, kernel version
-- **Package Inventory**: Installed software packages
-- **Service Discovery**: Running services and processes
-- **Host Key Management**: Trust-on-first-use (TOFU) verification
-
-### SSH Discovery Process
-
-1. **Connection**: Establish SSH connection using credentials
-2. **Authentication**: Password or key-based authentication
-3. **System Query**: Execute system information commands
-4. **Data Collection**: Gather OS, packages, and services
-5. **Host Key Storage**: Store host keys for future verification
-
-### Security Features
-
-- **Host Key Verification**: TOFU model prevents MITM attacks
-- **Credential Encryption**: SSH credentials encrypted at rest
-- **Connection Timeout**: Prevents hanging connections
-- **Error Handling**: Graceful failure on authentication errors
-
-## SNMP Scanning
-
-SNMP scanning discovers network infrastructure devices and detailed system information.
-
-### SNMP Information Gathered
-
-- **System Information**: sysDescr, sysName, sysLocation, sysContact
-- **Network Interfaces**: Interface details, status, and statistics
-- **ARP Tables**: Network neighbor information
-- **Device Identification**: Vendor and model information
-
-### SNMP Discovery Process
-
-1. **Connection**: Connect to SNMP agent on port 161
-2. **Authentication**: Community string (v2c) or user credentials (v3)
-3. **System Query**: Retrieve system MIB information
-4. **Interface Walk**: Discover network interfaces
-5. **ARP Discovery**: Map network topology
-
-### SNMP Versions
-
-#### SNMPv2c
-- **Security**: Community string authentication
-- **Encryption**: None (cleartext transmission)
-- **Use Case**: Internal networks only (Disabled by default, requires `DISCOVERY_SNMPV2C_ENABLED=true`)
-
-#### SNMPv3
-- **Security**: User-based authentication and encryption
-- **Protocols**: SHA authentication, AES encryption
-- **Use Case**: Production and secure environments
 
 ## Device Promotion
 
@@ -367,12 +262,11 @@ DISCOVERY_SCAN_ON_STARTUP=false # Run discovery rules when the server starts
 ENCRYPTION_KEY=<key>
 ```
 
-At most 4 scans run at once; per-host timeouts and worker counts are set in [scan profiles](#scan-profiles).
+At most 4 scans run at once. Workers and per-host timeouts are chosen automatically for each scan.
 
 ### Performance Tuning
 
-- **Concurrent Workers**: Balance speed vs. network load
-- **Timeout Values**: Adjust for network latency
+- **Scan Type**: Quick scans probe 4 ports, deep scans 100
 - **Scan Intervals**: Consider network size and change frequency
 - **Cleanup Settings**: Manage storage of scan history
 
@@ -381,12 +275,10 @@ At most 4 scans run at once; per-host timeouts and worker counts are set in [sca
 ### REST API Endpoints
 
 ```bash
-# Start scan
-POST /api/v1/discovery/scans
+# Start scan (scan_type: quick, full or deep; default quick)
+POST /api/v1/discovery/networks/{network-id}/scan
 {
-  "network_id": "net-123",
-  "scan_type": "full",
-  "profile_id": "profile-456"
+  "scan_type": "full"
 }
 
 # Get scan status
@@ -399,7 +291,7 @@ GET /api/v1/discovery/devices?network_id=net-123
 POST /api/v1/discovery/devices/{device-id}/promote
 {
   "name": "Server 01",
-  "type": "server",
+  "make_model": "Dell PowerEdge R640",
   "datacenter_id": "dc-789"
 }
 ```
@@ -410,18 +302,8 @@ POST /api/v1/discovery/devices/{device-id}/promote
 
 #### Scan Failures
 - **Network unreachable**: Check network configuration and routing
-- **Permission denied**: Verify SSH/SNMP credentials
-- **Timeout errors**: Increase timeout values or reduce concurrent workers
-
-#### SSH Connection Issues
-- **Authentication failed**: Verify username/password or SSH keys
-- **Host key mismatch**: Clear stored host keys if infrastructure changed
-- **Connection refused**: Ensure SSH service is running on target
-
-#### SNMP Discovery Problems
-- **No response**: Verify SNMP agent is enabled and accessible
-- **Authentication error**: Check community string or SNMPv3 credentials
-- **Timeout**: Increase SNMP timeout or check network connectivity
+- **Too many scans**: Wait for a running scan to finish (`429 TOO_MANY_SCANS`)
+- **Subnet refused**: Subnets larger than /16 or covering the ranges listed under [Scan Limitations](#scan-limitations) can't be scanned
 
 ### Debug Mode
 
@@ -436,8 +318,8 @@ LOG_LEVEL=debug rackd server
 Monitor scan performance and resource usage:
 
 ```bash
-# Check active scans
-rackd discovery list --status running
+# Check active scans (look for "status": "running")
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans
 
 # Monitor system resources
 top -p $(pgrep rackd)
@@ -456,7 +338,7 @@ iftop -i eth0
 ### Credential Security
 - **Encryption**: All credentials encrypted at rest
 - **Access Control**: Limit credential access to authorized users
-- **Rotation**: Regularly rotate SSH and SNMP credentials
+- **Key Rotation**: Re-encrypt stored credentials with `rackd credentials rotate-key`
 - **Audit Logging**: Monitor credential usage and access
 
 ### Best Practices

@@ -10,6 +10,8 @@ http://localhost:8080/api/v1
 
 Health checks (`/healthz`, `/readyz`), metrics (`/metrics`), MCP (`/mcp`) and the OAuth endpoints (`/mcp-oauth/*`, `/.well-known/*`) are not versioned.
 
+This page covers the core inventory endpoints. Every endpoint, including users, roles, API keys, audit and application logs, conflicts, reservations, webhooks, custom fields, circuits, NAT, DNS, credentials, scan profiles, scheduled scans, bulk operations, search and the dashboard, is described in [`api/openapi.yaml`](../api/openapi.yaml).
+
 ## Versioning and Deprecation
 
 The API version is part of the path. Within `/api/v1`, changes are backward compatible:
@@ -43,11 +45,13 @@ Link: </api/v1/devices>; rel="successor-version"
 
 ## Authentication
 
-Rackd supports optional Bearer token authentication. When enabled, include the token in the Authorization header:
+Every endpoint requires authentication. The web UI uses a session cookie; scripts and integrations send an API key as a Bearer token:
 
 ```http
-Authorization: Bearer <your-token>
+Authorization: Bearer <api-key>
 ```
+
+See [Authentication](authentication.md) for creating API keys. The examples below assume the key is in `$RACKD_TOKEN`.
 
 ## Content Type
 
@@ -90,7 +94,7 @@ Validation errors add `details`, a list of the fields that failed (see below).
 - `415` - Unsupported Media Type (login without `Content-Type: application/json`)
 - `429` - Too Many Requests (rate limited, too many failed sign-ins, or too many scans running)
 - `500` - Internal Server Error
-- `502` - Bad Gateway (a DNS provider couldn't be reached or refused the request)
+- `502` - Bad Gateway (a DNS provider or webhook target couldn't be reached or refused the request)
 
 ### Error Codes
 
@@ -103,6 +107,8 @@ Validation errors add `details`, a list of the fields that failed (see below).
 | `CANNOT_DELETE_SELF` | 400 | Users can't delete their own account |
 | `UNAUTHORIZED` | 401 | Missing or invalid credentials, or the session ended |
 | `INVALID_CREDENTIALS` | 401 | Wrong username or password |
+| `EXPIRED_KEY` | 401 | The API key has expired |
+| `LEGACY_API_KEY_UNSUPPORTED` | 401 | The API key belongs to no user; create a new one |
 | `FORBIDDEN` | 403 | The caller lacks the permission; for delegated user and role management the message says what is missing |
 | `CSRF_FAILED` | 403 | A session request that changes something lacks `X-Requested-With: XMLHttpRequest` |
 | `NOT_FOUND` | 404 | No such endpoint, or the resource doesn't exist |
@@ -116,6 +122,7 @@ Validation errors add `details`, a list of the fields that failed (see below).
 | `TOO_MANY_SCANS` | 429 | The maximum number of discovery scans is running |
 | `INTERNAL_ERROR` | 500 | Server error; details are in the server log, not the response |
 | `PROVIDER_UNREACHABLE` | 502 | A DNS provider test or sync failed |
+| `WEBHOOK_UNREACHABLE` | 502 | A webhook ping couldn't be delivered |
 
 ### Validation Errors
 
@@ -150,7 +157,7 @@ Device lists (`GET /api/v1/devices`), audit logs, application logs and webhook d
 Many list endpoints support query parameters for filtering results. Common filters include:
 
 - `name` - Filter by name (partial match)
-- `tags` - Filter by tags (exact match, multiple values supported)
+- `tags` - Filter devices by tags (exact match; repeat the parameter or separate values with commas)
 - `datacenter_id` - Filter by datacenter ID
 - `network_id` - Filter by network ID
 
@@ -427,9 +434,6 @@ GET /api/v1/networks/{id}/utilization
 GET /api/v1/networks/{id}/pools
 ```
 
-**Query Parameters:**
-- `tags` (optional) - Filter by tags
-
 **Response:** `200 OK` (returns array of pools)
 
 ### Create Network Pool
@@ -532,6 +536,9 @@ GET /api/v1/devices
 - `tags` (optional) - Filter by tags (multiple values supported)
 - `datacenter_id` (optional) - Filter by datacenter
 - `network_id` (optional) - Filter by network
+- `pool_id` (optional) - Filter by IP pool
+- `status` (optional) - `planned`, `active`, `maintenance` or `decommissioned`
+- `stale_days` (optional) - Only active devices discovery hasn't seen for that many days; `stale=true` alone means 7
 
 **Response:** `200 OK` (returns array of devices)
 
@@ -628,6 +635,7 @@ GET /api/v1/devices/{id}/relationships
     "parent_id": "parent-uuid",
     "child_id": "child-uuid", 
     "type": "contains",
+    "notes": "",
     "created_at": "2024-01-01T00:00:00Z"
   }
 ]
@@ -739,7 +747,7 @@ GET /api/v1/discovery/scans/{id}
 POST /api/v1/discovery/scans/{id}/cancel
 ```
 
-**Response:** `200 OK` with the scan, now `cancelled`
+**Response:** `200 OK` with the scan, now `failed` with `error_message` `scan cancelled`
 
 ### Delete Discovery Scan
 
@@ -752,11 +760,11 @@ DELETE /api/v1/discovery/scans/{id}
 ### List Discovered Devices
 
 ```http
-GET /api/v1/discovery/devices?network_id={network_id}
+GET /api/v1/discovery/devices
 ```
 
 **Query Parameters:**
-- `network_id` (required) - Network to list devices for
+- `network_id` (optional) - Filter by network
 
 **Response:** `200 OK`
 ```json
@@ -895,6 +903,7 @@ DELETE /api/v1/discovery/rules/{id}
 1. **Create a datacenter:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/datacenters \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Primary DC",
@@ -906,6 +915,7 @@ curl -X POST http://localhost:8080/api/v1/datacenters \
 2. **Create a network:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/networks \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Production Network",
@@ -919,6 +929,7 @@ curl -X POST http://localhost:8080/api/v1/networks \
 3. **Create an IP pool:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/networks/net1-uuid/pools \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Server Pool",
@@ -931,6 +942,7 @@ curl -X POST http://localhost:8080/api/v1/networks/net1-uuid/pools \
 4. **Create a device:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/devices \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "web-server-01",
@@ -954,23 +966,25 @@ curl -X POST http://localhost:8080/api/v1/devices \
 1. **Start a network scan:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/discovery/networks/net1-uuid/scan \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"scan_type": "full"}'
 ```
 
 2. **Check scan progress:**
 ```bash
-curl http://localhost:8080/api/v1/discovery/scans/scan-uuid
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/discovery/scans/scan-uuid
 ```
 
 3. **List discovered devices:**
 ```bash
-curl "http://localhost:8080/api/v1/discovery/devices?network_id=net1-uuid"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/discovery/devices?network_id=net1-uuid"
 ```
 
 4. **Promote a discovered device:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/discovery/devices/discovered-uuid/promote \
+  -H "Authorization: Bearer $RACKD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "discovered-server",

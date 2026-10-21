@@ -32,8 +32,8 @@ JSON files support nested objects and arrays, making them ideal for complex data
     "tags": ["production", "web"],
     "domains": ["web-01.example.com"],
     "addresses": [
-      {"type": "management", "address": "10.0.1.10"},
-      {"type": "primary", "address": "192.168.1.10"}
+      {"type": "management", "ip": "10.0.1.10", "network_id": "net-mgmt"},
+      {"type": "primary", "ip": "192.168.1.10", "network_id": "net-prod"}
     ]
   },
   {
@@ -44,7 +44,7 @@ JSON files support nested objects and arrays, making them ideal for complex data
     "datacenter_id": "dc-001",
     "tags": ["production", "database"],
     "addresses": [
-      {"type": "primary", "address": "192.168.1.20"}
+      {"type": "primary", "ip": "192.168.1.20", "network_id": "net-prod"}
     ]
   }
 ]
@@ -56,18 +56,16 @@ JSON files support nested objects and arrays, making them ideal for complex data
 [
   {
     "name": "Production LAN",
-    "cidr": "192.168.1.0/24",
-    "vlan": 100,
+    "subnet": "192.168.1.0/24",
+    "vlan_id": 100,
     "datacenter_id": "dc-001",
-    "gateway": "192.168.1.1",
     "description": "Production network"
   },
   {
     "name": "Management Network",
-    "cidr": "10.0.1.0/24",
-    "vlan": 10,
+    "subnet": "10.0.1.0/24",
+    "vlan_id": 10,
     "datacenter_id": "dc-001",
-    "gateway": "10.0.1.1",
     "description": "Out-of-band management"
   }
 ]
@@ -98,8 +96,8 @@ CSV files are simpler and work well with spreadsheets. Complex fields (like addr
 
 ```csv
 name,description,make_model,os,datacenter_id,username,location,tags,domains,addresses
-web-server-01,Production web server,Dell PowerEdge R640,Ubuntu 22.04,dc-001,admin,"Rack 5, U10",production;web,web-01.example.com,management:10.0.1.10;primary:192.168.1.10
-db-server-01,PostgreSQL database server,Dell PowerEdge R740,Ubuntu 22.04,dc-001,,,"Rack 6, U5",production;database,,primary:192.168.1.20
+web-server-01,Production web server,Dell PowerEdge R640,Ubuntu 22.04,dc-001,admin,"Rack 5, U10",production;web,web-01.example.com,net-mgmt:10.0.1.10;net-prod:192.168.1.10
+db-server-01,PostgreSQL database server,Dell PowerEdge R740,Ubuntu 22.04,dc-001,,"Rack 6, U5",production;database,,net-prod:192.168.1.20
 ```
 
 **CSV Field Formats:**
@@ -108,7 +106,7 @@ db-server-01,PostgreSQL database server,Dell PowerEdge R740,Ubuntu 22.04,dc-001,
 |-------|--------|---------|
 | tags | Semicolon-separated | `production;web;critical` |
 | domains | Semicolon-separated | `server1.example.com;server1.local` |
-| addresses | Semicolon-separated `type:ip` pairs | `management:10.0.1.10;primary:192.168.1.10` |
+| addresses | Semicolon-separated `network_id:ip` pairs | `net-mgmt:10.0.1.10;net-prod:192.168.1.10` |
 
 ## Importing Data
 
@@ -123,7 +121,7 @@ rackd import devices --file devices.json
 # Import from CSV
 rackd import devices --file devices.csv
 
-# Validate without importing (dry run)
+# Check the file parses, without importing (dry run)
 rackd import devices --file devices.json --dry-run
 
 # Explicitly specify format
@@ -136,7 +134,7 @@ rackd import devices --file data.txt --format json
 |------|-------------|
 | `--file <path>` | Input file path (required) |
 | `--format <fmt>` | Input format: `json` or `csv` (auto-detected if omitted) |
-| `--dry-run` | Validate file without importing |
+| `--dry-run` | Parse the file and report the record count without importing. Field validation happens only on a real import. |
 
 **Import Results:**
 
@@ -145,13 +143,11 @@ Parsed 50 devices from devices.json
 
 Import complete:
   Total:   50
-  Created: 48
-  Failed:  2
-
-Errors:
-  - web-server-05: IP address 192.168.1.10 already in use
-  - db-server-03: Invalid CIDR format
+  Created: 50
+  Failed:  0
 ```
+
+Every record is validated before anything is written: one invalid record rejects the whole file with `bulk import failed: HTTP 400`. A device whose IP another device already holds is imported, and a duplicate-IP conflict is recorded. Each import can hold at most 100 devices or networks.
 
 ### Import Networks
 
@@ -169,7 +165,7 @@ rackd import datacenters --file datacenters.json
 ### Import Tips
 
 1. **Import order matters** - Import datacenters first, then networks, then devices
-2. **Use dry-run first** - Validate your file before importing
+2. **Use dry-run first** - Check the file parses before importing
 3. **Check references** - Ensure `datacenter_id` values exist before importing
 4. **Bulk imports** - For large imports, JSON is more reliable
 
@@ -227,9 +223,11 @@ rackd export all --output rackd-backup.json
   "devices": [...],
   "networks": [...],
   "datacenters": [...],
-  "exported_at": "2024-01-20T10:30:00Z"
+  "exported_at": null
 }
 ```
+
+`exported_at` is currently always empty (`null`).
 
 ## API Reference
 
@@ -291,7 +289,8 @@ Every type also takes an optional `id`. Leave it empty and Rackd assigns one; to
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Device hostname |
+| `name` | string | Yes | Device name |
+| `hostname` | string | No | DNS hostname |
 | `description` | string | No | Description |
 | `make_model` | string | No | Hardware make/model |
 | `os` | string | No | Operating system |
@@ -307,10 +306,9 @@ Every type also takes an optional `id`. Leave it empty and Rackd assigns one; to
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Network name |
-| `cidr` | string | Yes | Network CIDR |
-| `vlan` | integer | No | VLAN ID |
+| `subnet` | string | Yes | Network CIDR |
+| `vlan_id` | integer | No | VLAN ID (0-4094) |
 | `datacenter_id` | string | No | Associated datacenter ID |
-| `gateway` | string | No | Gateway IP |
 | `description` | string | No | Description |
 
 ### Datacenter Fields
@@ -339,17 +337,16 @@ Every type also takes an optional `id`. Leave it empty and Rackd assigns one; to
 
 - Check error messages for failed records
 - Fix the issues in your import file
-- Re-import (duplicate names/IPs will be skipped)
+- Re-import only the records that failed: devices without an `id` are created again, so re-importing a whole file duplicates them
 
 ### Large File Imports Timeout
 
-- Split large files into smaller batches
-- Use the API directly with smaller payloads
-- Increase CLI timeout: `--timeout 5m`
+- Split files into batches of at most 100 devices or networks
+- Raise the CLI timeout with `"timeout": "5m"` in `~/.config/rackd/config.json` (default `30s`)
 
 ## Best Practices
 
-1. **Use dry-run first** - Always validate before importing
+1. **Use dry-run first** - Check files parse before importing
 2. **Keep backups** - Regular exports for disaster recovery
 3. **Version control** - Store import files in git
 4. **Document mappings** - When migrating, document field mappings
@@ -357,6 +354,6 @@ Every type also takes an optional `id`. Leave it empty and Rackd assigns one; to
 
 ## Related Documentation
 
-- [CLI Reference](cli.md) - Import/export commands
+- [CLI Reference](cli-reference.md) - Import/export commands
 - [API Reference](api.md) - REST API endpoints
-- [Backup](cli.md#backup) - Database backup command
+- [Backup & Restore](backup.md) - Database backups

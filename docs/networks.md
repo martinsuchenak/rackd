@@ -67,7 +67,7 @@ rackd network add \
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/networks \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/networks \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Production LAN",
@@ -88,8 +88,8 @@ rackd network list
 # Filter by datacenter
 rackd network list --datacenter "dc-east-1"
 
-# Filter by name
-rackd network list --name "Production"
+# Filter by VLAN
+rackd network list --vlan 100
 
 # JSON output
 rackd network list --output json
@@ -98,32 +98,32 @@ rackd network list --output json
 **API:**
 ```bash
 # List all networks
-curl http://localhost:8080/api/v1/networks
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks
 
 # Filter by datacenter
-curl "http://localhost:8080/api/v1/networks?datacenter_id=dc-east-1"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/networks?datacenter_id=dc-east-1"
 
 # Filter by VLAN
-curl "http://localhost:8080/api/v1/networks?vlan_id=100"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/networks?vlan_id=100"
 ```
 
 ### Getting Network Details
 
 **CLI:**
 ```bash
-rackd network get <network-id>
+rackd network get --id <network-id>
 ```
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/networks/<network-id>
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks/<network-id>
 ```
 
 ### Updating Networks
 
 **API:**
 ```bash
-curl -X PATCH http://localhost:8080/api/v1/networks/<network-id> \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/networks/<network-id> \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated description",
@@ -135,12 +135,12 @@ curl -X PATCH http://localhost:8080/api/v1/networks/<network-id> \
 
 **CLI:**
 ```bash
-rackd network delete <network-id>
+rackd network delete --id <network-id>
 ```
 
 **API:**
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/networks/<network-id>
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/networks/<network-id>
 ```
 
 ## IP Pool Management
@@ -160,7 +160,7 @@ rackd network pool add \
 
 **API:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/networks/<network-id>/pools \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/networks/<network-id>/pools \
   -H "Content-Type: application/json" \
   -d '{
     "name": "DHCP Pool",
@@ -180,19 +180,19 @@ rackd network pool list --network <network-id>
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/networks/<network-id>/pools
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks/<network-id>/pools
 ```
 
 ### Managing Individual Pools
 
 **Get Pool Details:**
 ```bash
-curl http://localhost:8080/api/v1/pools/<pool-id>
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/pools/<pool-id>
 ```
 
 **Update Pool:**
 ```bash
-curl -X PATCH http://localhost:8080/api/v1/pools/<pool-id> \
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/pools/<pool-id> \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Updated pool description",
@@ -202,7 +202,7 @@ curl -X PATCH http://localhost:8080/api/v1/pools/<pool-id> \
 
 **Delete Pool:**
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/pools/<pool-id>
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/pools/<pool-id>
 ```
 
 ## IP Allocation
@@ -211,7 +211,7 @@ curl -X DELETE http://localhost:8080/api/v1/pools/<pool-id>
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/pools/<pool-id>/next-ip
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/pools/<pool-id>/next-ip
 ```
 
 Response:
@@ -233,7 +233,7 @@ Get utilization statistics for a network:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/networks/<network-id>/utilization
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks/<network-id>/utilization
 ```
 
 Response:
@@ -263,37 +263,20 @@ type NetworkUtilization struct {
 
 ### Pool Heatmap
 
-Get visual representation of IP allocation within a pool:
+Get the status of every IP address in a pool:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/pools/<pool-id>/heatmap
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/pools/<pool-id>/heatmap
 ```
 
-Response format:
+The response is an array with one entry per address in the pool's range. `status` is `available`, `used` (assigned to a device) or `reserved`; `device_id` is set for used addresses:
 ```json
-{
-  "pool_id": "pool-123",
-  "start_ip": "192.168.1.100",
-  "end_ip": "192.168.1.200",
-  "total_ips": 101,
-  "allocated": [
-    {
-      "ip": "192.168.1.100",
-      "device_id": "dev-456",
-      "device_name": "web-server-01"
-    },
-    {
-      "ip": "192.168.1.101",
-      "device_id": "dev-789",
-      "device_name": "db-server-01"
-    }
-  ],
-  "available": [
-    "192.168.1.102",
-    "192.168.1.103"
-  ]
-}
+[
+  {"ip": "192.168.1.100", "status": "used", "device_id": "dev-456"},
+  {"ip": "192.168.1.101", "status": "reserved"},
+  {"ip": "192.168.1.102", "status": "available"}
+]
 ```
 
 ## Network Devices
@@ -304,12 +287,12 @@ Get all devices that have IP addresses within a network:
 
 **API:**
 ```bash
-curl http://localhost:8080/api/v1/networks/<network-id>/devices
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks/<network-id>/devices
 ```
 
 ## Validation Rules
 
-The network management system enforces several validation rules (see `internal/api/validation.go`):
+The network management system enforces several validation rules (see `internal/service/validation.go`):
 
 ### Network Validation
 - **Name**: Required, max 255 characters
@@ -364,7 +347,7 @@ rackd network pool add \
 
 4. **Monitor utilization:**
 ```bash
-curl http://localhost:8080/api/v1/networks/<network-id>/utilization
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/networks/<network-id>/utilization
 ```
 
 ### Multi-VLAN Environment
@@ -465,14 +448,14 @@ For complete API documentation, see the [OpenAPI specification](../api/openapi.y
 - `GET /api/v1/networks` - List networks
 - `POST /api/v1/networks` - Create network
 - `GET /api/v1/networks/{id}` - Get network details
-- `PATCH /api/v1/networks/{id}` - Update network
+- `PUT /api/v1/networks/{id}` - Update network
 - `DELETE /api/v1/networks/{id}` - Delete network
 - `GET /api/v1/networks/{id}/devices` - List network devices
 - `GET /api/v1/networks/{id}/utilization` - Get utilization stats
 - `GET /api/v1/networks/{id}/pools` - List network pools
 - `POST /api/v1/networks/{id}/pools` - Create pool
 - `GET /api/v1/pools/{id}` - Get pool details
-- `PATCH /api/v1/pools/{id}` - Update pool
+- `PUT /api/v1/pools/{id}` - Update pool
 - `DELETE /api/v1/pools/{id}` - Delete pool
 - `GET /api/v1/pools/{id}/next-ip` - Get next available IP
 - `GET /api/v1/pools/{id}/heatmap` - Get pool heatmap
