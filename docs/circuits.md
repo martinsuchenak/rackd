@@ -8,9 +8,8 @@ Circuit management allows you to:
 
 - Track circuit provider information and circuit IDs
 - Monitor circuit status and capacity
-- Link circuits to devices and datacenters
-- Maintain circuit documentation and history
-- Plan circuit decommissioning
+- Link circuits to devices and datacenters at each endpoint
+- Track contract, cost and provider contact details
 
 ## Circuit Model
 
@@ -21,16 +20,26 @@ Circuit management allows you to:
 | `provider` | string | Circuit provider name (e.g., "AT&T", "Lumen") |
 | `circuit_id` | string | Provider's circuit identifier |
 | `type` | string | Circuit type: `fiber`, `copper`, `microwave`, `dark_fiber` |
-| `status` | string | Status: `active`, `inactive`, `planned`, `decommissioned` |
+| `status` | string | Status: `active`, `maintenance`, `down`, `decommissioned` (default `active`) |
 | `capacity_mbps` | int | Circuit capacity in Mbps |
-| `a_endpoint` | string | A-side endpoint location/device |
-| `z_endpoint` | string | Z-side endpoint location/device |
-| `datacenter_id` | string | Optional associated datacenter |
-| `device_id` | string | Optional linked device |
+| `datacenter_a_id` | string | Endpoint A datacenter |
+| `datacenter_b_id` | string | Endpoint B datacenter |
+| `device_a_id` | string | Device at endpoint A |
+| `device_b_id` | string | Device at endpoint B |
+| `port_a` | string | Port/interface at endpoint A |
+| `port_b` | string | Port/interface at endpoint B |
+| `ip_address_a` | string | IP address at endpoint A |
+| `ip_address_b` | string | IP address at endpoint B |
+| `vlan_id` | int | VLAN ID |
 | `description` | string | Optional description |
+| `install_date` | timestamp | Installation date (RFC 3339) |
+| `terminate_date` | timestamp | Contract termination date (RFC 3339) |
+| `monthly_cost` | float | Monthly cost |
+| `contract_number` | string | Contract reference |
+| `contact_name` | string | Provider contact |
+| `contact_phone` | string | Provider phone |
+| `contact_email` | string | Provider email |
 | `tags` | []string | Optional tags for categorization |
-| `install_date` | date | Installation date |
-| `termination_date` | date | Contract termination date |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
@@ -48,8 +57,8 @@ Circuit management allows you to:
 | Status | Description |
 |--------|-------------|
 | `active` | Circuit is operational |
-| `inactive` | Circuit is temporarily down |
-| `planned` | Circuit is planned but not yet installed |
+| `maintenance` | Circuit is under maintenance |
+| `down` | Circuit is down |
 | `decommissioned` | Circuit has been retired |
 
 ## API Endpoints
@@ -64,7 +73,7 @@ Query parameters:
 - `provider` - Filter by provider name
 - `status` - Filter by status
 - `type` - Filter by circuit type
-- `datacenter_id` - Filter by datacenter
+- `datacenter_id` - Filter by datacenter (matches endpoint A or B)
 
 **Response:**
 ```json
@@ -77,8 +86,8 @@ Query parameters:
     "type": "fiber",
     "status": "active",
     "capacity_mbps": 10000,
-    "a_endpoint": "DC1 - Meet Me Room",
-    "z_endpoint": "Lumen POP - Downtown",
+    "datacenter_a_id": "dc-1",
+    "port_a": "Meet Me Room - Panel 3",
     "description": "Primary 10G internet circuit"
   }
 ]
@@ -105,15 +114,15 @@ POST /api/v1/circuits
   "type": "fiber",
   "status": "active",
   "capacity_mbps": 10000,
-  "a_endpoint": "DC1 - Meet Me Room",
-  "z_endpoint": "Lumen POP - Downtown",
+  "datacenter_a_id": "dc-1",
+  "port_a": "Meet Me Room - Panel 3",
   "description": "Primary 10G internet circuit",
-  "install_date": "2024-01-15",
+  "install_date": "2024-01-15T00:00:00Z",
   "tags": ["production", "internet"]
 }
 ```
 
-Required fields: `name`, `provider`, `type`, `status`
+Required fields: `name`, `circuit_id`, `provider`. `status` defaults to `active`.
 
 ### Update Circuit
 
@@ -166,8 +175,8 @@ rackd circuit create \
   --type fiber \
   --status active \
   --capacity 10000 \
-  --a-endpoint "DC1 - Meet Me Room" \
-  --z-endpoint "Lumen POP - Downtown"
+  --datacenter-a dc-1 \
+  --port-a "Meet Me Room - Panel 3"
 ```
 
 ### Update Circuit
@@ -175,7 +184,7 @@ rackd circuit create \
 ```bash
 rackd circuit update \
   --id circuit-abc123 \
-  --status inactive \
+  --status maintenance \
   --description "Temporarily down for maintenance"
 ```
 
@@ -192,26 +201,24 @@ Access circuit management at `/circuits` in the web interface.
 ### Features
 
 - **List View**: Table view with filtering by provider, status, and type
-- **Create/Edit Modal**: Form for creating and editing circuits
+- **Create/Edit Modal**: Form for creating and editing circuits, including endpoint datacenters
 - **Status Badges**: Color-coded status indicators
-- **Capacity Display**: Visual representation of circuit capacity
-- **Endpoint Information**: Clear display of A/Z endpoints
 
 ## RBAC Permissions
 
 | Permission | Description |
 |------------|-------------|
-| `circuit:list` | View list of circuits |
-| `circuit:read` | View individual circuit details |
-| `circuit:create` | Create new circuits |
-| `circuit:update` | Modify existing circuits |
-| `circuit:delete` | Delete circuits |
+| `circuits:list` | View list of circuits |
+| `circuits:read` | View individual circuit details |
+| `circuits:create` | Create new circuits |
+| `circuits:update` | Modify existing circuits |
+| `circuits:delete` | Delete circuits |
 
 ### Default Role Assignments
 
 - **admin**: All circuit permissions
-- **operator**: All circuit permissions
-- **viewer**: `circuit:list`, `circuit:read`
+- **operator**: `circuits:list`, `circuits:read`, `circuits:create`, `circuits:update`
+- **viewer**: `circuits:list`, `circuits:read`
 
 ## Use Cases
 
@@ -225,8 +232,9 @@ Access circuit management at `/circuits` in the web interface.
   "type": "fiber",
   "status": "active",
   "capacity_mbps": 1000,
-  "a_endpoint": "Building A - Demarc",
-  "z_endpoint": "AT&T Central Office"
+  "datacenter_a_id": "dc-building-a",
+  "port_a": "Demarc",
+  "contact_phone": "<provider-support-phone>"
 }
 ```
 
@@ -240,8 +248,8 @@ Access circuit management at `/circuits` in the web interface.
   "type": "fiber",
   "status": "active",
   "capacity_mbps": 100,
-  "a_endpoint": "HQ Data Center",
-  "z_endpoint": "Branch Office 5",
+  "datacenter_a_id": "dc-hq",
+  "datacenter_b_id": "dc-branch-5",
   "tags": ["wan", "mpls"]
 }
 ```
@@ -255,8 +263,8 @@ Access circuit management at `/circuits` in the web interface.
   "circuit_id": "ZAYO-DF-11111",
   "type": "dark_fiber",
   "status": "active",
-  "a_endpoint": "DC1",
-  "z_endpoint": "DC2",
+  "datacenter_a_id": "dc-1",
+  "datacenter_b_id": "dc-2",
   "description": "24-strand dark fiber between data centers"
 }
 ```
@@ -265,7 +273,7 @@ Access circuit management at `/circuits` in the web interface.
 
 1. **Naming**: Use consistent naming conventions that include location and purpose
 2. **Provider Info**: Always include the provider's circuit ID for support tickets
-3. **Endpoints**: Document both A and Z endpoints clearly
+3. **Endpoints**: Record both A and B endpoints
 4. **Contract Dates**: Track install and termination dates for renewal planning
 5. **Status Updates**: Keep status current to maintain accurate inventory
 6. **Tagging**: Use tags to group circuits by function, region, or customer

@@ -101,7 +101,7 @@ func (f *Feature) Migrations() []extension.Migration {
 - Don't add foreign keys to core tables. Core may rebuild its tables in a migration, and a feature must not depend on core's schema. Refer to core records by ID and read them through `Host.Core`.
 - When a feature already has migrations applied, Rackd backs up the database before running new ones, as it does for core.
 
-`rackd migrate status`, `run` and `rollback --namespace <name>` cover a feature's migrations as well as core's; see the [CLI reference](cli.md#migrate).
+`rackd migrate status`, `run` and `rollback --namespace <name>` cover a feature's migrations as well as core's; see the [CLI reference](cli-reference.md#rackd-migrate).
 
 ### Routes
 

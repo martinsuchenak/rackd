@@ -33,8 +33,6 @@ Custom fields provide flexibility to extend device records with organization-spe
 | `required` | bool | Whether field is mandatory |
 | `description` | string | Help text for users |
 | `options` | []string | Options for select type |
-| `default_value` | string | Default value for new devices |
-| `sort_order` | int | Display order |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
@@ -82,7 +80,12 @@ GET /api/v1/custom-fields/types
 
 **Response:**
 ```json
-["text", "number", "boolean", "select"]
+[
+  {"value": "text", "label": "Text"},
+  {"value": "number", "label": "Number"},
+  {"value": "boolean", "label": "Boolean"},
+  {"value": "select", "label": "Select"}
+]
 ```
 
 ### Create Custom Field Definition
@@ -119,7 +122,7 @@ For select fields:
 PUT /api/v1/custom-fields/{id}
 ```
 
-Note: Field type cannot be changed after creation.
+All fields, including `type`, can be changed. Changing a field to `select` needs `options`.
 
 ### Delete Custom Field Definition
 
@@ -137,13 +140,16 @@ Warning: This will remove all values for this field from all devices.
 POST /api/v1/devices
 ```
 
+Values are keyed by the definition's `id`, given as `field_id`:
+
 ```json
 {
+  "name": "server01",
   "hostname": "server01.example.com",
-  "ip_address": "192.168.1.10",
+  "addresses": [{"ip": "192.168.1.10"}],
   "custom_fields": [
-    {"key": "asset_tag", "value": "AST-12345"},
-    {"key": "environment", "value": "production"}
+    {"field_id": "<asset-tag-field-id>", "value": "AST-12345"},
+    {"field_id": "<environment-field-id>", "value": "production"}
   ]
 }
 ```
@@ -157,8 +163,8 @@ PUT /api/v1/devices/{id}
 ```json
 {
   "custom_fields": [
-    {"key": "asset_tag", "value": "AST-12345-UPDATED"},
-    {"key": "warranty_expiry", "value": "2025-12-31"}
+    {"field_id": "<asset-tag-field-id>", "value": "AST-12345-UPDATED"},
+    {"field_id": "<warranty-expiry-field-id>", "value": "2025-12-31"}
   ]
 }
 ```
@@ -168,33 +174,33 @@ PUT /api/v1/devices/{id}
 ### List Custom Field Definitions
 
 ```bash
-rackd customfield list
+rackd custom-field list
 ```
 
 ### Get Custom Field Definition
 
 ```bash
-rackd customfield get --id cf-abc123
+rackd custom-field get --id cf-abc123
 ```
 
 ### List Available Types
 
 ```bash
-rackd customfield types
+rackd custom-field types
 ```
 
 ### Create Custom Field Definition
 
 ```bash
 # Text field
-rackd customfield create \
+rackd custom-field create \
   --name "Asset Tag" \
   --key "asset_tag" \
   --type text \
   --description "Organization asset tracking number"
 
 # Select field
-rackd customfield create \
+rackd custom-field create \
   --name "Environment" \
   --key "environment" \
   --type select \
@@ -205,7 +211,7 @@ rackd customfield create \
 ### Update Custom Field Definition
 
 ```bash
-rackd customfield update \
+rackd custom-field update \
   --id cf-abc123 \
   --name "Asset ID" \
   --required
@@ -214,7 +220,7 @@ rackd customfield update \
 ### Delete Custom Field Definition
 
 ```bash
-rackd customfield delete --id cf-abc123
+rackd custom-field delete --id cf-abc123
 ```
 
 ## Web UI
@@ -227,7 +233,6 @@ Features:
 - List all custom field definitions
 - Create new fields with type selection
 - Edit field properties
-- Reorder fields via drag-and-drop
 - Delete unused fields
 
 ### Device Form Integration

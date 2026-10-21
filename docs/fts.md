@@ -99,15 +99,15 @@ FTS5 provides significant performance improvements over LIKE queries:
 Methods added to storage interfaces:
 ```go
 type DeviceStorage interface {
-    SearchDevices(query string) ([]model.Device, error)
+    SearchDevices(ctx context.Context, query string) ([]model.Device, error)
 }
 
 type NetworkStorage interface {
-    SearchNetworks(query string) ([]model.Network, error)
+    SearchNetworks(ctx context.Context, query string) ([]model.Network, error)
 }
 
 type DatacenterStorage interface {
-    SearchDatacenters(query string) ([]model.Datacenter, error)
+    SearchDatacenters(ctx context.Context, query string) ([]model.Datacenter, error)
 }
 ```
 

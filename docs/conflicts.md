@@ -7,7 +7,6 @@ Rackd automatically detects and tracks IP address conflicts to help maintain net
 IP conflicts occur when:
 - Multiple devices are assigned the same IP address
 - Network subnets overlap
-- Reserved IPs are assigned to devices
 
 Rackd detects these conflicts automatically and provides tools for resolution.
 
@@ -17,7 +16,6 @@ Rackd detects these conflicts automatically and provides tools for resolution.
 |------|-------------|
 | `duplicate_ip` | Same IP assigned to multiple devices |
 | `overlapping_subnet` | Network subnets overlap |
-| `reserved_ip_assigned` | Reserved IP assigned to a device |
 
 ## Conflict Status
 
@@ -25,7 +23,7 @@ Rackd detects these conflicts automatically and provides tools for resolution.
 |--------|-------------|
 | `active` | Conflict currently exists |
 | `resolved` | Conflict has been resolved |
-| `ignored` | Conflict marked as acceptable |
+| `ignored` | Conflict marked as acceptable. No API or CLI command sets this status yet. |
 
 ## Conflict Model
 
@@ -34,15 +32,17 @@ Rackd detects these conflicts automatically and provides tools for resolution.
 | `id` | string | Unique identifier |
 | `type` | string | Conflict type |
 | `status` | string | Current status |
-| `ip_address` | string | Affected IP address (for duplicate_ip) |
-| `network_id` | string | Affected network (for overlapping_subnet) |
-| `device_ids` | []string | IDs of conflicting devices |
 | `description` | string | Human-readable description |
-| `resolution` | string | How the conflict was resolved |
-| `resolved_at` | timestamp | When conflict was resolved |
+| `ip_address` | string | Affected IP address (for duplicate_ip) |
+| `device_ids` | []string | IDs of conflicting devices (for duplicate_ip) |
+| `device_names` | []string | Names of conflicting devices (for duplicate_ip) |
+| `network_ids` | []string | IDs of overlapping networks (for overlapping_subnet) |
+| `network_names` | []string | Names of overlapping networks (for overlapping_subnet) |
+| `subnets` | []string | Overlapping subnets (for overlapping_subnet) |
+| `detected_at` | timestamp | When the conflict was detected |
+| `resolved_at` | timestamp | When the conflict was resolved |
 | `resolved_by` | string | User who resolved the conflict |
-| `created_at` | timestamp | When conflict was detected |
-| `updated_at` | timestamp | Last update timestamp |
+| `notes` | string | Resolution notes |
 
 ## Automatic Detection
 
@@ -80,8 +80,9 @@ Query parameters:
     "status": "active",
     "ip_address": "192.168.1.10",
     "device_ids": ["dev-1", "dev-2"],
+    "device_names": ["web-01", "web-02"],
     "description": "IP 192.168.1.10 is assigned to 2 devices",
-    "created_at": "2024-02-27T10:00:00Z"
+    "detected_at": "2024-02-27T10:00:00Z"
   }
 ]
 ```
@@ -100,15 +101,21 @@ Trigger manual conflict detection scan:
 POST /api/v1/conflicts/detect
 ```
 
+Add `?type=duplicate_ip` or `?type=overlapping_subnet` to detect only one type.
+
 One run records at most 1,000 new overlapping-subnet pairs; pairs already recorded don't count. Networks may overlap freely, so many copies of one subnet would otherwise make an unbounded number of pairs. If a run hits the limit, run detection again to record the next 1,000. The response lists the active duplicate-IP conflicts, and the overlap conflicts this run recorded.
 
 **Response:**
 ```json
 {
-  "conflicts_found": 2,
-  "conflicts": ["conflict-abc123", "conflict-def456"]
+  "conflicts": [
+    {"id": "conflict-abc123", "type": "duplicate_ip", "status": "active", "ip_address": "192.168.1.10"}
+  ],
+  "count": 1
 }
 ```
+
+Each entry in `conflicts` is a full conflict object.
 
 ### Resolve Conflict
 
@@ -124,11 +131,11 @@ POST /api/v1/conflicts/{id}/resolve
 }
 ```
 
-For a `duplicate_ip` conflict, `keep_device_id` names the device that keeps the address; it is removed from the others, which needs `devices:update` as well as `conflicts:resolve`. For an `overlapping_subnet` conflict, `keep_network_id` names the network to keep. The body may repeat the conflict as `conflict_id`, but not name a different one.
+For a `duplicate_ip` conflict, `keep_device_id` names the device that keeps the address; it is removed from the others, which needs `device:update` as well as `conflict:resolve`. For an `overlapping_subnet` conflict, `keep_network_id` names the network to keep. The body may repeat the conflict as `conflict_id`, but not name a different one.
 
 ### Delete Conflict
 
-Remove a resolved/ignored conflict record:
+Remove a conflict record:
 
 ```http
 DELETE /api/v1/conflicts/{id}
@@ -186,19 +193,12 @@ Access conflict management at `/conflicts` in the web interface.
 
 ### Features
 
-- **Conflict List**: Table view with filtering by status and type
-- **Conflict Details**: View affected devices and networks
-- **Resolution Actions**: Resolve or ignore buttons
-- **Navigation Badge**: Active conflict count in navigation
-- **Device Warnings**: Conflict indicators on device list and detail pages
-- **Network Warnings**: Overlap badges on network list
+- **Summary Cards**: Counts of duplicate IPs, overlapping subnets and all active conflicts; click a card to filter the list by type
+- **Detect Conflicts**: Button that runs detection
+- **Conflict List**: Each conflict with links to the affected devices or networks
+- **Navigation Badge**: Red badge with the active conflict count
 
-### UI Indicators
-
-- **Red Badge**: Active conflicts in navigation
-- **Warning Icon**: Devices with IP conflicts
-- **Orange Status**: Networks with overlapping subnets
-- **Pool Heatmap**: Conflicted IPs shown in orange
+Resolve and delete conflicts with the CLI or the API.
 
 ## RBAC Permissions
 
@@ -213,7 +213,7 @@ Access conflict management at `/conflicts` in the web interface.
 ### Default Role Assignments
 
 - **admin**: All conflict permissions
-- **operator**: All conflict permissions
+- **operator**: `conflict:list`, `conflict:read`, `conflict:detect`
 - **viewer**: `conflict:list`, `conflict:read`
 
 ## Conflict Resolution Strategies
@@ -230,20 +230,13 @@ Access conflict management at `/conflicts` in the web interface.
 2. **Adjust**: Modify network CIDR if needed
 3. **Document**: Add resolution notes
 
-### Reserved IP Assigned
-
-1. **Review**: Check reservation purpose
-2. **Either**: Remove reservation or change device IP
-3. **Resolve**: Document action taken
-
 ## Best Practices
 
 1. **Regular Scans**: Run conflict detection after bulk imports
 2. **Prompt Resolution**: Address conflicts quickly to prevent issues
 3. **Documentation**: Always add resolution notes
-4. **Ignored Conflicts**: Use sparingly and document reason
-5. **Prevention**: Use IP reservations for planned assignments
-6. **Monitoring**: Watch the navigation badge for new conflicts
+4. **Prevention**: Use IP reservations for planned assignments
+5. **Monitoring**: Watch the navigation badge for new conflicts
 
 ## Integration with Other Features
 
@@ -261,6 +254,3 @@ Subscribe to conflict events for automated notifications:
 - `conflict.detected` - New conflict found
 - `conflict.resolved` - Conflict resolved
 
-### Network Topology
-
-The device graph shows conflict indicators on affected devices.

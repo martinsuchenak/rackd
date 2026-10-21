@@ -41,7 +41,7 @@ IP reservations allow you to:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/reservations` | List reservations; filter with `pool_id`, `status`, `reserved_by`, `ip_address` |
+| GET | `/api/v1/reservations` | List reservations; filter with `pool_id`, `status`, `reserved_by`, `ip` |
 | GET | `/api/v1/pools/{id}/reservations` | List a pool's reservations |
 | POST | `/api/v1/reservations` | Create a reservation |
 | GET | `/api/v1/reservations/{id}` | Get a reservation |
@@ -106,25 +106,24 @@ rackd reservation delete --id res-abc123
 
 ## Web UI
 
-Reservations are managed within pool details at `/pools/{id}`.
+Reservations are managed within pool details at `/pools/detail?id=<pool-id>`.
 
 ### Pool Heatmap
 
-The pool heatmap displays reservations with distinct styling:
-- **Blue**: Reserved IPs
-- **Green**: Assigned IPs
-- **Orange**: Conflicted IPs
-- **Gray**: Available IPs
+The pool heatmap colours each address:
+- **Green**: Available (click to reserve it)
+- **Red**: Used by a device (click to open the device)
+- **Yellow**: Reserved
 
 ### Reservation List
 
-View all reservations for a pool with:
+View a pool's reservations with:
 - IP address
+- Hostname
 - Purpose
 - Reserved by
-- Status badge
 - Expiration date
-- Actions (edit/release)
+- Actions (delete)
 
 ## Automatic Expiration
 
@@ -153,7 +152,7 @@ configure.
 ### Default Role Assignments
 
 - **admin**: All reservation permissions
-- **operator**: All reservation permissions
+- **operator**: `reservation:list`, `reservation:read`, `reservation:create`, `reservation:update`
 - **viewer**: `reservation:list`, `reservation:read`
 
 ## Use Cases
@@ -166,8 +165,7 @@ Reserve IPs during capacity planning:
 rackd reservation create \
   --pool production \
   --ip 10.0.1.100 \
-  --purpose "Q3 expansion - web tier" \
-  --reserved-by "infrastructure-team"
+  --purpose "Q3 expansion - web tier"
 ```
 
 ### Change Management
@@ -179,7 +177,7 @@ rackd reservation create \
   --pool dmz \
   --ip 192.168.100.50 \
   --purpose "New firewall - CHG-12345" \
-  --expires "2024-03-15"
+  --expires 30
 ```
 
 ### Project Allocation
@@ -204,8 +202,7 @@ Reserve IPs for temporary workloads:
 rackd reservation create \
   --pool testing \
   --purpose "Load testing - week of 3/15" \
-  --expires "2024-03-22" \
-  --reserved-by "qa-team"
+  --expires 7
 ```
 
 ## Integration with Other Features
@@ -240,4 +237,4 @@ There are no reservation webhook events yet.
 3. **Include Ticket Numbers**: Reference change tickets in purpose field
 4. **Regular Cleanup**: Review and release unused reservations
 5. **Naming Convention**: Use consistent purpose formatting
-6. **Owner Tracking**: Set `reserved_by` for accountability
+6. **Owner Tracking**: `reserved_by` records who made each reservation

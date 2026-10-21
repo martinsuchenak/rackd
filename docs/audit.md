@@ -31,7 +31,8 @@ Entries older than `AUDIT_RETENTION_DAYS` are deleted when the server starts and
 | Conflicts | `resolve`, `delete` |
 | Users | `create`, `update`, `delete`, `password_change`, `password_reset`, `assign_role`, `revoke_role` |
 | Roles | `create`, `update`, `delete`, `set_permissions`, `grant_permission`, `revoke_permission` |
-| API keys, credentials, webhooks | `create`, `update`, `delete` |
+| API keys | `create`, `delete` |
+| Credentials, webhooks | `create`, `update`, `delete` |
 | OAuth clients | `register`, `authorize` (a user approving a client), `delete` |
 | Sessions | `login` (`success` or `failure`, with the reason), `logout`. When an account locks after too many failures, one entry says so; refusals while it is locked aren't audited, so they can't flood the log |
 
@@ -54,6 +55,7 @@ Each audit log entry includes:
 | `changes` | The record after the change, as JSON. For credentials, API keys, webhooks and OAuth clients only names, IDs and settings are kept: never secrets, keys, passwords or full webhook URLs |
 | `status` | `success` or `failure` |
 | `error` | Why it failed (for a refused sign-in: unknown user, wrong password, deactivated account, or too many failed sign-ins) |
+| `source` | Where the change came from: `api`, `mcp`, `cli`, `discovery` or `scheduler` |
 
 ## API Usage
 
@@ -66,8 +68,9 @@ GET /api/v1/audit
 **Query Parameters:**
 - `resource` - Filter by resource type (device, network, etc.)
 - `resource_id` - Filter by specific resource ID
-- `user_id` - Filter by user/API key ID
+- `user_id` - Filter by user ID (a change made with an API key is recorded under its owner)
 - `action` - Filter by action (create, update, delete)
+- `source` - Filter by source (api, mcp, cli, discovery, scheduler)
 - `start_time` - Filter by start time (RFC3339)
 - `end_time` - Filter by end time (RFC3339)
 - `limit` - Maximum results (default: 100)
@@ -77,25 +80,25 @@ GET /api/v1/audit
 
 ```bash
 # List recent changes
-curl http://localhost:8080/api/v1/audit?limit=20
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?limit=20"
 
 # Filter by resource
-curl "http://localhost:8080/api/v1/audit?resource=device&limit=50"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?resource=device&limit=50"
 
 # Filter by specific device
-curl "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
 
 # Filter by user
-curl "http://localhost:8080/api/v1/audit?user_id=key-456"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?user_id=0190f3c2-7d3e-7a6b-9c1d-2e3f4a5b6c7d"
 
 # Filter by action
-curl "http://localhost:8080/api/v1/audit?action=delete"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?action=delete"
 
 # Time range query
-curl "http://localhost:8080/api/v1/audit?start_time=2026-02-01T00:00:00Z&end_time=2026-02-03T23:59:59Z"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?start_time=2026-02-01T00:00:00Z&end_time=2026-02-03T23:59:59Z"
 
 # Pagination
-curl "http://localhost:8080/api/v1/audit?limit=50&offset=100"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?limit=50&offset=100"
 ```
 
 **Response:**
@@ -108,12 +111,13 @@ curl "http://localhost:8080/api/v1/audit?limit=50&offset=100"
     "action": "create",
     "resource": "device",
     "resource_id": "dev-123",
-    "user_id": "key-456",
-    "username": "admin-key",
+    "user_id": "0190f3c2-7d3e-7a6b-9c1d-2e3f4a5b6c7d",
+    "username": "admin",
     "ip_address": "192.168.1.100",
     "changes": "{\"name\":\"server-01\",\"ip\":\"10.0.1.50\"}",
     "status": "success",
-    "error": ""
+    "error": "",
+    "source": "api"
   }
 ]
 ```
@@ -127,7 +131,7 @@ GET /api/v1/audit/{id}
 **Example:**
 
 ```bash
-curl http://localhost:8080/api/v1/audit/550e8400-e29b-41d4-a716-446655440000
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/audit/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### Export Audit Logs
@@ -141,6 +145,8 @@ GET /api/v1/audit/export
 - `resource` - Filter by resource type
 - `resource_id` - Filter by resource ID
 - `user_id` - Filter by user ID
+- `action` - Filter by action
+- `source` - Filter by source
 - `start_time` - Filter by start time (RFC3339)
 - `end_time` - Filter by end time (RFC3339)
 
@@ -148,16 +154,16 @@ GET /api/v1/audit/export
 
 ```bash
 # Export to JSON
-curl "http://localhost:8080/api/v1/audit/export?format=json" > audit.json
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit/export?format=json" > audit.json
 
 # Export to CSV
-curl "http://localhost:8080/api/v1/audit/export?format=csv" > audit.csv
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit/export?format=csv" > audit.csv
 
 # Export specific resource
-curl "http://localhost:8080/api/v1/audit/export?resource=device&format=json" > device-audit.json
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit/export?resource=device&format=json" > device-audit.json
 
 # Export time range
-curl "http://localhost:8080/api/v1/audit/export?start_time=2026-02-01T00:00:00Z&format=csv" > february-audit.csv
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit/export?start_time=2026-02-01T00:00:00Z&format=csv" > february-audit.csv
 ```
 
 ## CLI Usage
@@ -173,7 +179,6 @@ rackd audit list [flags]
 - `--resource-id` - Filter by resource ID
 - `--action` - Filter by action
 - `--limit` - Limit results (default: 50)
-- `--data-dir` - Data directory (default: ./data)
 
 **Examples:**
 
@@ -195,9 +200,9 @@ rackd audit list --resource device --resource-id dev-123
 
 ```
 TIMESTAMP                 ACTION  RESOURCE   RESOURCE_ID  USER        IP              STATUS
-2026-02-03T16:45:00Z      create  device     dev-123      admin-key   192.168.1.100   success
-2026-02-03T16:44:30Z      update  device     dev-123      admin-key   192.168.1.100   success
-2026-02-03T16:43:15Z      delete  network    net-456      ops-key     192.168.1.101   success
+2026-02-03T16:45:00Z      create  device     dev-123      admin       192.168.1.100   success
+2026-02-03T16:44:30Z      update  device     dev-123      admin       192.168.1.100   success
+2026-02-03T16:43:15Z      delete  network    net-456      ops         192.168.1.101   success
 ```
 
 ### Export Audit Logs
@@ -211,7 +216,6 @@ rackd audit export [flags]
 - `--output` - Output file (default: stdout)
 - `--resource` - Filter by resource type
 - `--resource-id` - Filter by resource ID
-- `--data-dir` - Data directory (default: ./data)
 
 **Examples:**
 
@@ -237,7 +241,7 @@ Track all changes for compliance requirements:
 
 ```bash
 # Export last 90 days for audit
-curl "http://localhost:8080/api/v1/audit/export?start_time=2025-11-04T00:00:00Z&format=csv" > compliance-audit.csv
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit/export?start_time=2025-11-04T00:00:00Z&format=csv" > compliance-audit.csv
 ```
 
 ### Security Investigation
@@ -246,13 +250,13 @@ Investigate suspicious activity:
 
 ```bash
 # Check all delete operations
-curl "http://localhost:8080/api/v1/audit?action=delete&limit=100"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?action=delete&limit=100"
 
 # Check activity from specific IP
-curl "http://localhost:8080/api/v1/audit" | jq '.[] | select(.ip_address=="192.168.1.100")'
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit" | jq '.[] | select(.ip_address=="192.168.1.100")'
 
 # Check failed operations
-curl "http://localhost:8080/api/v1/audit" | jq '.[] | select(.status=="failure")'
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit" | jq '.[] | select(.status=="failure")'
 ```
 
 ### Change Tracking
@@ -261,10 +265,10 @@ Track changes to specific resources:
 
 ```bash
 # View device history
-curl "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?resource=device&resource_id=dev-123"
 
 # View network changes
-curl "http://localhost:8080/api/v1/audit?resource=network&limit=50"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?resource=network&limit=50"
 ```
 
 ### User Activity
@@ -273,7 +277,7 @@ Monitor user actions:
 
 ```bash
 # View user activity
-curl "http://localhost:8080/api/v1/audit?user_id=key-456"
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/audit?user_id=0190f3c2-7d3e-7a6b-9c1d-2e3f4a5b6c7d"
 
 # Export user activity report
 rackd audit export --format csv --output user-activity.csv
@@ -316,7 +320,7 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 
 ### Query Performance
 
-- Indexed on: timestamp, resource, user_id, action
+- Indexed on: timestamp, resource, user_id, action, source
 - Typical query time: <10ms
 - Pagination recommended for large result sets
 
@@ -324,7 +328,6 @@ DELETE FROM audit_logs WHERE timestamp < datetime('now', '-90 days');
 
 - Average size: ~500 bytes per log entry
 - 1 million logs ≈ 500 MB
-- Request body limited to 10KB per log
 
 ## Compliance Support
 
@@ -391,13 +394,15 @@ CREATE TABLE audit_logs (
     ip_address TEXT,
     changes TEXT,
     status TEXT NOT NULL,
-    error TEXT
+    error TEXT,
+    source TEXT
 );
 
 CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
 CREATE INDEX idx_audit_logs_resource ON audit_logs(resource, resource_id);
 CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_source ON audit_logs(source);
 ```
 
 ## Security Considerations
@@ -410,13 +415,13 @@ Audit entries never hold passwords, secrets, API keys or full webhook URLs, but 
 
 ### Access Control
 
-Protect audit log endpoints:
-```bash
-# Enable API authentication
-export API_AUTH_TOKEN="your-secure-token"
+Audit endpoints always require authentication and the `audit:list`, `audit:read` or `audit:export` permission. For a script, use an API key limited to those scopes:
 
-# Access audit logs with authentication
-curl -H "Authorization: Bearer your-secure-token" http://localhost:8080/api/v1/audit
+```bash
+rackd apikey create --name "audit-reader" --scopes audit:list,audit:read,audit:export
+export RACKD_TOKEN=<api-key>
+
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/audit
 ```
 
 ### Audit Log Integrity
@@ -430,18 +435,16 @@ To ensure audit logs cannot be tampered with:
 
 ### For Administrators
 
-1. **Enable in production** - Essential for compliance and troubleshooting
-2. **Set appropriate retention** - Balance compliance needs with storage
-3. **Regular exports** - Backup audit logs to external storage
-4. **Monitor growth** - Track audit log size and adjust retention
-5. **Protect access** - Require authentication for audit endpoints
+1. **Set appropriate retention** - Balance compliance needs with storage
+2. **Regular exports** - Backup audit logs to external storage
+3. **Monitor growth** - Track audit log size and adjust retention
+4. **Protect access** - Grant `audit:*` permissions only to roles that need them
 
 ### For Developers
 
 1. **Review audit logs** - Check what's being captured
 2. **Sanitize sensitive data** - Don't log passwords or tokens
 3. **Use bulk operations** - Reduce audit log volume
-4. **Test with auditing enabled** - Ensure no performance issues
 
 ### For Compliance
 
@@ -453,6 +456,6 @@ To ensure audit logs cannot be tampered with:
 ## See Also
 
 - [Authentication](authentication.md) - API key management
-- [Configuration](configuration.md) - Environment variables
+- [Configuration Reference](configuration-reference.md) - Environment variables
 - [Monitoring](monitoring.md) - Metrics and observability
 - [Security](security.md) - Security best practices

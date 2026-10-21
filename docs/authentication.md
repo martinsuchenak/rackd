@@ -4,7 +4,59 @@ Rackd supports multiple authentication methods: user sessions (Web UI), API keys
 
 ## Overview
 
-All API endpoints require authentication. There is no anonymous access mode. On first startup, create an admin user via environment variables (see [Configuration Reference](configuration-reference.md)) or the bootstrap flow.
+All API endpoints require authentication. There is no anonymous access mode. The first admin user comes from environment variables; see [Initial Admin User](#initial-admin-user).
+
+## Initial Admin User
+
+When the database has no users, the server creates an admin from these variables at startup:
+
+```bash
+INITIAL_ADMIN_USERNAME=admin              # Required
+INITIAL_ADMIN_PASSWORD='<a strong password>'  # Required, at least 8 characters
+INITIAL_ADMIN_EMAIL=admin@example.com     # Optional (default: admin@localhost)
+INITIAL_ADMIN_FULL_NAME="Admin User"      # Optional (default: System Administrator)
+```
+
+They have no effect once any user exists. If they are unset when there are no users, the server starts without users and logs a warning; set them and restart. `rackd user create` can't create the first admin, because it calls the API and needs an API key.
+
+Docker:
+
+```bash
+docker run -d \
+  -e INITIAL_ADMIN_USERNAME=admin \
+  -e INITIAL_ADMIN_PASSWORD='<a strong password>' \
+  -e INITIAL_ADMIN_EMAIL=admin@example.com \
+  -p 8080:8080 \
+  ghcr.io/martinsuchenak/rackd:0.6
+```
+
+Kubernetes, with the credentials in a Secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rackd-admin
+type: Opaque
+stringData:
+  username: admin
+  password: <a strong password>
+---
+# In the rackd container spec:
+env:
+- name: INITIAL_ADMIN_USERNAME
+  valueFrom:
+    secretKeyRef:
+      name: rackd-admin
+      key: username
+- name: INITIAL_ADMIN_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: rackd-admin
+      key: password
+```
+
+Change the initial password after the first sign-in. See [Deployment](deployment.md) for a full container setup, including `ENCRYPTION_KEY`.
 
 ## Authentication Methods
 
@@ -41,7 +93,8 @@ An API key belongs to the user who creates it. By default it can do everything
 that user can; give it **scopes** to limit it to some of their permissions, so
 an integration that only reads inventory can't change anything. Scopes are
 `resource:action` permissions (as in [RBAC](rbac.md)), each one you hold
-yourself, and a scoped key never gains a permission its owner loses.
+yourself, and a scoped key never gains a permission its owner loses. Use the
+resource name, such as `devices:list`, not the permission name `device:list`.
 
 #### Creating API Keys
 
@@ -97,7 +150,7 @@ export RACKD_TOKEN=YOUR_API_KEY
 
 - Every API key belongs to a user (`user_id`), and can do at most what that user can
 - A scoped key is checked against its scopes as well as its owner's permissions, on the REST API and over MCP
-- Legacy keys without a user association are rejected with 401
+- Legacy keys without a user association are rejected with 401 `LEGACY_API_KEY_UNSUPPORTED`
 - Expired keys are rejected with a specific `EXPIRED_KEY` error code
 - Keys are SHA-256 hashed in the database; comparison is constant-time
 
@@ -153,8 +206,10 @@ All authenticated requests go through role-based access control. Permissions are
 
 Built-in roles:
 - `admin` — full access to all resources
-- `operator` — read/write access to devices, networks, and discovery
-- `viewer` — read-only access
+- `operator` — create, read and update most inventory, IPAM, discovery and DNS resources; no deletes, and no user, role, API key or webhook management
+- `viewer` — read-only access to inventory, IPAM, discovery and DNS resources
+
+See [RBAC](rbac.md#default-roles) for the exact permissions.
 
 Manage roles and permissions:
 - `GET /api/v1/roles` — list roles
@@ -190,10 +245,27 @@ server must be stopped first:
 rackd user reset-password --data-dir ./data --username admin
 ```
 
-For Docker deployments see the full procedure in the
-[CLI reference](cli.md#user-reset-password). The command prompts for the
-new password (hidden input), applies the same bcrypt hashing as the
-server, and invalidates all active sessions for the user.
+See [`rackd user reset-password`](cli-reference.md#rackd-user-reset-password)
+for its flags. The command prompts for the new password (hidden input),
+applies the same bcrypt hashing as the server, and invalidates all active
+sessions for the user.
+
+## Troubleshooting
+
+### "No initial admin configured"
+
+The server found no users and no `INITIAL_ADMIN_USERNAME`/`INITIAL_ADMIN_PASSWORD`. Set both and restart.
+
+### Cannot sign in
+
+1. Check the username and password
+2. Check the account is active (`rackd user list`, as another admin)
+3. After repeated failures the account is locked for `LOGIN_ACCOUNT_WINDOW` (`429 TOO_MANY_ATTEMPTS`); wait, or see [Recovering a lost admin password](#recovering-a-lost-admin-password)
+4. Check the server log
+
+### Password rejected
+
+Passwords must be at least 8 characters.
 
 ## Security Notes
 

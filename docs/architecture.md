@@ -62,6 +62,7 @@ Rackd is an open-source IP Address Management (IPAM) and Device Inventory System
 ├─────────────────────────────────────────────────────────────────┤
 │                   Business Logic Layer                           │
 │  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Services (RBAC)       Webhook Event Bus                   │ │
 │  │  Discovery Scanner     Scheduled Scan Worker               │ │
 │  │  Configuration Mgmt    Credential Encryption               │ │
 │  │  Validation Logic      IP Address Utilities                │ │
@@ -85,19 +86,20 @@ Rackd is an open-source IP Address Management (IPAM) and Device Inventory System
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | **Backend** |
-| Language | Go | 1.25+ | Core application logic |
+| Language | Go | 1.27.3+ | Core application logic |
 | Database | SQLite | 3.x | Embedded data storage |
-| SQLite Driver | modernc.org/sqlite | latest | CGO-free SQLite driver |
-| CLI Framework | paularlott/cli | v0.7.2 | Command-line interface |
-| MCP Framework | paularlott/mcp | v0.9.2 | Model Context Protocol |
+| SQLite Driver | modernc.org/sqlite | v1.60.1 | CGO-free SQLite driver |
+| Migrations | martinsuchenak/xdal | v0.1.0 | Schema migrations and history |
+| CLI Framework | paularlott/cli | v0.10.1 | Command-line interface |
+| MCP Framework | paularlott/mcp | v0.32.4 | Model Context Protocol |
 | Logger | paularlott/logger | v0.3.0 | Structured logging |
 | **Frontend** |
-| Language | TypeScript | 5.7+ | Type-safe JavaScript |
-| Framework | Alpine.js | 3.14+ | Reactive UI framework |
+| Language | TypeScript | 7.0+ | Type-safe JavaScript |
+| Framework | Alpine.js | 3.17+ | Reactive UI framework (CSP build) |
 | CSS | TailwindCSS | 4.0+ | Utility-first CSS |
 | Build Tool | Bun | latest | Fast JS bundler |
 | **Build & Deploy** |
-| Build Tool | Make | - | Build orchestration |
+| Build Tool | Task (go-task) | v3 | Build orchestration (`Taskfile.yml`) |
 | Container | Docker | - | Containerization |
 | Orchestration | Nomad | - | Optional deployment |
 | Release | GoReleaser | - | Multi-platform releases |
@@ -115,19 +117,29 @@ rackd/
 │   └── client/            # Shared CLI client utilities
 ├── internal/              # Private application code
 │   ├── api/              # HTTP API handlers
+│   ├── audit/            # Audit logging
+│   ├── auth/             # Sessions, passwords, OAuth
 │   ├── config/           # Configuration management
 │   ├── credentials/      # Credential storage & encryption
 │   ├── discovery/        # Network discovery scanner
+│   ├── dns/              # DNS provider integrations
+│   ├── export/           # Data export
+│   ├── extensions/       # Extension runtime
+│   ├── importdata/       # Data import
 │   ├── log/              # Logging utilities
 │   ├── mcp/              # MCP server implementation
-│   ├── model/            # Data models
+│   ├── metrics/          # Prometheus metrics
 │   ├── server/           # HTTP server setup
+│   ├── service/          # Business logic and RBAC checks
 │   ├── storage/          # Storage layer & SQLite impl
 │   ├── ui/               # Embedded UI assets
+│   ├── version/          # Build version information
+│   ├── webhook/          # Webhook delivery
 │   └── worker/           # Background workers
 ├── pkg/                   # Public API packages
-│   ├── rackd/            # Public types
-│   └── server/           # Server package
+│   ├── app/              # Binary entry point (app.Main)
+│   ├── extension/        # Extension API
+│   └── model/            # Data models
 ├── webui/                 # Frontend source code
 │   ├── src/
 │   │   ├── components/   # Alpine.js components
@@ -139,7 +151,7 @@ rackd/
 │   ├── dist/             # Built assets
 │   └── package.json      # Frontend dependencies
 ├── api/                   # API specifications
-│   └── openapi.yaml      # OpenAPI 3.0 spec
+│   └── openapi.yaml      # OpenAPI 3.1 spec
 ├── docs/                  # Documentation
 ├── deploy/                # Deployment configs
 │   └── nomad.hcl         # Nomad job spec
@@ -163,11 +175,11 @@ HTTP Server (ServeMux)
     ↓
 Security Headers Middleware
     ↓
-Auth Middleware (if enabled)
+Auth Middleware (session cookie or API key)
     ↓
 API Handler
     ↓
-Validation
+Service Layer (RBAC checks, validation)
     ↓
 Storage Layer
     ↓
@@ -195,9 +207,11 @@ REST API Request
 ```
 MCP Client (AI Tool)
     ↓
-MCP Server Handler
+MCP Server Handler (OAuth access token or API key)
     ↓
 Tool Dispatcher
+    ↓
+Service Layer (RBAC checks, validation)
     ↓
 Storage Layer
     ↓
@@ -303,7 +317,7 @@ Rackd supports multiple authentication methods:
 Rackd implements role-based access control (RBAC):
 - **Built-in roles**: `admin`, `operator`, `viewer`
 - **Custom roles**: Create roles with specific permission sets
-- **Permissions**: Fine-grained `resource:action` format (e.g., `devices:create`)
+- **Permissions**: Fine-grained `resource:action` format (e.g., `device:create`)
 - All API and MCP requests go through RBAC checks at the service layer
 
 ### Data Protection
@@ -314,8 +328,10 @@ Rackd implements role-based access control (RBAC):
 ### Security Headers
 - X-Content-Type-Options: nosniff
 - X-Frame-Options: DENY
-- X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
+- Permissions-Policy: geolocation=(), microphone=(), camera=()
 - Content-Security-Policy (strict)
+- Strict-Transport-Security (HTTPS deployments only)
 
 ## Performance Considerations
 
@@ -340,7 +356,8 @@ Rackd implements role-based access control (RBAC):
 ### 1. Storage Interface
 ```go
 type ExtendedStorage interface {
-    DeviceStorage
+    Storage // DeviceStorage
+    RelationshipStorage
     DatacenterStorage
     NetworkStorage
     DiscoveryStorage
@@ -348,16 +365,16 @@ type ExtendedStorage interface {
 }
 ```
 
-### 2. Feature Extensions (planned)
+### 2. Feature Extensions
 
-There is no feature interface yet. A planned `pkg/extension` package will let a feature register API routes, MCP tools, event types, UI pages and its own migration namespace in `xdal_migrations`. Until then, `server.RunWithCustomRoutes` is the only extension hook.
+A feature implements `extension.Feature` from `pkg/extension`, and can add its own tables (migrations in their own namespace in `xdal_migrations`), API routes, permissions, webhook event types, MCP tools, CLI commands, background work and web UI pages. Features are compiled in: a binary passes them to `app.Main(app.Options{Features: ...})` from `pkg/app`. See [Extensions](extensions.md).
 
 ### 3. Discovery Scanner Interface
 ```go
 type Scanner interface {
-    Scan(ctx context.Context, network string) error
-    GetScanStatus(scanID string) (*ScanStatus, error)
-    CancelScan(scanID string) error
+    Scan(ctx context.Context, network *model.Network, scanType string) (*model.DiscoveryScan, error)
+    GetScanStatus(ctx context.Context, scanID string) (*model.DiscoveryScan, error)
+    CancelScan(ctx context.Context, scanID string) error
 }
 ```
 
@@ -368,7 +385,7 @@ type Scanner interface {
 - SSO/OIDC integration
 - GraphQL API
 - WebSocket for real-time updates
-- Plugin system
+- Runtime-loaded plugins (extensions are compiled in today)
 
 ### Scalability Path
 - Read replicas (if PostgreSQL backend added)

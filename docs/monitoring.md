@@ -84,7 +84,7 @@ Rackd exposes Prometheus-compatible metrics at `/metrics` endpoint.
 ### Accessing Metrics
 
 ```bash
-curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/metrics
 ```
 
 The endpoint needs an API key or session whose user holds `metrics:read`. The
@@ -105,13 +105,13 @@ API key.
 - `devices_total` - Current number of devices (gauge)
 - `networks_total` - Current number of networks (gauge)
 - `datacenters_total` - Current number of datacenters (gauge)
-- `discovery_scans_total` - Total number of discovery scans performed (counter)
-- `discovery_scan_duration_milliseconds{type="..."}` - Average scan duration by type (summary)
+- `discovery_scans_total` - Total number of discovery scans performed (counter). Not recorded yet: always `0`
+- `discovery_scan_duration_milliseconds{type="..."}` - Mean scan duration since start, by type (gauge). Not recorded yet: no samples
 
 #### Database Metrics
 
-- `db_queries_total` - Total number of database queries (counter)
-- `db_query_duration_milliseconds{query="..."}` - Average query duration (summary)
+- `db_queries_total` - Total number of database queries (counter). Not recorded yet: always `0`
+- `db_query_duration_milliseconds{query="..."}` - Mean query duration since start (gauge). Not recorded yet: no samples
 - `db_connections_open` - Current number of open database connections (gauge)
 
 #### Runtime Metrics
@@ -157,11 +157,6 @@ rate(http_requests_by_code{code=~"5.."}[5m])
 **Device growth**:
 ```promql
 devices_total
-```
-
-**Discovery scan rate**:
-```promql
-rate(discovery_scans_total[1h])
 ```
 
 ## Grafana Dashboard
@@ -254,9 +249,8 @@ Rackd uses structured logging with the following levels:
 - `TRACE` - Very detailed debugging information
 - `DEBUG` - Debugging information (HTTP requests, queries)
 - `INFO` - Informational messages (startup, shutdown)
-- `WARN` - Warning messages (missing auth tokens)
+- `WARN` - Warning messages (for example `ENCRYPTION_KEY` not set, or the ignored `AUDIT_ENABLED`)
 - `ERROR` - Error messages (failed operations)
-- `FATAL` - Fatal errors (application exits)
 
 ### Log Configuration
 
@@ -267,7 +261,7 @@ export LOG_LEVEL=debug
 ./rackd server
 ```
 
-Available levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`
+Available levels: `trace`, `debug`, `info`, `warn`, `error`
 
 ### Log Format
 
@@ -386,7 +380,7 @@ spec:
 
 1. Check that `/metrics` endpoint is accessible:
    ```bash
-   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics
+   curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/metrics
    ```
 
 2. Verify Prometheus is scraping:
@@ -414,12 +408,12 @@ spec:
 
 1. Check current memory metrics:
    ```bash
-   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics | grep go_memory
+   curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/metrics | grep go_memory
    ```
 
 2. Monitor goroutine count:
    ```bash
-   curl -H "Authorization: Bearer $RACKD_API_KEY" http://localhost:8080/metrics | grep go_goroutines
+   curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/metrics | grep go_goroutines
    ```
 
 3. Consider increasing memory limits or investigating memory leaks

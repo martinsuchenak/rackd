@@ -20,15 +20,15 @@ Each NAT mapping contains:
 | `id` | string | Unique identifier (auto-generated UUID) |
 | `name` | string | Descriptive name for the mapping |
 | `external_ip` | string | External/public IP address |
-| `external_port` | int | External port number (1-65535), or `0` for every port (1:1 NAT) |
+| `external_port` | int | External port number (0-65535); `0` means every port (1:1 NAT) |
 | `internal_ip` | string | Internal/private IP address |
-| `internal_port` | int | Internal port number (1-65535) |
+| `internal_port` | int | Internal port number (0-65535) |
 | `protocol` | string | Protocol: `tcp`, `udp`, or `any` (default: `tcp`) |
 | `device_id` | string | Optional linked device ID |
 | `datacenter_id` | string | Optional datacenter ID |
 | `network_id` | string | Optional network ID |
 | `description` | string | Optional description |
-| `enabled` | bool | Whether the mapping is active (default: `true`) |
+| `enabled` | bool | Whether the mapping is active. The API defaults to `false` when it's left out; `rackd nat create` creates enabled mappings unless `--disabled` is given |
 | `tags` | []string | Optional tags for categorization |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
@@ -94,7 +94,7 @@ POST /api/v1/nat
 }
 ```
 
-Required fields: `name`, `external_ip`, `external_port`, `internal_ip`, `internal_port`
+Required fields: `name`, `external_ip`, `internal_ip`. Ports default to `0`. Send `"enabled": true`, or the mapping is created disabled.
 
 Two enabled mappings can't forward the same external endpoint. Creating or
 updating a mapping onto an external IP, port and protocol an enabled mapping
@@ -176,7 +176,7 @@ Access NAT management at `/nat` in the web interface.
 
 ### Features
 
-- **List View**: Table view with filtering by protocol, external IP, and enabled status
+- **List View**: Table view with search and filtering by external IP, internal IP, protocol, and enabled status
 - **Create/Edit Modal**: Form for creating and editing NAT mappings
 - **Delete Confirmation**: Confirmation dialog before deletion
 - **Status Indicators**: Visual indicators for enabled/disabled mappings
@@ -197,16 +197,16 @@ NAT tracking uses the following permissions:
 ### Default Role Assignments
 
 - **admin**: All NAT permissions
-- **operator**: All NAT permissions
+- **operator**: `nat:list`, `nat:read`, `nat:create`, `nat:update`
 - **viewer**: `nat:list`, `nat:read`
 
 ## Validation Rules
 
 1. **Name**: Required, cannot be empty
 2. **External IP**: Required, must be a valid IP address
-3. **External Port**: Required, must be 1-65535
+3. **External Port**: Optional, 0-65535 (`0` = every port)
 4. **Internal IP**: Required, must be a valid IP address
-5. **Internal Port**: Required, must be 1-65535
+5. **Internal Port**: Optional, 0-65535
 6. **Protocol**: Must be one of `tcp`, `udp`, or `any` (defaults to `tcp`)
 
 ## Use Cases

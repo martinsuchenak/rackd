@@ -6,10 +6,10 @@ Rackd provides DNS integration with external DNS servers, allowing automatic man
 
 The DNS integration enables:
 
-- Automatic A/AAAA record creation for devices
-- Automatic PTR record generation for reverse DNS lookups
+- Automatic A record creation for devices
+- Optional PTR record generation for reverse DNS lookups
 - Integration with Technitium DNS Server (PowerDNS and BIND are planned)
-- Bidirectional sync between Rackd and DNS servers
+- Pushing records to the DNS server, and importing records from it
 
 ## Supported Providers
 
@@ -89,7 +89,7 @@ rackd dns zone create \
 | `--name` | Zone name (e.g., `example.com`, `10.in-addr.arpa`) |
 | `--provider` | DNS provider ID |
 | `--network` | Network ID for automatic record association |
-| `--create-ptr` | Enable automatic PTR record creation |
+| `--create-ptr` | Enable PTR record creation (also needs `ptr_zone`; see [Reverse DNS](#reverse-dns-ptr-records)) |
 | `--enable-auto-sync` | Enable automatic synchronization |
 | `--ttl` | Default TTL for records (default: 3600) |
 
@@ -97,19 +97,19 @@ rackd dns zone create \
 
 ### Automatic Record Generation
 
-When a device has IP addresses assigned, Rackd can automatically generate DNS records:
+When a device is created or updated, Rackd generates records in each zone that has auto-sync enabled and is linked to a network the device has an address on:
 
-1. **A Records** - For IPv4 addresses
-2. **AAAA Records** - For IPv6 addresses
-3. **PTR Records** - Reverse DNS (if `--create-ptr` is enabled)
+1. **A Records** - One per address on the zone's network. Only A records are generated, including for IPv6 addresses.
+2. **PTR Records** - If the zone has `create_ptr` and `ptr_zone` set
+3. **CNAME Records** - For each device domain that falls inside a zone, pointing at the device's A record
 
 ### Record Mapping
 
 Records are created based on:
 
-- Device hostname (from device name)
-- Assigned IP addresses
-- Associated domains
+- The device's `hostname` field (devices without a hostname get no records)
+- Addresses whose `network_id` is the zone's network
+- The device's domains (for CNAME records)
 
 ### Viewing Records
 
@@ -135,18 +135,16 @@ Trigger an immediate sync:
 ```bash
 # Sync zone to DNS provider
 rackd dns sync --zone zone-123
-
-# Force sync even if no changes detected
-rackd dns sync --zone zone-123 --force
 ```
+
+A sync pushes every record in the zone to the provider.
 
 ### Automatic Sync
 
 When `--enable-auto-sync` is set on a zone:
 
 - Zone is synced periodically based on `DNS_SYNC_INTERVAL`
-- Changes to devices trigger incremental updates
-- New devices get records automatically
+- Creating or updating a device creates its records in the zone
 
 ### Import from Provider
 
@@ -155,9 +153,6 @@ Import existing DNS records into Rackd:
 ```bash
 # Import records from provider
 rackd dns import --zone zone-123
-
-# Import and delete local records not on provider
-rackd dns import --zone zone-123 --delete
 ```
 
 ## Provider Configuration Details
@@ -184,37 +179,22 @@ Planned. The `powerdns` and `bind` provider types are reserved, but the API reje
 
 ## Reverse DNS (PTR Records)
 
-### Setting Up Reverse Zones
+### Enabling PTR Records
 
-For PTR record generation, create reverse zones:
+PTR records are set up on the forward zone, not by creating a separate reverse zone in Rackd. The zone needs both:
+
+- `create_ptr: true` (`--create-ptr` on the CLI)
+- `ptr_zone`, the reverse zone name (e.g. `1.168.192.in-addr.arpa`). The CLI has no flag for it; set it in the web UI's zone form or through the API:
 
 ```bash
-# For 10.0.0.0/8 network
-rackd dns zone create \
-  --name 10.in-addr.arpa \
-  --provider provider-123 \
-  --network net-456 \
-  --create-ptr
-
-# For 192.168.1.0/24 network
-rackd dns zone create \
-  --name 1.168.192.in-addr.arpa \
-  --provider provider-123 \
-  --network net-789 \
-  --create-ptr
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/dns/zones/<zone-id> \
+  -H "Content-Type: application/json" \
+  -d '{"create_ptr": true, "ptr_zone": "1.168.192.in-addr.arpa"}'
 ```
 
 ### PTR Record Generation
 
-When `--create-ptr` is enabled:
-
-- PTR records are automatically created for A records
-- Record name is the reversed IP with `.in-addr.arpa` suffix
-- Record value is the device hostname
-
-Example:
-- Device: `web-01` with IP `192.168.1.10`
-- PTR: `10.1.168.192.in-addr.arpa` → `web-01.example.com`
+With both set, each generated A record for an IPv4 address gets a PTR record whose value is the device's `hostname` plus the zone name (e.g. `web-01.example.com`). PTR generation is limited; check the generated records with `rackd dns records --zone <zone-id> --type PTR`.
 
 ## API Reference
 
@@ -261,14 +241,14 @@ Example:
 1. Check zone has `auto_sync` enabled
 2. Verify provider connection is working
 3. Check server logs for errors
-4. Try manual sync with `--force` flag
+4. Try a manual sync with `rackd dns sync --zone <zone-id>`
 
 ### Records Not Created
 
-1. Ensure device has IP addresses assigned
-2. Verify device is associated with correct network
-3. Check zone's network association
-4. Verify device has domains configured
+1. Ensure the device has a `hostname`
+2. Ensure the address has `network_id` set to the zone's network
+3. Check the zone has `auto_sync` enabled
+4. For CNAME records, check the device's domains fall inside the zone
 
 ## Best Practices
 

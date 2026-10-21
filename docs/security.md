@@ -36,7 +36,7 @@ The built-in Web UI sends this header on all requests. External integrations usi
 - Minimum length: 8 characters (enforced server-side)
 - Hashing: bcrypt with cost factor 14
 - Password changes invalidate all active sessions for the user
-- Login rate limiting prevents brute-force attacks
+- Login rate limiting (per IP) and an account lockout after `LOGIN_ACCOUNT_MAX_FAILURES` failed sign-ins (default 10) within `LOGIN_ACCOUNT_WINDOW` (default 15m) slow down brute-force attacks
 
 ## API Key Security
 
@@ -50,8 +50,8 @@ The built-in Web UI sends this header on all requests. External integrations usi
 ## Session Security
 
 - Sessions use cryptographically random tokens
-- Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` (by default)
-- 24-hour TTL with sliding expiration
+- Cookies are `HttpOnly`, `SameSite=Strict`, and `Secure` (by default)
+- 24-hour TTL with sliding expiration (`SESSION_TTL`), capped at 7 days from sign-in (`SESSION_MAX_LIFETIME`)
 - Sessions are invalidated on password change
 - Session store supports SQLite (default) or Valkey for distributed deployments
 
@@ -64,12 +64,12 @@ The built-in Web UI sends this header on all requests. External integrations usi
 
 ## Credential Encryption
 
-Device credentials (SSH passwords, SNMP community strings) are encrypted at rest using AES-256-GCM. The encryption key is derived from the server's internal key material.
+Device credentials (SSH passwords, SNMP community strings), DNS provider tokens and webhook secrets are encrypted at rest using AES-256-GCM with the key in `ENCRYPTION_KEY` (64 hex characters, e.g. from `openssl rand -hex 32`). Without it, credentials, scan profiles, scheduled scans and DNS are disabled and webhook secrets are stored unencrypted. Change the key with `rackd credentials rotate-key`.
 
 ## Webhook Security
 
 - HMAC-SHA256 signatures on webhook payloads (when a secret is configured)
-- SSRF protection: loopback, link-local (169.254.x.x), and unspecified addresses are blocked
+- SSRF protection (webhooks and DNS providers): loopback, link-local (169.254.x.x, including cloud metadata), multicast and unspecified addresses are blocked. Private ranges (RFC 1918, CGNAT `100.64.0.0/10`, IPv6 ULA) are blocked too unless listed in `SSRF_ALLOWED_TARGETS` (or all allowed with `SSRF_ALLOW_PRIVATE_TARGETS=true`)
 - Secure HTTP client with `SafeDialContext` prevents DNS rebinding
 - URL length capped at 2048 characters
 - Only HTTP and HTTPS schemes allowed
@@ -88,7 +88,9 @@ Rackd sets the following headers on all responses:
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: geolocation=(), microphone=(), camera=()`
 - `Content-Security-Policy` (see above)
+- `Strict-Transport-Security: max-age=31536000`, when `COOKIE_SECURE=true` (the default) or the request arrived over TLS
 
 ## Audit Logging
 
@@ -104,7 +106,7 @@ Audit entries are kept for 90 days by default (`AUDIT_RETENTION_DAYS`; `0` keeps
 
 Query audit logs:
 - `GET /api/v1/audit` — list with filters (action, resource, user, date range)
-- `GET /api/v1/audit/export` — export as CSV
+- `GET /api/v1/audit/export` — export as JSON (default) or CSV (`?format=csv`)
 - `GET /api/v1/audit/{id}` — get single entry
 
 ## Rate Limiting
@@ -112,7 +114,9 @@ Query audit logs:
 Two rate limiters protect against abuse:
 
 1. General API: 100 requests/minute per IP (configurable)
-2. Login/sensitive endpoints: 5 requests/minute per IP (configurable)
+2. Login/sensitive endpoints: 5 requests/minute per IP (configurable), plus the per-account lockout above
+
+See [Rate Limiting](ratelimit.md).
 
 Rate limit headers are included in responses:
 - `X-RateLimit-Limit`
@@ -161,7 +165,7 @@ Set `TRUST_PROXY=true` when behind a reverse proxy so Rackd reads the real clien
 
 ```bash
 chmod 600 /var/lib/rackd/rackd.db
-chmod 600 /etc/rackd/.env
+chmod 600 /etc/rackd/config.env   # the EnvironmentFile holding ENCRYPTION_KEY
 chown rackd:rackd /var/lib/rackd/
 ```
 

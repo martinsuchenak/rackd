@@ -4,7 +4,7 @@ This guide covers various deployment methods for Rackd in production environment
 
 ## Docker Deployment
 
-Each release publishes a multi-arch image (`linux/amd64`, `linux/arm64`) to `ghcr.io/martinsuchenak/rackd`, tagged with the version (`0.6.0`), the minor version (`0.6`) and `latest`. Images are signed with cosign; see [Verifying the Image](#verifying-the-image). The image keeps its database in `/data`, so mount a volume there.
+Each release publishes a multi-arch image (`linux/amd64`, `linux/arm64`) to `ghcr.io/martinsuchenak/rackd`, tagged with the version (`0.6.0`), the minor version (`0.6`) and `latest`. Images are signed with cosign; see [Verifying the Image](#verifying-the-image). The image keeps its database in `/data`, so mount a volume there. To build an image from source instead, see [Installation](installation.md#3-docker).
 
 ### Basic Docker Run
 
@@ -17,11 +17,13 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v /opt/rackd/data:/data \
-  -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
+  -e ENCRYPTION_KEY="$(cat /opt/rackd/encryption.key)" \
+  -e INITIAL_ADMIN_USERNAME=admin \
+  -e INITIAL_ADMIN_PASSWORD='<a strong password>' \
   ghcr.io/martinsuchenak/rackd:0.6
 ```
 
-Keep the `ENCRYPTION_KEY` you start with: credentials, scan profiles and DNS provider tokens are encrypted with it. Pin a version tag (`0.6` follows patch releases) rather than `latest`, so an upgrade is a choice you make.
+Generate the key once with `openssl rand -hex 32 > /opt/rackd/encryption.key` and keep it: credentials, DNS provider tokens and webhook secrets are encrypted with it. The `INITIAL_ADMIN_*` variables only take effect while there are no users; scripts and the CLI then authenticate with API keys (see [Authentication](authentication.md)). Pin a version tag (`0.6` follows patch releases) rather than `latest`, so an upgrade is a choice you make.
 
 ### Docker with Environment Variables
 
@@ -30,14 +32,14 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v /opt/rackd/data:/data \
-  -e ENCRYPTION_KEY=your-64-hex-character-key \
+  -e ENCRYPTION_KEY="$(cat /opt/rackd/encryption.key)" \
   -e LOG_LEVEL=info \
   -e LOG_FORMAT=json \
   -e BACKUP_INTERVAL=24h \
   ghcr.io/martinsuchenak/rackd:0.6
 ```
 
-See the [configuration reference](configuration-reference.md) for every setting.
+See the [Configuration Reference](configuration-reference.md) for every setting.
 
 ### Verifying the Image
 
@@ -49,24 +51,24 @@ cosign verify ghcr.io/martinsuchenak/rackd:0.6.0 \
 
 ## Docker Compose
 
-Create `docker-compose.yml`:
+To put Nginx in front of Rackd:
 
 ```yaml
-version: '3.8'
-
 services:
   rackd:
     image: ghcr.io/martinsuchenak/rackd:0.6
     container_name: rackd
     restart: unless-stopped
-    ports:
-      - "8080:8080"
     volumes:
       - ./data:/data
     environment:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
+      - TRUST_PROXY=true
+      - TRUSTED_PROXIES=172.16.0.0/12
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
@@ -87,21 +89,25 @@ services:
       - rackd
 ```
 
-Create `.env` file:
+Create a `.env` file next to it (Compose reads it for the `${...}` values):
 
 ```bash
-ENCRYPTION_KEY=your-64-hex-character-key   # openssl rand -hex 32
+ENCRYPTION_KEY=<output of openssl rand -hex 32>
+INITIAL_ADMIN_USERNAME=admin
+INITIAL_ADMIN_PASSWORD=<a strong password>
 ```
 
 Deploy:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
+
+The repository's own `docker-compose.yml` builds the image from source instead.
 
 ## Nomad Deployment
 
-The Nomad job file is available at [`deploy/nomad.hcl`](../deploy/nomad.hcl).
+The Nomad job file is available at [`deploy/nomad.hcl`](../deploy/nomad.hcl). It runs the published image; pin `image` to the version you want.
 
 ### Prerequisites
 
@@ -121,8 +127,7 @@ client {
 
 ```bash
 nomad var put nomad/jobs/rackd \
-  api_auth_token="your-secure-token" \
-  mcp_auth_token="your-mcp-token"
+  encryption_key="$(openssl rand -hex 32)"
 ```
 
 ### Deploy
@@ -136,10 +141,11 @@ nomad job run deploy/nomad.hcl
 ### Binary Installation
 
 ```bash
-# Download and install
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-amd64
-sudo mv rackd-linux-amd64 /usr/local/bin/rackd
-sudo chmod +x /usr/local/bin/rackd
+# Download and install (see Installation for checking the download)
+VERSION=x.y.z   # the release to install, without the leading v
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_linux_amd64.tar.gz"
+tar -xzf "rackd_${VERSION}_linux_amd64.tar.gz" rackd
+sudo install -m 0755 rackd /usr/local/bin/rackd
 
 # Create user and directories
 sudo useradd -r -s /bin/false rackd
@@ -183,8 +189,12 @@ WantedBy=multi-user.target
 Create `/etc/rackd/rackd.env` (mode `0600`, since it holds the key):
 
 ```bash
-ENCRYPTION_KEY=your-64-hex-character-key   # openssl rand -hex 32
+ENCRYPTION_KEY=<output of openssl rand -hex 32>
+INITIAL_ADMIN_USERNAME=admin
+INITIAL_ADMIN_PASSWORD=<a strong password>
 ```
+
+systemd reads it as root before starting rackd as the `rackd` user.
 
 Enable and start:
 
@@ -299,7 +309,7 @@ sudo chmod 600 /etc/ssl/private/rackd.key
 
 ### Security
 
-- Use strong authentication tokens
+- Keep `ENCRYPTION_KEY` secret and backed up, change the initial admin password after first sign-in, and give scripts their own API keys
 - Enable HTTPS in production
 - Restrict network access with firewall rules
 - Run with non-root user
@@ -316,9 +326,10 @@ sudo chmod 600 /etc/ssl/private/rackd.key
   when it detects one. To keep a copy on the share, write backups there
   (`rackd backup`) instead.
 - Monitor disk space usage
-- Configure log rotation
 
 ### Backup Strategy
+
+Set `BACKUP_INTERVAL` (for example `24h`) and the server takes verified backups into `BACKUP_DIR` (default `<DATA_DIR>/backups`) and keeps the newest `BACKUP_KEEP`; see [Backup & Restore](backup.md#scheduled-backups-in-the-server). To keep copies somewhere else as well, for example on a network share, run `rackd backup` from cron:
 
 ```bash
 #!/bin/bash
@@ -328,7 +339,7 @@ BACKUP_DIR="/backup/rackd"
 DATA_DIR="/var/lib/rackd"
 
 mkdir -p $BACKUP_DIR
-sqlite3 $DATA_DIR/rackd.db ".backup $BACKUP_DIR/rackd_$DATE.db"
+rackd backup --data-dir $DATA_DIR --output $BACKUP_DIR/rackd_$DATE.db
 gzip $BACKUP_DIR/rackd_$DATE.db
 
 # Cleanup old backups (keep 30 days)
@@ -337,22 +348,7 @@ find $BACKUP_DIR -name "*.gz" -mtime +30 -delete
 
 ### Log Management
 
-Configure log rotation in `/etc/logrotate.d/rackd`:
-
-```
-/var/log/rackd/*.log {
-    daily
-    missingok
-    rotate 30
-    compress
-    delaycompress
-    notifempty
-    create 644 rackd rackd
-    postrotate
-        systemctl reload rackd
-    endscript
-}
-```
+Rackd logs to standard output only, so journald, Docker or Nomad keep and rotate its logs; there are no log files to rotate. Set `LOG_FORMAT=json` for log collectors.
 
 ## Monitoring
 
@@ -386,7 +382,7 @@ The scrape needs an API key whose user holds `metrics:read`; see the
 ```bash
 #!/bin/bash
 # monitor-rackd.sh
-URL="http://localhost:8080/healthz"
+URL="http://localhost:8080/readyz"
 TIMEOUT=5
 
 if curl -f -s --max-time $TIMEOUT $URL > /dev/null; then

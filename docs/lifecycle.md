@@ -28,8 +28,8 @@ The device model includes status-related fields:
 |-------|------|-------------|
 | `status` | string | Current device status |
 | `status_changed_at` | timestamp | When status was last changed |
-| `status_changed_by` | string | User who changed the status |
-| `decommission_date` | date | Scheduled decommission date |
+| `status_changed_by` | string | ID of the user who changed the status |
+| `decommission_date` | timestamp | Scheduled decommission date (RFC 3339) |
 
 ## API Endpoints
 
@@ -86,9 +86,11 @@ PUT /api/v1/devices/{id}
 
 ```json
 {
-  "decommission_date": "2024-06-30"
+  "decommission_date": "2024-06-30T00:00:00Z"
 }
 ```
+
+The date must be an RFC 3339 timestamp; any other format is ignored.
 
 ## CLI Commands
 
@@ -105,20 +107,16 @@ rackd device list --status maintenance
 rackd device list --status decommissioned
 
 # Combine with other filters
-rackd device list --status active --pool production
+rackd device list --status active --pool <pool-id>
 ```
 
-### Update Status
+### Set Status
+
+`rackd device update` has no status or decommission-date flag; change those through the API or the web UI. To create a device with a status, put it in a JSON file:
 
 ```bash
-# Set device to maintenance
-rackd device update --id dev-123 --status maintenance
-
-# Decommission a device
-rackd device update --id dev-123 --status decommissioned
-
-# Schedule decommission
-rackd device update --id dev-123 --decommission-date 2024-06-30
+# device.json: {"name": "server-future-01", "status": "planned"}
+rackd device add --input device.json
 ```
 
 ## Web UI
@@ -127,24 +125,21 @@ rackd device update --id dev-123 --decommission-date 2024-06-30
 
 - **Status Filter**: Dropdown to filter by status
 - **Status Badge**: Color-coded status indicator per device
-- **URL State**: Filter persisted in URL for sharing
+- **Link to a status**: `/devices?status=<status>` opens the list filtered by that status
 
 Status badge colors:
 - **Planned**: Blue
 - **Active**: Green
-- **Maintenance**: Orange
+- **Maintenance**: Yellow
 - **Decommissioned**: Gray
 
-### Device Detail
-
-- **Status Display**: Prominent status badge
-- **Status History**: In audit trail
-- **Decommission Date**: Displayed when set
+Status changes are recorded in the audit log (see [Audit Trail](#audit-trail)).
 
 ### Device Form
 
 - **Status Dropdown**: Select status on create/edit
-- **Decommission Date**: Date picker for scheduling
+
+The web UI doesn't show or set `decommission_date`; use the API.
 
 ### Dashboard
 
@@ -153,16 +148,16 @@ Status badge colors:
 
 ## Audit Trail
 
-All status changes are logged in the audit trail:
+All status changes are logged in the audit trail as a device update:
 
 | Field | Value |
 |-------|-------|
-| Action | `device.updated` |
-| Field | `status` |
-| Old Value | `active` |
-| New Value | `maintenance` |
-| User | Current user |
-| Timestamp | Change time |
+| `action` | `update` |
+| `resource` | `device` |
+| `resource_id` | Device ID |
+| `changes` | JSON of the updated device, including its new `status` |
+| `username` | Current user |
+| `timestamp` | Change time |
 
 ## Use Cases
 
@@ -173,10 +168,8 @@ All status changes are logged in the audit trail:
 3. Update to `status: active` when deployed
 
 ```bash
-rackd device create \
-  --hostname "server-future-01" \
-  --status planned \
-  --pool production
+# device.json: {"name": "server-future-01", "status": "planned"}
+rackd device add --input device.json
 ```
 
 ### Maintenance Window
@@ -186,9 +179,11 @@ rackd device create \
 3. Return to `status: active` when complete
 
 ```bash
-rackd device update --id dev-123 --status maintenance
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/devices/dev-123 \
+  -H "Content-Type: application/json" -d '{"status": "maintenance"}'
 # ... perform maintenance ...
-rackd device update --id dev-123 --status active
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/devices/dev-123 \
+  -H "Content-Type: application/json" -d '{"status": "active"}'
 ```
 
 ### Planned Decommission
@@ -199,26 +194,21 @@ rackd device update --id dev-123 --status active
 
 ```bash
 # Schedule future decommission
-rackd device update --id dev-123 --decommission-date 2024-06-30
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/devices/dev-123 \
+  -H "Content-Type: application/json" -d '{"decommission_date": "2024-06-30T00:00:00Z"}'
 
 # Mark as decommissioned
-rackd device update --id dev-123 --status decommissioned
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/devices/dev-123 \
+  -H "Content-Type: application/json" -d '{"status": "decommissioned"}'
 ```
 
 ### Hardware Refresh
 
 Track devices being replaced:
 
-```bash
-# Mark old device for decommission
-rackd device update --id old-server --status decommissioned
-
-# Create replacement as planned
-rackd device create --hostname new-server --status planned
-
-# Activate replacement
-rackd device update --id new-server --status active
-```
+1. Set the old device's status to `decommissioned` (API or web UI)
+2. Create the replacement with `"status": "planned"` (`rackd device add --input`, API or web UI)
+3. Set the replacement to `active` when it's deployed
 
 ## Reporting
 
@@ -228,7 +218,7 @@ Get overview of infrastructure state:
 
 ```bash
 # Via API
-curl /api/v1/devices/status-counts
+curl -H "Authorization: Bearer $RACKD_TOKEN" /api/v1/devices/status-counts
 
 # Via dashboard
 # View "Device Status" widget
@@ -271,7 +261,7 @@ The dashboard widget shows status distribution with clickable cards.
 ## Best Practices
 
 1. **Use All States**: Don't skip planned/decommissioned states
-2. **Document Changes**: Add notes when changing status
+2. **Document Changes**: Note the reason in the device description; status changes have no notes field
 3. **Schedule Decommissions**: Set dates for planned removals
 4. **Regular Reviews**: Audit decommissioned devices periodically
 5. **Consistent Process**: Follow same workflow for all devices

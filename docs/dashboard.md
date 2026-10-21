@@ -1,16 +1,15 @@
 # Dashboard Reporting & Trends
 
-Rackd provides an enhanced dashboard with utilization trends, activity feeds, and aggregated statistics.
+Rackd provides a dashboard with aggregated statistics, network utilization, recent discoveries and stale-device alerts, plus an API for utilization trends.
 
 ## Overview
 
 The dashboard provides at-a-glance visibility into:
-- Overall infrastructure health
-- Pool utilization trends
+- Inventory totals
+- Devices by status
 - Network utilization summary
 - Recent device discoveries
 - Stale device detection
-- Conflict alerts
 
 ## Dashboard API
 
@@ -20,42 +19,50 @@ The dashboard provides at-a-glance visibility into:
 GET /api/v1/dashboard
 ```
 
+Query parameters:
+- `stale_days` - Days without being seen in discovery before an active device counts as stale (default: 7, 1-365)
+- `recent_limit` - Number of recent discoveries to return (default: 10, 1-100)
+
 **Response:**
 ```json
 {
   "total_devices": 500,
   "total_networks": 25,
   "total_pools": 40,
-  "active_conflicts": 3,
-  "devices_by_status": {
+  "total_datacenters": 3,
+  "device_status_counts": {
     "planned": 10,
     "active": 475,
     "maintenance": 5,
     "decommissioned": 10
   },
+  "discovered_devices": 14,
   "recent_discoveries": [
     {
+      "id": "disc-123",
+      "ip": "192.168.1.100",
       "hostname": "new-server-01",
-      "ip_address": "192.168.1.100",
-      "discovered_at": "2024-02-27T09:30:00Z"
+      "vendor": "Dell",
+      "network_id": "net-1",
+      "first_seen": "2024-02-27T09:30:00Z",
+      "last_seen": "2024-02-27T09:30:00Z"
     }
   ],
+  "overall_utilization": 42.5,
   "network_utilization": [
     {
       "network_id": "net-1",
       "network_name": "Production LAN",
-      "cidr": "192.168.1.0/24",
-      "utilization_percent": 75.5
+      "subnet": "192.168.1.0/24",
+      "total_ips": 254,
+      "used_ips": 192,
+      "utilization": 75.5
     }
   ],
   "stale_devices": 12,
-  "health_alerts": [
-    {
-      "type": "high_utilization",
-      "resource": "Production Pool",
-      "value": 92,
-      "threshold": 90
-    }
+  "stale_threshold_days": 7,
+  "stale_device_list": [
+    {"id": "dev-1", "name": "old-server", "hostname": "old-server.example.com"}
   ]
 }
 ```
@@ -63,26 +70,20 @@ GET /api/v1/dashboard
 ### Get Utilization Trend
 
 ```http
-GET /api/v1/dashboard/trend
+GET /api/v1/dashboard/trend?type=pool&resource_id=<pool-id>&days=30
 ```
 
 Query parameters:
-- `pool_id` - Filter to specific pool (optional)
-- `days` - Number of days (default: 7)
+- `type` - `network` or `pool` (default: `network`)
+- `resource_id` - ID of the network or pool (required)
+- `days` - Number of days (default: 30, 1-365)
 
 **Response:**
 ```json
-{
-  "trend": [
-    {"date": "2024-02-20", "utilization": 65.2},
-    {"date": "2024-02-21", "utilization": 66.1},
-    {"date": "2024-02-22", "utilization": 67.5},
-    {"date": "2024-02-23", "utilization": 68.0},
-    {"date": "2024-02-24", "utilization": 68.2},
-    {"date": "2024-02-25", "utilization": 69.1},
-    {"date": "2024-02-26", "utilization": 70.5}
-  ]
-}
+[
+  {"timestamp": "2024-02-20T00:00:00Z", "utilization": 65.2, "used_ips": 166},
+  {"timestamp": "2024-02-20T01:00:00Z", "utilization": 65.6, "used_ips": 167}
+]
 ```
 
 ## Dashboard Components
@@ -90,108 +91,77 @@ Query parameters:
 ### Summary Stats
 
 Top-level statistics cards:
-- **Total Devices**: All devices across all statuses
-- **Total Networks**: All configured networks
-- **Total Pools**: All IP pools
-- **Active Conflicts**: Current conflict count (clickable)
+- **Devices**: All devices across all statuses (links to the device list)
+- **Networks**: All configured networks (links to the network list)
+- **Pools**: All IP pools
+- **Datacenters**: All datacenters (links to the datacenter list)
+- **Overall Utilization**: Across all networks
 
 ### Device Status Widget
 
 Breakdown of devices by status:
 - Planned (blue)
 - Active (green)
-- Maintenance (orange)
+- Maintenance (yellow)
 - Decommissioned (gray)
 
 Each status is clickable to filter the device list.
 
-### Utilization Trend Chart
-
-Line chart showing pool utilization over time:
-- Configurable time range (7/30/90 days)
-- Sparkline visualization
-- Hover for detailed values
-
 ### Network Utilization List
 
-Top networks by utilization:
-- Network name and CIDR
+Networks by utilization:
+- Network name and subnet
 - Utilization percentage
-- Visual progress bar
-- Color-coded by utilization level
+- Used and total IPs
+- Click to open the network
 
-### Recent Discoveries
+### Recently Discovered
 
-Feed of recently discovered devices:
-- Hostname
+Feed of recently discovered hosts that haven't been promoted:
 - IP address
-- Discovery timestamp
-- Click to view device details
-
-### Stale Devices
-
-Count of devices not seen in discovery for the stale threshold:
-- Configurable stale threshold
-- Click to view stale device list
+- Hostname or vendor
+- **Promote** link to the host on the Discovery page
+- Total count of discovered hosts not yet in the inventory
 
 ### Health Alerts
 
-Active alerts requiring attention:
-- High utilization warnings
-- Conflict alerts
-- Pool exhaustion warnings
+Shows the count of stale devices: active devices not seen in discovery for `stale_threshold_days`. Expand it to list up to 20 of them, with a link to the full filtered device list when there are more.
 
 ## Configuration
 
 ### Snapshot Collection
 
-Utilization snapshots are collected periodically for trend analysis:
+Utilization snapshots of every network and pool are collected periodically for trend analysis. They are set with environment variables:
 
-```yaml
-# config.yaml
-snapshot:
-  interval: 1h           # How often to collect snapshots
-  retention_days: 90     # How long to keep snapshots
+```bash
+SNAPSHOT_INTERVAL=1h          # How often to collect snapshots
+SNAPSHOT_RETENTION_DAYS=90    # How long to keep snapshots
 ```
+
+When a pool's utilization reaches `POOL_UTILIZATION_ALERT_PERCENT` (default 90), the snapshot sends a `pool.utilization_high` webhook event, once each time it crosses the threshold.
 
 ### Stale Device Threshold
 
-Configure when devices are considered stale:
-
-```yaml
-# config.yaml
-stale_device_days: 30    # Days without discovery
-```
-
-### Dashboard Refresh
-
-Configure auto-refresh interval:
-
-```yaml
-# config.yaml
-dashboard:
-  refresh_interval: 5m   # Auto-refresh interval
-```
+The stale threshold is the `stale_days` query parameter on `GET /api/v1/dashboard` (default 7). The web UI uses the default.
 
 ## Web UI
 
-Access the dashboard at `/` or `/dashboard`.
+Access the dashboard at `/`.
 
 ### Features
 
-- **Auto-refresh**: Configurable automatic data refresh
+- **Auto-refresh**: Refreshes every 60 seconds; can be switched off
 - **Clickable Widgets**: Navigate to filtered lists
-- **Trend Chart**: Interactive utilization visualization
 - **Responsive Layout**: Works on desktop and mobile
 
 ### Navigation
 
-From the dashboard, click any widget to:
+From the dashboard, click a widget to go to:
+- Summary cards → Device, network or datacenter list
 - Status cards → Device list filtered by status
-- Conflicts → Conflicts page
-- Network utilization → Pool details
-- Recent discoveries → Device details
-- Stale devices → Filtered device list
+- Network utilization → Network details
+- Recent discoveries → Discovery page
+- Stale devices → Device details, or the filtered device list
 
 ## Utilization Snapshots
 
@@ -201,18 +171,20 @@ Snapshots are stored automatically for trend analysis:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pool_id` | string | Pool identifier |
-| `timestamp` | timestamp | When snapshot was taken |
-| `total_ips` | int | Total IPs in pool |
+| `id` | string | Snapshot identifier |
+| `type` | string | `network` or `pool` |
+| `resource_id` | string | Network or pool ID |
+| `resource_name` | string | Network or pool name |
+| `total_ips` | int | Total IPs |
 | `used_ips` | int | Used IPs |
-| `utilization_percent` | float | Utilization percentage |
+| `utilization` | float | Utilization percentage (0-100) |
+| `timestamp` | timestamp | When the snapshot was taken |
 
 ### Storage
 
 Snapshots are stored in the `utilization_snapshots` table:
-- Automatic cleanup of old snapshots
+- Snapshots older than `SNAPSHOT_RETENTION_DAYS` are deleted automatically
 - Indexed for efficient querying
-- Minimal storage impact
 
 ## CLI Access
 
@@ -220,14 +192,15 @@ Snapshots are stored in the `utilization_snapshots` table:
 
 ```bash
 # Get JSON output
-curl -H "Authorization: Bearer $TOKEN" /api/v1/dashboard | jq
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/dashboard | jq
 ```
 
 ### Query Trends
 
 ```bash
-# Get 30-day trend
-curl "/api/v1/dashboard/trend?days=30" | jq
+# Get a pool's 30-day trend
+curl -H "Authorization: Bearer $RACKD_TOKEN" \
+  "http://localhost:8080/api/v1/dashboard/trend?type=pool&resource_id=<pool-id>&days=30" | jq
 ```
 
 ## Use Cases
@@ -235,15 +208,14 @@ curl "/api/v1/dashboard/trend?days=30" | jq
 ### Daily Operations
 
 Start each day reviewing:
-1. Active conflicts count
-2. High utilization alerts
-3. Recent discoveries
-4. Stale device count
+1. Network utilization
+2. Recent discoveries
+3. Stale device count
 
 ### Capacity Planning
 
 Use trend data for planning:
-1. Review 90-day utilization trend
+1. Review a pool's or network's 90-day utilization trend
 2. Identify growing pools
 3. Plan capacity expansion
 
@@ -252,37 +224,30 @@ Use trend data for planning:
 Generate reports from dashboard data:
 1. Device counts by status
 2. Network utilization summary
-3. Conflict resolution status
 
 ### Monitoring Integration
 
 Dashboard data can feed external monitoring:
 ```bash
-# Export metrics for Prometheus/Grafana
-curl /api/v1/dashboard | jq '{
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/dashboard | jq '{
   devices: .total_devices,
-  conflicts: .active_conflicts,
+  stale: .stale_devices,
   utilization: .network_utilization
 }'
 ```
 
 ## RBAC Permissions
 
-Dashboard access requires:
-- `devices:list` - For device counts and discoveries
-- `networks:list` - For network utilization
-- `pools:list` - For pool statistics
-- `conflicts:list` - For conflict counts
+Both dashboard endpoints require `dashboard:read`.
 
 ### Default Role Assignments
 
-All roles (admin, operator, viewer) can view the dashboard.
+All roles (admin, operator, viewer) have `dashboard:read`.
 
 ## Best Practices
 
-1. **Regular Review**: Check dashboard daily for alerts
+1. **Regular Review**: Check the dashboard daily
 2. **Trend Monitoring**: Watch utilization trends for capacity planning
-3. **Conflict Resolution**: Address conflicts promptly
-4. **Stale Device Cleanup**: Review and clean up stale devices
-5. **Configure Thresholds**: Set appropriate alert thresholds for your environment
-6. **Historical Analysis**: Use trend data for planning and reporting
+3. **Stale Device Cleanup**: Review and clean up stale devices
+4. **Alert Threshold**: Set `POOL_UTILIZATION_ALERT_PERCENT` for your environment
+5. **Historical Analysis**: Use trend data for planning and reporting

@@ -103,9 +103,11 @@ Each release publishes a multi-arch image to `ghcr.io/martinsuchenak/rackd`. Mou
 
 ```bash
 docker run -d --name rackd -p 8080:8080 -v rackd-data:/data \
-  -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
+  -e ENCRYPTION_KEY='<64 hex characters>' \
   ghcr.io/martinsuchenak/rackd:0.6
 ```
+
+Generate the key once with `openssl rand -hex 32` and keep it: credentials, DNS provider tokens and webhook secrets are encrypted with it.
 
 See the [deployment guide](deployment.md#docker-deployment) for tags, Compose and verifying the image's signature.
 
@@ -129,11 +131,11 @@ RACKD_VERSION="$(git describe --tags --always)" RACKD_COMMIT="$(git rev-parse --
 
 Without the build arguments the image still works, but `rackd version` reports `dev`.
 
-Settings are environment variables without a prefix (for example `LOG_LEVEL`, `DATA_DIR`, `ENCRYPTION_KEY`); see [Configuration](configuration.md). The image's health check uses `/healthz`.
+Settings are environment variables without a prefix (for example `LOG_LEVEL`, `DATA_DIR`, `ENCRYPTION_KEY`); see [Configuration Reference](configuration-reference.md). The image's health check uses `/healthz`.
 
 ### 4. Nomad Deployment
 
-For HashiCorp Nomad deployments, see [Deployment Guide](deployment.md#nomad).
+For HashiCorp Nomad deployments, see [Deployment Guide](deployment.md#nomad-deployment).
 
 ## Post-Installation
 
@@ -186,7 +188,7 @@ DISCOVERY_INTERVAL=24h
 
 Make the file readable only by the service user (`chmod 600 /etc/rackd/config.env`), since it holds the encryption key.
 
-See [Configuration Guide](configuration.md) for all options.
+See [Configuration Reference](configuration-reference.md) for all options.
 
 ### 4. Start the Server
 
@@ -329,10 +331,11 @@ sudo systemctl stop rackd
 # Backup database
 cp /var/lib/rackd/rackd.db /var/lib/rackd/rackd.db.backup
 
-# Download new version
-curl -LO https://github.com/martinsuchenak/rackd/releases/latest/download/rackd-linux-amd64
-chmod +x rackd-linux-amd64
-sudo mv rackd-linux-amd64 /usr/local/bin/rackd
+# Download and install the new version (see "Download a Release" above)
+VERSION=x.y.z   # the release to install
+curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_linux_amd64.tar.gz"
+tar -xzf "rackd_${VERSION}_linux_amd64.tar.gz" rackd
+sudo install -m 0755 rackd /usr/local/bin/rackd
 
 # Start the service
 sudo systemctl start rackd
@@ -356,7 +359,7 @@ docker run -d \
   --name rackd \
   -p 8080:8080 \
   -v rackd-data:/data \
-  -e ENCRYPTION_KEY=your-64-hex-character-key \
+  -e ENCRYPTION_KEY='<64 hex characters>' \
   ghcr.io/martinsuchenak/rackd:0.6
 ```
 
@@ -423,19 +426,17 @@ sudo chown -R rackd:rackd /var/lib/rackd
 ### Database Locked
 
 ```bash
-# Check for stale lock files
-ls -la /var/lib/rackd/
-
-# Remove WAL files if server is stopped
-rm /var/lib/rackd/rackd.db-wal
-rm /var/lib/rackd/rackd.db-shm
+# Check for a second rackd process using the same data directory
+ps aux | grep rackd
 ```
+
+Don't delete `rackd.db-wal` or `rackd.db-shm`: the WAL file can hold committed changes that aren't in `rackd.db` yet. Keep the data directory on a local disk, not a network share (see [Deployment](deployment.md#performance)).
 
 For more troubleshooting, see [Troubleshooting Guide](troubleshooting.md).
 
 ## Next Steps
 
 - [Quick Start Guide](quickstart.md) - Get started with basic operations
-- [Configuration](configuration.md) - Configure Rackd for your environment
+- [Configuration Reference](configuration-reference.md) - Configure Rackd for your environment
 - [CLI Reference](cli.md) - Learn CLI commands
 - [Web UI Guide](webui.md) - Explore the web interface

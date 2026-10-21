@@ -25,7 +25,7 @@ Rackd is a lightweight, self-contained infrastructure management tool for tracki
 ### DNS & Network Services
 
 - **DNS Management**: Zone and record management synced to [Technitium DNS Server](https://technitium.com/dns/); PowerDNS and BIND support is planned
-- **NAT Tracking**: Manage NAT pools and mappings
+- **NAT Tracking**: Document NAT mappings
 - **Circuit Tracking**: Document network circuits and providers
 
 ### Security & Access Control
@@ -56,11 +56,21 @@ VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/mart
 curl -LO "https://github.com/martinsuchenak/rackd/releases/download/v${VERSION}/rackd_${VERSION}_linux_amd64.tar.gz"
 tar -xzf "rackd_${VERSION}_linux_amd64.tar.gz" rackd
 
-# Start the server
-./rackd server
+# Start the server; the first admin is created from these on first start
+INITIAL_ADMIN_USERNAME=admin INITIAL_ADMIN_PASSWORD='<choose a password>' ./rackd server
 
-# Access the web UI at http://localhost:8080
+# Sign in to the web UI at http://localhost:8080
 ```
+
+To use the CLI, create an API key in the web UI (**API Keys**) and export it:
+
+```bash
+export RACKD_SERVER_URL=http://localhost:8080
+export RACKD_TOKEN='<api key>'
+./rackd device list
+```
+
+Set `ENCRYPTION_KEY` (`openssl rand -hex 32`) to enable credentials, scan profiles, scheduled scans and DNS; see the [Configuration Reference](docs/configuration-reference.md).
 
 ## Documentation
 
@@ -70,10 +80,8 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 
 - [Installation](docs/installation.md) - Installation methods and requirements
 - [Quick Start Guide](docs/quickstart.md) - Get up and running in 5 minutes
-- [Configuration](docs/configuration.md) - Environment variables and settings
-- [Configuration Reference](docs/configuration-reference.md) - Complete configuration options
-- [Authentication](docs/authentication.md) - API key management and security
-- [User Authentication](docs/user-authentication.md) - User login and session management
+- [Configuration Reference](docs/configuration-reference.md) - Environment variables and their defaults
+- [Authentication](docs/authentication.md) - Users, sessions, API keys and the first admin
 
 ### Core Features
 
@@ -93,7 +101,7 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 - [Webhooks](docs/webhooks.md) - Event notifications and integrations
 - [Custom Fields](docs/custom-fields.md) - User-defined fields
 - [Circuits](docs/circuits.md) - Network circuit tracking
-- [NAT](docs/nat.md) - NAT pool management
+- [NAT](docs/nat.md) - NAT mapping tracking
 - [Reservations](docs/reservations.md) - IP reservation tracking
 - [Conflicts](docs/conflicts.md) - IP conflict detection and resolution
 
@@ -123,10 +131,10 @@ Comprehensive documentation is available in the [docs/](docs/) directory:
 
 ## Technology Stack
 
-- **Backend**: Go 1.25+ (CGO-free)
+- **Backend**: Go 1.27+ (CGO-free)
 - **Database**: SQLite (embedded, no external dependencies)
 - **Frontend**: TypeScript, Alpine.js, TailwindCSS v4
-- **Build**: Make, Bun (frontend)
+- **Build**: [Task](https://taskfile.dev), Bun (frontend)
 - **CLI**: paularlott/cli
 - **MCP**: paularlott/mcp
 

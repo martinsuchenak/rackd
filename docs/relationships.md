@@ -31,13 +31,14 @@ Represents logical dependencies where one device relies on another for functiona
 - Load balancer depends on backend servers
 - Monitoring system depends on network infrastructure
 
-## Bidirectional Relationships
+## Direction
 
-All relationships in Rackd are bidirectional, meaning they can be viewed from either device's perspective:
+A relationship is stored from a parent device to a child device. Both devices see it:
 
-- If Device A **contains** Device B, then Device B is **contained by** Device A
-- If Device A is **connected_to** Device B, then Device B is **connected_to** Device A  
-- If Device A **depends_on** Device B, then Device B **supports** Device A
+- `GET /devices/{id}/relationships` returns relationships where the device is the parent or the child
+- `GET /devices/{id}/related?type=<type>` returns the devices on the other side, in either direction
+
+Updating or removing a relationship uses the parent's ID in the path.
 
 ## Use Cases
 
@@ -60,64 +61,62 @@ Document device relationships for audit trails and regulatory compliance.
 
 ### Create Relationship
 ```bash
-# Server in rack
-curl -X POST http://localhost:8080/api/v1/relationships \
+# Server in rack (rack-01 is the parent)
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/devices/rack-01/relationships \
   -H "Content-Type: application/json" \
   -d '{
-    "source_device_id": "rack-01",
-    "target_device_id": "server-web-01", 
-    "relationship_type": "contains"
+    "child_id": "server-web-01",
+    "type": "contains"
   }'
 
-# Network connection
-curl -X POST http://localhost:8080/api/v1/relationships \
+# Network connection, with notes
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v1/devices/server-web-01/relationships \
   -H "Content-Type: application/json" \
   -d '{
-    "source_device_id": "server-web-01",
-    "target_device_id": "switch-core-01",
-    "relationship_type": "connected_to"
+    "child_id": "switch-core-01",
+    "type": "connected_to",
+    "notes": "eth0 to Gi1/0/12"
   }'
 ```
+
+Adding a relationship that already exists replaces its notes.
 
 ### Query Relationships
 ```bash
 # Get all relationships for a device
-curl http://localhost:8080/api/v1/devices/server-web-01/relationships
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/devices/server-web-01/relationships
 
-# Get specific relationship type
-curl http://localhost:8080/api/v1/devices/server-web-01/relationships?type=connected_to
+# Get the devices related by one type
+curl -H "Authorization: Bearer $RACKD_TOKEN" "http://localhost:8080/api/v1/devices/server-web-01/related?type=connected_to"
+
+# Get every relationship
+curl -H "Authorization: Bearer $RACKD_TOKEN" http://localhost:8080/api/v1/relationships
 ```
 
-## CLI Examples
-
-### Create Relationships
+### Update Notes and Remove
 ```bash
-# Add server to rack
-rackd relationship create --source rack-01 --target server-web-01 --type contains
+# Update notes
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X PATCH http://localhost:8080/api/v1/devices/server-web-01/relationships/switch-core-01/connected_to \
+  -H "Content-Type: application/json" \
+  -d '{"notes": "eth1 to Gi1/0/13"}'
 
-# Connect server to switch
-rackd relationship create --source server-web-01 --target switch-core-01 --type connected_to
-
-# Add dependency
-rackd relationship create --source app-server-01 --target db-server-01 --type depends_on
+# Remove
+curl -H "Authorization: Bearer $RACKD_TOKEN" -X DELETE http://localhost:8080/api/v1/devices/server-web-01/relationships/switch-core-01/connected_to
 ```
 
-### List Relationships
-```bash
-# Show all relationships for a device
-rackd relationship list --device server-web-01
+## Other Interfaces
 
-# Show only dependencies
-rackd relationship list --device server-web-01 --type depends_on
-```
+There is no `rackd` CLI command for relationships. Besides the API:
+
+- **Web UI**: the device detail page lists a device's relationships, adds and removes them, and edits notes; `/devices/graph` shows the relationship graph
+- **MCP**: `device_add_relationship` and `device_get_relationships`
 
 ## Implementation
 
-Relationships are handled by the relationship service and stored in the relationships table. The relationship model supports:
+Relationships are handled by the relationship service and stored in the `device_relationships` table. The relationship model supports:
 
-- Bidirectional querying
+- Querying from either device
 - Relationship type validation
 - Cascade deletion when devices are removed
-- Circular dependency detection for `depends_on` relationships
 
 See the relationship handlers in `internal/api/relationship_handlers.go` and the relationship model in `pkg/model/relationship.go` for implementation details.

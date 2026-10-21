@@ -12,9 +12,11 @@ RBAC in Rackd follows the standard model:
 
 Users are assigned roles, and roles grant permissions. A user's effective permissions are the union of all permissions from their assigned roles.
 
+Each permission has a name, such as `device:list`, and a resource and action, such as `devices` and `list`. Checks, API key scopes and OAuth scopes use the resource and action: `devices:list`. The tables below list both.
+
 ## Default Roles
 
-Rackd includes three built-in system roles that cannot be modified or deleted:
+Rackd includes three built-in system roles. They can't be deleted and their permissions can't be changed:
 
 ### Admin
 
@@ -24,27 +26,27 @@ Full administrative access with all permissions. Can manage all resources includ
 
 Operational access for day-to-day management:
 
-| Resource | Actions |
-|----------|---------|
-| Devices | list, create, read, update |
-| Networks | list, create, read, update |
-| Datacenters | list, read |
-| Discovery | list, create, read |
-| DNS providers | list, read, test |
+| Resources | Actions |
+|-----------|---------|
+| `devices`, `networks`, `pools`, `relationships`, `reservations`, `circuits`, `nat`, `discovery`, `credentials`, `scan-profiles`, `scheduled-scans` | list, create, read, update |
+| `datacenters`, `custom-fields`, `webhooks`, `audit`, `logs` | list, read |
+| `conflicts` | list, read, detect |
+| `dns-provider` | list, read, test |
+| `dns-zone`, `dns` | list, read, sync |
+| `search`, `dashboard`, `metrics` | read |
 
-Cannot delete resources or manage users/roles.
+Cannot delete anything, or manage users, roles or webhooks. Operators and viewers have no `apikeys` permissions, so they can't create API keys unless another role grants them.
 
 ### Viewer
 
 Read-only access to view resources:
 
-| Resource | Actions |
-|----------|---------|
-| Devices | list, read |
-| Networks | list, read |
-| Datacenters | list, read |
-| Discovery | list, read |
-| DNS providers | list, read |
+| Resources | Actions |
+|-----------|---------|
+| `devices`, `networks`, `datacenters`, `pools`, `relationships`, `reservations`, `circuits`, `nat`, `conflicts`, `discovery`, `credentials`, `scan-profiles`, `scheduled-scans`, `custom-fields`, `webhooks`, `dns-provider`, `dns-zone`, `dns` | list, read |
+| `search`, `dashboard`, `metrics` | read |
+
+No access to audit or application logs, users, roles or API keys.
 
 ## Permissions Reference
 
@@ -211,7 +213,6 @@ Read-only access to view resources:
 | `dns:update` | dns | update | Modify DNS records |
 | `dns:delete` | dns | delete | Delete DNS records |
 | `dns:sync` | dns | sync | Sync DNS records |
-| `dns:import` | dns | import | Import DNS records |
 
 ### Users
 
@@ -337,7 +338,7 @@ rackd role delete --id role-456
 
 ### Web UI
 
-1. Navigate to **Settings → Roles**
+1. Navigate to **Administration → Roles**
 2. View existing roles and their permissions
 3. Create custom roles with specific permission sets
 4. Assign roles to users from the user management page
@@ -351,7 +352,9 @@ rackd role delete --id role-456
 | GET | `/api/v1/roles` | List roles |
 | GET | `/api/v1/roles/{id}` | Get role details |
 | POST | `/api/v1/roles` | Create role |
+| PUT | `/api/v1/roles/{id}` | Update a role's description and, for custom roles, its permissions |
 | DELETE | `/api/v1/roles/{id}` | Delete role |
+| GET | `/api/v1/roles/{id}/permissions` | List a role's permissions |
 
 ### Permissions
 
@@ -365,6 +368,8 @@ rackd role delete --id role-456
 |--------|----------|-------------|
 | POST | `/api/v1/users/grant-role` | Assign role to user |
 | POST | `/api/v1/users/revoke-role` | Revoke role from user |
+| GET | `/api/v1/users/{id}/roles` | List a user's roles |
+| GET | `/api/v1/users/{id}/permissions` | List a user's effective permissions |
 
 ## Permission Checking
 
@@ -374,7 +379,7 @@ Permissions are checked at the service layer using the `requirePermission` funct
 
 ```go
 func (s *DeviceService) Create(ctx context.Context, device *model.Device) error {
-    if err := requirePermission(ctx, s.checker, "devices", "create"); err != nil {
+    if err := requirePermission(ctx, s.store, "devices", "create"); err != nil {
         return err
     }
     // ... create device
@@ -383,11 +388,12 @@ func (s *DeviceService) Create(ctx context.Context, device *model.Device) error 
 
 ### For API Keys
 
-API keys inherit permissions from their owning user. When an API key makes a request:
+API keys act with their owning user's permissions. When an API key makes a request:
 
 1. The system resolves the user associated with the API key
-2. Checks the user's roles and permissions
-3. Allows or denies the action based on permissions
+2. If the key has scopes, the action must be one of them
+3. The user's roles must grant the permission
+4. The action is allowed only if both checks pass
 
 ### For OAuth Tokens (MCP)
 
@@ -403,6 +409,6 @@ OAuth tokens can be scoped to specific permissions. The token's scope restricts 
 
 ## Related Documentation
 
-- [User Authentication](user-authentication.md) - Authentication methods
+- [Authentication](authentication.md) - Authentication methods
 - [API Reference](api.md) - REST API endpoints
-- [CLI Reference](cli.md) - Role management commands
+- [CLI Reference](cli-reference.md) - Role management commands
