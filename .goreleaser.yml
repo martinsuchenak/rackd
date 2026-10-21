@@ -26,7 +26,8 @@ builds:
 # Sign the macOS binaries with the Developer ID certificate and notarize them
 # with Apple, on the Linux runner (GoReleaser's cross-platform signer, quill),
 # before they are archived. Skipped unless the MACOS_* secrets are set, so a
-# fork or a local snapshot builds without them. Setup: docs/releasing.md.
+# fork or a local snapshot builds without them. Setup: docs/development.md,
+# "macOS Signing and Notarization".
 notarize:
   macos:
     - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
