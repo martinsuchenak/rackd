@@ -18,6 +18,13 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   `API_AUTH_TOKEN`/`MCP_AUTH_TOKEN` settings or health-check an endpoint
   that needs signing in.
 
+### Security
+
+- Build with Go 1.27.3, which fixes GO-2026-6809 in `crypto/x509`: certificate
+  verification trusted intermediate certificates that are now known to be
+  compromised. rackd verifies certificates when it delivers webhooks and calls
+  DNS providers over HTTPS.
+
 ## [0.5.1] - 2026-10-20
 
 ### Fixed
