@@ -26,12 +26,12 @@ func ResolveDataDir(cmd *cli.Command) string {
 	return config.Load().DataDir
 }
 
-// legacyDataDir is where rackd before v0.5.2 kept its database whenever
+// legacyDataDir is where rackd before v0.6.0 kept its database whenever
 // --data-dir wasn't given, whatever DATA_DIR said.
 const legacyDataDir = "./data"
 
 // CheckDataDirMove refuses to start on an empty data directory chosen by
-// DATA_DIR when ./data holds a database: before v0.5.2 that variable was
+// DATA_DIR when ./data holds a database: before v0.6.0 that variable was
 // ignored, so the database there is most likely the real one, and starting
 // would create an empty inventory instead.
 func CheckDataDirMove(cmd *cli.Command, dataDir string) error {
@@ -49,7 +49,7 @@ func CheckDataDirMove(cmd *cli.Command, dataDir string) error {
 	if _, err := os.Stat(filepath.Join(legacy, "rackd.db")); err != nil {
 		return nil
 	}
-	return fmt.Errorf("DATA_DIR is %s, which has no database, but %s does: rackd before v0.5.2 ignored DATA_DIR and used ./data. "+
+	return fmt.Errorf("DATA_DIR is %s, which has no database, but %s does: rackd before v0.6.0 ignored DATA_DIR and used ./data. "+
 		"Move %s to %s, or set DATA_DIR=./data (or pass --data-dir ./data) to keep using it",
 		want, filepath.Join(legacy, "rackd.db"), legacy, want)
 }
