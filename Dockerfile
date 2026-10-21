@@ -10,7 +10,7 @@ COPY webui/ ./
 RUN mkdir -p ../internal/ui && bun run build
 
 # Build stage
-FROM golang:1.27.2-alpine AS builder
+FROM golang:1.27.3-alpine AS builder
 
 ARG VERSION=dev
 ARG COMMIT=unknown
