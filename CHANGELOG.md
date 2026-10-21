@@ -9,6 +9,12 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- The installation guide's check that a macOS binary is notarized used
+  `spctl --assess --type execute`, which rejects every command-line binary.
+  It now uses `spctl --assess --type open --context context:primary-signature`.
+
 ## [0.6.0] - 2026-10-21
 
 ### Added
