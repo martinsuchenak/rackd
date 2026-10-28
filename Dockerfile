@@ -1,5 +1,5 @@
 # Web UI stage
-FROM oven/bun:1.4.3-alpine AS ui
+FROM oven/bun:1.4.4-alpine AS ui
 
 WORKDIR /app/webui
 
