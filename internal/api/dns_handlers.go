@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -263,7 +265,15 @@ func (h *Handler) importDNSZone(w http.ResponseWriter, r *http.Request) {
 		h.badRequest(w, "ID is required")
 		return
 	}
-	result, err := h.svc.DNS.ImportFromDNS(r.Context(), id)
+	// The body is optional; an empty one imports without deleting.
+	var opts model.ImportDNSOptions
+	if r.ContentLength != 0 {
+		if err := json.NewDecoder(r.Body).Decode(&opts); err != nil && !errors.Is(err, io.EOF) {
+			h.invalidJSON(w)
+			return
+		}
+	}
+	result, err := h.svc.DNS.ImportFromDNSWithOptions(r.Context(), id, opts)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return

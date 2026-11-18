@@ -98,6 +98,7 @@ func (s *Server) registerDNSTools() {
 	s.mcpServer.RegisterTool(
 		mcp.NewTool("dns_zone_import", "Import DNS records from provider into a zone",
 			mcp.String("id", "Zone ID", mcp.Required()),
+			mcp.Boolean("delete_missing", "Also delete local records that were synced to the provider but are no longer there"),
 		).Discoverable("dns", "zone", "import", "pull", "fetch"),
 		s.handleDNSZoneImport,
 	)

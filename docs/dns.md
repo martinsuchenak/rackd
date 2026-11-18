@@ -139,7 +139,7 @@ Trigger an immediate sync:
 rackd dns sync --zone zone-123
 ```
 
-A sync pushes every record in the zone to the provider.
+A sync checks every record in the zone against the provider and writes the ones that are missing or have a different value.
 
 ### Automatic Sync
 
@@ -155,7 +155,12 @@ Import existing DNS records into Rackd:
 ```bash
 # Import records from provider
 rackd dns import --zone zone-123
+
+# Also delete local records that were removed on the provider
+rackd dns import --zone zone-123 --delete
 ```
+
+An import adds records it doesn't have and updates the values of ones it does. With `--delete` (`{"delete_missing": true}` in the API request body) it also deletes local records that were synced to the provider before but are no longer there. Records still waiting to be pushed (`pending` or `failed`) are never deleted.
 
 ## Provider Configuration Details
 

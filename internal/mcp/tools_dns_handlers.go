@@ -197,7 +197,9 @@ func (s *Server) handleDNSZoneSync(ctx context.Context, req *mcp.ToolRequest) (*
 
 func (s *Server) handleDNSZoneImport(ctx context.Context, req *mcp.ToolRequest) (*mcp.ToolResponse, error) {
 	id, _ := req.String("id")
-	result, err := s.svc.DNS.ImportFromDNS(ctx, id)
+	result, err := s.svc.DNS.ImportFromDNSWithOptions(ctx, id, model.ImportDNSOptions{
+		DeleteMissing: req.BoolOr("delete_missing", false),
+	})
 	if err != nil {
 		return nil, toolError(err)
 	}

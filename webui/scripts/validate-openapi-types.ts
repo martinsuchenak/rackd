@@ -23,6 +23,8 @@ type Mapping = {
 
 const mappings: Mapping[] = [
   { typeName: 'Datacenter', schemaName: 'Datacenter' },
+  { typeName: 'SyncResult', schemaName: 'DNSSyncResult' },
+  { typeName: 'ImportResult', schemaName: 'DNSImportResult' },
   { typeName: 'Network', schemaName: 'Network' },
   { typeName: 'NetworkUtilization', schemaName: 'NetworkUtilization' },
   { typeName: 'ServiceInfo', schemaName: 'ServiceInfo' },

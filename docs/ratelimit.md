@@ -64,7 +64,7 @@ HTTP/1.1 429 Too Many Requests
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 2026-02-03T16:45:00Z
-Retry-After: 2026-02-03T16:45:00Z
+Retry-After: 42
 Content-Type: application/json
 
 {
@@ -73,7 +73,7 @@ Content-Type: application/json
 }
 ```
 
-The login limit returns the code `LOGIN_RATE_LIMIT_EXCEEDED` instead. `Retry-After` is a timestamp, not a number of seconds.
+`Retry-After` is the number of seconds until the window ends, rounded up. The login limit returns the code `LOGIN_RATE_LIMIT_EXCEEDED` instead.
 
 ## Monitoring
 

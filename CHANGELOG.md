@@ -9,7 +9,35 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Changed
+
+- `POST /api/v1/nat` creates the mapping enabled when the request leaves out
+  `enabled`, as the API spec, CLI, MCP tool and web UI already assumed; it
+  used to be created disabled. Send `"enabled": false` for a disabled one.
+  Because enabled mappings can't share an external endpoint, a request that
+  used to create a disabled duplicate now gets a 409.
+- `Retry-After` on 429 responses is the number of seconds until the limit
+  resets, as HTTP requires, instead of an RFC 3339 timestamp most clients
+  can't parse. `X-RateLimit-Reset` is still a timestamp.
+
+### Removed
+
+- `rackd dns sync --force`. The server never read it: a sync already checks
+  every record against the provider and writes the ones that differ.
+
 ### Fixed
+
+- `rackd dns import --delete` (and `delete_missing` on the API and the
+  `dns_zone_import` MCP tool) deletes local records that were synced to the
+  provider but have been removed there. The flag used to be ignored.
+  Records waiting to be pushed are never deleted.
+- `rackd dns sync` and `rackd dns import` print summaries from the fields
+  the server returns; they used to print nothing useful. The API spec
+  describes the real sync and import responses.
+- `GET /api/v1/discovery/devices` applies `status`, `limit` and `offset`,
+  which the spec and `rackd discovery list --status/--limit` already used,
+  and returns `[]` rather than `null` when nothing matches.
+- `rackd export` sets `exported_at`; it was always null.
 
 - DNS records generated for devices: IPv6 addresses get AAAA records instead
   of A records, and PTR records go into the zone named by `ptr_zone` (which

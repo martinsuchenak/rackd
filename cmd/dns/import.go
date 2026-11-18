@@ -16,7 +16,7 @@ func ImportCommand() *cli.Command {
 		Usage: "Import DNS records from provider",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "zone", Usage: "Zone ID", Required: true},
-			&cli.BoolFlag{Name: "delete", Usage: "Delete local records not found on provider"},
+			&cli.BoolFlag{Name: "delete", Usage: "Also delete local records that were synced to the provider but are no longer there"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (json/yaml)", DefaultValue: "yaml"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
@@ -54,17 +54,17 @@ func ImportCommand() *cli.Command {
 
 			// Also print a human-readable summary
 			fmt.Println()
-			if recordsImported, ok := result["records_imported"].(float64); ok {
-				fmt.Printf("Records imported: %.0f\n", recordsImported)
+			fmt.Printf("Records on provider: %.0f\n", num(result, "total"))
+			fmt.Printf("Imported or updated: %.0f (%.0f linked to devices)\n", num(result, "imported"), num(result, "linked"))
+			fmt.Printf("Unchanged: %.0f\n", num(result, "skipped"))
+			if cmd.GetBool("delete") {
+				fmt.Printf("Deleted: %.0f\n", num(result, "deleted"))
 			}
-			if recordsUpdated, ok := result["records_updated"].(float64); ok {
-				fmt.Printf("Records updated: %.0f\n", recordsUpdated)
+			if failed := num(result, "failed"); failed > 0 {
+				fmt.Printf("Failed: %.0f\n", failed)
 			}
-			if recordsSkipped, ok := result["records_skipped"].(float64); ok {
-				fmt.Printf("Records skipped: %.0f\n", recordsSkipped)
-			}
-			if recordsDeleted, ok := result["records_deleted"].(float64); ok {
-				fmt.Printf("Records deleted: %.0f\n", recordsDeleted)
+			if msg, ok := result["error"].(string); ok && msg != "" {
+				fmt.Printf("Error: %s\n", msg)
 			}
 
 			return nil

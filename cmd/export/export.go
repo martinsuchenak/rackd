@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/paularlott/cli"
 
@@ -254,7 +255,7 @@ func AllCommand() *cli.Command {
 				"devices":     devices,
 				"networks":    networks,
 				"datacenters": datacenters,
-				"exported_at": ctx.Value("time"),
+				"exported_at": time.Now().UTC().Format(time.RFC3339),
 			}
 
 			output := cmd.GetString("output")

@@ -52,11 +52,19 @@ func (h *Handler) getNATMapping(w http.ResponseWriter, r *http.Request) {
 
 // createNATMapping creates a new NAT mapping
 func (h *Handler) createNATMapping(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateNATRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// The outer Enabled shadows the embedded one, so an omitted "enabled"
+	// can be told apart from false: a new mapping is enabled unless the
+	// request says otherwise, as in the CLI, MCP tool and web UI.
+	var body struct {
+		model.CreateNATRequest
+		Enabled *bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		h.invalidJSON(w)
 		return
 	}
+	req := body.CreateNATRequest
+	req.Enabled = body.Enabled == nil || *body.Enabled
 
 	mapping, err := h.svc.NAT.Create(r.Context(), &req)
 	if err != nil {

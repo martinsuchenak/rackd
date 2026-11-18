@@ -966,6 +966,7 @@ export interface ImportResult {
   linked: number;
   skipped: number;
   failed: number;
+  deleted: number;
   error?: string;
   skipped_ids?: string[];
   failed_ids?: string[];

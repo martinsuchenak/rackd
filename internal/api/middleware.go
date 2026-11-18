@@ -393,7 +393,7 @@ func LoginRateLimitMiddleware(limiter *RateLimiter, proxyResolver *TrustedProxyR
 			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", limiter.requests))
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC3339))
-			w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
+			w.Header().Set("Retry-After", retryAfterSeconds(resetTime))
 
 			log.Warn("Login rate limit exceeded", "client", clientID)
 			writeAuthError(w, http.StatusTooManyRequests, "LOGIN_RATE_LIMIT_EXCEEDED", "Too many login attempts. Please try again later.")
