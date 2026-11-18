@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
 	"github.com/paularlott/cli"
@@ -48,14 +49,14 @@ func SyncCommand() *cli.Command {
 				client.PrintYAML(result)
 			}
 
-			// Also print a human-readable summary
-			fmt.Println()
-			fmt.Printf("Synced: %.0f of %.0f\n", num(result, "synced"), num(result, "total"))
+			// A human-readable summary, on stderr so --output json stays parseable
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintf(os.Stderr, "Synced: %.0f of %.0f\n", num(result, "synced"), num(result, "total"))
 			if failed := num(result, "failed"); failed > 0 {
-				fmt.Printf("Failed: %.0f\n", failed)
+				fmt.Fprintf(os.Stderr, "Failed: %.0f\n", failed)
 			}
 			if msg, ok := result["error"].(string); ok && msg != "" {
-				fmt.Printf("Error: %s\n", msg)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", msg)
 			}
 
 			return nil

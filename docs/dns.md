@@ -160,7 +160,9 @@ rackd dns import --zone zone-123
 rackd dns import --zone zone-123 --delete
 ```
 
-An import adds records it doesn't have and updates the values of ones it does. With `--delete` (`{"delete_missing": true}` in the API request body) it also deletes local records that were synced to the provider before but are no longer there. Records still waiting to be pushed (`pending` or `failed`) are never deleted.
+An import adds records it doesn't have and updates the values of ones it does. With `--delete` (`{"delete_missing": true}` in the API request body) it also deletes local records that were synced to the provider before but are no longer there. Records still waiting to be pushed (`pending` or `failed`) are never deleted. A deleted record that belonged to a device is generated again the next time the device is saved.
+
+Both commands print a summary on stderr after the result, so `--output json` can be piped.
 
 ## Provider Configuration Details
 
