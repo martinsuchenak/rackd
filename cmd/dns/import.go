@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/martinsuchenak/rackd/cmd/client"
 	"github.com/paularlott/cli"
@@ -52,19 +53,19 @@ func ImportCommand() *cli.Command {
 				client.PrintYAML(result)
 			}
 
-			// Also print a human-readable summary
-			fmt.Println()
-			fmt.Printf("Records on provider: %.0f\n", num(result, "total"))
-			fmt.Printf("Imported or updated: %.0f (%.0f linked to devices)\n", num(result, "imported"), num(result, "linked"))
-			fmt.Printf("Unchanged: %.0f\n", num(result, "skipped"))
+			// A human-readable summary, on stderr so --output json stays parseable
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintf(os.Stderr, "Records on provider: %.0f\n", num(result, "total"))
+			fmt.Fprintf(os.Stderr, "Imported or updated: %.0f (%.0f linked to devices)\n", num(result, "imported"), num(result, "linked"))
+			fmt.Fprintf(os.Stderr, "Unchanged: %.0f\n", num(result, "skipped"))
 			if cmd.GetBool("delete") {
-				fmt.Printf("Deleted: %.0f\n", num(result, "deleted"))
+				fmt.Fprintf(os.Stderr, "Deleted: %.0f\n", num(result, "deleted"))
 			}
 			if failed := num(result, "failed"); failed > 0 {
-				fmt.Printf("Failed: %.0f\n", failed)
+				fmt.Fprintf(os.Stderr, "Failed: %.0f\n", failed)
 			}
 			if msg, ok := result["error"].(string); ok && msg != "" {
-				fmt.Printf("Error: %s\n", msg)
+				fmt.Fprintf(os.Stderr, "Error: %s\n", msg)
 			}
 
 			return nil
