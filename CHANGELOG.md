@@ -9,6 +9,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-18
+
 ### Fixed
 
 - The v0.7.0 release build stopped before publishing anything: `webui/bun.lock`
@@ -878,7 +880,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/martinsuchenak/rackd/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/martinsuchenak/rackd/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/martinsuchenak/rackd/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/martinsuchenak/rackd/compare/v0.5.0...v0.5.1
