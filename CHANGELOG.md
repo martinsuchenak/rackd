@@ -9,11 +9,29 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Changed
+
+- MCP tool calls with invalid arguments now return a tool result with
+  `isError` set and the validation message as its text, instead of a
+  JSON-RPC `-32602` error, as the MCP specification asks; the assistant can
+  read the message and correct the call. Not found, forbidden, conflict and
+  other failures are still JSON-RPC errors with the same codes. See
+  [MCP](docs/mcp.md#error-handling).
+- Dependencies updated, including the MCP library (paularlott/mcp v0.36.0,
+  closer conformance to the MCP specification), SQLite (modernc v1.62.0),
+  gosnmp v1.47.0, Alpine.js 3.17.5, cytoscape 3.35.0 and Tailwind CSS 4.3.5.
+
 ### Fixed
 
 - The installation guide's check that a macOS binary is notarized used
   `spctl --assess --type execute`, which rejects every command-line binary.
   It now uses `spctl --assess --type open --context context:primary-signature`.
+
+### Security
+
+- Built with Go 1.27.4, which fixes a `net/http` vulnerability
+  ([GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859)) reachable from the
+  HTTP and MCP server, webhook delivery and the CLI.
 
 ## [0.6.0] - 2026-10-21
 

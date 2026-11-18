@@ -86,13 +86,13 @@ Rackd is an open-source IP Address Management (IPAM) and Device Inventory System
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | **Backend** |
-| Language | Go | 1.27.3+ | Core application logic |
+| Language | Go | 1.27.4+ | Core application logic |
 | Database | SQLite | 3.x | Embedded data storage |
-| SQLite Driver | modernc.org/sqlite | v1.60.1 | CGO-free SQLite driver |
+| SQLite Driver | modernc.org/sqlite | v1.62.0 | CGO-free SQLite driver |
 | Migrations | martinsuchenak/xdal | v0.1.0 | Schema migrations and history |
-| CLI Framework | paularlott/cli | v0.10.1 | Command-line interface |
-| MCP Framework | paularlott/mcp | v0.32.4 | Model Context Protocol |
-| Logger | paularlott/logger | v0.3.0 | Structured logging |
+| CLI Framework | paularlott/cli | v0.10.3 | Command-line interface |
+| MCP Framework | paularlott/mcp | v0.36.0 | Model Context Protocol |
+| Logger | paularlott/logger | v0.4.0 | Structured logging |
 | **Frontend** |
 | Language | TypeScript | 7.0+ | Type-safe JavaScript |
 | Framework | Alpine.js | 3.17+ | Reactive UI framework (CSP build) |

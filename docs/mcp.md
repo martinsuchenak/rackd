@@ -396,7 +396,20 @@ The AI assistant will automatically translate these requests into appropriate MC
 
 ## Error Handling
 
-A failed tool call returns a JSON-RPC error:
+Invalid arguments come back as a tool result with `isError` set, so the assistant reads the message and can correct the call, as the MCP specification asks:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [{"type": "text", "text": "validation error: [subnet: invalid CIDR notation]"}],
+    "isError": true
+  }
+}
+```
+
+Other failures return a JSON-RPC error:
 
 ```json
 {
@@ -410,7 +423,7 @@ A failed tool call returns a JSON-RPC error:
 ```
 
 Error codes:
-- `-32602`: Invalid or missing parameters
+- `-32602`: The request is malformed, or names a tool that doesn't exist
 - `-32603`: Internal error (details are in the server log, not the response)
 - `-32001`: Not authenticated
 - `-32003`: Forbidden (the user or token lacks the permission)

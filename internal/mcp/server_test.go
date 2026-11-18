@@ -286,6 +286,38 @@ func callTool(t *testing.T, srv *Server, toolName string, args map[string]interf
 	return resp
 }
 
+// requireOK fails the test when a tool call failed, either as a JSON-RPC
+// error or as a tool result with isError set (how validation failures come
+// back).
+func requireOK(t *testing.T, resp map[string]interface{}) {
+	t.Helper()
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if msg, failed := toolFailure(resp); failed {
+		t.Fatalf("tool failed: %s", msg)
+	}
+}
+
+// toolFailure reports whether a tool call came back as a tool result with
+// isError set, and the text it carried.
+func toolFailure(resp map[string]interface{}) (string, bool) {
+	result, _ := resp["result"].(map[string]interface{})
+	if isErr, _ := result["isError"].(bool); !isErr {
+		return "", false
+	}
+	var msg string
+	content, _ := result["content"].([]interface{})
+	for _, c := range content {
+		if m, ok := c.(map[string]interface{}); ok {
+			if text, ok := m["text"].(string); ok {
+				msg += text
+			}
+		}
+	}
+	return msg, true
+}
+
 func TestDeviceSave_Create(t *testing.T) {
 	srv, store := newTestServer(t)
 	defer func() { _ = store.Close() }()
@@ -296,9 +328,7 @@ func TestDeviceSave_Create(t *testing.T) {
 		"tags":        []string{"test", "dev"},
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 
 	result := resp["result"].(map[string]interface{})
 	content := result["content"].([]interface{})
@@ -318,9 +348,7 @@ func TestDeviceList(t *testing.T) {
 
 	resp := callTool(t, srv, "device_list", map[string]interface{}{})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestDatacenterSave_Create(t *testing.T) {
@@ -332,9 +360,7 @@ func TestDatacenterSave_Create(t *testing.T) {
 		"location": "US-East",
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestDatacenterList(t *testing.T) {
@@ -348,9 +374,7 @@ func TestDatacenterList(t *testing.T) {
 
 	resp := callTool(t, srv, "datacenter_list", map[string]interface{}{})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestNetworkSave_Create(t *testing.T) {
@@ -362,9 +386,7 @@ func TestNetworkSave_Create(t *testing.T) {
 		"subnet": "192.168.1.0/24",
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestNetworkList(t *testing.T) {
@@ -379,9 +401,7 @@ func TestNetworkList(t *testing.T) {
 
 	resp := callTool(t, srv, "network_list", map[string]interface{}{})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestDiscoveryScan(t *testing.T) {
@@ -404,9 +424,7 @@ func TestDiscoveryScan(t *testing.T) {
 		"scan_type":  "quick",
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestDiscoveryList(t *testing.T) {
@@ -415,9 +433,7 @@ func TestDiscoveryList(t *testing.T) {
 
 	resp := callTool(t, srv, "discovery_list", map[string]interface{}{})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestAddRelationship_InvalidType(t *testing.T) {
@@ -439,8 +455,8 @@ func TestAddRelationship_InvalidType(t *testing.T) {
 		"type":      "invalid_type",
 	})
 
-	if resp["error"] == nil {
-		t.Fatal("expected error for invalid relationship type")
+	if msg, failed := toolFailure(resp); !failed || !strings.Contains(msg, "type") {
+		t.Fatalf("invalid relationship type: %v, want a tool error about the type", resp)
 	}
 }
 
@@ -463,9 +479,7 @@ func TestAddRelationship_ValidType(t *testing.T) {
 		"type":      "contains",
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestGetRelationships(t *testing.T) {
@@ -483,9 +497,7 @@ func TestGetRelationships(t *testing.T) {
 		"id": devices[0].ID,
 	})
 
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 }
 
 func TestInner(t *testing.T) {
@@ -501,9 +513,7 @@ func TestInner(t *testing.T) {
 // toolJSON decodes a tool call's JSON text content into v.
 func toolJSON(t *testing.T, resp map[string]interface{}, v interface{}) {
 	t.Helper()
-	if resp["error"] != nil {
-		t.Fatalf("tool error: %v", resp["error"])
-	}
+	requireOK(t, resp)
 	content := resp["result"].(map[string]interface{})["content"].([]interface{})
 	text := content[0].(map[string]interface{})["text"].(string)
 	if err := json.Unmarshal([]byte(text), v); err != nil {
@@ -539,8 +549,19 @@ func TestNetworkSave_Validates(t *testing.T) {
 	srv, store := newTestServer(t)
 	defer func() { _ = store.Close() }()
 	resp := callTool(t, srv, "network_save", map[string]interface{}{"name": "n", "subnet": "foo"})
+	if msg, failed := toolFailure(resp); !failed || !strings.Contains(msg, "CIDR") {
+		t.Errorf("invalid subnet: %v, want a tool error about CIDR", resp)
+	}
+}
+
+// Failures other than invalid arguments stay JSON-RPC errors with rackd's
+// codes (docs/mcp.md), so clients can branch on error.code.
+func TestDeviceGet_NotFoundIsJSONRPCError(t *testing.T) {
+	srv, store := newTestServer(t)
+	defer func() { _ = store.Close() }()
+	resp := callTool(t, srv, "device_get", map[string]interface{}{"id": "00000000-0000-0000-0000-000000000000"})
 	errObj, ok := resp["error"].(map[string]interface{})
-	if !ok || errObj["code"].(float64) != -32602 || !strings.Contains(errObj["message"].(string), "CIDR") {
-		t.Errorf("invalid subnet: %v, want an invalid-params error about CIDR", resp)
+	if !ok || errObj["code"].(float64) != errCodeNotFound {
+		t.Errorf("missing device: %v, want a JSON-RPC error with code %d", resp, errCodeNotFound)
 	}
 }
