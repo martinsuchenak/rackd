@@ -220,8 +220,9 @@ func TestMatchDeviceForRecord_CNAME_MatchByDomain(t *testing.T) {
 // Validates: Requirements 4.3, 4.4
 func TestMatchDeviceForRecord_PTR_MatchByHostname(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
+		// The PTR lives in a reverse zone; its value names the forward zone.
 		zoneName := genZoneName(t)
-		zone := &model.DNSZone{ID: "z1", Name: zoneName}
+		zone := &model.DNSZone{ID: "z1", Name: "in-addr.arpa"}
 
 		hostname := genDNSLabel(t)
 		ip := genIPv4Simple(t)
@@ -236,8 +237,9 @@ func TestMatchDeviceForRecord_PTR_MatchByHostname(t *testing.T) {
 			},
 		}
 
-		// PTR record: Name is the reversed IP in-addr.arpa form, Value is hostname.zoneName
-		ptrName := ipToReversedPTRName(ip)
+		// PTR record: Name is the reversed IP relative to the reverse zone,
+		// Value is hostname.zoneName
+		ptrName := strings.TrimSuffix(ipToReversedPTRName(ip), ".in-addr.arpa")
 		record := &model.DNSRecord{
 			Name:  ptrName,
 			Type:  "PTR",

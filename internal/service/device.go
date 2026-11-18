@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -41,11 +42,6 @@ func (s *DeviceService) claimReservations(ctx context.Context, device *model.Dev
 	}
 }
 
-// boolPtr returns a pointer to the given bool value
-func boolPtr(v bool) *bool {
-	return &v
-}
-
 // syncDeviceDNSAsync runs syncDeviceDNS in a background goroutine so a slow
 // or unresponsive DNS provider cannot block device create/update (or run
 // into the global request timeout). The local DNS record is still created
@@ -75,48 +71,50 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 	}
 
 	// Find zones for this device's networks with auto_sync enabled
-	zones, err := s.store.ListDNSZones(ctx, &model.DNSZoneFilter{
-		AutoSync: boolPtr(true),
-	})
+	// All zones: a PTR goes to its reverse zone whether or not that zone
+	// auto-syncs. Forward records only come from auto-sync zones.
+	allZones, err := s.store.ListDNSZones(ctx, &model.DNSZoneFilter{})
 	if err != nil {
 		return err
+	}
+	var zones []model.DNSZone
+	for _, z := range allZones {
+		if z.AutoSync {
+			zones = append(zones, z)
+		}
 	}
 
 	// For each zone linked to device's network
 	for _, zone := range zones {
-		if zone.NetworkID != nil && deviceHasNetworkID(device, *zone.NetworkID) {
-			// Create/update A record for each IP in this network
-			for _, addr := range device.Addresses {
-				if addr.NetworkID == *zone.NetworkID && addr.IP != "" {
-					req := &model.CreateDNSRecordRequest{
-						ZoneID:   zone.ID,
-						DeviceID: &device.ID,
-						Name:     device.Hostname,
-						Type:     "A",
-						Value:    addr.IP,
-						TTL:      zone.TTL,
-					}
-					if _, err := s.dns.CreateRecord(ctx, req); err != nil {
-						// Log but don't fail - individual record failures shouldn't block
-						continue
-					}
+		if zone.NetworkID == nil || !deviceHasNetworkID(device, *zone.NetworkID) {
+			continue
+		}
+		fqdn := device.Hostname + "." + zone.Name
+		for _, addr := range device.Addresses {
+			if addr.NetworkID != *zone.NetworkID || addr.IP == "" {
+				continue
+			}
+			rtype := addressRecordType(addr.IP)
+			if rtype == "" {
+				log.Warn("Skipping DNS record for unparseable address", "device_id", device.ID, "ip", addr.IP)
+				continue
+			}
+			req := &model.CreateDNSRecordRequest{
+				ZoneID:   zone.ID,
+				DeviceID: &device.ID,
+				Name:     device.Hostname,
+				Type:     rtype,
+				Value:    addr.IP,
+				TTL:      zone.TTL,
+			}
+			if _, err := s.dns.CreateRecord(ctx, req); err != nil {
+				// Individual record failures shouldn't block the rest
+				log.Warn("Failed to create DNS record", "device_id", device.ID, "zone", zone.Name, "type", rtype, "error", err)
+				continue
+			}
 
-					// Create PTR record if enabled
-					if zone.CreatePTR && zone.PTRZone != nil && *zone.PTRZone != "" {
-						ptrReq := &model.CreateDNSRecordRequest{
-							ZoneID:   zone.ID,
-							DeviceID: &device.ID,
-							Name:     extractPTRName(addr.IP),
-							Type:     "PTR",
-							Value:    device.Hostname + "." + zone.Name,
-							TTL:      zone.TTL,
-						}
-						if _, err := s.dns.CreateRecord(ctx, ptrReq); err != nil {
-							// Log but don't fail - individual record failures shouldn't block
-							continue
-						}
-					}
-				}
+			if zone.CreatePTR && zone.PTRZone != nil && *zone.PTRZone != "" {
+				s.createPTRRecord(ctx, device, allZones, *zone.PTRZone, addr.IP, fqdn, zone.TTL)
 			}
 		}
 	}
@@ -155,14 +153,95 @@ func deviceHasNetworkID(device *model.Device, networkID string) bool {
 	return false
 }
 
-// extractPTRName extracts a PTR record name from an IP address
-func extractPTRName(ipStr string) string {
-	parts := strings.Split(ipStr, ".")
-	if len(parts) != 4 {
-		return ""
+// createPTRRecord adds the reverse record for ip to the rackd zone named
+// ptrZoneName. The PTR lives in that reverse zone, not the forward zone, and
+// is synced by it, so the reverse zone has to exist in rackd as well.
+func (s *DeviceService) createPTRRecord(ctx context.Context, device *model.Device, zones []model.DNSZone, ptrZoneName, ip, target string, ttl int) {
+	ptrZone := findZoneByName(zones, ptrZoneName)
+	if ptrZone == nil {
+		log.Warn("PTR zone is not a zone in rackd; skipping PTR record", "device_id", device.ID, "ptr_zone", ptrZoneName)
+		return
 	}
-	// Reverse the IP for in-addr.arpa format
-	return fmt.Sprintf("%s.%s.%s.in-addr.arpa", parts[3], parts[2], parts[1])
+	name, ok := ptrRecordName(ip, ptrZone.Name)
+	if !ok {
+		log.Warn("Address is outside the PTR zone; skipping PTR record", "device_id", device.ID, "ip", ip, "ptr_zone", ptrZone.Name)
+		return
+	}
+	req := &model.CreateDNSRecordRequest{
+		ZoneID:   ptrZone.ID,
+		DeviceID: &device.ID,
+		Name:     name,
+		Type:     "PTR",
+		Value:    target,
+		TTL:      ttl,
+	}
+	if _, err := s.dns.CreateRecord(ctx, req); err != nil {
+		log.Warn("Failed to create PTR record", "device_id", device.ID, "ptr_zone", ptrZone.Name, "error", err)
+	}
+}
+
+// addressRecordType returns "A" for an IPv4 address, "AAAA" for IPv6 and ""
+// for anything that doesn't parse.
+func addressRecordType(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	switch {
+	case ip == nil:
+		return ""
+	case ip.To4() != nil:
+		return "A"
+	default:
+		return "AAAA"
+	}
+}
+
+// reverseDNSName returns the full reverse lookup name for an address:
+// 192.168.1.10 -> 10.1.168.192.in-addr.arpa, and the 32-nibble ip6.arpa
+// form for IPv6.
+func reverseDNSName(ipStr string) (string, bool) {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return "", false
+	}
+	if v4 := ip.To4(); v4 != nil {
+		return fmt.Sprintf("%d.%d.%d.%d.in-addr.arpa", v4[3], v4[2], v4[1], v4[0]), true
+	}
+	const hexDigits = "0123456789abcdef"
+	var b strings.Builder
+	for i := len(ip) - 1; i >= 0; i-- {
+		b.WriteByte(hexDigits[ip[i]&0x0f])
+		b.WriteByte('.')
+		b.WriteByte(hexDigits[ip[i]>>4])
+		b.WriteByte('.')
+	}
+	b.WriteString("ip6.arpa")
+	return b.String(), true
+}
+
+// ptrRecordName returns the PTR record name for ip relative to the reverse
+// zone (e.g. "10" for 192.168.1.10 in 1.168.192.in-addr.arpa), and false if
+// the address doesn't fall inside that zone.
+func ptrRecordName(ip, zoneName string) (string, bool) {
+	full, ok := reverseDNSName(ip)
+	if !ok {
+		return "", false
+	}
+	suffix := "." + strings.ToLower(strings.TrimSuffix(zoneName, "."))
+	if !strings.HasSuffix(full, suffix) {
+		return "", false
+	}
+	return strings.TrimSuffix(full, suffix), true
+}
+
+// findZoneByName returns the zone with the given name, ignoring case and a
+// trailing dot, or nil.
+func findZoneByName(zones []model.DNSZone, name string) *model.DNSZone {
+	name = strings.TrimSuffix(name, ".")
+	for i := range zones {
+		if strings.EqualFold(strings.TrimSuffix(zones[i].Name, "."), name) {
+			return &zones[i]
+		}
+	}
+	return nil
 }
 
 // checkForIPConflicts checks if any IP addresses are duplicates and creates conflict records

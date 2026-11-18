@@ -293,6 +293,12 @@ var migrations = []*Migration{
 		Up:      migrateViewerDNSProviderTestUp,
 		Down:    migrateViewerDNSProviderTestDown,
 	},
+	{
+		Version: "20261119120000",
+		Name:    "dns_record_names_relative_to_zone",
+		Up:      migrateDNSRecordNamesRelativeUp,
+		Down:    migrateDNSRecordNamesRelativeDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3262,4 +3268,46 @@ func migrateViewerDNSProviderTestDown(ctx context.Context, tx sqlTx) error {
 		WHERE r.name = 'viewer' AND p.name = 'dns-provider:test'
 	`, time.Now())
 	return err
+}
+
+// migrateDNSRecordNamesRelativeUp brings stored DNS records in line with the
+// rule that names are relative to their zone ("www", "@" for the apex).
+// Imports used to store Technitium's fully qualified names, so a re-import
+// would add a second, relative copy of each record. A fully qualified record
+// that already has a relative twin is dropped instead of renamed.
+//
+// It also removes records the old device sync generated but no DNS server
+// would accept: A records holding IPv6 addresses (now AAAA) and PTR records
+// written into a forward zone with a truncated reverse name (now created in
+// the reverse zone). The next sync of each device recreates them correctly.
+func migrateDNSRecordNamesRelativeUp(ctx context.Context, tx sqlTx) error {
+	// zone is the record's zone name, lowercased and without a trailing dot.
+	const zone = `(SELECT lower(rtrim(z.name, '.')) FROM dns_zones z WHERE z.id = dns_records.zone_id)`
+	const name = `lower(rtrim(dns_records.name, '.'))`
+	const inZone = `(` + name + ` = ` + zone + ` OR substr(` + name + `, -length(` + zone + `) - 1) = '.' || ` + zone + `)`
+	stmts := []string{
+		`UPDATE OR IGNORE dns_records SET name = CASE
+			WHEN ` + name + ` = ` + zone + ` THEN '@'
+			ELSE substr(rtrim(name, '.'), 1, length(rtrim(name, '.')) - length(` + zone + `) - 1)
+		END
+		WHERE ` + inZone,
+		// Whatever is still fully qualified collided with a relative twin.
+		`DELETE FROM dns_records WHERE ` + inZone,
+		`DELETE FROM dns_records WHERE type = 'A' AND value LIKE '%:%'`,
+		`DELETE FROM dns_records WHERE type = 'PTR' AND device_id IS NOT NULL
+			AND lower(rtrim(name, '.')) LIKE '%.in-addr.arpa'
+			AND ` + zone + ` NOT LIKE '%.arpa'`,
+	}
+	for _, q := range stmts {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to normalize DNS record names: %w", err)
+		}
+	}
+	return nil
+}
+
+// migrateDNSRecordNamesRelativeDown leaves the data alone: relative names are
+// what the code before this migration expected for records it created too.
+func migrateDNSRecordNamesRelativeDown(ctx context.Context, tx sqlTx) error {
+	return nil
 }

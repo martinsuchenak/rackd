@@ -9,6 +9,23 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- DNS records generated for devices: IPv6 addresses get AAAA records instead
+  of A records, and PTR records go into the zone named by `ptr_zone` (which
+  must exist in Rackd) with the full reversed address as their name. They
+  used to land in the forward zone with the first octet missing.
+- The Technitium provider sends fully qualified names, which its API needs
+  to find the zone; records created or synced by Rackd were sent as bare
+  labels such as `web-01`. Imported records are now stored relative to their
+  zone, like the ones Rackd creates, and PTR records imported from a reverse
+  zone link to their device again.
+- A migration converts stored fully qualified record names to zone-relative
+  ones, drops imported duplicates of records Rackd already had, and removes
+  the A-with-IPv6 and misplaced PTR records the old sync generated. A
+  device's AAAA and PTR records are generated the next time the device is
+  saved.
+
 ## [0.7.1] - 2026-11-18
 
 ### Fixed
