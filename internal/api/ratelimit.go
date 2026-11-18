@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -205,7 +207,7 @@ func RateLimitMiddleware(limiter *RateLimiter, proxyResolver *TrustedProxyResolv
 				w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", limiter.requests))
 				w.Header().Set("X-RateLimit-Remaining", "0")
 				w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC3339))
-				w.Header().Set("Retry-After", resetTime.Format(time.RFC3339))
+				w.Header().Set("Retry-After", retryAfterSeconds(resetTime))
 
 				log.Debug("Rate limit exceeded", "client", clientID, "path", r.URL.Path)
 				writeAuthError(w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "Rate limit exceeded")
@@ -256,4 +258,16 @@ func remoteIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// retryAfterSeconds formats the wait until reset as a Retry-After value.
+// The header takes delay-seconds or an HTTP-date (RFC 9110 §10.2.3), not
+// RFC 3339; seconds are rounded up and never below 1, so a client that
+// honours it doesn't retry before the bucket refills.
+func retryAfterSeconds(reset time.Time) string {
+	secs := int64(math.Ceil(time.Until(reset).Seconds()))
+	if secs < 1 {
+		secs = 1
+	}
+	return strconv.FormatInt(secs, 10)
 }

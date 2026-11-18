@@ -2512,7 +2512,6 @@ Usage:
 
 Flags:
        --zone string    Zone ID (Required)
-       --force bool     Force sync even if unchanged
        --output string  Output format (json/yaml) (default: yaml)
 
 Global Flags:
@@ -2530,7 +2529,8 @@ Usage:
 
 Flags:
        --zone string    Zone ID (Required)
-       --delete bool    Delete local records not found on provider
+       --delete bool    Also delete local records that were synced to the
+                        provider but are no longer there
        --output string  Output format (json/yaml) (default: yaml)
 
 Global Flags:

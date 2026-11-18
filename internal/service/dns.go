@@ -842,6 +842,14 @@ func (s *DNSService) SyncDevice(ctx context.Context, deviceID string) (*model.Sy
 
 // ImportFromDNS imports all records from a DNS provider zone
 func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.ImportResult, error) {
+	return s.ImportFromDNSWithOptions(ctx, zoneID, model.ImportDNSOptions{})
+}
+
+// ImportFromDNSWithOptions imports all records from a DNS provider zone.
+// With DeleteMissing it also deletes local records that were synced to the
+// provider before but are no longer there. Records that never reached the
+// provider (pending or failed) are kept: they are waiting to be pushed.
+func (s *DNSService) ImportFromDNSWithOptions(ctx context.Context, zoneID string, opts model.ImportDNSOptions) (*model.ImportResult, error) {
 	if err := requirePermission(ctx, s.store, "dns-zone", "import"); err != nil {
 		return nil, err
 	}
@@ -948,9 +956,39 @@ func (s *DNSService) ImportFromDNS(ctx context.Context, zoneID string) (*model.I
 		}
 	}
 
+	if opts.DeleteMissing {
+		s.deleteMissingRecords(ctx, zoneID, dnsRecords, result)
+	}
+
 	result.Success = result.Failed == 0
 
 	return result, nil
+}
+
+// deleteMissingRecords deletes the zone's synced local records that the
+// provider's listing no longer has.
+func (s *DNSService) deleteMissingRecords(ctx context.Context, zoneID string, onProvider []*dns.Record, result *model.ImportResult) {
+	present := make(map[string]bool, len(onProvider))
+	for _, r := range onProvider {
+		present[strings.ToLower(r.Name)+"|"+r.Type] = true
+	}
+	local, err := s.store.ListDNSRecords(ctx, &model.DNSRecordFilter{ZoneID: zoneID})
+	if err != nil {
+		result.Failed++
+		result.Error = "listing local records to delete: " + err.Error()
+		return
+	}
+	for _, r := range local {
+		if r.SyncStatus != model.RecordSyncStatusSynced || present[strings.ToLower(r.Name)+"|"+r.Type] {
+			continue
+		}
+		if err := s.store.DeleteDNSRecord(ctx, r.ID); err != nil {
+			result.Failed++
+			result.FailedIDs = append(result.FailedIDs, r.Name)
+			continue
+		}
+		result.Deleted++
+	}
 }
 
 // Helper Functions

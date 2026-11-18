@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,6 +82,28 @@ func (h *Handler) listDiscoveredDevices(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
+	}
+	// The store has no status filter or paging for discovered hosts; the list
+	// is bounded by the scanned networks, so both are applied here.
+	if status := r.URL.Query().Get("status"); status != "" {
+		filtered := devices[:0]
+		for _, d := range devices {
+			if strings.EqualFold(d.Status, status) {
+				filtered = append(filtered, d)
+			}
+		}
+		devices = filtered
+	}
+	if page := parseOptionalPagination(r); page.Limit > 0 || page.Offset > 0 {
+		start := min(page.Offset, len(devices))
+		end := len(devices)
+		if page.Limit > 0 {
+			end = min(start+page.Limit, len(devices))
+		}
+		devices = devices[start:end]
+	}
+	if devices == nil {
+		devices = []model.DiscoveredDevice{}
 	}
 	h.writeJSON(w, http.StatusOK, devices)
 }

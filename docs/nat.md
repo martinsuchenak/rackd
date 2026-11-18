@@ -28,7 +28,7 @@ Each NAT mapping contains:
 | `datacenter_id` | string | Optional datacenter ID |
 | `network_id` | string | Optional network ID |
 | `description` | string | Optional description |
-| `enabled` | bool | Whether the mapping is active. The API defaults to `false` when it's left out; `rackd nat create` creates enabled mappings unless `--disabled` is given |
+| `enabled` | bool | Whether the mapping is active. Defaults to `true` when it's left out; `rackd nat create --disabled` sends `false` |
 | `tags` | []string | Optional tags for categorization |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
@@ -94,7 +94,7 @@ POST /api/v1/nat
 }
 ```
 
-Required fields: `name`, `external_ip`, `internal_ip`. Ports default to `0`. Send `"enabled": true`, or the mapping is created disabled.
+Required fields: `name`, `external_ip`, `internal_ip`. Ports default to `0`. The mapping is created enabled unless the request has `"enabled": false`.
 
 Two enabled mappings can't forward the same external endpoint. Creating or
 updating a mapping onto an external IP, port and protocol an enabled mapping

@@ -1125,6 +1125,36 @@ components:
         ttl: { type: integer }
         description: { type: string }
 
+    DNSSyncResult:
+      type: object
+      required: [success, total, synced, failed]
+      properties:
+        success: { type: boolean }
+        total: { type: integer }
+        synced: { type: integer }
+        failed: { type: integer }
+        error: { type: string }
+        failed_ids:
+          type: array
+          items: { type: string }
+    DNSImportResult:
+      type: object
+      required: [success, total, imported, linked, skipped, failed, deleted]
+      properties:
+        success: { type: boolean }
+        total: { type: integer }
+        imported: { type: integer, description: Records created or updated }
+        linked: { type: integer, description: Imported records linked to a device }
+        skipped: { type: integer, description: Records already up to date }
+        failed: { type: integer }
+        deleted: { type: integer, description: Local records deleted with delete_missing }
+        error: { type: string }
+        skipped_ids:
+          type: array
+          items: { type: string }
+        failed_ids:
+          type: array
+          items: { type: string }
     DNSRecord:
       type: object
       required: [id, zone_id, name, type, value, ttl, sync_status, created_at, updated_at]
@@ -4320,7 +4350,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DNSZone'
+                $ref: '#/components/schemas/DNSSyncResult'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -4331,19 +4361,23 @@ paths:
     post:
       operationId: importDNSZone
       tags: [DNS]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delete_missing:
+                  type: boolean
+                  description: Also delete local records that were synced to the provider but are no longer there. Pending and failed records are kept.
       responses:
         '200':
           description: Records imported
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  imported: { type: integer }
-                  records:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DNSRecord'
+                $ref: '#/components/schemas/DNSImportResult'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/InternalError' }

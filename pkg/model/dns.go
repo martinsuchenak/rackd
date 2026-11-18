@@ -253,6 +253,13 @@ type SyncResult struct {
 	FailedIDs []string `json:"failed_ids,omitempty"`
 }
 
+// ImportDNSOptions controls a DNS import.
+type ImportDNSOptions struct {
+	// DeleteMissing deletes local records that were synced to the provider
+	// but are no longer there.
+	DeleteMissing bool `json:"delete_missing"`
+}
+
 // ImportResult represents the result of a DNS import operation
 type ImportResult struct {
 	Success    bool     `json:"success"`
@@ -261,6 +268,7 @@ type ImportResult struct {
 	Linked     int      `json:"linked"`
 	Skipped    int      `json:"skipped"`
 	Failed     int      `json:"failed"`
+	Deleted    int      `json:"deleted"`
 	Error      string   `json:"error,omitempty"`
 	SkippedIDs []string `json:"skipped_ids,omitempty"`
 	FailedIDs  []string `json:"failed_ids,omitempty"`

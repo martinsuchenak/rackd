@@ -145,7 +145,7 @@ func TestNATHandlers(t *testing.T) {
 	})
 
 	t.Run("CreateNATMapping_DefaultProtocol", func(t *testing.T) {
-		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 443, "internal_ip": "192.168.1.10", "internal_port": 443}`
+		body := `{"name": "test", "external_ip": "203.0.113.10", "external_port": 8443, "internal_ip": "192.168.1.10", "internal_port": 443}`
 		req := authReq(httptest.NewRequest("POST", "/api/v1/nat", bytes.NewBufferString(body)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()

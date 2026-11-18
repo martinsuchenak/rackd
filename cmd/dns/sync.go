@@ -16,7 +16,6 @@ func SyncCommand() *cli.Command {
 		Usage: "Sync a DNS zone to the provider",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "zone", Usage: "Zone ID", Required: true},
-			&cli.BoolFlag{Name: "force", Usage: "Force sync even if unchanged"},
 			&cli.StringFlag{Name: "output", Usage: "Output format (json/yaml)", DefaultValue: "yaml"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
@@ -25,12 +24,9 @@ func SyncCommand() *cli.Command {
 
 			zoneID := cmd.GetString("zone")
 
-			req := map[string]interface{}{}
-			if cmd.GetBool("force") {
-				req["force"] = true
-			}
-
-			resp, err := c.DoRequest("POST", "/api/v1/dns/zones/"+zoneID+"/sync", req)
+			// Every record is checked against the provider and only written
+			// when its value differs, so there is nothing to force.
+			resp, err := c.DoRequest("POST", "/api/v1/dns/zones/"+zoneID+"/sync", nil)
 			if err != nil {
 				return err
 			}
@@ -54,23 +50,21 @@ func SyncCommand() *cli.Command {
 
 			// Also print a human-readable summary
 			fmt.Println()
-			if status, ok := result["status"].(string); ok {
-				fmt.Printf("Status: %s\n", status)
+			fmt.Printf("Synced: %.0f of %.0f\n", num(result, "synced"), num(result, "total"))
+			if failed := num(result, "failed"); failed > 0 {
+				fmt.Printf("Failed: %.0f\n", failed)
 			}
-			if recordsCreated, ok := result["records_created"].(float64); ok && recordsCreated > 0 {
-				fmt.Printf("Records created: %.0f\n", recordsCreated)
-			}
-			if recordsUpdated, ok := result["records_updated"].(float64); ok && recordsUpdated > 0 {
-				fmt.Printf("Records updated: %.0f\n", recordsUpdated)
-			}
-			if recordsDeleted, ok := result["records_deleted"].(float64); ok && recordsDeleted > 0 {
-				fmt.Printf("Records deleted: %.0f\n", recordsDeleted)
-			}
-			if unchanged, ok := result["unchanged"].(float64); ok && unchanged > 0 {
-				fmt.Printf("Unchanged: %.0f\n", unchanged)
+			if msg, ok := result["error"].(string); ok && msg != "" {
+				fmt.Printf("Error: %s\n", msg)
 			}
 
 			return nil
 		},
 	}
+}
+
+// num reads a numeric field from a decoded JSON object, or 0.
+func num(m map[string]interface{}, key string) float64 {
+	v, _ := m[key].(float64)
+	return v
 }
