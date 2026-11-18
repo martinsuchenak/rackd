@@ -3275,6 +3275,8 @@ func migrateViewerDNSProviderTestDown(ctx context.Context, tx sqlTx) error {
 // Imports used to store Technitium's fully qualified names, so a re-import
 // would add a second, relative copy of each record. A fully qualified record
 // that already has a relative twin is dropped instead of renamed.
+// Each name is stripped of its zone suffix once, so a relative name that
+// itself ends in the zone name (a.lab.lab in zone lab) keeps "a.lab".
 //
 // It also removes records the old device sync generated but no DNS server
 // would accept: A records holding IPv6 addresses (now AAAA) and PTR records
@@ -3285,14 +3287,16 @@ func migrateDNSRecordNamesRelativeUp(ctx context.Context, tx sqlTx) error {
 	const zone = `(SELECT lower(rtrim(z.name, '.')) FROM dns_zones z WHERE z.id = dns_records.zone_id)`
 	const name = `lower(rtrim(dns_records.name, '.'))`
 	const inZone = `(` + name + ` = ` + zone + ` OR substr(` + name + `, -length(` + zone + `) - 1) = '.' || ` + zone + `)`
+	// relative is the record's name with the zone suffix removed.
+	const relative = `CASE WHEN ` + name + ` = ` + zone + ` THEN '@'
+		ELSE substr(rtrim(dns_records.name, '.'), 1, length(rtrim(dns_records.name, '.')) - length(` + zone + `) - 1) END`
 	stmts := []string{
-		`UPDATE OR IGNORE dns_records SET name = CASE
-			WHEN ` + name + ` = ` + zone + ` THEN '@'
-			ELSE substr(rtrim(name, '.'), 1, length(rtrim(name, '.')) - length(` + zone + `) - 1)
-		END
-		WHERE ` + inZone,
-		// Whatever is still fully qualified collided with a relative twin.
-		`DELETE FROM dns_records WHERE ` + inZone,
+		// Drop fully qualified records whose relative twin already exists.
+		`DELETE FROM dns_records WHERE ` + inZone + ` AND EXISTS (
+			SELECT 1 FROM dns_records twin
+			WHERE twin.zone_id = dns_records.zone_id AND twin.type = dns_records.type
+			  AND twin.name = ` + relative + `)`,
+		`UPDATE dns_records SET name = ` + relative + ` WHERE ` + inZone,
 		`DELETE FROM dns_records WHERE type = 'A' AND value LIKE '%:%'`,
 		`DELETE FROM dns_records WHERE type = 'PTR' AND device_id IS NOT NULL
 			AND lower(rtrim(name, '.')) LIKE '%.in-addr.arpa'

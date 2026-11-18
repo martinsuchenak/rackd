@@ -342,9 +342,14 @@ func TestValidateStatusAndExtractPTRNameHelpers(t *testing.T) {
 	if _, ok := ptrRecordName("bad-ip", "1.168.192.in-addr.arpa"); ok {
 		t.Fatal("expected invalid IP to be rejected")
 	}
-	for ip, want := range map[string]string{"10.0.0.1": "A", "2001:db8::1": "AAAA", "::ffff:10.0.0.1": "A", "nope": ""} {
-		if got := addressRecordType(ip); got != want {
-			t.Fatalf("addressRecordType(%q) = %q, want %q", ip, got, want)
+	for ip, want := range map[string][2]string{
+		"10.0.0.1":        {"A", "10.0.0.1"},
+		"2001:DB8::1":     {"AAAA", "2001:db8::1"},
+		"::ffff:10.0.0.1": {"A", "10.0.0.1"},
+		"nope":            {"", ""},
+	} {
+		if typ, val := addressRecord(ip); typ != want[0] || val != want[1] {
+			t.Fatalf("addressRecord(%q) = %q, %q; want %q, %q", ip, typ, val, want[0], want[1])
 		}
 	}
 }
@@ -355,9 +360,10 @@ func TestValidateStatusAndExtractPTRNameHelpers(t *testing.T) {
 func TestSyncDeviceDNS_AddressAndPTRRecords(t *testing.T) {
 	netID := "net-1"
 	ptrZone := "1.168.192.in-addr.arpa"
-	forward := model.DNSZone{ID: "fwd", Name: "example.test", NetworkID: &netID, AutoSync: true, CreatePTR: true, PTRZone: &ptrZone, TTL: 300}
+	forward := model.DNSZone{ID: "fwd", Name: "example.test.", NetworkID: &netID, AutoSync: true, CreatePTR: true, PTRZone: &ptrZone, TTL: 300}
 	// The reverse zone doesn't auto-sync; its PTRs are still generated.
-	reverse := model.DNSZone{ID: "rev", Name: ptrZone, TTL: 300}
+	// It is linked to the same network, which must not give it A records.
+	reverse := model.DNSZone{ID: "rev", Name: ptrZone, NetworkID: &netID, TTL: 300}
 
 	device := &model.Device{
 		ID:       "dev-1",

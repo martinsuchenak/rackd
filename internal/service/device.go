@@ -89,12 +89,16 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 		if zone.NetworkID == nil || !deviceHasNetworkID(device, *zone.NetworkID) {
 			continue
 		}
-		fqdn := device.Hostname + "." + zone.Name
+		// A reverse zone linked to a network only gets PTR records.
+		if isReverseZone(zone.Name) {
+			continue
+		}
+		fqdn := device.Hostname + "." + strings.TrimSuffix(zone.Name, ".")
 		for _, addr := range device.Addresses {
 			if addr.NetworkID != *zone.NetworkID || addr.IP == "" {
 				continue
 			}
-			rtype := addressRecordType(addr.IP)
+			rtype, value := addressRecord(addr.IP)
 			if rtype == "" {
 				log.Warn("Skipping DNS record for unparseable address", "device_id", device.ID, "ip", addr.IP)
 				continue
@@ -104,7 +108,7 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 				DeviceID: &device.ID,
 				Name:     device.Hostname,
 				Type:     rtype,
-				Value:    addr.IP,
+				Value:    value,
 				TTL:      zone.TTL,
 			}
 			if _, err := s.dns.CreateRecord(ctx, req); err != nil {
@@ -125,7 +129,7 @@ func (s *DeviceService) syncDeviceDNS(ctx context.Context, device *model.Device)
 		if zone == nil {
 			continue // no matching zone
 		}
-		cnameValue := device.Hostname + "." + zone.Name
+		cnameValue := device.Hostname + "." + strings.TrimSuffix(zone.Name, ".")
 		req := &model.CreateDNSRecordRequest{
 			ZoneID:   zone.ID,
 			DeviceID: &device.ID,
@@ -180,18 +184,26 @@ func (s *DeviceService) createPTRRecord(ctx context.Context, device *model.Devic
 	}
 }
 
-// addressRecordType returns "A" for an IPv4 address, "AAAA" for IPv6 and ""
-// for anything that doesn't parse.
-func addressRecordType(ipStr string) string {
+// addressRecord returns the record type and value for an address: "A" with
+// the dotted form for IPv4 (including IPv4-mapped IPv6), "AAAA" for IPv6,
+// and "" for anything that doesn't parse.
+func addressRecord(ipStr string) (string, string) {
 	ip := net.ParseIP(ipStr)
 	switch {
 	case ip == nil:
-		return ""
+		return "", ""
 	case ip.To4() != nil:
-		return "A"
+		return "A", ip.To4().String()
 	default:
-		return "AAAA"
+		return "AAAA", ip.String()
 	}
+}
+
+// isReverseZone reports whether a zone name is under in-addr.arpa or ip6.arpa.
+func isReverseZone(name string) bool {
+	name = strings.ToLower(strings.TrimSuffix(name, "."))
+	return name == "in-addr.arpa" || name == "ip6.arpa" ||
+		strings.HasSuffix(name, ".in-addr.arpa") || strings.HasSuffix(name, ".ip6.arpa")
 }
 
 // reverseDNSName returns the full reverse lookup name for an address:
