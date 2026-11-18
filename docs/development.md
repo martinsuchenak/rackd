@@ -6,7 +6,7 @@ This guide covers everything you need to know to develop and contribute to Rackd
 
 ### Required Tools
 
-- **Go 1.27.3+**: The version `go.mod` requires
+- **Go 1.27.4+**: The version `go.mod` requires
 - **Bun**: JavaScript runtime and package manager for frontend development
 - **Task** ([go-task](https://taskfile.dev)): Build automation (`Taskfile.yml`)
 - **Git**: Version control
@@ -22,7 +22,7 @@ This guide covers everything you need to know to develop and contribute to Rackd
 
 #### Go
 ```bash
-# Install Go 1.27.3+ from https://golang.org/dl/
+# Install Go 1.27.4+ from https://golang.org/dl/
 # Or using a version manager like g or gvm
 ```
 
@@ -948,7 +948,7 @@ dlv debug . -- server
 ### Common Issues
 
 1. **Build Failures**
-   - Ensure Go 1.27.3+ is installed
+   - Ensure Go 1.27.4+ is installed
    - Run `go mod download` to fetch dependencies
    - Check that Bun is installed for frontend builds
 
