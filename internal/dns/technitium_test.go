@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -186,6 +187,78 @@ func TestTechnitiumClientEndpointNormalization(t *testing.T) {
 		c := NewTechnitiumClientWithHTTPClient(endpoint, "tok", nil)
 		if c.endpoint != "http://host:5380" {
 			t.Errorf("endpoint %q normalized to %q, want http://host:5380", endpoint, c.endpoint)
+		}
+	}
+}
+
+// TestTechnitiumClientRecordNames checks the client sends fully qualified
+// names in the domain parameter and hands back zone-relative names.
+func TestTechnitiumClientRecordNames(t *testing.T) {
+	var domains []string
+	server := newTechnitiumTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/zones/records/add", "/api/zones/records/delete":
+			domains = append(domains, r.URL.Query().Get("domain"))
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		case "/api/zones/records/get":
+			domains = append(domains, r.URL.Query().Get("domain"))
+			_, _ = w.Write([]byte(`{"status":"ok","response":{"records":[{"name":"example.test","type":"NS","ttl":300,"rData":{"nameServer":"ns1.example.test"}},{"name":"www.example.test","type":"A","ttl":300,"rData":{"ipAddress":"10.0.0.5"}}]}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	defer server.Close()
+
+	client := NewTechnitiumClientWithHTTPClient(server.URL, "token", server.Client())
+	ctx := context.Background()
+
+	if err := client.CreateRecord(ctx, "example.test", &Record{Name: "web-01", Type: "A", Value: "10.0.0.7"}); err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+	if err := client.DeleteRecord(ctx, "example.test", "@", "TXT", "x"); err != nil {
+		t.Fatalf("DeleteRecord failed: %v", err)
+	}
+	record, err := client.GetRecord(ctx, "example.test", "www", "A")
+	if err != nil {
+		t.Fatalf("GetRecord failed: %v", err)
+	}
+	if record.Name != "www" {
+		t.Fatalf("GetRecord name = %q, want relative %q", record.Name, "www")
+	}
+	list, err := client.ListRecords(ctx, "example.test")
+	if err != nil {
+		t.Fatalf("ListRecords failed: %v", err)
+	}
+	if list[0].Name != "@" || list[1].Name != "www" {
+		t.Fatalf("ListRecords names = %q, %q; want @, www", list[0].Name, list[1].Name)
+	}
+
+	want := []string{"web-01.example.test", "example.test", "www.example.test", "example.test"}
+	if strings.Join(domains, ",") != strings.Join(want, ",") {
+		t.Fatalf("domain params = %v, want %v", domains, want)
+	}
+}
+
+func TestTechnitiumNameConversion(t *testing.T) {
+	for _, c := range []struct{ name, zone, fqdn string }{
+		{"web-01", "example.test", "web-01.example.test"},
+		{"@", "example.test", "example.test"},
+		{"", "example.test.", "example.test"},
+		{"www.Example.Test", "example.test", "www.Example.Test"},
+		{"10", "1.168.192.in-addr.arpa", "10.1.168.192.in-addr.arpa"},
+	} {
+		if got := toFQDN(c.name, c.zone); got != c.fqdn {
+			t.Errorf("toFQDN(%q, %q) = %q, want %q", c.name, c.zone, got, c.fqdn)
+		}
+	}
+	for _, c := range []struct{ name, zone, rel string }{
+		{"web-01.example.test", "example.test", "web-01"},
+		{"EXAMPLE.test.", "example.test", "@"},
+		{"elsewhere.org", "example.test", "elsewhere.org"},
+		{"notexample.test", "example.test", "notexample.test"},
+	} {
+		if got := toRelative(c.name, c.zone); got != c.rel {
+			t.Errorf("toRelative(%q, %q) = %q, want %q", c.name, c.zone, got, c.rel)
 		}
 	}
 }

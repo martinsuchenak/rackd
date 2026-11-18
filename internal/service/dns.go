@@ -1157,21 +1157,35 @@ func (s *DNSService) matchDeviceForRecord(record *model.DNSRecord, zone *model.D
 			}
 		}
 	case "PTR":
-		// Match by hostname: record.Value matches device hostname
-		for _, dev := range devices {
-			if dev.Hostname != "" && record.Value == dev.Hostname+"."+zone.Name {
-				record.DeviceID = &dev.ID
-				// Find address by reverse-mapping the PTR name back to an IP
-				ip := ptrNameToIP(record.Name)
-				for _, addr := range dev.Addresses {
-					if addr.IP == ip {
-						record.AddressID = &addr.ID
-						break
-					}
+		// The PTR lives in a reverse zone and its value is the device's
+		// FQDN in a forward zone, so match the first label of the value
+		// against hostnames, preferring the device that owns the address
+		// the record name reverses to.
+		target := strings.TrimSuffix(record.Value, ".")
+		host, _, _ := strings.Cut(target, ".")
+		// Names are relative to the reverse zone, e.g. "10" in 1.168.192.in-addr.arpa
+		ip := ptrNameToIP(record.Name + "." + zone.Name)
+		var fallback *model.Device
+		for i := range devices {
+			dev := &devices[i]
+			if dev.Hostname == "" || !strings.EqualFold(dev.Hostname, host) {
+				continue
+			}
+			for _, addr := range dev.Addresses {
+				if ip != "" && addr.IP == ip {
+					record.DeviceID = &dev.ID
+					record.AddressID = &addr.ID
+					return
 				}
-				return
+			}
+			if fallback == nil {
+				fallback = dev
 			}
 		}
+		if fallback != nil {
+			record.DeviceID = &fallback.ID
+		}
+		return
 	}
 	// MX, TXT, NS, SRV, SOA: no matching, DeviceID stays nil
 }

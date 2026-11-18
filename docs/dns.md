@@ -99,9 +99,11 @@ rackd dns zone create \
 
 When a device is created or updated, Rackd generates records in each zone that has auto-sync enabled and is linked to a network the device has an address on:
 
-1. **A Records** - One per address on the zone's network. Only A records are generated, including for IPv6 addresses.
-2. **PTR Records** - If the zone has `create_ptr` and `ptr_zone` set
-3. **CNAME Records** - For each device domain that falls inside a zone, pointing at the device's A record
+1. **A and AAAA Records** - One per address on the zone's network: A for IPv4, AAAA for IPv6
+2. **PTR Records** - If the zone has `create_ptr` and `ptr_zone` set; they go in the reverse zone (see [Reverse DNS](#reverse-dns-ptr-records))
+3. **CNAME Records** - For each device domain that falls inside a zone, pointing at the device's A/AAAA record
+
+Record names are stored relative to their zone: `web-01` in `example.com`, and `@` for the zone apex. Imported records are stored the same way.
 
 ### Record Mapping
 
@@ -181,10 +183,10 @@ Planned. The `powerdns` and `bind` provider types are reserved, but the API reje
 
 ### Enabling PTR Records
 
-PTR records are set up on the forward zone, not by creating a separate reverse zone in Rackd. The zone needs both:
+PTR records need a reverse zone in Rackd as well as the forward zone:
 
-- `create_ptr: true` (`--create-ptr` on the CLI)
-- `ptr_zone`, the reverse zone name (e.g. `1.168.192.in-addr.arpa`). The CLI has no flag for it; set it in the web UI's zone form or through the API:
+1. Create the reverse zone (e.g. `1.168.192.in-addr.arpa`, or a `.ip6.arpa` zone for IPv6) on the same or another provider. Enable auto-sync on it if its records should be pushed as they are created; otherwise sync it with `rackd dns sync`.
+2. On the forward zone, set `create_ptr: true` (`--create-ptr` on the CLI) and `ptr_zone` to the reverse zone's name. The CLI has no flag for `ptr_zone`; set it in the web UI's zone form or through the API:
 
 ```bash
 curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1/dns/zones/<zone-id> \
@@ -194,7 +196,9 @@ curl -H "Authorization: Bearer $RACKD_TOKEN" -X PUT http://localhost:8080/api/v1
 
 ### PTR Record Generation
 
-With both set, each generated A record for an IPv4 address gets a PTR record whose value is the device's `hostname` plus the zone name (e.g. `web-01.example.com`). PTR generation is limited; check the generated records with `rackd dns records --zone <zone-id> --type PTR`.
+For each A or AAAA record the forward zone generates, Rackd adds a PTR record to the reverse zone. Its name is the reversed address relative to that zone (`10` for `192.168.1.10` in `1.168.192.in-addr.arpa`), and its value is the device's `hostname` plus the forward zone name (e.g. `web-01.example.com`).
+
+An address outside the reverse zone gets no PTR record, and neither does any address if no zone named `ptr_zone` exists in Rackd. Both cases are logged as warnings. Check the generated records with `rackd dns records --zone <reverse-zone-id> --type PTR`.
 
 ## API Reference
 

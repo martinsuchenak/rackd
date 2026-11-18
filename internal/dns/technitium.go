@@ -195,6 +195,39 @@ func (c *TechnitiumClient) doAPI(ctx context.Context, method, path string, param
 	return nil
 }
 
+// toFQDN turns a zone-relative record name into the fully qualified name
+// Technitium's record API expects in its domain parameter: it finds the zone
+// from that name, so a bare "web-01" would be looked up as a zone of its own.
+// "@" and "" mean the zone apex; a name already inside the zone is kept.
+func toFQDN(name, zone string) string {
+	name = strings.TrimSuffix(name, ".")
+	zone = strings.TrimSuffix(zone, ".")
+	if name == "" || name == "@" {
+		return zone
+	}
+	lname, lzone := strings.ToLower(name), strings.ToLower(zone)
+	if lname == lzone || strings.HasSuffix(lname, "."+lzone) {
+		return name
+	}
+	return name + "." + zone
+}
+
+// toRelative is the inverse of toFQDN for names Technitium returns: the
+// apex becomes "@", names inside the zone lose the zone suffix, and anything
+// else is returned unchanged.
+func toRelative(name, zone string) string {
+	name = strings.TrimSuffix(name, ".")
+	zone = strings.TrimSuffix(zone, ".")
+	lname, lzone := strings.ToLower(name), strings.ToLower(zone)
+	if lname == lzone {
+		return "@"
+	}
+	if strings.HasSuffix(lname, "."+lzone) {
+		return name[:len(name)-len(zone)-1]
+	}
+	return name
+}
+
 // recordValueParam maps a record type to the Technitium API parameter that
 // carries the record value. The API has no generic "value" parameter — each
 // type names it differently (per APIDOCS "Add Record").
@@ -223,7 +256,7 @@ func recordValueParam(rtype string) string {
 func (c *TechnitiumClient) CreateRecord(ctx context.Context, zone string, record *Record) error {
 	params := url.Values{}
 	params.Set("zone", zone)
-	params.Set("domain", record.Name)
+	params.Set("domain", toFQDN(record.Name, zone))
 	params.Set("type", record.Type)
 	params.Set(recordValueParam(record.Type), record.Value)
 	if record.TTL > 0 {
@@ -271,7 +304,7 @@ func (c *TechnitiumClient) UpdateRecord(ctx context.Context, zone string, record
 func (c *TechnitiumClient) DeleteRecord(ctx context.Context, zone string, name string, rtype string, value string) error {
 	params := url.Values{}
 	params.Set("zone", zone)
-	params.Set("domain", name)
+	params.Set("domain", toFQDN(name, zone))
 	params.Set("type", rtype)
 	if value != "" {
 		params.Set(recordValueParam(rtype), value)
@@ -284,7 +317,7 @@ func (c *TechnitiumClient) DeleteRecord(ctx context.Context, zone string, name s
 func (c *TechnitiumClient) GetRecord(ctx context.Context, zone string, name string, rtype string) (*Record, error) {
 	params := url.Values{}
 	params.Set("zone", zone)
-	params.Set("domain", name)
+	params.Set("domain", toFQDN(name, zone))
 	params.Set("type", rtype)
 
 	var resp recordsGetResponse
@@ -294,9 +327,9 @@ func (c *TechnitiumClient) GetRecord(ctx context.Context, zone string, name stri
 
 	// Filter for the exact record we're looking for
 	for _, r := range resp.Records {
-		if r.Type == rtype && r.Name == name {
+		if r.Type == rtype && strings.EqualFold(toRelative(r.Name, zone), toRelative(name, zone)) {
 			return &Record{
-				Name:  r.Name,
+				Name:  toRelative(r.Name, zone),
 				Type:  r.Type,
 				Value: extractRecordValue(r.RData.IPAddress, r.RData.CNAME, r.RData.NameServer, r.RData.Exchange, r.RData.Text, r.RData.PtrName, r.RData.PrimaryNameServer),
 				TTL:   int(r.TTL),
@@ -322,7 +355,7 @@ func (c *TechnitiumClient) ListRecords(ctx context.Context, zone string) ([]*Rec
 	records := make([]*Record, 0, len(resp.Records))
 	for _, r := range resp.Records {
 		records = append(records, &Record{
-			Name:  r.Name,
+			Name:  toRelative(r.Name, zone),
 			Type:  r.Type,
 			Value: extractRecordValue(r.RData.IPAddress, r.RData.CNAME, r.RData.NameServer, r.RData.Exchange, r.RData.Text, r.RData.PtrName, r.RData.PrimaryNameServer),
 			TTL:   int(r.TTL),

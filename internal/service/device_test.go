@@ -327,10 +327,72 @@ func TestValidateStatusAndExtractPTRNameHelpers(t *testing.T) {
 	if err := validateStatus(model.DeviceStatusActive); err != nil {
 		t.Fatalf("expected active status to be valid, got %v", err)
 	}
-	if ptr := extractPTRName("10.20.30.40"); ptr != "40.30.20.in-addr.arpa" {
-		t.Fatalf("unexpected PTR name %q", ptr)
+	if name, ok := ptrRecordName("192.168.1.10", "1.168.192.in-addr.arpa"); !ok || name != "10" {
+		t.Fatalf("unexpected PTR name %q (ok=%v)", name, ok)
 	}
-	if ptr := extractPTRName("bad-ip"); ptr != "" {
-		t.Fatalf("expected invalid IP PTR extraction to return empty string, got %q", ptr)
+	if name, ok := ptrRecordName("10.20.30.40", "10.in-addr.arpa."); !ok || name != "40.30.20" {
+		t.Fatalf("unexpected PTR name in /8 zone %q (ok=%v)", name, ok)
+	}
+	if _, ok := ptrRecordName("10.20.30.40", "1.168.192.in-addr.arpa"); ok {
+		t.Fatal("expected address outside the reverse zone to be rejected")
+	}
+	if name, ok := ptrRecordName("2001:db8::1", "8.b.d.0.1.0.0.2.ip6.arpa"); !ok || name != "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0" {
+		t.Fatalf("unexpected IPv6 PTR name %q (ok=%v)", name, ok)
+	}
+	if _, ok := ptrRecordName("bad-ip", "1.168.192.in-addr.arpa"); ok {
+		t.Fatal("expected invalid IP to be rejected")
+	}
+	for ip, want := range map[string]string{"10.0.0.1": "A", "2001:db8::1": "AAAA", "::ffff:10.0.0.1": "A", "nope": ""} {
+		if got := addressRecordType(ip); got != want {
+			t.Fatalf("addressRecordType(%q) = %q, want %q", ip, got, want)
+		}
+	}
+}
+
+// TestSyncDeviceDNS_AddressAndPTRRecords checks the record type follows the
+// address family and that PTR records land in the reverse zone, named
+// relative to it.
+func TestSyncDeviceDNS_AddressAndPTRRecords(t *testing.T) {
+	netID := "net-1"
+	ptrZone := "1.168.192.in-addr.arpa"
+	forward := model.DNSZone{ID: "fwd", Name: "example.test", NetworkID: &netID, AutoSync: true, CreatePTR: true, PTRZone: &ptrZone, TTL: 300}
+	// The reverse zone doesn't auto-sync; its PTRs are still generated.
+	reverse := model.DNSZone{ID: "rev", Name: ptrZone, TTL: 300}
+
+	device := &model.Device{
+		ID:       "dev-1",
+		Hostname: "web-01",
+		Addresses: []model.Address{
+			{ID: "a4", IP: "192.168.1.10", NetworkID: netID},
+			{ID: "a6", IP: "2001:db8::5", NetworkID: netID}, // outside the IPv4 reverse zone
+			{ID: "other", IP: "10.9.9.9", NetworkID: "net-2"},
+		},
+	}
+
+	ss := newStubStorage([]model.DNSZone{forward, reverse})
+	ss.devices[device.ID] = device
+	ds := buildTestServices(ss)
+
+	if err := ds.syncDeviceDNS(systemCtx(), device); err != nil {
+		t.Fatalf("syncDeviceDNS returned error: %v", err)
+	}
+
+	type rec struct{ zone, name, typ, value string }
+	got := map[rec]bool{}
+	for _, r := range ss.createdRecords {
+		got[rec{r.ZoneID, r.Name, r.Type, r.Value}] = true
+	}
+	want := []rec{
+		{"fwd", "web-01", "A", "192.168.1.10"},
+		{"fwd", "web-01", "AAAA", "2001:db8::5"},
+		{"rev", "10", "PTR", "web-01.example.test"},
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("missing record %+v; created %+v", w, ss.createdRecords)
+		}
+	}
+	if len(ss.createdRecords) != len(want) {
+		t.Errorf("expected %d records, got %d: %+v", len(want), len(ss.createdRecords), ss.createdRecords)
 	}
 }
