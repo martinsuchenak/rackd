@@ -106,7 +106,7 @@ bun run test:e2e:install
 The build process consists of two main phases:
 
 1. **Frontend Build** (`task ui:build`):
-   - Installs Node.js dependencies with Bun
+   - Installs the locked dependencies with Bun (`bun install --frozen-lockfile`; after changing `package.json`, run `bun install` in `webui/` to update `bun.lock`)
    - Compiles TypeScript to JavaScript
    - Processes CSS with TailwindCSS
    - Builds HTML templates
