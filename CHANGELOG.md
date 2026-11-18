@@ -9,6 +9,14 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- The v0.7.0 release build stopped before publishing anything: `webui/bun.lock`
+  didn't match `webui/package.json`, so the build's `bun install` rewrote it
+  and the release refused the changed tree. The lockfile is regenerated, and
+  `task ui:build` now installs with `--frozen-lockfile`, as CI does. v0.7.1
+  carries everything listed under 0.7.0.
+
 ## [0.7.0] - 2026-11-18
 
 ### Changed
