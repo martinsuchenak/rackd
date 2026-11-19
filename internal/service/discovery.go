@@ -70,6 +70,10 @@ func (s *DiscoveryService) StartScanWithProfile(ctx context.Context, networkID, 
 		}
 	}
 
+	if err := requireCredentialUse(ctx, s.store, profile); err != nil {
+		return nil, err
+	}
+
 	if s.scanner == nil {
 		return nil, ErrValidation
 	}

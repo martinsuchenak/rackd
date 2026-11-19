@@ -16,6 +16,24 @@ import (
 type ScheduledScanService struct {
 	store storage.ScheduledScanStorage
 	rbac  auditedPermissionStore
+	// profile looks up a scan profile; nil when profiles aren't configured.
+	profile func(ctx context.Context, id string) (*model.ScanProfile, error)
+}
+
+// checkProfileCredentials applies the credential-use rule to the profile a
+// schedule runs: scheduling a credentialed profile is using its credentials.
+func (s *ScheduledScanService) checkProfileCredentials(ctx context.Context, profileID string) error {
+	if s.profile == nil || profileID == "" {
+		return nil
+	}
+	p, err := s.profile(ctx, profileID)
+	if errors.Is(err, storage.ErrProfileNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return requireCredentialUse(ctx, s.rbac, p)
 }
 
 func NewScheduledScanService(store storage.ScheduledScanStorage, rbac auditedPermissionStore) *ScheduledScanService {
@@ -36,6 +54,9 @@ func (s *ScheduledScanService) Create(ctx context.Context, scan *model.Scheduled
 	}
 	if errs := validateScheduledScan(scan); len(errs) > 0 {
 		return errs
+	}
+	if err := s.checkProfileCredentials(ctx, scan.ProfileID); err != nil {
+		return err
 	}
 
 	if err := s.store.Create(scan); err != nil {
@@ -66,6 +87,13 @@ func (s *ScheduledScanService) Update(ctx context.Context, id string, scan *mode
 	scan.ID = id
 	if errs := validateScheduledScan(scan); len(errs) > 0 {
 		return errs
+	}
+	// Only a change of profile is a new use of credentials; editing the
+	// schedule or name of an existing one isn't.
+	if existing, err := s.store.Get(id); err != nil || existing.ProfileID != scan.ProfileID {
+		if err := s.checkProfileCredentials(ctx, scan.ProfileID); err != nil {
+			return err
+		}
 	}
 	if err := s.store.Update(scan); err != nil {
 		return NormalizeError(err)
