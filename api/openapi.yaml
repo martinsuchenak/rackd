@@ -356,10 +356,9 @@ components:
           type: string
           enum: [quick, full, deep]
           default: quick
-        profile_id: { type: string, format: uuid }
-        credential_ids:
-          type: array
-          items: { type: string, format: uuid }
+        profile_id:
+          type: string
+          description: Scan with this profile. Its scan type, ports, per-host timeout, worker count and SNMP/SSH credentials apply, and scan_type is ignored. Built-in profiles have IDs like default-full.
 
     PromoteRequest:
       type: object
@@ -431,7 +430,9 @@ components:
           items: { type: integer }
         enable_snmp: { type: boolean }
         enable_ssh: { type: boolean }
-        timeout_sec: { type: integer }
+        snmp_credential_id: { type: string, description: SNMP credential (snmp_v2c or snmp_v3) used when enable_snmp is set }
+        ssh_credential_id: { type: string, description: SSH credential (ssh_key or ssh_password) used when enable_ssh is set }
+        timeout_sec: { type: integer, description: Time budget for probing one host, in seconds }
         max_workers: { type: integer, minimum: 1, maximum: 100 }
         description: { type: string }
         created_at: { type: string, format: date-time }
@@ -449,7 +450,9 @@ components:
           items: { type: integer }
         enable_snmp: { type: boolean }
         enable_ssh: { type: boolean }
-        timeout_sec: { type: integer, minimum: 1, default: 30 }
+        snmp_credential_id: { type: string, description: SNMP credential (snmp_v2c or snmp_v3) used when enable_snmp is set }
+        ssh_credential_id: { type: string, description: SSH credential (ssh_key or ssh_password) used when enable_ssh is set }
+        timeout_sec: { type: integer, minimum: 1, default: 30, description: Time budget for probing one host, in seconds }
         max_workers: { type: integer, minimum: 1, maximum: 100, default: 10 }
         description: { type: string }
 
@@ -1926,8 +1929,8 @@ paths:
             schema:
               $ref: '#/components/schemas/StartScanRequest'
       responses:
-        '201':
-          description: Scan started
+        '202':
+          description: Scan started; it runs in the background
           content:
             application/json:
               schema:

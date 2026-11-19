@@ -18,6 +18,9 @@ type DiscoveryService struct {
 	// devices creates promoted devices, with its permission check,
 	// validation, conflict detection and DNS sync.
 	devices *DeviceService
+	// profiles resolves the scan profile a scan request names; nil when
+	// profile storage isn't configured.
+	profiles storage.ProfileStorage
 }
 
 func NewDiscoveryService(store storage.ExtendedStorage, scanner discovery.Scanner) *DiscoveryService {
@@ -28,6 +31,14 @@ func NewDiscoveryService(store storage.ExtendedStorage, scanner discovery.Scanne
 }
 
 func (s *DiscoveryService) StartScan(ctx context.Context, networkID, scanType string) (*model.DiscoveryScan, error) {
+	return s.StartScanWithProfile(ctx, networkID, scanType, "")
+}
+
+// StartScanWithProfile starts a scan of a network. With a profile ID the
+// profile decides the scan: its type, ports, per-host timeout, worker
+// count and, when enabled, its SNMP and SSH credentials; scanType is then
+// ignored. Without one, scanType picks a built-in scan.
+func (s *DiscoveryService) StartScanWithProfile(ctx context.Context, networkID, scanType, profileID string) (*model.DiscoveryScan, error) {
 	if err := requirePermission(ctx, s.store, "discovery", "create"); err != nil {
 		return nil, err
 	}
@@ -45,19 +56,41 @@ func (s *DiscoveryService) StartScan(ctx context.Context, networkID, scanType st
 		scanType = model.ScanTypeQuick
 	}
 
-	if s.scanner != nil {
-		scan, err := s.scanner.Scan(ctx, network, scanType)
-		var notScannable *discovery.SubnetNotScannableError
-		if errors.As(err, &notScannable) || errors.Is(err, discovery.ErrSubnetTooLarge) {
-			return nil, ValidationErrors{{Field: "subnet", Message: err.Error()}}
+	var profile *model.ScanProfile
+	if profileID != "" {
+		if s.profiles == nil {
+			return nil, ValidationErrors{{Field: "profile_id", Message: "scan profiles are not configured"}}
+		}
+		profile, err = s.profiles.Get(ctx, profileID)
+		if errors.Is(err, storage.ErrProfileNotFound) {
+			return nil, ValidationErrors{{Field: "profile_id", Message: "scan profile not found"}}
 		}
 		if err != nil {
 			return nil, err
 		}
-		return scan, nil
 	}
 
-	return nil, ErrValidation
+	if s.scanner == nil {
+		return nil, ErrValidation
+	}
+	var scan *model.DiscoveryScan
+	if profile != nil {
+		advanced, ok := s.scanner.(discovery.AdvancedScanner)
+		if !ok {
+			return nil, ValidationErrors{{Field: "profile_id", Message: "this scanner doesn't support scan profiles"}}
+		}
+		scan, err = advanced.ScanAdvanced(ctx, network, profile, "", "")
+	} else {
+		scan, err = s.scanner.Scan(ctx, network, scanType)
+	}
+	var notScannable *discovery.SubnetNotScannableError
+	if errors.As(err, &notScannable) || errors.Is(err, discovery.ErrSubnetTooLarge) {
+		return nil, ValidationErrors{{Field: "subnet", Message: err.Error()}}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return scan, nil
 }
 
 func (s *DiscoveryService) ListScans(ctx context.Context, networkID string) ([]model.DiscoveryScan, error) {

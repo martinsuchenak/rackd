@@ -13,6 +13,9 @@ import (
 
 type startScanRequest struct {
 	ScanType string `json:"scan_type"`
+	// ProfileID runs the scan with a scan profile, which then decides the
+	// scan type, ports, timeouts, workers and credentials.
+	ProfileID string `json:"profile_id"`
 }
 
 func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +32,7 @@ func (h *Handler) startScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scan, err := h.svc.Discovery.StartScan(r.Context(), networkID, req.ScanType)
+	scan, err := h.svc.Discovery.StartScanWithProfile(r.Context(), networkID, req.ScanType, req.ProfileID)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return

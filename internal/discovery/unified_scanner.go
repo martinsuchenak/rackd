@@ -1,7 +1,9 @@
 package discovery
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -69,7 +71,11 @@ func (s *UnifiedScanner) GetNetwork(ctx context.Context, id string) (*model.Netw
 	return s.netStorage.GetNetwork(ctx, id)
 }
 
+// ScanAdvanced scans a network with a profile. The SNMP and SSH probes run
+// only when the profile enables them; a credential ID passed here overrides
+// the one the profile names, and an empty one falls back to it.
 func (s *UnifiedScanner) ScanAdvanced(ctx context.Context, network *model.Network, profile *model.ScanProfile, snmpCredID, sshCredID string) (*model.DiscoveryScan, error) {
+	snmpCredID, sshCredID = profileCredentials(profile, snmpCredID, sshCredID)
 	return s.ScanWithOptions(ctx, network, &ScanOptions{
 		NetworkID:  network.ID,
 		ScanType:   profile.ScanType,
@@ -283,6 +289,17 @@ func (s *UnifiedScanner) runScanWithOptions(ctx context.Context, scan *model.Dis
 	scan.TotalHosts = len(ips)
 
 	params := s.adaptiveScanner.CalculateParameters(network.Subnet, opts.ScanType)
+	// A profile's worker count replaces the adaptive one, and its timeout
+	// bounds the whole probe of one host (ports, SSH, SNMP), not each port.
+	var hostTimeout time.Duration
+	if opts.Profile != nil {
+		if opts.Profile.MaxWorkers > 0 {
+			params.Workers = opts.Profile.MaxWorkers
+		}
+		if opts.Profile.TimeoutSec > 0 {
+			hostTimeout = time.Duration(opts.Profile.TimeoutSec) * time.Second
+		}
+	}
 	semaphore := make(chan struct{}, params.Workers)
 	var wg sync.WaitGroup
 	var foundCount int
@@ -387,7 +404,13 @@ probe:
 				}
 			}()
 
-			device := s.discoverHostWithOptions(scanCtx, ip, network.ID, opts, params.Timeout, netResults)
+			hostCtx := scanCtx
+			if hostTimeout > 0 {
+				var cancelHost context.CancelFunc
+				hostCtx, cancelHost = context.WithTimeout(scanCtx, hostTimeout)
+				defer cancelHost()
+			}
+			device := s.discoverHostWithOptions(hostCtx, ip, network.ID, opts, params.Timeout, netResults)
 			if device != nil {
 				found <- device
 			}
@@ -440,15 +463,33 @@ probe:
 	}
 }
 
+// profileCredentials picks the credentials a profile scan probes with: none
+// for a probe the profile doesn't enable, otherwise the override if given,
+// else the credential the profile names.
+func profileCredentials(profile *model.ScanProfile, snmpOverride, sshOverride string) (snmpID, sshID string) {
+	if profile.EnableSNMP {
+		snmpID = cmp.Or(snmpOverride, profile.SNMPCredentialID)
+	}
+	if profile.EnableSSH {
+		sshID = cmp.Or(sshOverride, profile.SSHCredentialID)
+	}
+	return snmpID, sshID
+}
+
+// scanCancelled reports whether the scan itself was cancelled, as opposed
+// to a host running out of its per-host time budget.
+func scanCancelled(ctx context.Context) bool {
+	return errors.Is(ctx.Err(), context.Canceled)
+}
+
 // scanProgressInterval is how often a running scan's progress is written.
 const scanProgressInterval = 2 * time.Second
 
 func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string, networkID string, opts *ScanOptions, timeout time.Duration, netResults *networkScanResults) *model.DiscoveredDevice {
-	// Check context at the very start
-	select {
-	case <-ctx.Done():
+	// Only a cancelled scan stops here; the per-host budget limits the
+	// probes after the port check (see below).
+	if scanCancelled(ctx) {
 		return nil
-	default:
 	}
 
 	// Combined alive check + port scan: scan ports once and reuse results
@@ -476,24 +517,26 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 
 	scorer := NewConfidenceScorer()
 
-	// Check context before DNS lookup
-	select {
-	case <-ctx.Done():
+	// A cancelled scan drops the host. A spent per-host budget (a profile's
+	// timeout_sec) only skips the probes still to come: the host answered,
+	// so it is kept with what was learned so far.
+	if scanCancelled(ctx) {
 		return nil
-	default:
 	}
-	names, err := net.LookupAddr(ip)
+	var names []string
+	var err error
+	if ctx.Err() == nil {
+		names, err = net.LookupAddr(ip)
+	}
 	if err == nil && len(names) > 0 {
 		hostname := strings.TrimSuffix(names[0], ".")
 		scorer.Add(hostname, "dns", GetHostnameSourceConfidence("dns"))
 	}
 
-	if opts.SSHCredID != "" {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
+	if scanCancelled(ctx) {
+		return nil
+	}
+	if opts.SSHCredID != "" && ctx.Err() == nil {
 		if sshResult, err := s.sshScanner.Scan(ctx, ip, opts.SSHCredID); err == nil {
 			if sshResult.Hostname != "" {
 				scorer.Add(sshResult.Hostname, "ssh", GetHostnameSourceConfidence("ssh"))
@@ -506,12 +549,10 @@ func (s *UnifiedScanner) discoverHostWithOptions(ctx context.Context, ip string,
 		}
 	}
 
-	if opts.SNMPCredID != "" {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
+	if scanCancelled(ctx) {
+		return nil
+	}
+	if opts.SNMPCredID != "" && ctx.Err() == nil {
 		if snmpResult, err := s.snmpScanner.Scan(ctx, ip, opts.SNMPCredID); err == nil {
 			if snmpResult.SysName != "" {
 				scorer.Add(snmpResult.SysName, "snmp", GetHostnameSourceConfidence("snmp"))

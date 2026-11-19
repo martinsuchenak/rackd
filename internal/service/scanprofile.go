@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -11,6 +14,9 @@ import (
 type ScanProfileService struct {
 	store storage.ProfileStorage
 	rbac  auditedPermissionStore
+	// credential looks up a stored credential; nil when credential storage
+	// isn't configured, in which case a profile can't name one.
+	credential func(id string) (*model.Credential, error)
 }
 
 func NewScanProfileService(store storage.ProfileStorage, rbac auditedPermissionStore) *ScanProfileService {
@@ -30,6 +36,9 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 		return err
 	}
 	applyScanProfileDefaults(profile)
+	if err := s.checkCredentials(profile); err != nil {
+		return err
+	}
 
 	if err := s.store.Create(ctx, profile); err != nil {
 		return NormalizeError(err)
@@ -58,6 +67,9 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 
 	profile.ID = id
 	applyScanProfileDefaults(profile)
+	if err := s.checkCredentials(profile); err != nil {
+		return err
+	}
 	if err := s.store.Update(ctx, profile); err != nil {
 		return NormalizeError(err)
 	}
@@ -96,4 +108,36 @@ func applyScanProfileDefaults(p *model.ScanProfile) {
 	if p.MaxWorkers == 0 {
 		p.MaxWorkers = defaultScanMaxWorkers
 	}
+}
+
+// checkCredentials makes sure the credentials a profile names exist and are
+// of the kind its probe needs: an SNMP credential for SNMP, an SSH one for SSH.
+func (s *ScanProfileService) checkCredentials(p *model.ScanProfile) error {
+	check := func(field, id string, types ...string) *ValidationError {
+		if id == "" {
+			return nil
+		}
+		if s.credential == nil {
+			return &ValidationError{Field: field, Message: "credential storage is not configured"}
+		}
+		cred, err := s.credential(id)
+		if err != nil || cred == nil {
+			return &ValidationError{Field: field, Message: "credential not found"}
+		}
+		if !slices.Contains(types, cred.Type) {
+			return &ValidationError{Field: field, Message: fmt.Sprintf("credential %q is %s; it must be one of %s", cred.Name, cred.Type, strings.Join(types, ", "))}
+		}
+		return nil
+	}
+	var errs ValidationErrors
+	if e := check("snmp_credential_id", p.SNMPCredentialID, "snmp_v2c", "snmp_v3"); e != nil {
+		errs = append(errs, *e)
+	}
+	if e := check("ssh_credential_id", p.SSHCredentialID, "ssh_key", "ssh_password"); e != nil {
+		errs = append(errs, *e)
+	}
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
 }

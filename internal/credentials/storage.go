@@ -149,8 +149,16 @@ func (s *SQLiteStorage) List(datacenterID string) ([]model.Credential, error) {
 	return creds, rows.Err()
 }
 
+// Delete removes a credential and clears it from any scan profile that
+// names it, in one transaction, so no profile points at a missing one.
 func (s *SQLiteStorage) Delete(id string) error {
-	res, err := s.db.Exec(`DELETE FROM credentials WHERE id=?`, id)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.Exec(`DELETE FROM credentials WHERE id=?`, id)
 	if err != nil {
 		return err
 	}
@@ -158,7 +166,15 @@ func (s *SQLiteStorage) Delete(id string) error {
 	if n == 0 {
 		return ErrCredentialNotFound
 	}
-	return nil
+	for _, q := range []string{
+		`UPDATE scan_profiles SET snmp_credential_id = NULL WHERE snmp_credential_id = ?`,
+		`UPDATE scan_profiles SET ssh_credential_id = NULL WHERE ssh_credential_id = ?`,
+	} {
+		if _, err := tx.Exec(q, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStorage) scanCredential(row *sql.Row) (*model.Credential, error) {

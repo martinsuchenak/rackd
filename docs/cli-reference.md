@@ -451,7 +451,10 @@ Usage:
 
 Flags:
        --network string  Network ID to scan (Required)
-       --type string     Scan type (quick/full/deep) (default: full)
+       --type string     Scan type (quick/full/deep); ignored with --profile
+                         (default: full)
+       --profile string  Scan profile ID; the profile sets the scan type, ports,
+                         timeouts and credentials
        --dry-run bool    Show what would be scanned without scanning
 
 Global Flags:
@@ -1948,14 +1951,19 @@ Usage:
    rackd scan-profile create [flags]
 
 Flags:
-       --name string         Profile name (Required)
-       --type string         Scan type (quick, full, deep, custom) (Required)
-       --timeout int         Timeout in seconds (default: 30)
-       --workers int         Max concurrent workers (default: 10)
-       --snmp bool           Enable SNMP probing
-       --ssh bool            Enable SSH probing
-       --ports string        Comma-separated port list (for custom type)
-       --description string  Description
+       --name string             Profile name (Required)
+       --type string             Scan type (quick, full, deep, custom)
+                                 (Required)
+       --timeout int             Timeout in seconds (default: 30)
+       --workers int             Max concurrent workers (default: 10)
+       --snmp bool               Enable SNMP probing (needs --snmp-credential)
+       --ssh bool                Enable SSH probing (needs --ssh-credential)
+       --snmp-credential string  ID of the SNMP credential (snmp_v2c or snmp_v3)
+                                 to probe with
+       --ssh-credential string   ID of the SSH credential (ssh_key or
+                                 ssh_password) to log in with
+       --ports string            Comma-separated port list (for custom type)
+       --description string      Description
 
 Global Flags:
    -h, --help  Show help for the command
@@ -1971,15 +1979,19 @@ Usage:
    rackd scan-profile update [flags]
 
 Flags:
-       --id string           Profile ID (Required)
-       --name string         Profile name
-       --type string         Scan type (quick, full, deep, custom)
-       --timeout int         Timeout in seconds
-       --workers int         Max concurrent workers
-       --snmp bool           Enable SNMP probing
-       --ssh bool            Enable SSH probing
-       --ports string        Comma-separated port list
-       --description string  Description
+       --id string               Profile ID (Required)
+       --name string             Profile name
+       --type string             Scan type (quick, full, deep, custom)
+       --timeout int             Timeout in seconds
+       --workers int             Max concurrent workers
+       --snmp bool               Enable SNMP probing; --snmp=false turns it off
+       --ssh bool                Enable SSH probing; --ssh=false turns it off
+       --snmp-credential string  ID of the SNMP credential to probe with; an
+                                 empty value clears it
+       --ssh-credential string   ID of the SSH credential to log in with; an
+                                 empty value clears it
+       --ports string            Comma-separated port list
+       --description string      Description
 
 Global Flags:
    -h, --help  Show help for the command

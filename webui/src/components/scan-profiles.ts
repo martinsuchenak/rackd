@@ -1,6 +1,6 @@
 // Scan Profiles Components for Rackd Web UI
 
-import type { ScanProfile, Network } from '../core/types';
+import type { ScanProfile, Network, Credential } from '../core/types';
 import { api, RackdAPIError } from '../core/api';
 import type { ListPageState, ValidationErrors } from '../core/page-state';
 
@@ -10,6 +10,9 @@ interface ScanProfilesData extends ListPageState<ScanProfile, Exclude<ModalType,
   profiles: ScanProfile[];
   selectedProfile: ScanProfile | null;
   networks: Network[];
+  credentials: Credential[];
+  get snmpCredentials(): Credential[];
+  get sshCredentials(): Credential[];
   get showCreateModal(): boolean;
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
@@ -21,6 +24,7 @@ interface ScanProfilesData extends ListPageState<ScanProfile, Exclude<ModalType,
   init(): Promise<void>;
   loadProfiles(): Promise<void>;
   loadNetworks(): Promise<void>;
+  loadCredentials(): Promise<void>;
   openCreateModal(): void;
   openEditModal(profile: ScanProfile): void;
   openDeleteModal(profile: ScanProfile): void;
@@ -38,6 +42,7 @@ export function scanProfilesList() {
     profiles: [] as ScanProfile[],
     selectedProfile: null as ScanProfile | null,
     networks: [] as Network[],
+    credentials: [] as Credential[],
     modalType: '' as ModalType,
     loading: true,
     saving: false,
@@ -50,10 +55,18 @@ export function scanProfilesList() {
     formPorts: '',
     formEnableSNMP: false,
     formEnableSSH: false,
+    formSNMPCredentialID: '',
+    formSSHCredentialID: '',
     formTimeoutSec: 5,
     formMaxWorkers: 10,
     formDescription: '',
 
+    get snmpCredentials(): Credential[] {
+      return this.credentials.filter(c => c.type === 'snmp_v2c' || c.type === 'snmp_v3');
+    },
+    get sshCredentials(): Credential[] {
+      return this.credentials.filter(c => c.type === 'ssh_key' || c.type === 'ssh_password');
+    },
     get showCreateModal(): boolean { return this.modalType === 'create'; },
     get showEditModal(): boolean { return this.modalType === 'edit'; },
     get showDeleteModal(): boolean { return this.modalType === 'delete'; },
@@ -66,7 +79,7 @@ export function scanProfilesList() {
     },
 
     async init(): Promise<void> {
-      await Promise.all([this.loadProfiles(), this.loadNetworks()]);
+      await Promise.all([this.loadProfiles(), this.loadNetworks(), this.loadCredentials()]);
       this.loading = false;
     },
 
@@ -87,6 +100,16 @@ export function scanProfilesList() {
       }
     },
 
+    // Credentials fill the pickers; a user who can't list them still sees
+    // the profiles and can save them without changing their credentials.
+    async loadCredentials(): Promise<void> {
+      try {
+        this.credentials = (await api.listCredentials()) || [];
+      } catch {
+        this.credentials = [];
+      }
+    },
+
     openCreateModal(): void {
       this.modalType = '';
       this.selectedProfile = null;
@@ -96,6 +119,8 @@ export function scanProfilesList() {
       this.formPorts = '';
       this.formEnableSNMP = false;
       this.formEnableSSH = false;
+      this.formSNMPCredentialID = '';
+      this.formSSHCredentialID = '';
       this.formTimeoutSec = 5;
       this.formMaxWorkers = 10;
       this.formDescription = '';
@@ -115,6 +140,8 @@ export function scanProfilesList() {
       this.formPorts = profile.ports?.join(', ') || '';
       this.formEnableSNMP = profile.enable_snmp || false;
       this.formEnableSSH = profile.enable_ssh || false;
+      this.formSNMPCredentialID = profile.snmp_credential_id || '';
+      this.formSSHCredentialID = profile.ssh_credential_id || '';
       this.formTimeoutSec = profile.timeout_sec || 5;
       this.formMaxWorkers = profile.max_workers || 10;
       this.formDescription = profile.description || '';
@@ -154,6 +181,8 @@ export function scanProfilesList() {
           ports: ports.length > 0 ? ports : undefined,
           enable_snmp: this.formEnableSNMP,
           enable_ssh: this.formEnableSSH,
+          snmp_credential_id: this.formSNMPCredentialID || undefined,
+          ssh_credential_id: this.formSSHCredentialID || undefined,
           timeout_sec: this.formTimeoutSec,
           max_workers: this.formMaxWorkers,
           description: this.formDescription.trim() || undefined,
@@ -189,6 +218,8 @@ export function scanProfilesList() {
           ports,
           enable_snmp: this.formEnableSNMP,
           enable_ssh: this.formEnableSSH,
+          snmp_credential_id: this.formSNMPCredentialID || undefined,
+          ssh_credential_id: this.formSSHCredentialID || undefined,
           timeout_sec: this.formTimeoutSec,
           max_workers: this.formMaxWorkers,
           description: this.formDescription.trim() || undefined,

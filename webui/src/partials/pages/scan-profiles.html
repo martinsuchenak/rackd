@@ -122,9 +122,27 @@
                 </label>
               </div>
             </div>
+            <div x-show="formEnableSNMP">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SNMP credential</label>
+              <select x-model="formSNMPCredentialID" aria-label="SNMP credential" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">None (SNMP is skipped)</option>
+                <template x-for="c in snmpCredentials" :key="c.id">
+                  <option :value="c.id" x-text="c.name + ' (' + c.type + ')'"></option>
+                </template>
+              </select>
+            </div>
+            <div x-show="formEnableSSH">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SSH credential</label>
+              <select x-model="formSSHCredentialID" aria-label="SSH credential" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">None (SSH is skipped)</option>
+                <template x-for="c in sshCredentials" :key="c.id">
+                  <option :value="c.id" x-text="c.name + ' (' + c.type + ')'"></option>
+                </template>
+              </select>
+            </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (seconds)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout per host (seconds)</label>
                 <input type="number" x-model="formTimeoutSec" min="1" max="60"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
@@ -204,9 +222,27 @@
                 </label>
               </div>
             </div>
+            <div x-show="formEnableSNMP">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SNMP credential</label>
+              <select x-model="formSNMPCredentialID" aria-label="SNMP credential" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">None (SNMP is skipped)</option>
+                <template x-for="c in snmpCredentials" :key="c.id">
+                  <option :value="c.id" x-text="c.name + ' (' + c.type + ')'"></option>
+                </template>
+              </select>
+            </div>
+            <div x-show="formEnableSSH">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SSH credential</label>
+              <select x-model="formSSHCredentialID" aria-label="SSH credential" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">None (SSH is skipped)</option>
+                <template x-for="c in sshCredentials" :key="c.id">
+                  <option :value="c.id" x-text="c.name + ' (' + c.type + ')'"></option>
+                </template>
+              </select>
+            </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (seconds)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout per host (seconds)</label>
                 <input type="number" x-model="formTimeoutSec" min="1" max="60"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>

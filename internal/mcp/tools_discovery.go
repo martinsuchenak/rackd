@@ -13,6 +13,7 @@ func (s *Server) registerDiscoveryTools() {
 		mcp.NewTool("discovery_scan", "Start a network discovery scan",
 			mcp.String("network_id", "Network ID to scan", mcp.Required()),
 			mcp.String("scan_type", "Scan type: quick, full, deep"),
+			mcp.String("profile_id", "Scan profile ID; when set, the profile decides the scan type, ports, timeouts and credentials"),
 		).Discoverable("discovery", "scan", "network", "probe", "nmap", "detect"),
 		s.handleStartScan,
 	)
@@ -41,7 +42,7 @@ func (s *Server) handleStartScan(ctx context.Context, req *mcp.ToolRequest) (*mc
 		scanType = model.ScanTypeQuick
 	}
 
-	scan, err := s.svc.Discovery.StartScan(ctx, networkID, scanType)
+	scan, err := s.svc.Discovery.StartScanWithProfile(ctx, networkID, scanType, req.StringOr("profile_id", ""))
 	if err != nil {
 		return nil, toolError(err)
 	}

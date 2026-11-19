@@ -118,8 +118,10 @@ func createCommand() *cli.Command {
 			&cli.StringFlag{Name: "type", Usage: "Scan type (quick, full, deep, custom)", Required: true},
 			&cli.IntFlag{Name: "timeout", Usage: "Timeout in seconds", DefaultValue: 30},
 			&cli.IntFlag{Name: "workers", Usage: "Max concurrent workers", DefaultValue: 10},
-			&cli.BoolFlag{Name: "snmp", Usage: "Enable SNMP probing"},
-			&cli.BoolFlag{Name: "ssh", Usage: "Enable SSH probing"},
+			&cli.BoolFlag{Name: "snmp", Usage: "Enable SNMP probing (needs --snmp-credential)"},
+			&cli.BoolFlag{Name: "ssh", Usage: "Enable SSH probing (needs --ssh-credential)"},
+			&cli.StringFlag{Name: "snmp-credential", Usage: "ID of the SNMP credential (snmp_v2c or snmp_v3) to probe with"},
+			&cli.StringFlag{Name: "ssh-credential", Usage: "ID of the SSH credential (ssh_key or ssh_password) to log in with"},
 			&cli.StringFlag{Name: "ports", Usage: "Comma-separated port list (for custom type)"},
 			&cli.StringFlag{Name: "description", Usage: "Description"},
 		},
@@ -133,6 +135,12 @@ func createCommand() *cli.Command {
 				"max_workers": cmd.GetInt("workers"),
 				"enable_snmp": cmd.GetBool("snmp"),
 				"enable_ssh":  cmd.GetBool("ssh"),
+			}
+			if v := cmd.GetString("snmp-credential"); v != "" {
+				body["snmp_credential_id"] = v
+			}
+			if v := cmd.GetString("ssh-credential"); v != "" {
+				body["ssh_credential_id"] = v
 			}
 			if desc := cmd.GetString("description"); desc != "" {
 				body["description"] = desc
@@ -170,8 +178,10 @@ func updateCommand() *cli.Command {
 			&cli.StringFlag{Name: "type", Usage: "Scan type (quick, full, deep, custom)"},
 			&cli.IntFlag{Name: "timeout", Usage: "Timeout in seconds"},
 			&cli.IntFlag{Name: "workers", Usage: "Max concurrent workers"},
-			&cli.BoolFlag{Name: "snmp", Usage: "Enable SNMP probing"},
-			&cli.BoolFlag{Name: "ssh", Usage: "Enable SSH probing"},
+			&cli.BoolFlag{Name: "snmp", Usage: "Enable SNMP probing; --snmp=false turns it off"},
+			&cli.BoolFlag{Name: "ssh", Usage: "Enable SSH probing; --ssh=false turns it off"},
+			&cli.StringFlag{Name: "snmp-credential", Usage: "ID of the SNMP credential to probe with; an empty value clears it"},
+			&cli.StringFlag{Name: "ssh-credential", Usage: "ID of the SSH credential to log in with; an empty value clears it"},
 			&cli.StringFlag{Name: "ports", Usage: "Comma-separated port list"},
 			&cli.StringFlag{Name: "description", Usage: "Description"},
 		},
@@ -206,11 +216,17 @@ func updateCommand() *cli.Command {
 			if v := cmd.GetInt("workers"); v > 0 {
 				body["max_workers"] = v
 			}
-			if cmd.GetBool("snmp") {
-				body["enable_snmp"] = true
+			if cmd.HasFlag("snmp") {
+				body["enable_snmp"] = cmd.GetBool("snmp")
 			}
-			if cmd.GetBool("ssh") {
-				body["enable_ssh"] = true
+			if cmd.HasFlag("ssh") {
+				body["enable_ssh"] = cmd.GetBool("ssh")
+			}
+			if cmd.HasFlag("snmp-credential") {
+				body["snmp_credential_id"] = cmd.GetString("snmp-credential")
+			}
+			if cmd.HasFlag("ssh-credential") {
+				body["ssh_credential_id"] = cmd.GetString("ssh-credential")
 			}
 			if v := cmd.GetString("ports"); v != "" {
 				body["ports"] = parsePorts(v)

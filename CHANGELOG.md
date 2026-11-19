@@ -9,6 +9,45 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- Discovery scans use stored credentials. A scan profile names an SNMP
+  credential (`snmp_credential_id`) and an SSH credential
+  (`ssh_credential_id`); a scan with the profile queries SNMP and logs in
+  over SSH when the profile enables them. Set them with
+  `rackd scan-profile create/update --snmp-credential/--ssh-credential` or
+  in the web UI's profile form. Saving checks that each credential exists
+  and is the right type, and deleting a credential clears it from profiles.
+- Manual scans can run with a profile: `rackd discovery scan --profile`,
+  `profile_id` in `POST /api/v1/discovery/networks/{id}/scan` (already in
+  the API spec, but ignored until now) and on the `discovery_scan` MCP tool.
+
+### Changed
+
+- Profile scans honour every profile setting. `max_workers` sets how many
+  hosts are probed at once, and `timeout_sec` is the time budget for one
+  host: once it is spent, the probes left for that host are skipped and
+  the host is kept. Both used to be ignored, as were `enable_snmp` and
+  `enable_ssh`.
+- `db_queries_total` and `db_query_duration_milliseconds` are no longer
+  exported. Nothing ever recorded them.
+
+### Removed
+
+- The `client_credentials` OAuth grant. It was advertised in the server
+  metadata but could never succeed, since no client is tied to a user.
+  Use an API key for service-to-service access.
+- `credential_ids` from the scan request in the API spec; the server never
+  read it. Credentials come from the scan profile.
+
+### Fixed
+
+- `discovery_scans_total` and `discovery_scan_duration_milliseconds` record
+  completed scans; they were always empty.
+- `rackd discovery scan` reported an error for every scan it started: the
+  server answers `202 Accepted`, which the CLI didn't accept. The API spec
+  now says 202 too.
+
 ## [0.7.2] - 2026-11-19
 
 ### Changed
