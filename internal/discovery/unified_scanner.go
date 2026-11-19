@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/credentials"
+	"github.com/martinsuchenak/rackd/internal/metrics"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -421,6 +422,7 @@ probe:
 		completedAt := time.Now()
 		scan.Status = model.ScanStatusCompleted
 		scan.CompletedAt = &completedAt
+		metrics.Get().RecordDiscoveryScan(scan.ScanType, completedAt.Sub(now))
 		if err := s.storage.UpdateDiscoveryScan(ctx, scan); err != nil {
 			log.Printf("discovery: failed to update completed scan: %v", err)
 		}

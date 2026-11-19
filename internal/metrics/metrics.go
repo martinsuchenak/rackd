@@ -24,8 +24,6 @@ type Metrics struct {
 	discoveryDuration sync.Map // map[string]*histogram
 
 	// Database metrics
-	dbQueriesTotal    atomic.Int64
-	dbQueryDuration   sync.Map // map[string]*histogram
 	dbConnectionsOpen atomic.Int64
 
 	startTime time.Time
@@ -58,17 +56,11 @@ func (m *Metrics) RecordHTTPRequest(route string, statusCode int, duration time.
 	counter.Add(1)
 }
 
-// RecordDiscoveryScan records a discovery scan
-func (m *Metrics) RecordDiscoveryScan(scanType string, duration time.Duration, hostsFound int) {
+// RecordDiscoveryScan records a finished discovery scan. scanType must come
+// from the bounded set of scan types.
+func (m *Metrics) RecordDiscoveryScan(scanType string, duration time.Duration) {
 	m.discoveryScans.Add(1)
 	h := m.getOrCreateHistogram(&m.discoveryDuration, scanType)
-	h.observe(duration)
-}
-
-// RecordDBQuery records a database query
-func (m *Metrics) RecordDBQuery(query string, duration time.Duration) {
-	m.dbQueriesTotal.Add(1)
-	h := m.getOrCreateHistogram(&m.dbQueryDuration, query)
 	h.observe(duration)
 }
 
@@ -180,18 +172,6 @@ func (m *Metrics) Export() string {
 	})
 
 	// Database metrics
-	out += "# HELP db_queries_total Total number of database queries\n"
-	out += "# TYPE db_queries_total counter\n"
-	out += fmt.Sprintf("db_queries_total %d\n", m.dbQueriesTotal.Load())
-
-	out += "# HELP db_query_duration_milliseconds Mean database query duration since start, in milliseconds\n"
-	out += "# TYPE db_query_duration_milliseconds gauge\n"
-	m.dbQueryDuration.Range(func(key, value interface{}) bool {
-		h := value.(*histogram)
-		out += fmt.Sprintf("db_query_duration_milliseconds{query=\"%s\"} %.2f\n", escapeLabel(key.(string)), h.avg())
-		return true
-	})
-
 	out += "# HELP db_connections_open Current number of open database connections\n"
 	out += "# TYPE db_connections_open gauge\n"
 	out += fmt.Sprintf("db_connections_open %d\n", m.dbConnectionsOpen.Load())

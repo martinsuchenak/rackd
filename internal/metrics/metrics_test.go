@@ -31,8 +31,8 @@ func TestMetrics_RecordHTTPRequest(t *testing.T) {
 func TestMetrics_RecordDiscoveryScan(t *testing.T) {
 	m := &Metrics{startTime: time.Now()}
 
-	m.RecordDiscoveryScan("ping", 5*time.Second, 10)
-	m.RecordDiscoveryScan("ping", 3*time.Second, 5)
+	m.RecordDiscoveryScan("ping", 5*time.Second)
+	m.RecordDiscoveryScan("ping", 3*time.Second)
 
 	if m.discoveryScans.Load() != 2 {
 		t.Errorf("Expected 2 scans, got %d", m.discoveryScans.Load())

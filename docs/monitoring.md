@@ -105,13 +105,11 @@ API key.
 - `devices_total` - Current number of devices (gauge)
 - `networks_total` - Current number of networks (gauge)
 - `datacenters_total` - Current number of datacenters (gauge)
-- `discovery_scans_total` - Total number of discovery scans performed (counter). Not recorded yet: always `0`
-- `discovery_scan_duration_milliseconds{type="..."}` - Mean scan duration since start, by type (gauge). Not recorded yet: no samples
+- `discovery_scans_total` - Total number of discovery scans that completed (counter). Cancelled and failed scans aren't counted
+- `discovery_scan_duration_milliseconds{type="..."}` - Mean duration of completed scans since start, by scan type (gauge)
 
 #### Database Metrics
 
-- `db_queries_total` - Total number of database queries (counter). Not recorded yet: always `0`
-- `db_query_duration_milliseconds{query="..."}` - Mean query duration since start (gauge). Not recorded yet: no samples
 - `db_connections_open` - Current number of open database connections (gauge)
 
 #### Runtime Metrics

@@ -5,10 +5,13 @@ import (
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"io"
 	"net"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/martinsuchenak/rackd/internal/log"
+	"github.com/martinsuchenak/rackd/internal/metrics"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -304,6 +307,8 @@ func TestScanPublishesStartedAndCompleted(t *testing.T) {
 	})
 	defer unsubscribe()
 
+	scansBefore := completedScansMetric(t)
+
 	network := &model.Network{ID: "net-events", Name: "Events", Subnet: "192.0.2.1/32"} // TEST-NET-1, nothing answers
 	_ = store.CreateNetwork(ctx, network)
 	scan, err := scanner.Scan(ctx, network, model.ScanTypeQuick)
@@ -326,4 +331,27 @@ func TestScanPublishesStartedAndCompleted(t *testing.T) {
 	if got[model.EventTypeDiscoveryStarted].Status != model.ScanStatusRunning || got[model.EventTypeDiscoveryCompleted].Status != model.ScanStatusCompleted {
 		t.Errorf("statuses: started %s, completed %s", got[model.EventTypeDiscoveryStarted].Status, got[model.EventTypeDiscoveryCompleted].Status)
 	}
+	// The metric is recorded before the completed event is published.
+	if after := completedScansMetric(t); after <= scansBefore {
+		t.Errorf("discovery_scans_total %d after a completed scan, was %d", after, scansBefore)
+	}
+	if !strings.Contains(metrics.Get().Export(), `discovery_scan_duration_milliseconds{type="quick"}`) {
+		t.Error("no quick-scan duration sample exported")
+	}
+}
+
+// completedScansMetric reads discovery_scans_total from the metrics export.
+func completedScansMetric(t *testing.T) int {
+	t.Helper()
+	for _, line := range strings.Split(metrics.Get().Export(), "\n") {
+		if v, ok := strings.CutPrefix(line, "discovery_scans_total "); ok {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return n
+		}
+	}
+	t.Fatal("discovery_scans_total not exported")
+	return 0
 }
