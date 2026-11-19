@@ -48,7 +48,6 @@ var (
 	ErrOAuthClientMetadataLimit  = errors.New("client metadata is too large")
 	ErrOAuthCodeRequired         = errors.New("code is required")
 	ErrOAuthRefreshTokenRequired = errors.New("refresh_token is required")
-	ErrOAuthClientHasNoUser      = errors.New("client has no associated user")
 	ErrOAuthUserInactive         = errors.New("user is not active")
 )
 
@@ -614,83 +613,6 @@ func (s *OAuthService) RefreshAccessToken(ctx context.Context, req *model.OAuthT
 		ExpiresIn:    int(s.accessTokenTTL.Seconds()),
 		RefreshToken: newRefreshPlain,
 		Scope:        scope,
-	}, nil
-}
-
-// ClientCredentials handles the client_credentials grant for confidential clients.
-func (s *OAuthService) ClientCredentials(ctx context.Context, req *model.OAuthTokenRequest) (*model.OAuthTokenResponse, error) {
-	client, err := s.store.GetOAuthClient(ctx, req.ClientID)
-	if err != nil {
-		return nil, ErrOAuthInvalidClient
-	}
-
-	if !client.IsConfidential {
-		return nil, ErrOAuthInvalidGrantType
-	}
-
-	// Verify client secret
-	secretHash := auth.HashToken(req.ClientSecret)
-	if subtle.ConstantTimeCompare([]byte(secretHash), []byte(client.SecretHash)) != 1 {
-		return nil, ErrOAuthInvalidClientSecret
-	}
-
-	// For client_credentials, the client must have a created_by_user_id to map to a user
-	if client.CreatedByUserID == "" {
-		return nil, ErrOAuthClientHasNoUser
-	}
-
-	scope := client.Scope
-	if req.Scope != "" {
-		requestedScopes := auth.ParseScopes(req.Scope)
-		allowedScopes := auth.ParseScopes(client.Scope)
-		effectiveScopes := auth.IntersectScopes(requestedScopes, allowedScopes)
-		scope = auth.JoinScopes(effectiveScopes)
-	}
-	// Clamp client-credentials grants to the catalog and the associated
-	// user's permissions — the client acts on that user's behalf.
-	{
-		effectiveScopes := auth.ParseScopes(scope)
-		if slices.Contains(effectiveScopes, "*") {
-			effectiveScopes = nil
-		}
-		catalog, err := s.scopeCatalog(ctx)
-		if err != nil {
-			return nil, err
-		}
-		effectiveScopes = auth.IntersectScopes(effectiveScopes, catalog)
-		userScopes, err := s.userScopeSet(ctx, client.CreatedByUserID)
-		if err != nil {
-			return nil, err
-		}
-		effectiveScopes = auth.IntersectScopes(effectiveScopes, userScopes)
-		if len(effectiveScopes) == 0 {
-			return nil, ErrOAuthInvalidScope
-		}
-		scope = auth.JoinScopes(effectiveScopes)
-	}
-
-	accessPlain, accessHash, err := auth.GenerateOAuthToken()
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken := &model.OAuthToken{
-		TokenType: "access",
-		TokenHash: accessHash,
-		ClientID:  client.ID,
-		UserID:    client.CreatedByUserID,
-		Scope:     scope,
-		ExpiresAt: time.Now().Add(s.accessTokenTTL),
-	}
-	if err := s.store.CreateOAuthToken(ctx, accessToken); err != nil {
-		return nil, err
-	}
-
-	return &model.OAuthTokenResponse{
-		AccessToken: accessPlain,
-		TokenType:   "Bearer",
-		ExpiresIn:   int(s.accessTokenTTL.Seconds()),
-		Scope:       scope,
 	}, nil
 }
 

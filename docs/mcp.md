@@ -57,7 +57,7 @@ MCP_OAUTH_REFRESH_TOKEN_TTL=720h          # Refresh token lifetime (default: 30 
 - `authorization_code` with PKCE (for public clients like Claude Desktop)
 - `refresh_token` (for token renewal)
 
-`client_credentials` is listed in the server metadata but isn't usable yet: it needs a client tied to a user, and dynamically registered clients never are. For service-to-service access, use an API key.
+There is no `client_credentials` grant. For service-to-service access, use an API key.
 
 **Backward Compatibility:**
 
