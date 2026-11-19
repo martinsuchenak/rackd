@@ -162,3 +162,29 @@ func TestOAuthApprovalGrantsOnlyWhatConsentShowed(t *testing.T) {
 		t.Errorf("token scope %v, want only devices:list", tok["scope"])
 	}
 }
+
+// client_credentials could never succeed (no client is tied to a user), so it
+// is neither advertised nor accepted.
+func TestOAuthClientCredentialsNotOffered(t *testing.T) {
+	ts := newOAuthTestServer(t)
+
+	w := ts.doRequest(t, http.MethodGet, "/.well-known/oauth-authorization-server", nil, "")
+	var meta map[string]any
+	parseJSON(t, w, &meta)
+	for _, g := range meta["grant_types_supported"].([]any) {
+		if g == "client_credentials" {
+			t.Fatalf("client_credentials still advertised: %v", meta["grant_types_supported"])
+		}
+	}
+
+	form := url.Values{"grant_type": {"client_credentials"}, "client_id": {"x"}, "client_secret": {"y"}}
+	req := httptest.NewRequest(http.MethodPost, "/mcp-oauth/token", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	ts.mux.ServeHTTP(w, req)
+	var body map[string]string
+	parseJSON(t, w, &body)
+	if w.Code != http.StatusBadRequest || body["error"] != "unsupported_grant_type" {
+		t.Fatalf("client_credentials: %d %v, want 400 unsupported_grant_type", w.Code, body)
+	}
+}

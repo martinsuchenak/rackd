@@ -27,7 +27,7 @@ func (h *Handler) oauthAuthorizationServerMetadata(w http.ResponseWriter, r *htt
 		"registration_endpoint":                 issuerURL + "/mcp-oauth/register",
 		"revocation_endpoint":                   issuerURL + "/mcp-oauth/revoke",
 		"response_types_supported":              []string{"code"},
-		"grant_types_supported":                 []string{"authorization_code", "refresh_token", "client_credentials"},
+		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"token_endpoint_auth_methods_supported": []string{"none", "client_secret_post"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"scopes_supported":                      h.svc.OAuth.GetAllScopes(),

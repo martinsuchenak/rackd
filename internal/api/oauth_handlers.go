@@ -255,8 +255,6 @@ func (h *Handler) oauthToken(w http.ResponseWriter, r *http.Request) {
 		resp, err = h.svc.OAuth.ExchangeCode(r.Context(), req)
 	case "refresh_token":
 		resp, err = h.svc.OAuth.RefreshAccessToken(r.Context(), req)
-	case "client_credentials":
-		resp, err = h.svc.OAuth.ClientCredentials(r.Context(), req)
 	default:
 		h.writeOAuthError(w, http.StatusBadRequest, "unsupported_grant_type", "Grant type not supported")
 		return
@@ -428,7 +426,7 @@ func buildErrorRedirectURL(redirectURI, errorCode, description, state string) st
 // messages are safe to return.
 var oauthGrantErrors = []error{
 	service.ErrOAuthInvalidGrantType, service.ErrOAuthInvalidRedirectURI, service.ErrOAuthInvalidScope,
-	service.ErrOAuthCodeRequired, service.ErrOAuthRefreshTokenRequired, service.ErrOAuthClientHasNoUser,
+	service.ErrOAuthCodeRequired, service.ErrOAuthRefreshTokenRequired,
 	service.ErrOAuthUserInactive,
 	storage.ErrOAuthCodeNotFound, storage.ErrOAuthCodeExpired, storage.ErrOAuthCodeUsed,
 	storage.ErrOAuthTokenNotFound, storage.ErrOAuthTokenRevoked, storage.ErrOAuthTokenExpired,
