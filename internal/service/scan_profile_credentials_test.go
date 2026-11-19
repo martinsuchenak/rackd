@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/internal/storage/storagetest"
@@ -26,7 +27,7 @@ func TestScanProfileCredentialValidation(t *testing.T) {
 		if c, ok := creds[id]; ok {
 			return c, nil
 		}
-		return nil, errors.New("not found")
+		return nil, credentials.ErrCredentialNotFound
 	}
 	ctx := SystemContext(context.Background(), "test")
 
@@ -50,6 +51,15 @@ func TestScanProfileCredentialValidation(t *testing.T) {
 			t.Errorf("%s: got %v, want a validation error on %s", c.name, err, c.field)
 		}
 	}
+
+	// A failed lookup is an error, not "credential not found".
+	broken := errors.New("decrypt failed")
+	saved := svc.credential
+	svc.credential = func(string) (*model.Credential, error) { return nil, broken }
+	if err := svc.Create(ctx, &model.ScanProfile{Name: "b", ScanType: "full", SSHCredentialID: "ssh"}); !errors.Is(err, broken) {
+		t.Errorf("lookup failure: got %v, want %v", err, broken)
+	}
+	svc.credential = saved
 
 	// Update validates too.
 	ok.SSHCredentialID = "snmp"
@@ -106,5 +116,80 @@ func TestStartScanWithProfile(t *testing.T) {
 	var verrs ValidationErrors
 	if _, err := svc.StartScanWithProfile(ctx, network.ID, "", "missing"); !errors.As(err, &verrs) || verrs[0].Field != "profile_id" {
 		t.Fatalf("unknown profile: got %v", err)
+	}
+}
+
+// Wielding a stored credential needs credentials:update: attaching it to a
+// profile, scanning with it and scheduling it.
+func TestCredentialUseNeedsCredentialsUpdate(t *testing.T) {
+	db := storagetest.New(t)
+	profiles, err := storage.NewSQLiteProfileStorage(db.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	perms := newServiceTestStorage()
+	for _, a := range []string{"create", "update", "read"} {
+		perms.setPermission("op", "scan-profiles", a, true)
+		perms.setPermission("admin", "scan-profiles", a, true)
+		perms.setPermission("op", "scheduled-scans", a, true)
+		perms.setPermission("admin", "scheduled-scans", a, true)
+	}
+	perms.setPermission("admin", "credentials", "update", true)
+	op, admin := userContext("op"), userContext("admin")
+
+	svc := NewScanProfileService(profiles, perms)
+	svc.credential = func(id string) (*model.Credential, error) {
+		return &model.Credential{ID: id, Name: id, Type: "ssh_key"}, nil
+	}
+
+	withCred := func() *model.ScanProfile {
+		return &model.ScanProfile{Name: "creds", ScanType: "full", EnableSSH: true, SSHCredentialID: "ssh-1"}
+	}
+	if err := svc.Create(op, withCred()); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("operator attached a credential: %v", err)
+	}
+	p := withCred()
+	if err := svc.Create(admin, p); err != nil {
+		t.Fatalf("admin: %v", err)
+	}
+
+	// Editing other fields of a credentialed profile needs nothing extra...
+	rename := *p
+	rename.Name = "renamed"
+	if err := svc.Update(op, p.ID, &rename); err != nil {
+		t.Fatalf("operator rename: %v", err)
+	}
+	// ...but switching a credential, or a probe on, does.
+	swap := rename
+	swap.SSHCredentialID = "ssh-2"
+	if err := svc.Update(op, p.ID, &swap); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("operator swapped the credential: %v", err)
+	}
+	off := &model.ScanProfile{Name: "off", ScanType: "full", SSHCredentialID: "ssh-1"}
+	if err := svc.Create(admin, off); err != nil {
+		t.Fatal(err)
+	}
+	on := *off
+	on.EnableSSH = true
+	if err := svc.Update(op, off.ID, &on); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("operator switched SSH on: %v", err)
+	}
+
+	// Scanning or scheduling with the credentialed profile.
+	if err := requireCredentialUse(op, perms, p); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("operator scan with credentials: %v", err)
+	}
+	if err := requireCredentialUse(op, perms, off); err != nil {
+		t.Fatalf("profile with its probe off uses no credential: %v", err)
+	}
+	sched := NewScheduledScanService(nil, perms)
+	sched.profile = func(_ context.Context, id string) (*model.ScanProfile, error) {
+		return profiles.Get(context.Background(), id)
+	}
+	if err := sched.checkProfileCredentials(op, p.ID); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("operator scheduled credentials: %v", err)
+	}
+	if err := sched.checkProfileCredentials(admin, p.ID); err != nil {
+		t.Fatalf("admin schedule: %v", err)
 	}
 }

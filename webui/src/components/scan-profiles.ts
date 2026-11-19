@@ -13,6 +13,8 @@ interface ScanProfilesData extends ListPageState<ScanProfile, Exclude<ModalType,
   credentials: Credential[];
   get snmpCredentials(): Credential[];
   get sshCredentials(): Credential[];
+  get snmpCredentialUnlisted(): boolean;
+  get sshCredentialUnlisted(): boolean;
   get showCreateModal(): boolean;
   get showEditModal(): boolean;
   get showDeleteModal(): boolean;
@@ -66,6 +68,14 @@ export function scanProfilesList() {
     },
     get sshCredentials(): Credential[] {
       return this.credentials.filter(c => c.type === 'ssh_key' || c.type === 'ssh_password');
+    },
+    // True when the profile names a credential the viewer can't list, so the
+    // picker shows it as set rather than as "None".
+    get snmpCredentialUnlisted(): boolean {
+      return !!this.formSNMPCredentialID && !this.snmpCredentials.some(c => c.id === this.formSNMPCredentialID);
+    },
+    get sshCredentialUnlisted(): boolean {
+      return !!this.formSSHCredentialID && !this.sshCredentials.some(c => c.id === this.formSSHCredentialID);
     },
     get showCreateModal(): boolean { return this.modalType === 'create'; },
     get showEditModal(): boolean { return this.modalType === 'edit'; },

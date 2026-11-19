@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -36,6 +37,9 @@ func (s *ScanProfileService) Create(ctx context.Context, profile *model.ScanProf
 		return err
 	}
 	applyScanProfileDefaults(profile)
+	if err := requireCredentialUseIfAdded(ctx, s.rbac, nil, profile); err != nil {
+		return err
+	}
 	if err := s.checkCredentials(profile); err != nil {
 		return err
 	}
@@ -67,6 +71,16 @@ func (s *ScanProfileService) Update(ctx context.Context, id string, profile *mod
 
 	profile.ID = id
 	applyScanProfileDefaults(profile)
+	existing, err := s.store.Get(ctx, id)
+	if errors.Is(err, storage.ErrProfileNotFound) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if err := requireCredentialUseIfAdded(ctx, s.rbac, existing, profile); err != nil {
+		return err
+	}
 	if err := s.checkCredentials(profile); err != nil {
 		return err
 	}
@@ -113,6 +127,7 @@ func applyScanProfileDefaults(p *model.ScanProfile) {
 // checkCredentials makes sure the credentials a profile names exist and are
 // of the kind its probe needs: an SNMP credential for SNMP, an SSH one for SSH.
 func (s *ScanProfileService) checkCredentials(p *model.ScanProfile) error {
+	var lookupErr error
 	check := func(field, id string, types ...string) *ValidationError {
 		if id == "" {
 			return nil
@@ -121,8 +136,12 @@ func (s *ScanProfileService) checkCredentials(p *model.ScanProfile) error {
 			return &ValidationError{Field: field, Message: "credential storage is not configured"}
 		}
 		cred, err := s.credential(id)
-		if err != nil || cred == nil {
+		if errors.Is(err, credentials.ErrCredentialNotFound) || errors.Is(err, ErrNotFound) || (err == nil && cred == nil) {
 			return &ValidationError{Field: field, Message: "credential not found"}
+		}
+		if err != nil {
+			lookupErr = err
+			return nil
 		}
 		if !slices.Contains(types, cred.Type) {
 			return &ValidationError{Field: field, Message: fmt.Sprintf("credential %q is %s; it must be one of %s", cred.Name, cred.Type, strings.Join(types, ", "))}
@@ -136,8 +155,53 @@ func (s *ScanProfileService) checkCredentials(p *model.ScanProfile) error {
 	if e := check("ssh_credential_id", p.SSHCredentialID, "ssh_key", "ssh_password"); e != nil {
 		errs = append(errs, *e)
 	}
+	if lookupErr != nil {
+		return lookupErr
+	}
 	if len(errs) > 0 {
 		return errs
+	}
+	return nil
+}
+
+// Using a stored credential sends it to every host a scan probes, so a
+// caller who could otherwise only run scans could point one at a host they
+// control and collect the secret. Attaching a credential to a profile, and
+// running or scheduling a scan that uses one, therefore needs the right to
+// manage credentials (credentials:update), not just to read their names.
+
+// profileCredentialIDs returns the credentials a scan with the profile would
+// use: a credential only counts when its probe is enabled.
+func profileCredentialIDs(p *model.ScanProfile) (snmp, ssh string) {
+	if p == nil {
+		return "", ""
+	}
+	if p.EnableSNMP {
+		snmp = p.SNMPCredentialID
+	}
+	if p.EnableSSH {
+		ssh = p.SSHCredentialID
+	}
+	return snmp, ssh
+}
+
+// requireCredentialUse checks the caller may have scans use p's credentials.
+func requireCredentialUse(ctx context.Context, rbac permissionStore, p *model.ScanProfile) error {
+	if snmp, ssh := profileCredentialIDs(p); snmp == "" && ssh == "" {
+		return nil
+	}
+	return requirePermission(ctx, rbac, "credentials", "update")
+}
+
+// requireCredentialUseIfAdded is requireCredentialUse for a profile edit:
+// it applies only when the edit makes scans use a credential they didn't
+// use before (a new credential, or a probe switched on), so editing other
+// fields of a credentialed profile needs no extra right.
+func requireCredentialUseIfAdded(ctx context.Context, rbac permissionStore, before, after *model.ScanProfile) error {
+	bSNMP, bSSH := profileCredentialIDs(before)
+	aSNMP, aSSH := profileCredentialIDs(after)
+	if (aSNMP != "" && aSNMP != bSNMP) || (aSSH != "" && aSSH != bSSH) {
+		return requirePermission(ctx, rbac, "credentials", "update")
 	}
 	return nil
 }

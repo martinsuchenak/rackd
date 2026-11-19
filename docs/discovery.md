@@ -70,6 +70,8 @@ rackd scan-profile create \
 
 A probe that is enabled without a credential is skipped. Saving a profile checks that its credentials exist and are the right type; deleting a credential removes it from every profile that names it.
 
+Using a credential needs the `credentials:update` permission, which the built-in admin and operator roles have: attaching one to a profile or switching its probe on, starting a scan with a profile that uses one, and scheduling such a profile. A scan offers the credential to every host it probes, so this keeps users who can run scans but not manage credentials from aiming one at a host they control. Editing other fields of a credentialed profile needs no extra permission.
+
 ```bash
 rackd scan-profile create --name "Core switches" --type full \
   --snmp --snmp-credential <snmp-credential-id> \

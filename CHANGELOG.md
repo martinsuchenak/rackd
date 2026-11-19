@@ -18,6 +18,9 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   `rackd scan-profile create/update --snmp-credential/--ssh-credential` or
   in the web UI's profile form. Saving checks that each credential exists
   and is the right type, and deleting a credential clears it from profiles.
+  Attaching a credential, or scanning or scheduling with a profile that
+  uses one, needs `credentials:update`, so a user who can run scans but
+  not manage credentials can't send one to a host they control.
 - Manual scans can run with a profile: `rackd discovery scan --profile`,
   `profile_id` in `POST /api/v1/discovery/networks/{id}/scan` (already in
   the API spec, but ignored until now) and on the `discovery_scan` MCP tool.

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"github.com/martinsuchenak/rackd/internal/auth"
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
@@ -88,6 +89,12 @@ func (s *Services) SetProfileStorage(store storage.ProfileStorage) {
 
 func (s *Services) SetScheduledScanStorage(store storage.ScheduledScanStorage) {
 	s.ScheduledScans = NewScheduledScanService(store, s.Users.store)
+	s.ScheduledScans.profile = func(ctx context.Context, id string) (*model.ScanProfile, error) {
+		if s.ScanProfiles == nil {
+			return nil, storage.ErrProfileNotFound
+		}
+		return s.ScanProfiles.store.Get(ctx, id)
+	}
 }
 
 func (s *Services) SetDNSService(store storage.ExtendedStorage, encryptor *credentials.Encryptor) {
