@@ -231,6 +231,8 @@ export interface ScanProfile {
   ports?: number[];
   enable_snmp?: boolean;
   enable_ssh?: boolean;
+  snmp_credential_id?: string;
+  ssh_credential_id?: string;
   timeout_sec: number;
   max_workers: number;
   description?: string;

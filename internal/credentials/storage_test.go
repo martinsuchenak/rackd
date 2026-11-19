@@ -304,3 +304,36 @@ func TestSQLiteStorage_EncryptionRoundtrip(t *testing.T) {
 		})
 	}
 }
+
+func TestSQLiteStorage_DeleteClearsScanProfiles(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	cred := &model.Credential{Name: "snmp", Type: "snmp_v3", SNMPV3User: "u", SNMPV3Auth: "a", SNMPV3Priv: "p"}
+	if err := store.Create(cred); err != nil {
+		t.Fatal(err)
+	}
+	profiles, err := corestorage.NewSQLiteProfileStorage(store.db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	profile := &model.ScanProfile{Name: "with-cred", ScanType: "full", EnableSNMP: true, SNMPCredentialID: cred.ID, TimeoutSec: 30, MaxWorkers: 10}
+	if err := profiles.Create(ctx, profile); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := profiles.Get(ctx, profile.ID); got.SNMPCredentialID != cred.ID {
+		t.Fatalf("stored credential id %q, want %q", got.SNMPCredentialID, cred.ID)
+	}
+
+	if err := store.Delete(cred.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := profiles.Get(ctx, profile.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SNMPCredentialID != "" {
+		t.Errorf("profile still names deleted credential %q", got.SNMPCredentialID)
+	}
+}

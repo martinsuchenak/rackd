@@ -5,6 +5,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/discovery"
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
 type Services struct {
@@ -74,6 +75,15 @@ func (s *Services) SetCredentialsStorage(store credentials.Storage) {
 
 func (s *Services) SetProfileStorage(store storage.ProfileStorage) {
 	s.ScanProfiles = NewScanProfileService(store, s.Users.store)
+	// Looked up when a profile is saved, so it doesn't matter whether
+	// credential storage is set before or after this.
+	s.ScanProfiles.credential = func(id string) (*model.Credential, error) {
+		if s.Credentials == nil {
+			return nil, ErrNotFound
+		}
+		return s.Credentials.store.Get(id)
+	}
+	s.Discovery.profiles = store
 }
 
 func (s *Services) SetScheduledScanStorage(store storage.ScheduledScanStorage) {

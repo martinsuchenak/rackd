@@ -299,6 +299,12 @@ var migrations = []*Migration{
 		Up:      migrateDNSRecordNamesRelativeUp,
 		Down:    migrateDNSRecordNamesRelativeDown,
 	},
+	{
+		Version: "20261120120000",
+		Name:    "scan_profile_credentials",
+		Up:      migrateScanProfileCredentialsUp,
+		Down:    migrateScanProfileCredentialsDown,
+	},
 }
 
 // migrateInitialSchemaUp creates all initial tables
@@ -3313,5 +3319,32 @@ func migrateDNSRecordNamesRelativeUp(ctx context.Context, tx sqlTx) error {
 // migrateDNSRecordNamesRelativeDown leaves the data alone: relative names are
 // what the code before this migration expected for records it created too.
 func migrateDNSRecordNamesRelativeDown(ctx context.Context, tx sqlTx) error {
+	return nil
+}
+
+// migrateScanProfileCredentialsUp lets a scan profile name the SNMP and SSH
+// credentials its scans use. There is no foreign key: credentials live in
+// their own store, and deleting one clears it from the profiles instead.
+func migrateScanProfileCredentialsUp(ctx context.Context, tx sqlTx) error {
+	for _, q := range []string{
+		`ALTER TABLE scan_profiles ADD COLUMN snmp_credential_id TEXT`,
+		`ALTER TABLE scan_profiles ADD COLUMN ssh_credential_id TEXT`,
+	} {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to add scan profile credential columns: %w", err)
+		}
+	}
+	return nil
+}
+
+func migrateScanProfileCredentialsDown(ctx context.Context, tx sqlTx) error {
+	for _, q := range []string{
+		`ALTER TABLE scan_profiles DROP COLUMN ssh_credential_id`,
+		`ALTER TABLE scan_profiles DROP COLUMN snmp_credential_id`,
+	} {
+		if _, err := tx.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("failed to drop scan profile credential columns: %w", err)
+		}
+	}
 	return nil
 }

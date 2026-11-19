@@ -1,6 +1,6 @@
 # Discovery
 
-Rackd's discovery system scans networks for hosts and lets you promote what it finds into the device inventory. Scans probe TCP ports and, for full and deep scans, also listen for NetBIOS, mDNS and LLDP announcements.
+Rackd's discovery system scans networks for hosts and lets you promote what it finds into the device inventory. Scans probe TCP ports and, for full and deep scans, also listen for NetBIOS, mDNS and LLDP announcements. A scan run with a [scan profile](#scan-profiles) can also log in over SSH and query SNMP with stored credentials.
 
 ## Overview
 
@@ -27,11 +27,11 @@ The discovery system consists of:
 - **Also**: NetBIOS, mDNS and LLDP listeners, and OS fingerprinting
 - **Use Case**: Complete network mapping
 
-Every scan grabs service banners from the open ports it finds. Rackd picks the number of workers and the per-host timeout itself, based on the subnet size and scan type.
+Every scan grabs service banners from the open ports it finds. Without a profile, Rackd picks the number of workers and the probe timeouts itself, based on the subnet size and scan type.
 
 ## Scan Profiles
 
-Scan profiles are used by [scheduled scans](#scheduled-scans). Manual scans take only a scan type.
+A scan profile describes a whole scan: its type and ports, how many hosts to probe at once, how long to spend on each host, and which SNMP and SSH credentials to use. [Scheduled scans](#scheduled-scans) always use a profile; manual scans use one when you pass `--profile` (`profile_id` in the API).
 
 ```go
 type ScanProfile struct {
@@ -41,6 +41,8 @@ type ScanProfile struct {
     Ports       []int     `json:"ports,omitempty"`
     EnableSNMP  bool      `json:"enable_snmp"`
     EnableSSH   bool      `json:"enable_ssh"`
+    SNMPCredentialID string `json:"snmp_credential_id,omitempty"`
+    SSHCredentialID  string `json:"ssh_credential_id,omitempty"`
     TimeoutSec  int       `json:"timeout_sec"`
     MaxWorkers  int       `json:"max_workers"`
     Description string    `json:"description,omitempty"`
@@ -61,11 +63,19 @@ rackd scan-profile create \
 
 - **scan_type**: `quick`, `full`, `deep`, or `custom`
 - **ports**: Port list; when set, it replaces the scan type's ports
-- **timeout_sec**: Must be positive (CLI default 30)
-- **max_workers**: 1-100 (CLI default 10)
-- **enable_snmp**, **enable_ssh**: Stored with the profile
+- **timeout_sec**: The time budget for one host, in seconds (CLI default 30). The port probe always completes; once the budget is spent, the probes still to come for that host (reverse DNS, SSH, SNMP) are skipped and the host is kept with what was found.
+- **max_workers**: How many hosts are probed at once, 1-100 (CLI default 10)
+- **enable_snmp** with **snmp_credential_id**: Query each host over SNMP with this credential (`snmp_v2c` or `snmp_v3`). The SNMP system name feeds the hostname, and interface MACs fill in a missing MAC address.
+- **enable_ssh** with **ssh_credential_id**: Log in to each host over SSH (port 22) with this credential (`ssh_key` or `ssh_password`) to read its hostname and OS.
 
-Scans currently use only a profile's scan type and ports. `timeout_sec`, `max_workers`, `enable_snmp` and `enable_ssh` are stored but don't change how a scan runs yet.
+A probe that is enabled without a credential is skipped. Saving a profile checks that its credentials exist and are the right type; deleting a credential removes it from every profile that names it.
+
+```bash
+rackd scan-profile create --name "Core switches" --type full \
+  --snmp --snmp-credential <snmp-credential-id> \
+  --ssh --ssh-credential <ssh-credential-id> \
+  --timeout 45 --workers 20
+```
 
 ### Built-in Profiles
 
@@ -77,7 +87,9 @@ Rackd seeds three profiles:
 
 ## Credentials
 
-Rackd stores SSH and SNMP credentials encrypted with `ENCRYPTION_KEY`. Scans don't use credentials yet: no scan, manual or scheduled, logs in over SSH or queries SNMP.
+Rackd stores SSH and SNMP credentials encrypted with `ENCRYPTION_KEY`. A scan uses them only through a [scan profile](#scan-profiles) that enables SNMP or SSH and names a credential.
+
+A credentialed scan offers the credential to every host it probes in the network, so scan only networks you trust with it. SSH uses trust on first use: the first host key seen for an address is stored, and a later scan refuses a host whose key changed. Prefer `ssh_key` credentials over `ssh_password`, since a password is sent to the host, and SNMPv3 over v2c.
 
 Credential types are `ssh_password`, `ssh_key`, `snmp_v2c` and `snmp_v3`. Create them on the web UI's Credentials page or through the API:
 
@@ -95,7 +107,7 @@ curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v
 
 Other fields: `snmp_community` (for `snmp_v2c`), `ssh_username`, `ssh_key_id`, `datacenter_id` and `description`. Secrets are never returned.
 
-`DISCOVERY_SNMPV2C_ENABLED` (default `false`) allows SNMPv2c, which sends the community string in cleartext. It has no effect until scans use credentials.
+`DISCOVERY_SNMPV2C_ENABLED` (default `false`) allows SNMPv2c, which sends the community string in cleartext. While it is off, a profile with an `snmp_v2c` credential skips SNMP.
 
 ## Network Scanning
 
@@ -107,6 +119,9 @@ rackd discovery scan --network <network-id> --type quick
 
 # Full port scan
 rackd discovery scan --network <network-id> --type full
+
+# Scan with a profile (its type, ports, timeouts and credentials)
+rackd discovery scan --network <network-id> --profile <profile-id>
 ```
 
 ### Scan Status and Monitoring
@@ -129,7 +144,7 @@ curl -H "Authorization: Bearer $RACKD_TOKEN" -X POST http://localhost:8080/api/v
 - **Maximum subnet size**: /16 (65,536 hosts)
 - **Addresses never scanned**: subnets that include loopback (`127.0.0.0/8`, `::1`), link-local (`169.254.0.0/16`, which includes cloud metadata services, and `fe80::/10`), unspecified (`0.0.0.0/8`, `::`), multicast, reserved (`240.0.0.0/4`) or IPv4-mapped IPv6 addresses are refused with `400`. Private ranges can be scanned.
 - **Scans at once**: at most 4 scans run at the same time across the server; another is refused with `429 TOO_MANY_SCANS` until one finishes
-- **Workers and timeouts**: chosen automatically per scan (1-100 workers, 0.5-10 seconds per probe)
+- **Workers and timeouts**: chosen automatically per scan (1-100 workers, 0.5-10 seconds per probe), unless a profile sets them
 
 ## Scheduled Scans
 

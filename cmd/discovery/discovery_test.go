@@ -28,8 +28,8 @@ func TestScanCommandFlags(t *testing.T) {
 		t.Errorf("expected command name 'scan', got %q", cmd.Name)
 	}
 
-	if len(cmd.Flags) != 3 {
-		t.Errorf("expected 3 flags, got %d", len(cmd.Flags))
+	if len(cmd.Flags) != 4 {
+		t.Errorf("expected 4 flags, got %d", len(cmd.Flags))
 	}
 }
 

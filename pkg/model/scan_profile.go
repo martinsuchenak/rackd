@@ -19,17 +19,21 @@ const (
 )
 
 type ScanProfile struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	ScanType    string    `json:"scan_type"`
-	Ports       []int     `json:"ports,omitempty"`
-	EnableSNMP  bool      `json:"enable_snmp"`
-	EnableSSH   bool      `json:"enable_ssh"`
-	TimeoutSec  int       `json:"timeout_sec"`
-	MaxWorkers  int       `json:"max_workers"`
-	Description string    `json:"description,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	ScanType   string `json:"scan_type"`
+	Ports      []int  `json:"ports,omitempty"`
+	EnableSNMP bool   `json:"enable_snmp"`
+	EnableSSH  bool   `json:"enable_ssh"`
+	// SNMPCredentialID and SSHCredentialID name the stored credentials a
+	// scan with this profile uses when EnableSNMP or EnableSSH is set.
+	SNMPCredentialID string    `json:"snmp_credential_id,omitempty"`
+	SSHCredentialID  string    `json:"ssh_credential_id,omitempty"`
+	TimeoutSec       int       `json:"timeout_sec"`
+	MaxWorkers       int       `json:"max_workers"`
+	Description      string    `json:"description,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (s *ScanProfile) Validate() error {
