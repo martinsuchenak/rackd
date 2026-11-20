@@ -223,6 +223,7 @@ const testBackendEnv = "RACKD_TEST_BACKEND"
 // portable; on a server backend newTestStorage skips tests in other files.
 // The list goes away once every area is converted.
 var portableTestFiles = map[string]bool{
+	"search_backends_test.go":       true,
 	"plumbing_backends_test.go":     true,
 	"audit_test.go":                 true,
 	"audit_backpressure_test.go":    true,
@@ -285,15 +286,6 @@ func skipUnlessSQLite(t *testing.T, why string) {
 	t.Helper()
 	if b := testBackend(); b != xdal.DialectSQLite {
 		t.Skipf("%s: SQLite only: %s", b, why)
-	}
-}
-
-// skipWithoutSearch skips a full-text search test on the server backends,
-// which don't have search yet (it is SQLite's FTS5 for now).
-func skipWithoutSearch(t *testing.T) {
-	t.Helper()
-	if b := testBackend(); b != xdal.DialectSQLite {
-		t.Skipf("%s: full-text search isn't portable yet", b)
 	}
 }
 

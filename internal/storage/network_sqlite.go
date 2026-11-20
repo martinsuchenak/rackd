@@ -83,22 +83,21 @@ func (s *SQLiteStorage) ListNetworks(ctx context.Context, filter *model.NetworkF
 	return networks, nil
 }
 
-// SearchNetworks performs a full-text search across network fields using FTS5
+// SearchNetworks searches network names, subnets and descriptions (see
+// textMatch).
 func (s *SQLiteStorage) SearchNetworks(ctx context.Context, query string) ([]model.Network, error) {
 	if query == "" {
 		return s.ListNetworks(ctx, nil)
 	}
 
-	ftsQuery := escapeFTSQuery(query)
-
+	join, where, args := s.textMatch("networks", "n", query, "name", "subnet", "description")
 	rows, err := s.q.QueryContext(ctx, `
 		SELECT n.id, n.name, n.subnet, n.vlan_id, n.datacenter_id, n.description,
 		       n.created_at, n.updated_at
-		FROM networks n
-		INNER JOIN networks_fts fts ON n.id = fts.id
-		WHERE networks_fts MATCH ?
+		FROM networks n `+join+`
+		WHERE `+where+`
 		ORDER BY n.name
-	`, ftsQuery)
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search networks: %w", err)
 	}

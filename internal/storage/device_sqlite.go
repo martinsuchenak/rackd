@@ -570,13 +570,15 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 	return devices, nil
 }
 
-// SearchDevices performs a full-text search across device fields using FTS5
+// SearchDevices searches device text fields (see textMatch) and finds
+// devices by tag, domain or address.
 func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]model.Device, error) {
 	if query == "" {
 		return s.ListDevices(ctx, nil)
 	}
-	ftsQuery := escapeFTSQuery(query)
-	likePattern := "%" + query + "%"
+	join, where, args := s.textMatch("devices", "d", query, "name", "hostname", "description", "make_model", "os", "location")
+	likePattern := "%" + strings.ReplaceAll(query, "\x00", "") + "%"
+	args = append(args, likePattern, likePattern, likePattern)
 
 	// Use UNION to combine FTS results with tag/domain/address matches
 	rows, err := s.q.QueryContext(ctx, `
@@ -584,9 +586,8 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 		       d.datacenter_id, d.username, d.location,
 		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
 		       d.created_at, d.updated_at
-		FROM devices d
-		INNER JOIN devices_fts fts ON d.id = fts.id
-		WHERE devices_fts MATCH ?
+		FROM devices d `+join+`
+		WHERE `+where+`
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
 		       d.datacenter_id, d.username, d.location,
@@ -594,7 +595,7 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN tags t ON d.id = t.device_id
-		WHERE t.tag LIKE ?
+		WHERE `+likeLower("t.tag")+`
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
 		       d.datacenter_id, d.username, d.location,
@@ -602,7 +603,7 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN domains dm ON d.id = dm.device_id
-		WHERE dm.domain LIKE ?
+		WHERE `+likeLower("dm.domain")+`
 		UNION
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
 		       d.datacenter_id, d.username, d.location,
@@ -610,9 +611,9 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 		       d.created_at, d.updated_at
 		FROM devices d
 		INNER JOIN addresses a ON d.id = a.device_id
-		WHERE a.ip LIKE ?
+		WHERE `+likeLower("a.ip")+`
 		ORDER BY name
-	`, ftsQuery, likePattern, likePattern, likePattern)
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search devices: %w", err)
 	}

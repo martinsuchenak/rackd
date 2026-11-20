@@ -322,7 +322,6 @@ func TestDeviceOperations_ListWithDatacenterFilter(t *testing.T) {
 }
 
 func TestDeviceOperations_Search(t *testing.T) {
-	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
@@ -370,7 +369,6 @@ func TestDeviceOperations_Search(t *testing.T) {
 }
 
 func TestDeviceOperations_SearchEmpty(t *testing.T) {
-	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
@@ -551,7 +549,6 @@ func TestDeviceWithAllFields(t *testing.T) {
 }
 
 func TestSearchDevicesWithSpecialCharacters(t *testing.T) {
-	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
@@ -606,7 +603,6 @@ func TestDeviceUpdateClearArrays(t *testing.T) {
 }
 
 func TestSearchDevicesMultipleMatches(t *testing.T) {
-	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
