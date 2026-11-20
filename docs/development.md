@@ -585,8 +585,7 @@ Name these tests `TestDialect*`. SQLite always runs; the other backends run
 when `XDAL_TEST_POSTGRES_DSN` and `XDAL_TEST_MYSQL_DSN` are set and are skipped
 otherwise. `task test:dialects` starts both in Docker
 (`docker-compose.test.yml`) and runs the tests on all three, and CI does the
-same on every change, failing if a backend is missing. Put the tests under
-`pkg/` or `internal/storage/`, the packages those runs cover.
+same on every change, failing if a backend is missing.
 
 Core's existing tables come from SQLite-only migrations, so a portable
 migration track can't reference them yet.

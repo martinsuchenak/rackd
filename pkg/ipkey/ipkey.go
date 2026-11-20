@@ -33,7 +33,12 @@ var ErrInvalidKey = errors.New("ipkey: key must be 16 bytes")
 
 // FromAddr returns the key for an address. IPv4 addresses, including
 // IPv4-mapped IPv6 ones, become ::ffff:a.b.c.d; an IPv6 zone is dropped.
+// The zero Addr gives nil rather than the key for ::, so storing it fails a
+// NOT NULL column instead of recording an address nobody set.
 func FromAddr(a netip.Addr) []byte {
+	if !a.IsValid() {
+		return nil
+	}
 	b := a.Unmap().As16()
 	return b[:]
 }
