@@ -87,6 +87,11 @@ func statusCommand(exts []extensionSteps) *cli.Command {
 				return fmt.Errorf("failed to get migration status: %w", err)
 			}
 			pending := printStatus(storage.CoreMigrationNamespace, statuses, false)
+			statuses, err = storage.GetSchemaMigrationStatus(ctx, db)
+			if err != nil {
+				return fmt.Errorf("failed to get migration status: %w", err)
+			}
+			pending += printStatus(storage.SchemaMigrationNamespace, statuses, false)
 
 			inBinary := map[string]bool{}
 			for _, e := range exts {

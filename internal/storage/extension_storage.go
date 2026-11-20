@@ -35,8 +35,13 @@ func RunExtensionMigrationsOn(ctx context.Context, db *sql.DB, namespace string,
 	return runNamespaceMigrations(ctx, db, namespace, steps, opts)
 }
 
+// reservedNamespace reports whether a migration namespace belongs to core.
+func reservedNamespace(ns string) bool {
+	return ns == CoreMigrationNamespace || ns == SchemaMigrationNamespace || ns == legacyAdoptionNamespace
+}
+
 func newNamespaceMigrator(db *sql.DB, namespace string, steps []migrate.Migration) (*migrate.Migrator, error) {
-	if namespace == CoreMigrationNamespace || namespace == legacyAdoptionNamespace {
+	if reservedNamespace(namespace) {
 		return nil, fmt.Errorf("migration namespace %q is reserved", namespace)
 	}
 	m, err := migrate.New(sqlite.NewSQLiteDB(db, nil), steps, migrate.Options{Namespace: namespace, Logger: migrationLogger{}})
@@ -195,8 +200,8 @@ func RecordedExtensionNamespaces(ctx context.Context, db *sql.DB) ([]string, err
 	if !tableExists(ctx, db, migrate.DefaultTable) {
 		return nil, nil
 	}
-	rows, err := db.QueryContext(ctx, `SELECT DISTINCT namespace FROM `+migrate.DefaultTable+` WHERE namespace NOT IN (?, ?) ORDER BY namespace`,
-		CoreMigrationNamespace, legacyAdoptionNamespace)
+	rows, err := db.QueryContext(ctx, `SELECT DISTINCT namespace FROM `+migrate.DefaultTable+` WHERE namespace NOT IN (?, ?, ?) ORDER BY namespace`,
+		CoreMigrationNamespace, SchemaMigrationNamespace, legacyAdoptionNamespace)
 	if err != nil {
 		return nil, err
 	}
