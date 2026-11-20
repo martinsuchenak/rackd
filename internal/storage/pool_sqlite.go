@@ -21,7 +21,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 
 	// Validate network exists
 	var networkExists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, pool.NetworkID).Scan(&networkExists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, pool.NetworkID).Scan(&networkExists)
 	if err != nil {
 		return fmt.Errorf("failed to check network existence: %w", err)
 	}
@@ -39,7 +39,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 	pool.UpdatedAt = now
 
 	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -68,7 +68,7 @@ func (s *SQLiteStorage) CreateNetworkPool(ctx context.Context, pool *model.Netwo
 }
 
 // insertPoolTags inserts tags for a pool within a transaction
-func (s *SQLiteStorage) insertPoolTags(ctx context.Context, tx *sql.Tx, poolID string, tags []string) error {
+func (s *SQLiteStorage) insertPoolTags(ctx context.Context, tx dbConn, poolID string, tags []string) error {
 	for _, tag := range tags {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO pool_tags (pool_id, tag) VALUES (?, ?)
@@ -82,7 +82,7 @@ func (s *SQLiteStorage) insertPoolTags(ctx context.Context, tx *sql.Tx, poolID s
 
 // getPoolTags retrieves all tags for a pool
 func (s *SQLiteStorage) getPoolTags(ctx context.Context, poolID string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT tag FROM pool_tags WHERE pool_id = ?`, poolID)
+	rows, err := s.q.QueryContext(ctx, `SELECT tag FROM pool_tags WHERE pool_id = ?`, poolID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *SQLiteStorage) GetNetworkPool(ctx context.Context, id string) (*model.N
 	}
 
 	pool := &model.NetworkPool{}
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, network_id, name, start_ip, end_ip, description, created_at, updated_at
 		FROM network_pools WHERE id = ?
 	`, id).Scan(
@@ -146,7 +146,7 @@ func (s *SQLiteStorage) UpdateNetworkPool(ctx context.Context, pool *model.Netwo
 	}
 
 	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -196,7 +196,7 @@ func (s *SQLiteStorage) DeleteNetworkPool(ctx context.Context, id string) error 
 	}
 
 	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -266,7 +266,7 @@ func (s *SQLiteStorage) ListNetworkPools(ctx context.Context, filter *model.Netw
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list network pools: %w", err)
 	}
@@ -321,7 +321,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 		return "", ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -418,7 +418,7 @@ func (s *SQLiteStorage) GetNextAvailableIP(ctx context.Context, poolID string) (
 }
 
 // getNetworkPoolTx reads a network pool on an open transaction.
-func (s *SQLiteStorage) getNetworkPoolTx(ctx context.Context, tx *sql.Tx, poolID string) (*model.NetworkPool, error) {
+func (s *SQLiteStorage) getNetworkPoolTx(ctx context.Context, tx dbConn, poolID string) (*model.NetworkPool, error) {
 	pool := &model.NetworkPool{}
 	err := tx.QueryRowContext(ctx, `
 		SELECT id, network_id, name, start_ip, end_ip, description, created_at, updated_at
@@ -547,7 +547,7 @@ func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IP
 
 	// Get all addresses in this pool with their device IDs
 	addressMap := make(map[string]string) // ip -> device_id
-	rows, err := s.db.QueryContext(ctx, `SELECT a.ip, a.device_id FROM addresses a WHERE `+addressInPool("a"), poolID, pool.NetworkID)
+	rows, err := s.q.QueryContext(ctx, `SELECT a.ip, a.device_id FROM addresses a WHERE `+addressInPool("a"), poolID, pool.NetworkID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query addresses: %w", err)
 	}
@@ -566,7 +566,7 @@ func (s *SQLiteStorage) GetPoolHeatmap(ctx context.Context, poolID string) ([]IP
 
 	// Get all active reservations in this pool
 	reservationMap := make(map[string]string) // ip -> reservation_id
-	resRows, err := s.db.QueryContext(ctx, `
+	resRows, err := s.q.QueryContext(ctx, `
 		SELECT ip_address, id FROM reservations
 		WHERE pool_id = ? AND status = ?
 	`, poolID, "active")

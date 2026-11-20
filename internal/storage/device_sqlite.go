@@ -21,7 +21,7 @@ func (s *SQLiteStorage) GetDevice(ctx context.Context, id string) (*model.Device
 	device := &model.Device{}
 	var datacenterID, statusChangedBy sql.NullString
 	var decommissionDate, statusChangedAt sql.NullTime
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, hostname, description, make_model, os, datacenter_id, username, location,
 		       status, decommission_date, status_changed_at, status_changed_by, created_at, updated_at
 		FROM devices WHERE id = ?
@@ -147,7 +147,7 @@ func (s *SQLiteStorage) loadDeviceRelations(ctx context.Context, devices []model
 
 // eachRow runs query and calls scan for every row.
 func (s *SQLiteStorage) eachRow(ctx context.Context, query string, args []any, scan func(*sql.Rows) error) error {
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (s *SQLiteStorage) CreateDevice(ctx context.Context, device *model.Device) 
 		return fmt.Errorf("device is nil")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -185,7 +185,7 @@ func (s *SQLiteStorage) CreateDevice(ctx context.Context, device *model.Device) 
 }
 
 // createDeviceInTx creates a device within an existing transaction
-func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device *model.Device) error {
+func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx dbConn, device *model.Device) error {
 
 	// Generate ID if not provided
 	if device.ID == "" {
@@ -241,7 +241,7 @@ func (s *SQLiteStorage) createDeviceInTx(ctx context.Context, tx *sql.Tx, device
 }
 
 // insertDeviceAddresses inserts addresses for a device within a transaction
-func (s *SQLiteStorage) insertDeviceAddresses(ctx context.Context, tx *sql.Tx, deviceID string, addresses []model.Address) error {
+func (s *SQLiteStorage) insertDeviceAddresses(ctx context.Context, tx dbConn, deviceID string, addresses []model.Address) error {
 	for _, addr := range addresses {
 		id := addr.ID
 		if id == "" {
@@ -260,7 +260,7 @@ func (s *SQLiteStorage) insertDeviceAddresses(ctx context.Context, tx *sql.Tx, d
 }
 
 // insertDeviceTags inserts tags for a device within a transaction
-func (s *SQLiteStorage) insertDeviceTags(ctx context.Context, tx *sql.Tx, deviceID string, tags []string) error {
+func (s *SQLiteStorage) insertDeviceTags(ctx context.Context, tx dbConn, deviceID string, tags []string) error {
 	for _, tag := range tags {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO tags (device_id, tag) VALUES (?, ?)
@@ -273,7 +273,7 @@ func (s *SQLiteStorage) insertDeviceTags(ctx context.Context, tx *sql.Tx, device
 }
 
 // insertDeviceDomains inserts domains for a device within a transaction
-func (s *SQLiteStorage) insertDeviceDomains(ctx context.Context, tx *sql.Tx, deviceID string, domains []string) error {
+func (s *SQLiteStorage) insertDeviceDomains(ctx context.Context, tx dbConn, deviceID string, domains []string) error {
 	for _, domain := range domains {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO domains (device_id, domain) VALUES (?, ?)
@@ -286,7 +286,7 @@ func (s *SQLiteStorage) insertDeviceDomains(ctx context.Context, tx *sql.Tx, dev
 }
 
 // insertDeviceCustomFields inserts custom fields for a device within a transaction
-func (s *SQLiteStorage) insertDeviceCustomFields(ctx context.Context, tx *sql.Tx, deviceID string, customFields []model.CustomFieldValueInput) error {
+func (s *SQLiteStorage) insertDeviceCustomFields(ctx context.Context, tx dbConn, deviceID string, customFields []model.CustomFieldValueInput) error {
 	for _, cf := range customFields {
 		if cf.FieldID == "" {
 			continue
@@ -327,7 +327,7 @@ func (s *SQLiteStorage) UpdateDevice(ctx context.Context, device *model.Device) 
 		return ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -346,7 +346,7 @@ func (s *SQLiteStorage) UpdateDevice(ctx context.Context, device *model.Device) 
 }
 
 // updateDeviceInTx updates a device within an existing transaction
-func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx *sql.Tx, device *model.Device) error {
+func (s *SQLiteStorage) updateDeviceInTx(ctx context.Context, tx dbConn, device *model.Device) error {
 
 	// Check if device exists and get current status
 	var currentStatus model.DeviceStatus
@@ -423,7 +423,7 @@ func (s *SQLiteStorage) DeleteDevice(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -442,7 +442,7 @@ func (s *SQLiteStorage) DeleteDevice(ctx context.Context, id string) error {
 }
 
 // deleteDeviceInTx deletes a device within an existing transaction
-func (s *SQLiteStorage) deleteDeviceInTx(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) deleteDeviceInTx(ctx context.Context, tx dbConn, id string) error {
 
 	// Check if device exists
 	var exists bool
@@ -521,7 +521,7 @@ func (s *SQLiteStorage) ListDevices(ctx context.Context, filter *model.DeviceFil
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices: %w", err)
 	}
@@ -579,7 +579,7 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 	likePattern := "%" + query + "%"
 
 	// Use UNION to combine FTS results with tag/domain/address matches
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT DISTINCT d.id, d.name, d.hostname, d.description, d.make_model, d.os,
 		       d.datacenter_id, d.username, d.location,
 		       d.status, d.decommission_date, d.status_changed_at, d.status_changed_by,
@@ -663,7 +663,7 @@ func (s *SQLiteStorage) SearchDevices(ctx context.Context, query string) ([]mode
 
 // GetDeviceStatusCounts returns the count of devices by status
 func (s *SQLiteStorage) GetDeviceStatusCounts(ctx context.Context) (map[model.DeviceStatus]int, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT status, COUNT(*) as count
 		FROM devices
 		GROUP BY status

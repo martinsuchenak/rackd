@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"regexp"
-	"strings"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -401,32 +399,3 @@ func NewExtendedStorageWithOptions(dataDir string, opts StorageOptions) (Extende
 	return NewSQLiteStorageWithOptions(dataDir, opts)
 }
 
-var constraintPattern = regexp.MustCompile(`(UNIQUE|NOT NULL) constraint failed: [A-Za-z_]+\.([A-Za-z_]+)`)
-
-// DuplicateField reports whether err is a unique-constraint violation, and the
-// column it was on, such as "name".
-func DuplicateField(err error) (string, bool) {
-	return constraintColumn(err, "UNIQUE")
-}
-
-// MissingField reports whether err is a NOT NULL violation, and its column.
-func MissingField(err error) (string, bool) {
-	return constraintColumn(err, "NOT NULL")
-}
-
-// IsForeignKeyFailure reports whether err is a foreign-key violation: a write
-// that refers to a missing record, or a delete of one still referred to.
-func IsForeignKeyFailure(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
-}
-
-func constraintColumn(err error, kind string) (string, bool) {
-	if err == nil {
-		return "", false
-	}
-	m := constraintPattern.FindStringSubmatch(err.Error())
-	if m == nil || m[1] != kind {
-		return "", false
-	}
-	return m[2], true
-}

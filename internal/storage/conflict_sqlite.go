@@ -52,7 +52,7 @@ func (s *SQLiteStorage) CreateConflict(ctx context.Context, conflict *model.Conf
 		return fmt.Errorf("failed to marshal subnets: %w", err)
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		INSERT INTO conflicts (
 			id, type, status, description, ip_address, device_ids, device_names,
 			network_ids, network_names, subnets, detected_at, resolved_at, resolved_by, notes
@@ -84,7 +84,7 @@ func (s *SQLiteStorage) GetConflict(ctx context.Context, id string) (*model.Conf
 	var resolvedAt sql.NullTime
 	var deviceIDsJSON, deviceNamesJSON, networkIDsJSON, networkNamesJSON, subnetsJSON sql.NullString
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, type, status, description, ip_address, device_ids, device_names,
 		       network_ids, network_names, subnets, detected_at, resolved_at, resolved_by, notes
 		FROM conflicts WHERE id = ?
@@ -167,7 +167,7 @@ func (s *SQLiteStorage) ListConflicts(ctx context.Context, filter *model.Conflic
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list conflicts: %w", err)
 	}
@@ -242,7 +242,7 @@ func (s *SQLiteStorage) UpdateConflictStatus(ctx context.Context, id string, sta
 		resolvedAt = nil
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		UPDATE conflicts SET status = ?, resolved_at = ?, resolved_by = ?, notes = ?
 		WHERE id = ?
 	`, string(status), nullTimePtr(resolvedAt), nullString(resolvedBy), nullString(notes), id)
@@ -260,7 +260,7 @@ func (s *SQLiteStorage) DeleteConflict(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	res, err := s.db.ExecContext(ctx, `DELETE FROM conflicts WHERE id = ?`, id)
+	res, err := s.q.ExecContext(ctx, `DELETE FROM conflicts WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete conflict: %w", err)
 	}
@@ -276,7 +276,7 @@ func (s *SQLiteStorage) FindDuplicateIPs(ctx context.Context) ([]model.Conflict,
 	// IPs held by more than one device. A device listing an IP twice isn't a
 	// duplicate, so devices are counted, not addresses, and names are read as
 	// rows rather than split from a list (a name can contain a comma).
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT DISTINCT a.ip, d.id, d.name
 		FROM addresses a
 		JOIN devices d ON a.device_id = d.id
@@ -329,7 +329,7 @@ func DuplicateIPDescription(ip string, devices int) string {
 // ResolveOpenConflict resolves a conflict that isn't resolved yet, and
 // reports whether it did, so concurrent callers resolve it once.
 func (s *SQLiteStorage) ResolveOpenConflict(ctx context.Context, id, resolvedBy, notes string) (bool, error) {
-	res, err := s.db.ExecContext(ctx, `
+	res, err := s.q.ExecContext(ctx, `
 		UPDATE conflicts SET status = ?, resolved_at = ?, resolved_by = ?, notes = ?
 		WHERE id = ? AND status != ?
 	`, string(model.ConflictStatusResolved), nowUTC(), nullString(resolvedBy), nullString(notes), id, string(model.ConflictStatusResolved))
@@ -355,7 +355,7 @@ func (s *SQLiteStorage) UpdateConflictParties(ctx context.Context, conflict *mod
 		}
 		fields[name] = string(b)
 	}
-	res, err := s.db.ExecContext(ctx, `
+	res, err := s.q.ExecContext(ctx, `
 		UPDATE conflicts SET description = ?, device_ids = ?, device_names = ?,
 		       network_ids = ?, network_names = ?, subnets = ?
 		WHERE id = ?
@@ -379,7 +379,7 @@ const MaxOverlapConflicts = 1000
 // reports are skipped and don't count towards the MaxOverlapConflicts cap, so
 // repeated runs record every overlap eventually.
 func (s *SQLiteStorage) FindOverlappingSubnets(ctx context.Context, known func(networkIDs []string) bool) ([]model.Conflict, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, subnet FROM networks`)
+	rows, err := s.q.QueryContext(ctx, `SELECT id, name, subnet FROM networks`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get networks: %w", err)
 	}
@@ -461,7 +461,7 @@ func (s *SQLiteStorage) GetConflictsByDeviceID(ctx context.Context, deviceID str
 	}
 
 	// Use JSON extraction to find conflicts containing this device ID
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, type, status, description, ip_address, device_ids, device_names,
 		       network_ids, network_names, subnets, detected_at, resolved_at, resolved_by, notes
 		FROM conflicts
@@ -483,7 +483,7 @@ func (s *SQLiteStorage) GetConflictsByIP(ctx context.Context, ip string) ([]mode
 		return nil, ErrInvalidID
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, type, status, description, ip_address, device_ids, device_names,
 		       network_ids, network_names, subnets, detected_at, resolved_at, resolved_by, notes
 		FROM conflicts
@@ -510,7 +510,7 @@ func (s *SQLiteStorage) MarkConflictsResolvedForDevice(ctx context.Context, devi
 	now := nowUTC()
 	for _, c := range conflicts {
 		if c.Status == model.ConflictStatusActive {
-			_, err := s.db.ExecContext(ctx, `
+			_, err := s.q.ExecContext(ctx, `
 				UPDATE conflicts SET status = ?, resolved_at = ?, resolved_by = ?
 				WHERE id = ?
 			`, string(model.ConflictStatusResolved), now, resolvedBy, c.ID)
@@ -609,7 +609,7 @@ type DeviceRef struct {
 // DevicesWithIP returns the devices that have ip among their addresses, by
 // name, with one indexed lookup.
 func (s *SQLiteStorage) DevicesWithIP(ctx context.Context, ip string) ([]DeviceRef, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT DISTINCT d.id, d.name
 		FROM addresses a
 		JOIN devices d ON d.id = a.device_id

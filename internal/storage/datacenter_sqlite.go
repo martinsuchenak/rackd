@@ -13,7 +13,7 @@ import (
 // ensureDefaultDatacenter creates a default datacenter if none exists
 func (s *SQLiteStorage) ensureDefaultDatacenter(ctx context.Context) error {
 	var count int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM datacenters`).Scan(&count)
+	err := s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM datacenters`).Scan(&count)
 	if err != nil {
 		return fmt.Errorf("failed to check datacenter count: %w", err)
 	}
@@ -40,7 +40,7 @@ func (s *SQLiteStorage) ListDatacenters(ctx context.Context, filter *model.Datac
 	var args []any
 
 	if filter != nil && filter.Name != "" {
-		query += " WHERE name LIKE ?"
+		query += " WHERE " + likeLower("name")
 		args = append(args, "%"+filter.Name+"%")
 	}
 
@@ -52,7 +52,7 @@ func (s *SQLiteStorage) ListDatacenters(ctx context.Context, filter *model.Datac
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list datacenters: %w", err)
 	}
@@ -86,7 +86,7 @@ func (s *SQLiteStorage) SearchDatacenters(ctx context.Context, query string) ([]
 
 	ftsQuery := escapeFTSQuery(query)
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT d.id, d.name, d.location, d.description, d.created_at, d.updated_at
 		FROM datacenters d
 		INNER JOIN datacenters_fts fts ON d.id = fts.id
@@ -125,7 +125,7 @@ func (s *SQLiteStorage) GetDatacenter(ctx context.Context, id string) (*model.Da
 	}
 
 	dc := &model.Datacenter{}
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, location, description, created_at, updated_at
 		FROM datacenters WHERE id = ?
 	`, id).Scan(&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.CreatedAt, &dc.UpdatedAt)
@@ -155,7 +155,7 @@ func (s *SQLiteStorage) CreateDatacenter(ctx context.Context, dc *model.Datacent
 	dc.CreatedAt = now
 	dc.UpdatedAt = now
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO datacenters (id, name, location, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, dc.ID, dc.Name, dc.Location, dc.Description, dc.CreatedAt, dc.UpdatedAt)
@@ -179,7 +179,7 @@ func (s *SQLiteStorage) UpdateDatacenter(ctx context.Context, dc *model.Datacent
 
 	// Check if datacenter exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, dc.ID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, dc.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check datacenter existence: %w", err)
 	}
@@ -189,7 +189,7 @@ func (s *SQLiteStorage) UpdateDatacenter(ctx context.Context, dc *model.Datacent
 
 	dc.UpdatedAt = nowUTC()
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		UPDATE datacenters SET name = ?, location = ?, description = ?, updated_at = ?
 		WHERE id = ?
 	`, dc.Name, dc.Location, dc.Description, dc.UpdatedAt, dc.ID)
@@ -210,7 +210,7 @@ func (s *SQLiteStorage) DeleteDatacenter(ctx context.Context, id string) error {
 
 	// Check if datacenter exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, id).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check datacenter existence: %w", err)
 	}
@@ -220,21 +220,21 @@ func (s *SQLiteStorage) DeleteDatacenter(ctx context.Context, id string) error {
 
 	// Check for dependent devices
 	var deviceCount int
-	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE datacenter_id = ?`, id).Scan(&deviceCount)
+	err = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE datacenter_id = ?`, id).Scan(&deviceCount)
 	if err != nil {
 		return fmt.Errorf("failed to check dependent devices: %w", err)
 	}
 
 	// Unlink devices from datacenter (set datacenter_id to NULL)
 	if deviceCount > 0 {
-		_, err = s.db.ExecContext(ctx, `UPDATE devices SET datacenter_id = NULL WHERE datacenter_id = ?`, id)
+		_, err = s.q.ExecContext(ctx, `UPDATE devices SET datacenter_id = NULL WHERE datacenter_id = ?`, id)
 		if err != nil {
 			return fmt.Errorf("failed to unlink devices: %w", err)
 		}
 	}
 
 	// Delete the datacenter
-	_, err = s.db.ExecContext(ctx, `DELETE FROM datacenters WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM datacenters WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete datacenter: %w", err)
 	}
@@ -251,7 +251,7 @@ func (s *SQLiteStorage) GetDatacenterDevices(ctx context.Context, datacenterID s
 
 	// First check if the datacenter exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, datacenterID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM datacenters WHERE id = ?)`, datacenterID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check datacenter existence: %w", err)
 	}

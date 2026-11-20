@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -23,14 +22,14 @@ type BulkResult struct {
 func (s *SQLiteStorage) BulkCreateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error) {
 	result := &BulkResult{Total: len(devices)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, device := range devices {
-		if err := s.createDeviceInTx(ctx, tx, device); err != nil {
+		if err := tx.attempt(ctx, func() error { return s.createDeviceInTx(ctx, tx, device) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.Name, err))
 		} else {
@@ -51,14 +50,14 @@ func (s *SQLiteStorage) BulkCreateDevices(ctx context.Context, devices []*model.
 func (s *SQLiteStorage) BulkUpdateDevices(ctx context.Context, devices []*model.Device) (*BulkResult, error) {
 	result := &BulkResult{Total: len(devices)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, device := range devices {
-		if err := s.updateDeviceInTx(ctx, tx, device); err != nil {
+		if err := tx.attempt(ctx, func() error { return s.updateDeviceInTx(ctx, tx, device) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", device.ID, err))
 		} else {
@@ -79,14 +78,14 @@ func (s *SQLiteStorage) BulkUpdateDevices(ctx context.Context, devices []*model.
 func (s *SQLiteStorage) BulkDeleteDevices(ctx context.Context, ids []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(ids)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range ids {
-		if err := s.deleteDeviceInTx(ctx, tx, id); err != nil {
+		if err := tx.attempt(ctx, func() error { return s.deleteDeviceInTx(ctx, tx, id) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 		} else {
@@ -107,14 +106,14 @@ func (s *SQLiteStorage) BulkDeleteDevices(ctx context.Context, ids []string) (*B
 func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(deviceIDs)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
-		if err := addTagsInTx(ctx, tx, id, tags); err != nil {
+		if err := tx.attempt(ctx, func() error { return addTagsInTx(ctx, tx, id, tags) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 			continue
@@ -135,14 +134,14 @@ func (s *SQLiteStorage) BulkAddTags(ctx context.Context, deviceIDs []string, tag
 func (s *SQLiteStorage) BulkRemoveTags(ctx context.Context, deviceIDs []string, tags []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(deviceIDs)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range deviceIDs {
-		if err := removeTagsInTx(ctx, tx, id, tags); err != nil {
+		if err := tx.attempt(ctx, func() error { return removeTagsInTx(ctx, tx, id, tags) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("device %s: %v", id, err))
 			continue
@@ -163,14 +162,14 @@ func (s *SQLiteStorage) BulkRemoveTags(ctx context.Context, deviceIDs []string, 
 func (s *SQLiteStorage) BulkCreateNetworks(ctx context.Context, networks []*model.Network) (*BulkResult, error) {
 	result := &BulkResult{Total: len(networks)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, network := range networks {
-		if err := s.createNetworkInTx(ctx, tx, network); err != nil {
+		if err := tx.attempt(ctx, func() error { return s.createNetworkInTx(ctx, tx, network) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", network.Name, err))
 		} else {
@@ -191,14 +190,14 @@ func (s *SQLiteStorage) BulkCreateNetworks(ctx context.Context, networks []*mode
 func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*BulkResult, error) {
 	result := &BulkResult{Total: len(ids)}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	for _, id := range ids {
-		if err := s.deleteNetworkInTx(ctx, tx, id); err != nil {
+		if err := tx.attempt(ctx, func() error { return s.deleteNetworkInTx(ctx, tx, id) }); err != nil {
 			result.Failed++
 			result.Errors = append(result.Errors, fmt.Sprintf("network %s: %v", id, err))
 		} else {
@@ -216,7 +215,7 @@ func (s *SQLiteStorage) BulkDeleteNetworks(ctx context.Context, ids []string) (*
 }
 
 // addTagsInTx adds the tags a device doesn't have yet.
-func addTagsInTx(ctx context.Context, tx *sql.Tx, deviceID string, tags []string) error {
+func addTagsInTx(ctx context.Context, tx dbConn, deviceID string, tags []string) error {
 	rows, err := tx.QueryContext(ctx, `SELECT tag FROM tags WHERE device_id = ?`, deviceID)
 	if err != nil {
 		return err
@@ -246,7 +245,7 @@ func addTagsInTx(ctx context.Context, tx *sql.Tx, deviceID string, tags []string
 }
 
 // removeTagsInTx removes tags from a device.
-func removeTagsInTx(ctx context.Context, tx *sql.Tx, deviceID string, tags []string) error {
+func removeTagsInTx(ctx context.Context, tx dbConn, deviceID string, tags []string) error {
 	for _, tag := range tags {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM tags WHERE device_id = ? AND tag = ?`, deviceID, tag); err != nil {
 			return fmt.Errorf("tag %s: %w", tag, err)

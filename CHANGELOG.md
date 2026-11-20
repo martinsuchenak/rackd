@@ -31,6 +31,12 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   databases upgrade exactly as before; the one new step they run records the
   baseline and changes no tables.
 
+### Fixed
+
+- A bulk operation that skips a failed item (bulk create, update or delete
+  of devices or networks, bulk tag changes) no longer keeps the rows that
+  item wrote before it failed.
+
 ## [0.7.3] - 2026-11-19
 
 ### Added

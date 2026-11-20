@@ -1,10 +1,18 @@
 package storage
 
 import (
+	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/martinsuchenak/xdal/pkg/postgres"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
+	"github.com/martinsuchenak/xdal/pkg/xdaltest"
 )
 
 func intPtr(i int) *int { return &i }
@@ -205,10 +213,100 @@ func migratedTemplate() ([]byte, error) {
 	return templateData, templateErr
 }
 
+// testBackendEnv picks the database newTestStorage opens: sqlite (the
+// default), postgres or mysql. The server backends need the xdaltest DSN
+// variables; `task test:backends` sets everything up.
+const testBackendEnv = "RACKD_TEST_BACKEND"
+
+// portableTestFiles are the test files whose storage area has been made
+// portable; on a server backend newTestStorage skips tests in other files.
+// The list goes away once every area is converted.
+var portableTestFiles = map[string]bool{
+	"datacenter_sqlite_test.go":     true,
+	"network_sqlite_test.go":        true,
+	"pool_sqlite_test.go":           true,
+	"pool_membership_test.go":       true,
+	"reservation_sqlite_test.go":    true,
+	"reservation_lifecycle_test.go": true,
+	"conflict_sqlite_test.go":       true,
+	"overlap_test.go":               true,
+	"device_sqlite_test.go":         true,
+	"device_relations_test.go":      true,
+	"relationship_sqlite_test.go":   true,
+	"custom_field_sqlite_test.go":   true,
+	"circuit_sqlite_test.go":        true,
+	"nat_sqlite_test.go":            true,
+	"constraint_errors_test.go":     true,
+	"bulk_test.go":                  true,
+	"bulk_tags_test.go":             true,
+	"bulk_savepoint_test.go":        true,
+}
+
+// reopenPostgres opens the test's PostgreSQL schema again through
+// openPostgresPool, the way rackd opens PostgreSQL, rather than xdaltest's
+// plain pool.
+func reopenPostgres(t *testing.T, db *xdaltest.DB) (*sql.DB, xdal.DBInterface) {
+	t.Helper()
+	var schema string
+	if err := db.SQL.QueryRow("SELECT current_schema()").Scan(&schema); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := pgx.ParseConfig(os.Getenv(xdaltest.EnvPostgresDSN))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.RuntimeParams["search_path"] = schema
+	pool := openPostgresPool(cfg)
+	t.Cleanup(func() { _ = pool.Close() })
+	return pool, postgres.NewPostgresDB(pool, nil)
+}
+
+// skipWithoutSearch skips a full-text search test on the server backends,
+// which don't have search yet (it is SQLite's FTS5 for now).
+func skipWithoutSearch(t *testing.T) {
+	t.Helper()
+	if b := testBackend(); b != xdal.DialectSQLite {
+		t.Skipf("%s: full-text search isn't portable yet", b)
+	}
+}
+
+// callerIsPortable reports whether newTestStorage's caller is in a
+// portable test file.
+func callerIsPortable() bool {
+	_, file, _, ok := runtime.Caller(2)
+	return ok && portableTestFiles[filepath.Base(file)]
+}
+
+func testBackend() string {
+	if b := os.Getenv(testBackendEnv); b != "" {
+		return b
+	}
+	return xdal.DialectSQLite
+}
+
 // Helper function to create a test storage: a private copy of a migrated
 // database, so each test starts from the same fresh state.
+//
+// With RACKD_TEST_BACKEND set to postgres or mysql, it opens storage on a
+// fresh database of that backend instead (see testBackend).
 func newTestStorage(t *testing.T) *SQLiteStorage {
 	t.Helper()
+	if b := testBackend(); b != xdal.DialectSQLite {
+		if !callerIsPortable() {
+			t.Skipf("%s: this area's storage isn't portable yet", b)
+		}
+		db := xdaltest.Open(t, b)
+		sqlDB, x := db.SQL, db.DB
+		if b == xdal.DialectPostgres {
+			sqlDB, x = reopenPostgres(t, db)
+		}
+		s, err := openStorageOn(context.Background(), sqlDB, x)
+		if err != nil {
+			t.Fatalf("open storage on %s: %v", b, err)
+		}
+		t.Cleanup(func() { _ = s.Close() })
+		return s
+	}
 	data, err := migratedTemplate()
 	if err != nil {
 		t.Fatalf("failed to create template database: %v", err)

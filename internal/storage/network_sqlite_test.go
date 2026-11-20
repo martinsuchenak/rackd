@@ -249,6 +249,7 @@ func TestNetworkOperations_DeleteWithAddresses(t *testing.T) {
 }
 
 func TestNetworkOperations_Search(t *testing.T) {
+	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 	ctx := context.Background()

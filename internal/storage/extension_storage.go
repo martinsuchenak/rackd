@@ -15,7 +15,7 @@ import (
 // XDAL returns the database wrapped for xdal: its query builders, schema
 // builder and named locks.
 func (s *SQLiteStorage) XDAL() xdal.DBInterface {
-	return sqlite.NewSQLiteDB(s.db, nil)
+	return s.q.x
 }
 
 // RunExtensionMigrations applies an extension's migrations in its own

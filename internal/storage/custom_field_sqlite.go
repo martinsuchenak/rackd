@@ -22,14 +22,14 @@ func (s *SQLiteStorage) CreateCustomFieldDefinition(ctx context.Context, def *mo
 		return err
 	}
 
-	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO custom_field_definitions (id, name, key, type, required, options, description, created_at, updated_at)
+	_, err = s.q.ExecContext(ctx, `
+		INSERT INTO custom_field_definitions (id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, def.ID, def.Name, def.Key, def.Type, def.Required, string(optionsJSON), def.Description, def.CreatedAt, def.UpdatedAt)
 
 	if err != nil {
 		// Check for unique constraint violation on key
-		if isUniqueConstraintError(err) {
+		if isUniqueViolation(err) {
 			return ErrDuplicateFieldKey
 		}
 		return err
@@ -43,8 +43,8 @@ func (s *SQLiteStorage) GetCustomFieldDefinition(ctx context.Context, id string)
 	def := &model.CustomFieldDefinition{}
 	var optionsJSON string
 
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, name, key, type, required, options, description, created_at, updated_at
+	err := s.q.QueryRowContext(ctx, `
+		SELECT id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE id = ?
 	`, id).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
 
@@ -67,9 +67,9 @@ func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(ctx context.Context, key s
 	def := &model.CustomFieldDefinition{}
 	var optionsJSON string
 
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, name, key, type, required, options, description, created_at, updated_at
-		FROM custom_field_definitions WHERE key = ?
+	err := s.q.QueryRowContext(ctx, `
+		SELECT id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at
+		FROM custom_field_definitions WHERE ` + s.q.ident("key") + ` = ?
 	`, key).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -88,7 +88,7 @@ func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(ctx context.Context, key s
 
 // ListCustomFieldDefinitions lists all custom field definitions
 func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *model.CustomFieldDefinitionFilter) ([]model.CustomFieldDefinition, error) {
-	query := `SELECT id, name, key, type, required, options, description, created_at, updated_at
+	query := `SELECT id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE 1=1`
 	var args []any
 
@@ -105,7 +105,7 @@ func (s *SQLiteStorage) ListCustomFieldDefinitions(ctx context.Context, filter *
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,13 +123,13 @@ func (s *SQLiteStorage) UpdateCustomFieldDefinition(ctx context.Context, def *mo
 		return err
 	}
 
-	result, err := s.db.ExecContext(ctx, `
-		UPDATE custom_field_definitions SET name = ?, key = ?, type = ?, required = ?, options = ?, description = ?, updated_at = ?
+	result, err := s.q.ExecContext(ctx, `
+		UPDATE custom_field_definitions SET name = ?, ` + s.q.ident("key") + ` = ?, type = ?, required = ?, options = ?, description = ?, updated_at = ?
 		WHERE id = ?
 	`, def.Name, def.Key, def.Type, def.Required, string(optionsJSON), def.Description, def.UpdatedAt, def.ID)
 
 	if err != nil {
-		if isUniqueConstraintError(err) {
+		if isUniqueViolation(err) {
 			return ErrDuplicateFieldKey
 		}
 		return err
@@ -148,7 +148,7 @@ func (s *SQLiteStorage) UpdateCustomFieldDefinition(ctx context.Context, def *mo
 
 // DeleteCustomFieldDefinition deletes a custom field definition and all its values
 func (s *SQLiteStorage) DeleteCustomFieldDefinition(ctx context.Context, id string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -183,22 +183,18 @@ func (s *SQLiteStorage) SetCustomFieldValue(ctx context.Context, value *model.Cu
 		value.ID = newUUID()
 	}
 
-	// Use INSERT OR REPLACE for upsert behavior
-	_, err := s.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO custom_field_values (id, device_id, field_id, string_value, number_value, bool_value)
-		VALUES (
-			COALESCE((SELECT id FROM custom_field_values WHERE device_id = ? AND field_id = ?), ?),
-			?, ?, ?, ?, ?
-		)
-	`, value.DeviceID, value.FieldID, value.ID,
-		value.DeviceID, value.FieldID, value.StringValue, value.NumberValue, value.BoolValue)
+	// One value per device and field: an existing row keeps its id.
+	_, err := execBuilt(ctx, s.q, s.q.builder().Insert("custom_field_values").
+		Set("id", value.ID).Set("device_id", value.DeviceID).Set("field_id", value.FieldID).
+		Set("string_value", value.StringValue).Set("number_value", value.NumberValue).Set("bool_value", value.BoolValue).
+		OnConflict("device_id", "field_id").DoUpdate("string_value", "number_value", "bool_value"))
 
 	return err
 }
 
 // GetCustomFieldValues retrieves all custom field values for a device
 func (s *SQLiteStorage) GetCustomFieldValues(ctx context.Context, deviceID string) ([]model.CustomFieldValue, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, device_id, field_id, string_value, number_value, bool_value
 		FROM custom_field_values WHERE device_id = ?
 	`, deviceID)
@@ -216,7 +212,7 @@ func (s *SQLiteStorage) GetCustomFieldValue(ctx context.Context, deviceID, field
 	var numberValue sql.NullInt64
 	var boolValue sql.NullBool
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, device_id, field_id, string_value, number_value, bool_value
 		FROM custom_field_values WHERE device_id = ? AND field_id = ?
 	`, deviceID, fieldID).Scan(&value.ID, &value.DeviceID, &value.FieldID, &value.StringValue, &numberValue, &boolValue)
@@ -240,7 +236,7 @@ func (s *SQLiteStorage) GetCustomFieldValue(ctx context.Context, deviceID, field
 
 // DeleteCustomFieldValue deletes a specific custom field value
 func (s *SQLiteStorage) DeleteCustomFieldValue(ctx context.Context, deviceID, fieldID string) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM custom_field_values WHERE device_id = ? AND field_id = ?`, deviceID, fieldID)
+	result, err := s.q.ExecContext(ctx, `DELETE FROM custom_field_values WHERE device_id = ? AND field_id = ?`, deviceID, fieldID)
 	if err != nil {
 		return err
 	}
@@ -258,13 +254,13 @@ func (s *SQLiteStorage) DeleteCustomFieldValue(ctx context.Context, deviceID, fi
 
 // DeleteCustomFieldValuesForDevice deletes all custom field values for a device
 func (s *SQLiteStorage) DeleteCustomFieldValuesForDevice(ctx context.Context, deviceID string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM custom_field_values WHERE device_id = ?`, deviceID)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM custom_field_values WHERE device_id = ?`, deviceID)
 	return err
 }
 
 // DeleteCustomFieldValuesForDefinition deletes all custom field values for a definition
 func (s *SQLiteStorage) DeleteCustomFieldValuesForDefinition(ctx context.Context, fieldID string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ?`, fieldID)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ?`, fieldID)
 	return err
 }
 
@@ -306,30 +302,11 @@ func scanCustomFieldValues(rows *sql.Rows) ([]model.CustomFieldValue, error) {
 	return values, nil
 }
 
-// isUniqueConstraintError checks if the error is a unique constraint violation
-func isUniqueConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// SQLite unique constraint error
-	return err.Error() != "" && (containsString(err.Error(), "UNIQUE constraint failed") ||
-		containsString(err.Error(), "duplicate key"))
-}
-
-func containsString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // GetDevicesByCustomField finds devices that have a specific custom field value
 func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, value string) ([]string, error) {
 	// First get the field ID from the key
 	var fieldID string
-	err := s.db.QueryRowContext(ctx, `SELECT id FROM custom_field_definitions WHERE key = ?`, fieldKey).Scan(&fieldID)
+	err := s.q.QueryRowContext(ctx, `SELECT id FROM custom_field_definitions WHERE ` + s.q.ident("key") + ` = ?`, fieldKey).Scan(&fieldID)
 	if err == sql.ErrNoRows {
 		return nil, ErrCustomFieldNotFound
 	}
@@ -338,7 +315,7 @@ func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, v
 	}
 
 	// Find devices with matching value
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT device_id FROM custom_field_values WHERE field_id = ? AND string_value = ?
 	`, fieldID, value)
 	if err != nil {
@@ -362,14 +339,14 @@ func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, v
 func (s *SQLiteStorage) GetCustomFieldValuesWithDefinitions(ctx context.Context, deviceID string) ([]model.CustomFieldWithDefinition, error) {
 	query := `
 		SELECT
-			d.id, d.name, d.key, d.type, d.required, d.options, d.description, d.created_at, d.updated_at,
+			d.id, d.name, d.` + s.q.ident("key") + `, d.type, d.required, d.options, d.description, d.created_at, d.updated_at,
 			COALESCE(v.id, ''), COALESCE(v.string_value, ''), v.number_value, v.bool_value
 		FROM custom_field_definitions d
 		LEFT JOIN custom_field_values v ON d.id = v.field_id AND v.device_id = ?
 		ORDER BY d.name ASC
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, deviceID)
+	rows, err := s.q.QueryContext(ctx, query, deviceID)
 	if err != nil {
 		return nil, err
 	}

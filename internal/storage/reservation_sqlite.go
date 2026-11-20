@@ -25,7 +25,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		reservation.ID = newUUID()
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -112,7 +112,7 @@ func (s *SQLiteStorage) CreateReservation(ctx context.Context, reservation *mode
 		reservation.CreatedAt, reservation.UpdatedAt)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if isUniqueViolation(err) {
 			return ErrIPAlreadyReserved
 		}
 		return fmt.Errorf("failed to create reservation: %w", err)
@@ -137,7 +137,7 @@ func (s *SQLiteStorage) GetReservation(ctx context.Context, id string) (*model.R
 	var hostname, purpose, notes sql.NullString
 	var expiresAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 		       expires_at, status, notes, created_at, updated_at
 		FROM reservations WHERE id = ?
@@ -180,7 +180,7 @@ func (s *SQLiteStorage) GetReservationByIP(ctx context.Context, poolID, ip strin
 	var hostname, purpose, notes sql.NullString
 	var expiresAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 		       expires_at, status, notes, created_at, updated_at
 		FROM reservations WHERE pool_id = ? AND ip_address = ? AND status = ?
@@ -253,7 +253,7 @@ func (s *SQLiteStorage) ListReservations(ctx context.Context, filter *model.Rese
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list reservations: %w", err)
 	}
@@ -273,7 +273,7 @@ func (s *SQLiteStorage) UpdateReservation(ctx context.Context, reservation *mode
 
 	reservation.UpdatedAt = nowUTC()
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		UPDATE reservations SET
 			hostname = ?, purpose = ?, expires_at = ?, status = ?, notes = ?, updated_at = ?
 		WHERE id = ?
@@ -295,7 +295,7 @@ func (s *SQLiteStorage) DeleteReservation(ctx context.Context, id string) error 
 		return ErrInvalidID
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM reservations WHERE id = ?`, id)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM reservations WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete reservation: %w", err)
 	}
@@ -310,7 +310,7 @@ func (s *SQLiteStorage) GetReservationsByPool(ctx context.Context, poolID string
 		return nil, ErrInvalidID
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 		       expires_at, status, notes, created_at, updated_at
 		FROM reservations WHERE pool_id = ? AND status = ?
@@ -330,7 +330,7 @@ func (s *SQLiteStorage) GetReservationsByUser(ctx context.Context, userID string
 		return nil, ErrInvalidID
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, pool_id, ip_address, hostname, purpose, reserved_by, reserved_at,
 		       expires_at, status, notes, created_at, updated_at
 		FROM reservations WHERE reserved_by = ?
@@ -353,7 +353,7 @@ func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
 	if err != nil || !due {
 		return 0, err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -372,7 +372,7 @@ func (s *SQLiteStorage) ExpireReservations(ctx context.Context) (int64, error) {
 // anyReservationExpired reports whether an active reservation has passed its
 // expiry.
 func (s *SQLiteStorage) anyReservationExpired(ctx context.Context) (bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT expires_at FROM reservations WHERE status = ? AND expires_at IS NOT NULL`,
+	rows, err := s.q.QueryContext(ctx, `SELECT expires_at FROM reservations WHERE status = ? AND expires_at IS NOT NULL`,
 		string(model.ReservationStatusActive))
 	if err != nil {
 		return false, fmt.Errorf("failed to find expired reservations: %w", err)
@@ -404,7 +404,7 @@ func (s *SQLiteStorage) auditExpired(ctx context.Context, ids []string) {
 // match the extra WHERE clause, and returns their ids. Expiry is compared in
 // Go: expires_at keeps the offset the client sent, so comparing the stored
 // text in SQL would misorder times in different zones.
-func expireReservationsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) ([]string, error) {
+func expireReservationsTx(ctx context.Context, tx dbConn, where string, args ...any) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, expires_at FROM reservations
 		WHERE status = ? AND expires_at IS NOT NULL `+where,
@@ -456,7 +456,7 @@ func (s *SQLiteStorage) ClaimReservation(ctx context.Context, addr model.Address
 	// This runs for every address a device is saved with, and usually finds
 	// nothing, so look first without taking the write lock; the update below
 	// only claims a reservation that is still active.
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT r.id, r.pool_id, r.expires_at FROM reservations r
 		JOIN network_pools p ON p.id = r.pool_id
 		WHERE r.ip_address = ? AND r.status = ?
@@ -487,7 +487,7 @@ func (s *SQLiteStorage) ClaimReservation(ctx context.Context, addr model.Address
 	if found != 1 {
 		return false, nil
 	}
-	res, err := s.db.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
+	res, err := s.q.ExecContext(ctx, `UPDATE reservations SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
 		string(model.ReservationStatusClaimed), now, id, string(model.ReservationStatusActive))
 	if err != nil {
 		return false, fmt.Errorf("failed to claim reservation: %w", err)
@@ -506,7 +506,7 @@ func (s *SQLiteStorage) IsIPReserved(ctx context.Context, poolID, ip string) (bo
 	}
 
 	var count int
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM reservations
 		WHERE pool_id = ? AND ip_address = ? AND status = ?
 	`, poolID, ip, string(model.ReservationStatusActive)).Scan(&count)
