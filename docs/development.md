@@ -618,9 +618,13 @@ Core storage is being converted area by area. To convert one:
 - Add the area's test files to `portableTestFiles` in `sqlite_test.go`. A
   test that checks something only SQLite has (a query plan, a PRAGMA) calls
   `skipUnlessSQLite`.
-- A store kept in its own type (scan profiles, scheduled scans, credentials)
-  takes the storage's connection: `store.Profiles()`,
-  `store.ScheduledScans()`, `credentials.NewStorage(store.XDAL(), key)`.
+- A store kept in its own type (scan profiles, scheduled scans, sessions,
+  credentials) takes the storage's connection: `store.Profiles()`,
+  `store.ScheduledScans()`, `store.Sessions()`,
+  `credentials.NewStorage(store.XDAL(), key)`.
+- A reserved word as a column name needs quoting: `s.q.ident("key")`.
+  MySQL also refuses an `UPDATE` whose subquery reads the table being
+  updated, so select the rows first, then update them.
 
 `newTestStorage` opens the backend named by `RACKD_TEST_BACKEND` (`sqlite`,
 `postgres` or `mysql`); on a server backend it skips tests in files not yet

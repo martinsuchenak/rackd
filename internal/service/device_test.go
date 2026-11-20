@@ -95,6 +95,7 @@ func (s *stubStorage) ClaimReservation(context.Context, model.Address) (bool, er
 func (s *stubStorage) DB() *sql.DB                                         { return nil }
 func (s *stubStorage) XDAL() xdal.DBInterface                              { return nil }
 func (s *stubStorage) Profiles() *storage.SQLiteProfileStorage             { return nil }
+func (s *stubStorage) Sessions() *storage.SQLiteSessionStore               { return nil }
 func (s *stubStorage) ScheduledScans() *storage.SQLiteScheduledScanStorage { return nil }
 func (s *stubStorage) Close() error                                        { return nil }
 

@@ -385,10 +385,11 @@ type ExtendedStorage interface {
 	DB() *sql.DB
 	// XDAL is the database wrapped for xdal, on whichever backend it is.
 	XDAL() xdal.DBInterface
-	// Profiles and ScheduledScans are the scan profile and scheduled scan
-	// stores on the same database.
+	// Profiles, ScheduledScans and Sessions are the scan profile, scheduled
+	// scan and session stores on the same database.
 	Profiles() *SQLiteProfileStorage
 	ScheduledScans() *SQLiteScheduledScanStorage
+	Sessions() *SQLiteSessionStore
 }
 
 // NewStorage creates a new base storage instance

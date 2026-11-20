@@ -49,7 +49,7 @@ func (s *SQLiteStorage) CreatePermission(ctx context.Context, perm *model.Permis
 
 	query := `INSERT INTO permissions (id, name, resource, action, created_at) VALUES (?, ?, ?, ?, ?)`
 
-	_, err := s.db.ExecContext(ctx, query, perm.ID, perm.Name, perm.Resource, perm.Action, perm.CreatedAt)
+	_, err := s.q.ExecContext(ctx, query, perm.ID, perm.Name, perm.Resource, perm.Action, perm.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create permission: %w", err)
 	}
@@ -65,7 +65,7 @@ func (s *SQLiteStorage) GetPermission(ctx context.Context, id string) (*model.Pe
 	query := `SELECT id, name, resource, action, created_at FROM permissions WHERE id = ?`
 
 	var perm model.Permission
-	err := s.db.QueryRowContext(ctx, query, id).Scan(&perm.ID, &perm.Name, &perm.Resource, &perm.Action, &perm.CreatedAt)
+	err := s.q.QueryRowContext(ctx, query, id).Scan(&perm.ID, &perm.Name, &perm.Resource, &perm.Action, &perm.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrPermissionNotFound
 	}
@@ -84,7 +84,7 @@ func (s *SQLiteStorage) GetPermissionByName(ctx context.Context, name string) (*
 	query := `SELECT id, name, resource, action, created_at FROM permissions WHERE name = ?`
 
 	var perm model.Permission
-	err := s.db.QueryRowContext(ctx, query, name).Scan(&perm.ID, &perm.Name, &perm.Resource, &perm.Action, &perm.CreatedAt)
+	err := s.q.QueryRowContext(ctx, query, name).Scan(&perm.ID, &perm.Name, &perm.Resource, &perm.Action, &perm.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrPermissionNotFound
 	}
@@ -117,7 +117,7 @@ func (s *SQLiteStorage) ListPermissions(ctx context.Context, filter *model.Permi
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list permissions: %w", err)
 	}
@@ -144,7 +144,7 @@ func (s *SQLiteStorage) DeletePermission(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM permissions WHERE id = ?`, id)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM permissions WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete permission: %w", err)
 	}
@@ -166,7 +166,7 @@ func (s *SQLiteStorage) CreateRole(ctx context.Context, role *model.Role) error 
 
 	query := `INSERT INTO roles (id, name, description, is_system, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
 
-	_, err := s.db.ExecContext(ctx, query, role.ID, role.Name, role.Description, role.IsSystem, role.CreatedAt, role.UpdatedAt)
+	_, err := s.q.ExecContext(ctx, query, role.ID, role.Name, role.Description, role.IsSystem, role.CreatedAt, role.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create role: %w", err)
 	}
@@ -183,7 +183,7 @@ func (s *SQLiteStorage) GetRole(ctx context.Context, id string) (*model.Role, er
 	query := `SELECT id, name, description, is_system, created_at, updated_at FROM roles WHERE id = ?`
 
 	var role model.Role
-	err := s.db.QueryRowContext(ctx, query, id).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt)
+	err := s.q.QueryRowContext(ctx, query, id).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrRoleNotFound
 	}
@@ -202,7 +202,7 @@ func (s *SQLiteStorage) GetRoleByName(ctx context.Context, name string) (*model.
 	query := `SELECT id, name, description, is_system, created_at, updated_at FROM roles WHERE name = ?`
 
 	var role model.Role
-	err := s.db.QueryRowContext(ctx, query, name).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt)
+	err := s.q.QueryRowContext(ctx, query, name).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrRoleNotFound
 	}
@@ -218,7 +218,7 @@ func (s *SQLiteStorage) ListRoles(ctx context.Context, filter *model.RoleFilter)
 	var args []interface{}
 
 	if filter != nil && filter.Name != "" {
-		query += " AND name LIKE ?"
+		query += " AND " + likeLower("name")
 		args = append(args, "%"+filter.Name+"%")
 	}
 
@@ -235,7 +235,7 @@ func (s *SQLiteStorage) ListRoles(ctx context.Context, filter *model.RoleFilter)
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list roles: %w", err)
 	}
@@ -266,7 +266,7 @@ func (s *SQLiteStorage) UpdateRole(ctx context.Context, role *model.Role) error 
 
 	query := `UPDATE roles SET description = ?, updated_at = ? WHERE id = ?`
 
-	result, err := s.db.ExecContext(ctx, query, role.Description, role.UpdatedAt, role.ID)
+	result, err := s.q.ExecContext(ctx, query, role.Description, role.UpdatedAt, role.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}
@@ -289,7 +289,7 @@ func (s *SQLiteStorage) DeleteRole(ctx context.Context, id string) error {
 	}
 
 	var role model.Role
-	err := s.db.QueryRowContext(ctx, `SELECT is_system FROM roles WHERE id = ?`, id).Scan(&role.IsSystem)
+	err := s.q.QueryRowContext(ctx, `SELECT is_system FROM roles WHERE id = ?`, id).Scan(&role.IsSystem)
 	if err == sql.ErrNoRows {
 		return ErrRoleNotFound
 	}
@@ -301,7 +301,7 @@ func (s *SQLiteStorage) DeleteRole(ctx context.Context, id string) error {
 		return fmt.Errorf("cannot delete system role")
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM roles WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM roles WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete role: %w", err)
 	}
@@ -323,7 +323,7 @@ func (s *SQLiteStorage) GetRolePermissions(ctx context.Context, roleID string) (
 		ORDER BY p.resource, p.action
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, roleID)
+	rows, err := s.q.QueryContext(ctx, query, roleID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role permissions: %w", err)
 	}
@@ -350,7 +350,7 @@ func (s *SQLiteStorage) SetRolePermissions(ctx context.Context, roleID string, p
 		return ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -384,7 +384,7 @@ func (s *SQLiteStorage) AddRolePermission(ctx context.Context, roleID, permissio
 
 	query := `INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (?, ?, ?)`
 
-	_, err := s.db.ExecContext(ctx, query, roleID, permissionID, nowUTC())
+	_, err := s.q.ExecContext(ctx, query, roleID, permissionID, nowUTC())
 	if err != nil {
 		return fmt.Errorf("failed to add role permission: %w", err)
 	}
@@ -398,7 +398,7 @@ func (s *SQLiteStorage) RemoveRolePermission(ctx context.Context, roleID, permis
 		return ErrInvalidID
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?`, roleID, permissionID)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?`, roleID, permissionID)
 	if err != nil {
 		return fmt.Errorf("failed to remove role permission: %w", err)
 	}
@@ -420,7 +420,7 @@ func (s *SQLiteStorage) GetUserRoles(ctx context.Context, userID string) ([]mode
 		ORDER BY r.name
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, userID)
+	rows, err := s.q.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
@@ -459,7 +459,7 @@ func (s *SQLiteStorage) GetRolesForUsers(ctx context.Context, userIDs []string) 
 		for i, id := range ids {
 			args[i] = id
 		}
-		rows, err := s.db.QueryContext(ctx, `
+		rows, err := s.q.QueryContext(ctx, `
 			SELECT ur.user_id, r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at
 			FROM roles r
 			JOIN user_roles ur ON r.id = ur.role_id
@@ -510,7 +510,7 @@ func (s *SQLiteStorage) GetUserPermissions(ctx context.Context, userID string) (
 		return perms, nil
 	}
 
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, resource, action, created_at FROM permissions ORDER BY resource, action`)
+	rows, err := s.q.QueryContext(ctx, `SELECT id, name, resource, action, created_at FROM permissions ORDER BY resource, action`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user permissions: %w", err)
 	}
@@ -537,8 +537,12 @@ func (s *SQLiteStorage) AssignRoleToUser(ctx context.Context, userID, roleID str
 		return ErrInvalidID
 	}
 
-	return s.changeUserRoles(ctx, userID, `INSERT OR IGNORE INTO user_roles (user_id, role_id, created_at) VALUES (?, ?, ?)`,
-		userID, roleID, nowUTC())
+	return s.changeUserRoles(ctx, userID, func(tx dbConn) error {
+		_, err := execBuilt(ctx, tx, s.q.builder().Insert("user_roles").
+			Set("user_id", userID).Set("role_id", roleID).Set("created_at", nowUTC()).
+			OnConflict("user_id", "role_id").DoNothing())
+		return err
+	})
 }
 
 func (s *SQLiteStorage) RemoveRoleFromUser(ctx context.Context, userID, roleID string) error {
@@ -546,19 +550,22 @@ func (s *SQLiteStorage) RemoveRoleFromUser(ctx context.Context, userID, roleID s
 		return ErrInvalidID
 	}
 
-	return s.changeUserRoles(ctx, userID, `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`, userID, roleID)
+	return s.changeUserRoles(ctx, userID, func(tx dbConn) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`, userID, roleID)
+		return err
+	})
 }
 
 // changeUserRoles runs a change to a user's roles and updates the user's
 // is_admin to match, in one transaction.
-func (s *SQLiteStorage) changeUserRoles(ctx context.Context, userID, query string, args ...any) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+func (s *SQLiteStorage) changeUserRoles(ctx context.Context, userID string, change func(tx dbConn) error) error {
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+	if err := change(tx); err != nil {
 		return fmt.Errorf("failed to change user roles: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, syncIsAdminSQL+` WHERE id = ?`, userID); err != nil {
@@ -620,7 +627,7 @@ func (s *SQLiteStorage) loadRoleDefinitions(ctx context.Context) (map[rbac.Role]
 		LEFT JOIN permissions p ON p.id = rp.permission_id
 	`
 
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.q.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load role definitions: %w", err)
 	}

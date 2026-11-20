@@ -14,7 +14,7 @@ func TestSQLiteSessionStoreLifecycle(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	store := NewSQLiteSessionStore(storage.DB())
+	store := storage.Sessions()
 	ctx := context.Background()
 	user := &model.User{
 		ID:           "user-1",
@@ -71,7 +71,7 @@ func TestSQLiteSessionStoreExpiryCleanupAndDeleteByUser(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	store := NewSQLiteSessionStore(storage.DB())
+	store := storage.Sessions()
 	ctx := context.Background()
 	user := &model.User{
 		ID:           "user-1",
@@ -124,7 +124,7 @@ func TestSQLiteSessionStoreExpiryCleanupAndDeleteByUser(t *testing.T) {
 func TestSQLiteSessionStoreExtendNeverRecreates(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
-	store := NewSQLiteSessionStore(storage.DB())
+	store := storage.Sessions()
 	ctx := context.Background()
 	if err := storage.CreateUser(ctx, &model.User{ID: "user-1", Username: "alice", Email: "a@example.com", PasswordHash: "h", IsActive: true}); err != nil {
 		t.Fatal(err)
