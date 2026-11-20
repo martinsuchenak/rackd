@@ -36,6 +36,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 - A bulk operation that skips a failed item (bulk create, update or delete
   of devices or networks, bulk tag changes) no longer keeps the rows that
   item wrote before it failed.
+- Stored credentials record their created and updated times in UTC, like
+  every other record, instead of the server's local time.
 
 ## [0.7.3] - 2026-11-19
 

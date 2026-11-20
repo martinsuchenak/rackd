@@ -28,6 +28,12 @@ const (
 // baselineVersion is the first migration of the portable track.
 const baselineVersion = "20261121000000"
 
+// SchemaMigrations returns the portable migration track, in order. On a
+// PostgreSQL or MySQL database it builds the whole core schema, so tests of
+// stores outside this package can apply it with dialecttest.Run; on SQLite
+// it builds nothing (the legacy track does that).
+func SchemaMigrations() []migrate.Migration { return portableMigrations() }
+
 // portableMigrations is the portable migration track, in order.
 func portableMigrations() []migrate.Migration {
 	return []migrate.Migration{

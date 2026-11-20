@@ -591,8 +591,10 @@ otherwise. `task test:dialects` starts both in Docker
 (`docker-compose.test.yml`) and runs the tests on all three, and CI does the
 same on every change, failing if a backend is missing.
 
-To test against core's tables, pass `storage.SchemaMigrationNamespace` and
-the core portable track, which builds the whole core schema on every backend.
+To test against core's tables on PostgreSQL and MySQL, pass
+`storage.SchemaMigrationNamespace` and `storage.SchemaMigrations()`, which
+build the whole core schema there. On SQLite they build nothing, so skip that
+backend or use `storage.RunMigrations` for it.
 
 ### Making a Storage Area Portable
 
