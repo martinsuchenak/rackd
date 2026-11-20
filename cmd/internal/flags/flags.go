@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/martinsuchenak/rackd/internal/config"
+	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/paularlott/cli"
 )
 
@@ -26,6 +27,25 @@ func ResolveDataDir(cmd *cli.Command) string {
 	return config.Load().DataDir
 }
 
+// StorageOptions are the storage options every command uses: the database
+// DATABASE_URL selects, if any.
+func StorageOptions() storage.StorageOptions {
+	return storage.StorageOptions{DatabaseURL: config.Load().DatabaseURL}
+}
+
+// RequireSQLite refuses a command that works on the SQLite database file when
+// DATABASE_URL selects a database server. what names the command.
+func RequireSQLite(what string) error {
+	backend, err := storage.DatabaseBackend(config.Load().DatabaseURL)
+	if err != nil {
+		return err
+	}
+	if backend != "sqlite" {
+		return fmt.Errorf("%s works on the SQLite database file, but DATABASE_URL selects %s; back it up and restore it with the database's own tools", what, backend)
+	}
+	return nil
+}
+
 // legacyDataDir is where rackd before v0.6.0 kept its database whenever
 // --data-dir wasn't given, whatever DATA_DIR said.
 const legacyDataDir = "./data"
@@ -35,7 +55,7 @@ const legacyDataDir = "./data"
 // ignored, so the database there is most likely the real one, and starting
 // would create an empty inventory instead.
 func CheckDataDirMove(cmd *cli.Command, dataDir string) error {
-	if cmd.HasFlag("data-dir") || os.Getenv("DATA_DIR") == "" {
+	if cmd.HasFlag("data-dir") || os.Getenv("DATA_DIR") == "" || config.Load().DatabaseURL != "" {
 		return nil
 	}
 	want, err1 := filepath.Abs(dataDir)

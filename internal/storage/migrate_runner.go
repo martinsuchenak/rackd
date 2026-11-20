@@ -249,8 +249,16 @@ func RunMigrations(ctx context.Context, db *sql.DB) error {
 // RunMigrationsWithOptions applies all pending core migrations. When BackupDir is
 // set and the database already has applied migrations, a verified snapshot is
 // written there first.
+//
+// On PostgreSQL and MySQL there is only the portable track and no backup:
+// back a database server up with its own tools.
 func RunMigrationsWithOptions(ctx context.Context, db *sql.DB, opts MigrationOptions) (MigrationResult, error) {
 	var res MigrationResult
+	if !isSQLite(db) {
+		var err error
+		res.Versions, err = runServerMigrations(ctx, db)
+		return res, err
+	}
 	m, err := openCoreMigrator(ctx, db)
 	if err != nil {
 		return res, err
@@ -297,6 +305,30 @@ func RunMigrationsWithOptions(ctx context.Context, db *sql.DB, opts MigrationOpt
 	return res, nil
 }
 
+// runServerMigrations brings a PostgreSQL or MySQL database up to date. A
+// database rackd hasn't set up must be empty: the baseline creates every
+// table, and MySQL can't roll back a half-created schema.
+func runServerMigrations(ctx context.Context, db *sql.DB) ([]string, error) {
+	if !tableExists(ctx, db, migrate.DefaultTable) {
+		n, err := countTables(ctx, db)
+		if err != nil {
+			return nil, fmt.Errorf("failed to inspect the database: %w", err)
+		}
+		if n > 0 {
+			return nil, fmt.Errorf("the database has %d tables but no rackd migration history; point DATABASE_URL at an empty database", n)
+		}
+	}
+	sm, err := newSchemaMigrator(xdalFor(db))
+	if err != nil {
+		return nil, err
+	}
+	applied, err := sm.Up(ctx)
+	if err != nil {
+		return applied, fmt.Errorf("failed to run migrations: %w", migrationError(err, ""))
+	}
+	return applied, nil
+}
+
 // newSchemaMigrator wraps db for the portable migration track.
 func newSchemaMigrator(db xdal.DBInterface) (*migrate.Migrator, error) {
 	return migrate.New(db, portableMigrations(), migrate.Options{
@@ -310,6 +342,9 @@ func newSchemaMigrator(db xdal.DBInterface) (*migrate.Migrator, error) {
 // validated, and a snapshot is written to BackupDir only when something will be
 // reverted. Down steps can drop data; restore the snapshot to undo.
 func RollbackMigrations(ctx context.Context, db *sql.DB, steps int, toVersion string, opts MigrationOptions) (MigrationResult, error) {
+	if !isSQLite(db) {
+		return MigrationResult{}, fmt.Errorf("%w: core migrations can't be rolled back on %s; restore a backup of the database instead", migrate.ErrInvalid, backendOf(db))
+	}
 	if toVersion != "" && !knownMigration(toVersion) {
 		return MigrationResult{}, fmt.Errorf("%w: %s", migrate.ErrUnknownVersion, toVersion)
 	}
@@ -408,7 +443,13 @@ func knownMigration(version string) bool {
 // GetMigrationStatus returns the status of every core migration, plus any applied
 // migration this binary does not know about. It does not write to the database:
 // history that has not been adopted yet is read from schema_migrations directly.
+//
+// Only SQLite databases have core migrations; on PostgreSQL and MySQL it
+// returns none.
 func GetMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
+	if !isSQLite(db) {
+		return nil, nil
+	}
 	need, err := legacyAdoptionNeeded(ctx, db)
 	if err != nil {
 		return nil, err
@@ -440,7 +481,7 @@ func GetSchemaMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatu
 		}
 		return out, nil
 	}
-	m, err := newSchemaMigrator(sqlite.NewSQLiteDB(db, nil))
+	m, err := newSchemaMigrator(xdalFor(db))
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +538,7 @@ func migrationError(err error, backupPath string) error {
 }
 
 func preMigrationBackup(ctx context.Context, db *sql.DB, opts MigrationOptions, label string) (string, error) {
-	if opts.BackupDir == "" {
+	if opts.BackupDir == "" || !isSQLite(db) {
 		return "", nil
 	}
 	path := filepath.Join(opts.BackupDir, fmt.Sprintf("%s%s-%s.db", preMigrateBackupPrefix, time.Now().UTC().Format(backupTimestampFormat), label))

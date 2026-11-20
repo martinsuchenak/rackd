@@ -2,13 +2,13 @@ package credential
 
 import (
 	"context"
-	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/martinsuchenak/rackd/cmd/internal/flags"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 
 	"github.com/martinsuchenak/rackd/internal/credentials"
 	"github.com/martinsuchenak/rackd/internal/storage"
@@ -67,7 +67,7 @@ func RotateKeyCommand() *cli.Command {
 				return err
 			}
 
-			store, err := storage.NewExtendedStorage(flags.ResolveDataDir(cmd))
+			store, err := storage.NewExtendedStorageWithOptions(flags.ResolveDataDir(cmd), flags.StorageOptions())
 			if err != nil {
 				return fmt.Errorf("failed to open database: %w", err)
 			}
@@ -81,7 +81,7 @@ func RotateKeyCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := rotateAll(ctx, store.DB(), oldEnc, newEnc); err != nil {
+			if err := rotateAll(ctx, store.XDAL(), oldEnc, newEnc); err != nil {
 				return err
 			}
 			fmt.Println("Rotated the encryption key. Set ENCRYPTION_KEY to the new key before starting the server.")
@@ -118,7 +118,7 @@ func readNewKey(file, envName string) ([]byte, error) {
 // written. A webhook secret that doesn't decrypt is left as it is: it may be
 // stored unencrypted, or encrypted with another key, and encrypting it again
 // would corrupt it in the second case.
-func rotateAll(ctx context.Context, db *sql.DB, oldEnc, newEnc *credentials.Encryptor) error {
+func rotateAll(ctx context.Context, db xdal.DBInterface, oldEnc, newEnc *credentials.Encryptor) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func rotateAll(ctx context.Context, db *sql.DB, oldEnc, newEnc *credentials.Encr
 	defer func() { _ = tx.Rollback() }()
 
 	for _, c := range encryptedColumns {
-		rows, err := tx.QueryContext(ctx, fmt.Sprintf("SELECT id, %s FROM %s WHERE %s IS NOT NULL AND %s != ''", c.column, c.table, c.column, c.column))
+		rows, err := tx.Query(ctx, fmt.Sprintf("SELECT id, %s FROM %s WHERE %s IS NOT NULL AND %s != ''", c.column, c.table, c.column, c.column))
 		if err != nil {
 			return fmt.Errorf("reading %s.%s: %w", c.table, c.column, err)
 		}
@@ -159,7 +159,7 @@ func rotateAll(ctx context.Context, db *sql.DB, oldEnc, newEnc *credentials.Encr
 			return err
 		}
 		for _, u := range updates {
-			if _, err := tx.ExecContext(ctx, fmt.Sprintf("UPDATE %s SET %s = ? WHERE id = ?", c.table, c.column), u.value, u.id); err != nil {
+			if _, err := tx.Exec(ctx, db.Dialect().TranslateSQL(fmt.Sprintf("UPDATE %s SET %s = ? WHERE id = ?", c.table, c.column)), u.value, u.id); err != nil {
 				return fmt.Errorf("writing %s.%s of %s: %w", c.table, c.column, u.id, err)
 			}
 		}
