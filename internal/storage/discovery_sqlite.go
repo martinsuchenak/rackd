@@ -11,7 +11,7 @@ import (
 
 // CreateDiscoveredDevice inserts a new discovered device
 func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
-	if err := insertDiscoveredDevice(ctx, s.db, device); err != nil {
+	if err := insertDiscoveredDevice(ctx, s.q, device); err != nil {
 		return err
 	}
 	s.auditLog(ctx, "create", "discovered_device", device.ID, device)
@@ -20,7 +20,7 @@ func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *mode
 
 // UpdateDiscoveredDevice updates an existing discovered device
 func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
-	if err := updateDiscoveredDevice(ctx, s.db, device); err != nil {
+	if err := updateDiscoveredDevice(ctx, s.q, device); err != nil {
 		return err
 	}
 	s.auditLog(ctx, "update", "discovered_device", device.ID, device)
@@ -32,7 +32,7 @@ func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *mode
 // Both happen in one transaction, so overlapping scans of a network can't
 // each create a record for the same host. It reports whether it created one.
 func (s *SQLiteStorage) SaveDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) (bool, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -194,7 +194,7 @@ func scanDiscoveredDevice(row rowScanner) (*model.DiscoveredDevice, error) {
 
 // GetDiscoveredDevice retrieves a discovered device by ID
 func (s *SQLiteStorage) GetDiscoveredDevice(ctx context.Context, id string) (*model.DiscoveredDevice, error) {
-	d, err := scanDiscoveredDevice(s.db.QueryRowContext(ctx, discoveredSelect+` WHERE dd.id = ?`, id))
+	d, err := scanDiscoveredDevice(s.q.QueryRowContext(ctx, discoveredSelect+` WHERE dd.id = ?`, id))
 	if err == sql.ErrNoRows {
 		return nil, ErrDiscoveryNotFound
 	}
@@ -203,7 +203,7 @@ func (s *SQLiteStorage) GetDiscoveredDevice(ctx context.Context, id string) (*mo
 
 // GetDiscoveredDeviceByIP retrieves a discovered device by network and IP
 func (s *SQLiteStorage) GetDiscoveredDeviceByIP(ctx context.Context, networkID, ip string) (*model.DiscoveredDevice, error) {
-	d, err := scanDiscoveredDevice(s.db.QueryRowContext(ctx, discoveredSelect+` WHERE dd.network_id = ? AND dd.ip = ?`, networkID, ip))
+	d, err := scanDiscoveredDevice(s.q.QueryRowContext(ctx, discoveredSelect+` WHERE dd.network_id = ? AND dd.ip = ?`, networkID, ip))
 	if err == sql.ErrNoRows {
 		return nil, ErrDiscoveryNotFound
 	}
@@ -220,7 +220,7 @@ func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID str
 	}
 	query += " ORDER BY dd.last_seen DESC"
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (s *SQLiteStorage) ListDiscoveredDevices(ctx context.Context, networkID str
 
 // DeleteDiscoveredDevice removes a discovered device
 func (s *SQLiteStorage) DeleteDiscoveredDevice(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx,
+	result, err := s.q.ExecContext(ctx,
 		"DELETE FROM discovered_devices WHERE id = ?", id)
 	if err != nil {
 		return err
@@ -254,7 +254,7 @@ func (s *SQLiteStorage) DeleteDiscoveredDevice(ctx context.Context, id string) e
 
 // PromoteDiscoveredDevice links a discovered device to a created device
 func (s *SQLiteStorage) PromoteDiscoveredDevice(ctx context.Context, discoveredID, deviceID string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -296,7 +296,7 @@ func (s *SQLiteStorage) CreateDiscoveryScan(ctx context.Context, scan *model.Dis
 	scan.CreatedAt = now
 	scan.UpdatedAt = now
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO discovery_scans (id, network_id, status, scan_type, total_hosts, scanned_hosts,
 			found_hosts, progress_percent, error_message, started_at, completed_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -313,7 +313,7 @@ func (s *SQLiteStorage) CreateDiscoveryScan(ctx context.Context, scan *model.Dis
 // UpdateDiscoveryScan updates an existing discovery scan
 func (s *SQLiteStorage) UpdateDiscoveryScan(ctx context.Context, scan *model.DiscoveryScan) error {
 	scan.UpdatedAt = nowUTC()
-	result, err := s.db.ExecContext(ctx, `
+	result, err := s.q.ExecContext(ctx, `
 		UPDATE discovery_scans SET status = ?, scan_type = ?, total_hosts = ?, scanned_hosts = ?,
 			found_hosts = ?, progress_percent = ?, error_message = ?, started_at = ?, completed_at = ?,
 			updated_at = ?
@@ -335,7 +335,7 @@ func (s *SQLiteStorage) UpdateDiscoveryScan(ctx context.Context, scan *model.Dis
 func (s *SQLiteStorage) GetDiscoveryScan(ctx context.Context, id string) (*model.DiscoveryScan, error) {
 	var scan model.DiscoveryScan
 	var startedAt, completedAt sql.NullTime
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, network_id, status, scan_type, total_hosts, scanned_hosts, found_hosts,
 			progress_percent, error_message, started_at, completed_at, created_at, updated_at
 		FROM discovery_scans WHERE id = ?
@@ -369,7 +369,7 @@ func (s *SQLiteStorage) ListDiscoveryScans(ctx context.Context, networkID string
 	}
 	query += " ORDER BY created_at DESC"
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -398,11 +398,10 @@ func (s *SQLiteStorage) ListDiscoveryScans(ctx context.Context, networkID string
 // GetDiscoveryRule retrieves a discovery rule by ID
 func (s *SQLiteStorage) GetDiscoveryRule(ctx context.Context, id string) (*model.DiscoveryRule, error) {
 	var rule model.DiscoveryRule
-	var enabled int
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at
 		FROM discovery_rules WHERE id = ?
-	`, id).Scan(&rule.ID, &rule.NetworkID, &enabled, &rule.ScanType, &rule.IntervalHours,
+	`, id).Scan(&rule.ID, &rule.NetworkID, &rule.Enabled, &rule.ScanType, &rule.IntervalHours,
 		&rule.ExcludeIPs, &rule.CreatedAt, &rule.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrRuleNotFound
@@ -410,18 +409,16 @@ func (s *SQLiteStorage) GetDiscoveryRule(ctx context.Context, id string) (*model
 	if err != nil {
 		return nil, err
 	}
-	rule.Enabled = enabled == 1
 	return &rule, nil
 }
 
 // GetDiscoveryRuleByNetwork retrieves a discovery rule by network ID
 func (s *SQLiteStorage) GetDiscoveryRuleByNetwork(ctx context.Context, networkID string) (*model.DiscoveryRule, error) {
 	var rule model.DiscoveryRule
-	var enabled int
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at
 		FROM discovery_rules WHERE network_id = ?
-	`, networkID).Scan(&rule.ID, &rule.NetworkID, &enabled, &rule.ScanType, &rule.IntervalHours,
+	`, networkID).Scan(&rule.ID, &rule.NetworkID, &rule.Enabled, &rule.ScanType, &rule.IntervalHours,
 		&rule.ExcludeIPs, &rule.CreatedAt, &rule.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrRuleNotFound
@@ -429,7 +426,6 @@ func (s *SQLiteStorage) GetDiscoveryRuleByNetwork(ctx context.Context, networkID
 	if err != nil {
 		return nil, err
 	}
-	rule.Enabled = enabled == 1
 	return &rule, nil
 }
 
@@ -441,19 +437,11 @@ func (s *SQLiteStorage) SaveDiscoveryRule(ctx context.Context, rule *model.Disco
 	now := nowUTC()
 	rule.UpdatedAt = now
 
-	enabled := 0
-	if rule.Enabled {
-		enabled = 1
-	}
-
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO discovery_rules (id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(network_id) DO UPDATE SET
-			enabled = excluded.enabled, scan_type = excluded.scan_type,
-			interval_hours = excluded.interval_hours, exclude_ips = excluded.exclude_ips,
-			updated_at = excluded.updated_at
-	`, rule.ID, rule.NetworkID, enabled, rule.ScanType, rule.IntervalHours, rule.ExcludeIPs, now, now)
+	_, err := execBuilt(ctx, s.q, s.q.builder().Insert("discovery_rules").
+		Set("id", rule.ID).Set("network_id", rule.NetworkID).Set("enabled", rule.Enabled).
+		Set("scan_type", rule.ScanType).Set("interval_hours", rule.IntervalHours).Set("exclude_ips", rule.ExcludeIPs).
+		Set("created_at", now).Set("updated_at", now).
+		OnConflict("network_id").DoUpdate("enabled", "scan_type", "interval_hours", "exclude_ips", "updated_at"))
 	if err != nil {
 		return err
 	}
@@ -462,7 +450,7 @@ func (s *SQLiteStorage) SaveDiscoveryRule(ctx context.Context, rule *model.Disco
 }
 
 func (s *SQLiteStorage) ListDiscoveryRules(ctx context.Context) ([]model.DiscoveryRule, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, network_id, enabled, scan_type, interval_hours, exclude_ips, created_at, updated_at
 		FROM discovery_rules ORDER BY created_at DESC
 	`)
@@ -474,12 +462,10 @@ func (s *SQLiteStorage) ListDiscoveryRules(ctx context.Context) ([]model.Discove
 	var rules []model.DiscoveryRule
 	for rows.Next() {
 		var rule model.DiscoveryRule
-		var enabled int
-		if err := rows.Scan(&rule.ID, &rule.NetworkID, &enabled, &rule.ScanType, &rule.IntervalHours,
+		if err := rows.Scan(&rule.ID, &rule.NetworkID, &rule.Enabled, &rule.ScanType, &rule.IntervalHours,
 			&rule.ExcludeIPs, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
 			return nil, err
 		}
-		rule.Enabled = enabled == 1
 		rules = append(rules, rule)
 	}
 	return rules, rows.Err()
@@ -487,7 +473,7 @@ func (s *SQLiteStorage) ListDiscoveryRules(ctx context.Context) ([]model.Discove
 
 // DeleteDiscoveryRule removes a discovery rule by ID
 func (s *SQLiteStorage) DeleteDiscoveryRule(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx,
+	result, err := s.q.ExecContext(ctx,
 		"DELETE FROM discovery_rules WHERE id = ?", id)
 	if err != nil {
 		return err
@@ -502,7 +488,7 @@ func (s *SQLiteStorage) DeleteDiscoveryRule(ctx context.Context, id string) erro
 
 // DeleteDiscoveryScan removes a discovery scan by ID
 func (s *SQLiteStorage) DeleteDiscoveryScan(ctx context.Context, id string) error {
-	result, err := s.db.ExecContext(ctx,
+	result, err := s.q.ExecContext(ctx,
 		"DELETE FROM discovery_scans WHERE id = ?", id)
 	if err != nil {
 		return err
@@ -521,11 +507,11 @@ func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(ctx context.Context, ne
 
 	if networkID == "" {
 		// Delete ALL discovered devices
-		_, err = s.db.ExecContext(ctx,
+		_, err = s.q.ExecContext(ctx,
 			"DELETE FROM discovered_devices")
 	} else {
 		// Delete devices for specific network
-		_, err = s.db.ExecContext(ctx,
+		_, err = s.q.ExecContext(ctx,
 			"DELETE FROM discovered_devices WHERE network_id = ?", networkID)
 	}
 
@@ -544,7 +530,7 @@ func (s *SQLiteStorage) DeleteDiscoveredDevicesByNetwork(ctx context.Context, ne
 // CleanupOldDiscoveries removes discovered devices older than specified days
 func (s *SQLiteStorage) CleanupOldDiscoveries(ctx context.Context, olderThanDays int) error {
 	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		DELETE FROM discovered_devices WHERE last_seen < ? AND promoted_to_device_id IS NULL
 	`, cutoff)
 	return err

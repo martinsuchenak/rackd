@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 	"strings"
 	"testing"
 
@@ -91,8 +92,11 @@ func (s *stubStorage) ClaimReservation(context.Context, model.Address) (bool, er
 	return false, nil
 }
 
-func (s *stubStorage) DB() *sql.DB  { return nil }
-func (s *stubStorage) Close() error { return nil }
+func (s *stubStorage) DB() *sql.DB                                         { return nil }
+func (s *stubStorage) XDAL() xdal.DBInterface                              { return nil }
+func (s *stubStorage) Profiles() *storage.SQLiteProfileStorage             { return nil }
+func (s *stubStorage) ScheduledScans() *storage.SQLiteScheduledScanStorage { return nil }
+func (s *stubStorage) Close() error                                        { return nil }
 
 // buildTestServices creates a DeviceService wired to a DNSService backed by
 // the given stubStorage.

@@ -127,22 +127,14 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 			}
 
 			// Initialize credentials storage
-			credStore, err := credentials.NewSQLiteStorage(store.DB(), encryptionKey)
+			credStore, err := credentials.NewStorage(store.XDAL(), encryptionKey)
 			if err != nil {
 				return fmt.Errorf("failed to initialize credentials storage: %w", err)
 			}
 
-			// Initialize profiles storage
-			profileStore, err := storage.NewSQLiteProfileStorage(store.DB())
-			if err != nil {
-				return fmt.Errorf("failed to initialize profiles storage: %w", err)
-			}
-
-			// Initialize scheduled scans storage
-			scheduledStore, err := storage.NewSQLiteScheduledScanStorage(store.DB())
-			if err != nil {
-				return fmt.Errorf("failed to initialize scheduled scans storage: %w", err)
-			}
+			// Scan profiles and scheduled scans live in the same database
+			profileStore := store.Profiles()
+			scheduledStore := store.ScheduledScans()
 
 			opts.Credentials = credStore
 			opts.Profiles = profileStore

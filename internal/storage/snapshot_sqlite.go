@@ -16,7 +16,7 @@ func (s *SQLiteStorage) CreateSnapshot(ctx context.Context, snapshot *model.Util
 	}
 	snapshot.CreatedAt = nowUTC()
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO utilization_snapshots (id, type, resource_id, resource_name, total_ips, used_ips, utilization, timestamp, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, snapshot.ID, snapshot.Type, snapshot.ResourceID, snapshot.ResourceName,
@@ -58,7 +58,7 @@ func (s *SQLiteStorage) ListSnapshots(ctx context.Context, filter *model.Snapsho
 
 	query, args = appendPagination(query, args, &filter.Pagination)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (s *SQLiteStorage) GetLatestSnapshots(ctx context.Context, snapshotType mod
 		)
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, snapshotType)
+	rows, err := s.q.QueryContext(ctx, query, snapshotType)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *SQLiteStorage) GetLatestSnapshots(ctx context.Context, snapshotType mod
 // DeleteOldSnapshots removes snapshots older than specified days
 func (s *SQLiteStorage) DeleteOldSnapshots(ctx context.Context, olderThanDays int) error {
 	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.ExecContext(ctx, `DELETE FROM utilization_snapshots WHERE timestamp < ?`, cutoff)
+	_, err := s.q.ExecContext(ctx, `DELETE FROM utilization_snapshots WHERE timestamp < ?`, cutoff)
 	return err
 }
 
@@ -104,7 +104,7 @@ func (s *SQLiteStorage) GetUtilizationTrend(ctx context.Context, resourceType mo
 		ORDER BY timestamp ASC
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, resourceType, resourceID, cutoff)
+	rows, err := s.q.QueryContext(ctx, query, resourceType, resourceID, cutoff)
 	if err != nil {
 		return nil, err
 	}
@@ -132,19 +132,19 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 	}
 
 	// Total devices
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&stats.TotalDevices)
+	_ = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&stats.TotalDevices)
 
 	// Total networks
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM networks`).Scan(&stats.TotalNetworks)
+	_ = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM networks`).Scan(&stats.TotalNetworks)
 
 	// Total pools
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM network_pools`).Scan(&stats.TotalPools)
+	_ = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM network_pools`).Scan(&stats.TotalPools)
 
 	// Total datacenters
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM datacenters`).Scan(&stats.TotalDatacenters)
+	_ = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM datacenters`).Scan(&stats.TotalDatacenters)
 
 	// Device status counts
-	_ = s.db.QueryRowContext(ctx, `
+	_ = s.q.QueryRowContext(ctx, `
 		SELECT
 			SUM(CASE WHEN status = 'planned' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END),
@@ -156,21 +156,21 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 
 	// Discovered devices count
 	// Discovered hosts not yet in the inventory.
-	_ = s.db.QueryRowContext(ctx,
+	_ = s.q.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM discovered_devices dd WHERE NOT `+hostInInventory("dd")).Scan(&stats.DiscoveredDevices)
 
 	// Stale devices (active devices not seen in discovery for X days)
 	staleCutoff := nowUTC().AddDate(0, 0, -staleDays)
 
 	// Get count
-	_ = s.db.QueryRowContext(ctx, `
+	_ = s.q.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT d.id) FROM devices d
 		WHERE d.status = 'active'
 		AND NOT `+deviceSeenSince("d")+`
 	`, staleCutoff, staleCutoff).Scan(&stats.StaleDevices)
 
 	// Get list of stale devices (limit to 20 for dashboard)
-	staleRows, err := s.db.QueryContext(ctx, `
+	staleRows, err := s.q.QueryContext(ctx, `
 		SELECT d.id, d.name, d.hostname
 		FROM devices d
 		WHERE d.status = 'active'
@@ -192,7 +192,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 	}
 
 	// Recent discoveries
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT id, ip, hostname, vendor, network_id, first_seen, last_seen
 		FROM discovered_devices
 		WHERE promoted_to_device_id IS NULL
@@ -251,7 +251,7 @@ func (s *SQLiteStorage) GetDashboardStats(ctx context.Context, staleDays int, re
 // countUsedIPsByNetwork returns the number of distinct addresses in each network,
 // keyed by network ID.
 func (s *SQLiteStorage) countUsedIPsByNetwork(ctx context.Context) (map[string]int, error) {
-	rows, err := s.db.QueryContext(ctx,
+	rows, err := s.q.QueryContext(ctx,
 		`SELECT network_id, COUNT(DISTINCT ip) FROM addresses WHERE network_id IS NOT NULL GROUP BY network_id`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count used IPs: %w", err)
@@ -293,7 +293,7 @@ type InventoryCounts struct {
 // CountInventory counts devices, networks and datacenters with one query.
 func (s *SQLiteStorage) CountInventory(ctx context.Context) (InventoryCounts, error) {
 	var c InventoryCounts
-	err := s.db.QueryRowContext(ctx, `SELECT
+	err := s.q.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM devices),
 		(SELECT COUNT(*) FROM networks),
 		(SELECT COUNT(*) FROM datacenters)`).Scan(&c.Devices, &c.Networks, &c.Datacenters)

@@ -11,10 +11,7 @@ func TestSQLiteScheduledScanStorageCRUD(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	scheduled, err := NewSQLiteScheduledScanStorage(storage.DB())
-	if err != nil {
-		t.Fatalf("NewSQLiteScheduledScanStorage failed: %v", err)
-	}
+	scheduled := storage.ScheduledScans()
 
 	nextRun := time.Now().Add(15 * time.Minute).UTC()
 	scan := &model.ScheduledScan{
@@ -82,10 +79,7 @@ func TestSQLiteScheduledScanStorageErrors(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	scheduled, err := NewSQLiteScheduledScanStorage(storage.DB())
-	if err != nil {
-		t.Fatalf("NewSQLiteScheduledScanStorage failed: %v", err)
-	}
+	scheduled := storage.ScheduledScans()
 
 	if err := scheduled.Create(&model.ScheduledScan{
 		NetworkID:      "network-1",

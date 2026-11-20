@@ -313,7 +313,7 @@ func TestSQLiteStorage_DeleteClearsScanProfiles(t *testing.T) {
 	if err := store.Create(cred); err != nil {
 		t.Fatal(err)
 	}
-	profiles, err := corestorage.NewSQLiteProfileStorage(store.db)
+	profiles, err := corestorage.NewSQLiteProfileStorage(store.x.(interface{ DB() *sql.DB }).DB())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -54,6 +54,7 @@ func TestDashboardUtilizationMatchesPerNetwork(t *testing.T) {
 
 // Utilization counts must read only the (network_id, ip) index, not the table.
 func TestUtilizationQueriesUseCoveringIndex(t *testing.T) {
+	skipUnlessSQLite(t, "reads SQLite's EXPLAIN QUERY PLAN")
 	s := newTestStorage(t)
 	for _, query := range []string{
 		`SELECT COUNT(DISTINCT ip) FROM addresses WHERE network_id = 'x'`,

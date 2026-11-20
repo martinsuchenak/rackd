@@ -11,10 +11,7 @@ func TestSQLiteProfileStorageCRUD(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	profiles, err := NewSQLiteProfileStorage(storage.DB())
-	if err != nil {
-		t.Fatalf("NewSQLiteProfileStorage failed: %v", err)
-	}
+	profiles := storage.Profiles()
 
 	initial, err := profiles.List(context.Background())
 	if err != nil {
@@ -72,10 +69,7 @@ func TestSQLiteProfileStorageErrors(t *testing.T) {
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 
-	profiles, err := NewSQLiteProfileStorage(storage.DB())
-	if err != nil {
-		t.Fatalf("NewSQLiteProfileStorage failed: %v", err)
-	}
+	profiles := storage.Profiles()
 
 	if err := profiles.Create(context.Background(), &model.ScanProfile{
 		Name:       "Invalid",

@@ -80,29 +80,9 @@ jobs:
   dialects:
     name: Go (storage on PostgreSQL and MySQL)
     runs-on: ubuntu-24.04
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: rackd
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: rackd_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U rackd -d rackd_test"
-          --health-interval 3s --health-timeout 3s --health-retries 20
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: testpass
-          MYSQL_DATABASE: rackd_test
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost -ptestpass"
-          --health-interval 3s --health-timeout 3s --health-retries 20
     env:
-      XDAL_TEST_POSTGRES_DSN: postgres://rackd:testpass@localhost:5432/rackd_test?sslmode=disable
-      XDAL_TEST_MYSQL_DSN: root:testpass@tcp(localhost:3306)/rackd_test?parseTime=true
+      XDAL_TEST_POSTGRES_DSN: postgres://rackd:testpass@localhost:15432/rackd_test?sslmode=disable
+      XDAL_TEST_MYSQL_DSN: root:testpass@tcp(localhost:13306)/rackd_test?parseTime=true
       XDAL_TEST_REQUIRE: postgres,mysql
     steps:
       - name: Checkout
@@ -125,6 +105,10 @@ jobs:
       - name: Build UI assets
         run: task ui:build
 
+      # The same databases, with the same settings, as task test:dialects.
+      - name: Start PostgreSQL and MySQL
+        run: docker compose -f docker-compose.test.yml up -d --wait
+
       - name: Test storage on every backend
         run: go test -run Dialect -count=1 -v ./...
 
@@ -133,12 +117,12 @@ jobs:
       - name: Storage suite on PostgreSQL
         env:
           RACKD_TEST_BACKEND: postgres
-        run: go test -count=1 ./internal/storage/...
+        run: go test -count=1 -timeout 30m ./internal/storage/...
 
       - name: Storage suite on MySQL
         env:
           RACKD_TEST_BACKEND: mysql
-        run: go test -count=1 ./internal/storage/...
+        run: go test -count=1 -timeout 30m ./internal/storage/...
 
   race:
     name: Go (race detector)
