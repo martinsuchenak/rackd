@@ -22,7 +22,7 @@ var pgKeyDetail = regexp.MustCompile(`^Key \(([^)]+)\)=`)
 // MySQL: "Duplicate entry 'alice' for key 'users.username'" and
 // "Column 'name' cannot be null".
 var (
-	mysqlDuplicateKey = regexp.MustCompile(`for key '(?:[^'.]+\.)?([^']+)'`)
+	mysqlDuplicateKey = regexp.MustCompile(`for key '(?:([^'.]+)\.)?([^']+)'`)
 	mysqlNullColumn   = regexp.MustCompile(`Column '([^']+)' cannot be null`)
 	// xdal names table-level unique constraints uq_<table>_<columns>_<hash>.
 	xdalUniqueName = regexp.MustCompile(`^uq_(.+)_[0-9a-f]{8}$`)
@@ -43,7 +43,8 @@ const (
 )
 
 // DuplicateField reports whether err is a unique-constraint violation, and the
-// column it was on, such as "name".
+// column it was on, such as "name". The column is empty when the backend
+// doesn't say (MySQL, for a key over several columns).
 func DuplicateField(err error) (string, bool) {
 	if err == nil {
 		return "", false
@@ -63,14 +64,21 @@ func DuplicateField(err error) (string, bool) {
 		if my.Number != mysqlDuplicateEntry {
 			return "", false
 		}
+		// MySQL names the index, not the column. xdal names a unique
+		// constraint uq_<table>_<columns>_<hash>, so the columns follow the
+		// table name (joined by "_" for a key over several). A primary key
+		// or a named index doesn't say.
 		m := mysqlDuplicateKey.FindStringSubmatch(my.Message)
 		if m == nil {
 			return "", true
 		}
-		if u := xdalUniqueName.FindStringSubmatch(m[1]); u != nil {
-			return lastColumn(strings.ReplaceAll(u[1], "_", ", ")), true
+		if u := xdalUniqueName.FindStringSubmatch(m[2]); u != nil && strings.HasPrefix(u[1], m[1]+"_") {
+			return strings.TrimPrefix(u[1], m[1]+"_"), true
 		}
-		return m[1], true
+		if m[2] == "PRIMARY" || strings.HasPrefix(m[2], "idx_") || strings.HasPrefix(m[2], "uq_") {
+			return "", true
+		}
+		return m[2], true
 	}
 	return sqliteColumn(err, "UNIQUE")
 }

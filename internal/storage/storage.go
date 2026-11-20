@@ -398,4 +398,3 @@ func NewExtendedStorage(dataDir string) (ExtendedStorage, error) {
 func NewExtendedStorageWithOptions(dataDir string, opts StorageOptions) (ExtendedStorage, error) {
 	return NewSQLiteStorageWithOptions(dataDir, opts)
 }
-
