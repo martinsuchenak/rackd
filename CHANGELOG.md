@@ -9,6 +9,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+### Added
+
+- `pkg/ipkey` stores IP addresses and prefixes as 16-byte keys (IPv4 mapped
+  into IPv6), so address order, containment, overlap and range scans are
+  plain comparisons that behave the same on SQLite, PostgreSQL and MySQL. It
+  is the storage format the Phase 1 IPAM tables will use, and lives in
+  `pkg/` so extensions use the same one.
+- `internal/storage/dialecttest` runs storage tests written on xdal against
+  SQLite, PostgreSQL and MySQL 8, each on a fresh database with the test's
+  migration track applied. `task test:dialects` runs the `TestDialect*`
+  tests on all three in Docker, and a CI job does the same on every change.
+
 ## [0.7.3] - 2026-11-19
 
 ### Added

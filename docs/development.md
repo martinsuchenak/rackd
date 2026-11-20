@@ -85,6 +85,7 @@ The project uses a Taskfile (go-task) with several build targets. Run `task --li
 - `task test:short` - Run short tests only
 - `task test:race` - Run tests with race detector
 - `task test:cover` - Run tests and show per-function coverage
+- `task test:dialects` - Run the `TestDialect*` storage tests on SQLite, PostgreSQL and MySQL (needs Docker)
 - `task test:e2e` - Run web UI Playwright end-to-end tests
 
 Before the first E2E run, install the Playwright browser runtime once:
@@ -541,6 +542,9 @@ task test:short
 # Run tests with race detection
 task test:race
 
+# Run the TestDialect* storage tests on SQLite, PostgreSQL and MySQL (needs Docker)
+task test:dialects
+
 # Run specific package tests
 go test ./internal/storage/...
 
@@ -553,6 +557,39 @@ the suite fast: bcrypt at the production cost (14) takes ~700ms per hash nativel
 and ~7s under the race detector, which made auth-heavy tests dominate the run.
 Production binaries are unaffected — the cost defaults to 14 unless the variable
 is set explicitly.
+
+### Storage on Every Backend
+
+Rackd runs on SQLite, but new storage code is written so it can also run on
+PostgreSQL and MySQL 8, the backends planned for high availability:
+
+- Queries go through xdal's query builder (`storage.XDAL()` in core,
+  `Host.DB()` in extensions), not hand-written SQL.
+- New tables come from migrations written with xdal's schema builder
+  (`tx.Schema()` in a `migrate.Migration`), in their own migration namespace.
+- IP addresses and prefixes are stored as 16-byte keys from `pkg/ipkey`, so
+  containment and range queries are plain comparisons on every backend.
+
+Test such code with `internal/storage/dialecttest`. `dialecttest.Run` applies a
+migration track to a fresh database of each backend and runs the test on it:
+
+```go
+func TestDialectPrefixLookup(t *testing.T) {
+    dialecttest.Run(t, "ipam", ipamMigrations, func(t *testing.T, db *dialecttest.DB) {
+        // db.DB is an xdal.DBInterface; db.Name is "sqlite", "postgres" or "mysql"
+    })
+}
+```
+
+Name these tests `TestDialect*`. SQLite always runs; the other backends run
+when `XDAL_TEST_POSTGRES_DSN` and `XDAL_TEST_MYSQL_DSN` are set and are skipped
+otherwise. `task test:dialects` starts both in Docker
+(`docker-compose.test.yml`) and runs the tests on all three, and CI does the
+same on every change, failing if a backend is missing. Put the tests under
+`pkg/` or `internal/storage/`, the packages those runs cover.
+
+Core's existing tables come from SQLite-only migrations, so a portable
+migration track can't reference them yet.
 
 ### Test Categories
 
@@ -900,6 +937,9 @@ Rackd uses SQLite for data storage:
 - Database file: `./data/rackd.db` (default)
 - Migrations run automatically on startup
 - No external database server required
+
+New storage code is also tested on PostgreSQL and MySQL; see
+[Storage on Every Backend](#storage-on-every-backend).
 
 ### Development Server
 
