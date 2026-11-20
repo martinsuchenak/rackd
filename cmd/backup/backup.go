@@ -29,6 +29,9 @@ func Command() *cli.Command {
 			restoreCommand(),
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
+			if err := flags.RequireSQLite("rackd backup"); err != nil {
+				return err
+			}
 			dbPath := filepath.Join(resolveDataDir(cmd), "rackd.db")
 			dst := cmd.GetString("output")
 			if dst == "" {
@@ -85,6 +88,9 @@ func restoreCommand() *cli.Command {
 			&cli.BoolFlag{Name: "yes", Usage: "Confirm replacing the current database"},
 		},
 		Run: func(ctx context.Context, cmd *cli.Command) error {
+			if err := flags.RequireSQLite("rackd backup restore"); err != nil {
+				return err
+			}
 			dbPath := filepath.Join(resolveDataDir(cmd), "rackd.db")
 			file := cmd.GetString("file")
 			if !cmd.GetBool("yes") {

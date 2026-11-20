@@ -10,7 +10,10 @@ import (
 )
 
 type Config struct {
-	DataDir                 string
+	DataDir string
+	// DatabaseURL points rackd at PostgreSQL or MySQL instead of the SQLite
+	// database in DataDir. It may hold a password: keep it out of logs.
+	DatabaseURL             string
 	PreMigrationBackup      bool
 	ListenAddr              string
 	RequestTimeout          time.Duration
@@ -80,6 +83,7 @@ func Load() *Config {
 
 	cfg = Config{
 		DataDir:                 getEnv("DATA_DIR", "./data"),
+		DatabaseURL:             getEnv("DATABASE_URL", ""),
 		PreMigrationBackup:      getBoolEnv("PRE_MIGRATION_BACKUP", true),
 		ListenAddr:              getEnv("LISTEN_ADDR", ":8080"),
 		RequestTimeout:          getDurationEnv("REQUEST_TIMEOUT", 30*time.Second),

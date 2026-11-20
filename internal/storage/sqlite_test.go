@@ -224,6 +224,7 @@ const testBackendEnv = "RACKD_TEST_BACKEND"
 // The list goes away once every area is converted.
 var portableTestFiles = map[string]bool{
 	"search_backends_test.go":       true,
+	"database_test.go":              true,
 	"plumbing_backends_test.go":     true,
 	"audit_test.go":                 true,
 	"audit_backpressure_test.go":    true,

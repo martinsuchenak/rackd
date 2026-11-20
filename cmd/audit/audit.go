@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/martinsuchenak/rackd/cmd/internal/flags"
 	"github.com/martinsuchenak/rackd/internal/service"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -40,7 +41,7 @@ func listCommand() *cli.Command {
 				dataDir = "./data"
 			}
 
-			store, err := storage.NewExtendedStorage(dataDir)
+			store, err := storage.NewExtendedStorageWithOptions(dataDir, flags.StorageOptions())
 			if err != nil {
 				return err
 			}
@@ -102,7 +103,7 @@ func exportCommand() *cli.Command {
 				dataDir = "./data"
 			}
 
-			store, err := storage.NewExtendedStorage(dataDir)
+			store, err := storage.NewExtendedStorageWithOptions(dataDir, flags.StorageOptions())
 			if err != nil {
 				return err
 			}

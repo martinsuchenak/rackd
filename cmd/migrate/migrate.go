@@ -86,7 +86,11 @@ func statusCommand(exts []extensionSteps) *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get migration status: %w", err)
 			}
-			pending := printStatus(storage.CoreMigrationNamespace, statuses, false)
+			pending := 0
+			// Only SQLite databases have the core track.
+			if len(statuses) > 0 {
+				pending += printStatus(storage.CoreMigrationNamespace, statuses, false)
+			}
 			statuses, err = storage.GetSchemaMigrationStatus(ctx, db)
 			if err != nil {
 				return fmt.Errorf("failed to get migration status: %w", err)
@@ -244,7 +248,11 @@ func rollbackCommand(exts []extensionSteps) *cli.Command {
 				target = fmt.Sprintf("every %s migration newer than %s", namespace, to)
 			}
 			if !cmd.GetBool("yes") {
-				fmt.Printf("This reverts %s and can drop tables and data.\nA backup is taken first. Re-run with --yes to continue.\n", target)
+				backup := "A backup is taken first."
+				if flags.StorageOptions().DatabaseURL != "" {
+					backup = "Back up the database with its own tools first."
+				}
+				fmt.Printf("This reverts %s and can drop tables and data.\n%s Re-run with --yes to continue.\n", target, backup)
 				return nil
 			}
 
@@ -280,22 +288,8 @@ func rollbackCommand(exts []extensionSteps) *cli.Command {
 	}
 }
 
+// openDB opens the database DATABASE_URL selects, or the SQLite database in
+// dataDir, without migrating it.
 func openDB(dataDir string) (*sql.DB, error) {
-	dbPath := filepath.Join(dataDir, "rackd.db")
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("database not found at %s", dbPath)
-	}
-
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	db.SetMaxOpenConns(1)
-
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	return db, nil
+	return storage.OpenDatabase(context.Background(), dataDir, flags.StorageOptions().DatabaseURL)
 }

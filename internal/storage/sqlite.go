@@ -61,6 +61,9 @@ func (s *SQLiteStorage) SetWebhookEncryptor(e WebhookEncryptor) {
 type StorageOptions struct {
 	// SkipPreMigrationBackup disables the snapshot taken before pending migrations run.
 	SkipPreMigrationBackup bool
+	// DatabaseURL selects a PostgreSQL or MySQL database instead of the SQLite
+	// file in the data directory (see DatabaseBackend).
+	DatabaseURL string
 }
 
 // NewSQLiteStorage opens the database in dataDir and runs pending migrations,
@@ -69,8 +72,23 @@ func NewSQLiteStorage(dataDir string) (*SQLiteStorage, error) {
 	return NewSQLiteStorageWithOptions(dataDir, StorageOptions{})
 }
 
-// NewSQLiteStorageWithOptions is NewSQLiteStorage with options.
+// NewSQLiteStorageWithOptions is NewSQLiteStorage with options. With
+// opts.DatabaseURL set it opens that database server instead, and dataDir is
+// not used.
 func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteStorage, error) {
+	if opts.DatabaseURL != "" {
+		ctx := context.Background()
+		db, err := openServerDB(ctx, opts.DatabaseURL)
+		if err != nil {
+			return nil, err
+		}
+		s, err := openStorageOn(ctx, db, xdalFor(db))
+		if err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+		return s, nil
+	}
 	var dbPath string
 
 	if dataDir == ":memory:" {

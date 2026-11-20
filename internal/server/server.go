@@ -23,6 +23,7 @@ import (
 	"github.com/martinsuchenak/rackd/internal/webhook"
 	"github.com/martinsuchenak/rackd/internal/worker"
 	"github.com/martinsuchenak/rackd/pkg/extension"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -122,8 +123,11 @@ func Run(ctx context.Context, opts Options) error {
 	defer webhookWorker.Stop()
 
 	// Scheduled backups, beside the pre-migration ones unless BACKUP_DIR says
-	// otherwise.
-	if cfg.BackupInterval > 0 {
+	// otherwise. They copy the SQLite file; a database server is backed up
+	// with its own tools.
+	if cfg.BackupInterval > 0 && store.XDAL().Dialect().Name() != xdal.DialectSQLite {
+		log.Warn("BACKUP_INTERVAL is ignored: rackd's backups copy a SQLite database, and this one is on a database server; back it up with the server's own tools", "backend", store.XDAL().Dialect().Name())
+	} else if cfg.BackupInterval > 0 {
 		dir := cfg.BackupDir
 		if dir == "" {
 			dir = filepath.Join(cfg.DataDir, "backups")
@@ -287,12 +291,11 @@ func newSessionStore(cfg *config.Config, store storage.ExtendedStorage) (auth.Se
 		log.Info("Using Valkey/Redis session store", "addr", opt.Addr, "db", opt.DB)
 		return storage.NewValkeySessionStore(valkeyClient), nil
 
-	case "sqlite":
-		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
-			log.Info("Using SQLite Database session store")
-			return sqliteStore.Sessions(), nil
-		}
-		log.Warn("SQLite session store requested but underlying store is not SQLite")
+	case "sqlite", "database":
+		// "sqlite" predates the other backends; both mean rackd's database,
+		// whichever it is.
+		log.Info("Keeping sessions in the database", "backend", store.XDAL().Dialect().Name())
+		return store.Sessions(), nil
 
 	default:
 		log.Warn("Unknown session store type or memory specified, falling back to memory", "type", cfg.SessionStoreType)

@@ -62,7 +62,7 @@ func ResetPasswordCommand() *cli.Command {
 			// this command stays quiet on stdout.
 			log.Init("console", "error", os.Stderr)
 
-			store, err := storage.NewExtendedStorage(dataDir)
+			store, err := storage.NewExtendedStorageWithOptions(dataDir, flags.StorageOptions())
 			if err != nil {
 				return fmt.Errorf("failed to open database in %s: %w", dataDir, err)
 			}

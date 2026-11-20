@@ -100,7 +100,7 @@ func NewCommand(features []extension.Feature, edition string, ui fs.FS) *cli.Com
 				log.Init(cfg.LogFormat, cfg.LogLevel, os.Stdout)
 			}
 
-			store, err := storage.NewExtendedStorageWithOptions(cfg.DataDir, storage.StorageOptions{SkipPreMigrationBackup: !cfg.PreMigrationBackup})
+			store, err := storage.NewExtendedStorageWithOptions(cfg.DataDir, storage.StorageOptions{SkipPreMigrationBackup: !cfg.PreMigrationBackup, DatabaseURL: cfg.DatabaseURL})
 			if err != nil {
 				return err
 			}

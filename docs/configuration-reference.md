@@ -16,10 +16,13 @@ The CLI has its own settings (`RACKD_SERVER_URL`, `RACKD_TOKEN`, `RACKD_VERIFY_S
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `DATA_DIR` | string | `./data` | Directory for SQLite database and data files |
+| `DATABASE_URL` | string | *(empty)* | Keep the data in PostgreSQL or MySQL 8 instead of SQLite: `postgres://user:pass@host:5432/rackd?sslmode=require` or `mysql://user:pass@host:3306/rackd`. The database must be empty the first time; Rackd creates its tables. Empty keeps SQLite in `DATA_DIR`. See [Database backends](database.md#database-backends) |
 | `BACKUP_INTERVAL` | duration | `0` | Take a verified backup this often (at least `5m`); `0` turns scheduled backups off. See [Backup & Restore](backup.md#scheduled-backups-in-the-server) |
 | `BACKUP_KEEP` | int | `7` | Scheduled backups to keep; older ones are deleted |
 | `BACKUP_DIR` | string | `<DATA_DIR>/backups` | Directory for scheduled backups |
 | `PRE_MIGRATION_BACKUP` | bool | `true` | Back up the database to `<DATA_DIR>/backups/` before pending migrations run at startup; the server does not start if the backup fails. Set `false` to skip it |
+
+The three backup settings and `PRE_MIGRATION_BACKUP` apply to SQLite only. With `DATABASE_URL` set, back the database up with its own tools; see [Backup & Restore](backup.md#postgresql-and-mysql).
 | `LISTEN_ADDR` | string | `:8080` | Address and port to listen on |
 | `REQUEST_TIMEOUT` | duration | `30s` | HTTP request timeout |
 | `LOG_FORMAT` | string | `text` | Log format: `text` or `json` |
@@ -47,7 +50,7 @@ The CLI has its own settings (`RACKD_SERVER_URL`, `RACKD_TOKEN`, `RACKD_VERIFY_S
 |----------|------|---------|-------------|
 | `SESSION_TTL` | duration | `24h` | Session expiry after last activity |
 | `SESSION_MAX_LIFETIME` | duration | `168h` | Longest a session lasts from sign-in, however often it is used; `0` means no limit |
-| `SESSION_STORE_TYPE` | string | `sqlite` | Session store backend: `sqlite` or `valkey` (`redis` is accepted too). Any other value keeps sessions in memory, so they are lost on restart, and logs a warning |
+| `SESSION_STORE_TYPE` | string | `sqlite` | Session store backend: `sqlite` or `database` (both keep sessions in Rackd's database, whichever backend it is), or `valkey` (`redis` is accepted too). Any other value keeps sessions in memory, so they are lost on restart, and logs a warning |
 | `VALKEY_URL` | string | `redis://localhost:6379/0` | Valkey/Redis URL (when `SESSION_STORE_TYPE=valkey`) |
 
 ## Initial Admin

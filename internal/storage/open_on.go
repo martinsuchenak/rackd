@@ -7,26 +7,23 @@ import (
 
 	"github.com/martinsuchenak/xdal/pkg/xdal"
 
+	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
-// openStorageOn opens storage on a database of any backend that xdal
-// supports, brings its schema up to date with the portable migration track,
-// and loads what storage needs at start-up.
-//
-// It is how tests run storage on PostgreSQL and MySQL while the conversion is
-// in progress; the backend setting will build on it. db is the pool x wraps;
-// Close closes it.
+// openStorageOn opens storage on a PostgreSQL or MySQL database, brings its
+// schema up to date with the portable migration track, and loads what storage
+// needs at start-up. db is the pool x wraps; Close closes it.
 func openStorageOn(ctx context.Context, db *sql.DB, x xdal.DBInterface) (*SQLiteStorage, error) {
 	if x.Dialect().Name() == xdal.DialectSQLite {
 		return nil, fmt.Errorf("openStorageOn: SQLite databases open with NewSQLiteStorage, which runs the legacy migrations first")
 	}
-	sm, err := newSchemaMigrator(x)
+	applied, err := runServerMigrations(ctx, db)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := sm.Up(ctx); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	if len(applied) > 0 {
+		log.Info("Applied database migrations", "count", len(applied), "latest", applied[len(applied)-1])
 	}
 
 	s := &SQLiteStorage{

@@ -2,6 +2,8 @@
 
 This guide covers backup strategies, restore procedures, and upgrades for Rackd.
 
+Rackd's own backups copy its SQLite database. With `DATABASE_URL` set to PostgreSQL or MySQL, see [PostgreSQL and MySQL](#postgresql-and-mysql) instead.
+
 ## Backing Up
 
 `rackd backup` writes a consistent snapshot of the database with SQLite's `VACUUM INTO`. It is safe while the server is running, produces a single file (no `-wal`/`-shm` companions), sets the file mode to `0600`, and verifies the copy before reporting success.
@@ -32,6 +34,23 @@ This opens the file read-only, runs `PRAGMA integrity_check`, and reports how ma
 ### Automatic Backups Before Migrations
 
 When the server starts (or `rackd migrate run` runs) and there are pending migrations on an existing database, Rackd first writes a verified snapshot to `<data-dir>/backups/rackd-pre-migrate-<timestamp>-<target>.db`. `rackd migrate rollback` does the same before reverting. The five newest pre-migration snapshots are kept. If the snapshot fails, no migration runs.
+
+## PostgreSQL and MySQL
+
+When `DATABASE_URL` points Rackd at a database server, `rackd backup` and `rackd backup restore` refuse to run, `BACKUP_INTERVAL` is ignored with a warning, and no backup is taken before migrations. Back the database up with the server's own tools, and take one before upgrading Rackd:
+
+```bash
+# PostgreSQL
+pg_dump --format=custom --file=rackd-$(date +%Y%m%d).dump "$DATABASE_URL"
+# Restore into an empty database, with the server stopped
+pg_restore --no-owner --dbname="$DATABASE_URL" rackd-20261120.dump
+
+# MySQL
+mysqldump --single-transaction --routines --host=db.internal --user=rackd -p rackd > rackd-$(date +%Y%m%d).sql
+mysql --host=db.internal --user=rackd -p rackd < rackd-20261120.sql
+```
+
+`pg_dump` takes a `postgres://` URL as it is. `mysqldump` doesn't read URLs, so give it the host, user and database separately. A managed database service's snapshots and point-in-time recovery work as well.
 
 ## Automated Backups
 

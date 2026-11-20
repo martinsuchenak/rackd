@@ -2,7 +2,25 @@
 
 Rackd uses SQLite as its embedded database with a comprehensive schema for managing devices, networks, IP addresses, and datacenter resources. This document details the core inventory and discovery tables, their indexes and foreign keys; other tables are listed in the overview. The migrations in `internal/storage/migrations.go` are the full definition.
 
-## Database Configuration
+## Database Backends
+
+Rackd keeps its data in SQLite by default. Set `DATABASE_URL` to use PostgreSQL or MySQL 8 instead:
+
+```bash
+DATABASE_URL=postgres://rackd:secret@db.internal:5432/rackd?sslmode=require
+DATABASE_URL=mysql://rackd:secret@db.internal:3306/rackd?tls=true
+```
+
+- The database must exist and be empty the first time; Rackd creates its tables and refuses a database that has other tables but no Rackd migration history.
+- A PostgreSQL URL takes libpq's parameters (`sslmode`, `search_path` to use a schema other than `public`, and so on). A MySQL URL's query parameters are the Go MySQL driver's DSN parameters (`tls`, `timeout`, ...). Rackd stores times in UTC on every backend.
+- Percent-encode special characters in the password (`@` as `%40`, `/` as `%2F`).
+- Every command that opens the database (`rackd server`, `rackd migrate`, `rackd credentials rotate-key`, `rackd user reset-password`, `rackd audit`) reads `DATABASE_URL`; `--data-dir` is then not used for the database.
+- `rackd backup`, scheduled backups and pre-migration backups copy a SQLite file, so they don't run on PostgreSQL or MySQL; see [Backup & Restore](backup.md#postgresql-and-mysql).
+- Search matches differently on SQLite than on the database servers; see [Full-Text Search](fts.md).
+
+The rest of this document describes the SQLite schema; PostgreSQL and MySQL have the same tables and columns in their own types.
+
+## SQLite Configuration
 
 - **Engine**: SQLite with WAL (Write-Ahead Logging) mode
 - **Foreign Keys**: Enabled (`PRAGMA foreign_keys=1`)

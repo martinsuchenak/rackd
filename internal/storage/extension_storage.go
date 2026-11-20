@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/martinsuchenak/xdal/pkg/migrate"
-	"github.com/martinsuchenak/xdal/pkg/sqlite"
 	"github.com/martinsuchenak/xdal/pkg/xdal"
 
 	"github.com/martinsuchenak/rackd/internal/log"
@@ -23,13 +22,7 @@ func (s *SQLiteStorage) XDAL() xdal.DBInterface {
 // namespace of the migration tracking table. Like core's, they are backed up
 // first when the extension already has migrations applied.
 func (s *SQLiteStorage) RunExtensionMigrations(ctx context.Context, namespace string, steps []migrate.Migration) (MigrationResult, error) {
-	opts := s.migrateOpts
-	if s.q.x.Dialect().Name() != xdal.DialectSQLite {
-		// The backup copies a SQLite file; a database server is backed up
-		// with its own tools.
-		opts.BackupDir = ""
-	}
-	res, err := runNamespaceMigrations(ctx, s.db, s.q.x, namespace, steps, opts)
+	res, err := runNamespaceMigrations(ctx, s.db, s.q.x, namespace, steps, s.migrateOpts)
 	if res.BackupPath != "" {
 		s.migrateOpts.BackupDir = "" // one backup covers this start-up
 	}
@@ -39,7 +32,7 @@ func (s *SQLiteStorage) RunExtensionMigrations(ctx context.Context, namespace st
 // RunExtensionMigrationsOn applies an extension's migrations on db, for the
 // CLI, which has no storage open.
 func RunExtensionMigrationsOn(ctx context.Context, db *sql.DB, namespace string, steps []migrate.Migration, opts MigrationOptions) (MigrationResult, error) {
-	return runNamespaceMigrations(ctx, db, sqlite.NewSQLiteDB(db, nil), namespace, steps, opts)
+	return runNamespaceMigrations(ctx, db, xdalFor(db), namespace, steps, opts)
 }
 
 // reservedNamespace reports whether a migration namespace belongs to core.
@@ -59,7 +52,7 @@ func newNamespaceMigrator(x xdal.DBInterface, namespace string, steps []migrate.
 }
 
 // runNamespaceMigrations applies steps on x. db is the same database, used
-// for the backup, which only a SQLite caller asks for.
+// for the backup, which is taken on SQLite only.
 func runNamespaceMigrations(ctx context.Context, db *sql.DB, x xdal.DBInterface, namespace string, steps []migrate.Migration, opts MigrationOptions) (MigrationResult, error) {
 	var res MigrationResult
 	m, err := newNamespaceMigrator(x, namespace, steps)
@@ -176,7 +169,7 @@ func ExtensionMigrationStatus(ctx context.Context, db *sql.DB, namespace string,
 		}
 		return out, nil
 	}
-	m, err := newNamespaceMigrator(sqlite.NewSQLiteDB(db, nil), namespace, steps)
+	m, err := newNamespaceMigrator(xdalFor(db), namespace, steps)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +191,7 @@ func RollbackExtensionMigrations(ctx context.Context, db *sql.DB, namespace stri
 			return MigrationResult{}, fmt.Errorf("%w: %s", migrate.ErrUnknownVersion, toVersion)
 		}
 	}
-	m, err := newNamespaceMigrator(sqlite.NewSQLiteDB(db, nil), namespace, steps)
+	m, err := newNamespaceMigrator(xdalFor(db), namespace, steps)
 	if err != nil {
 		return MigrationResult{}, err
 	}
@@ -211,7 +204,8 @@ func RecordedExtensionNamespaces(ctx context.Context, db *sql.DB) ([]string, err
 	if !tableExists(ctx, db, migrate.DefaultTable) {
 		return nil, nil
 	}
-	rows, err := db.QueryContext(ctx, `SELECT DISTINCT namespace FROM `+migrate.DefaultTable+` WHERE namespace NOT IN (?, ?, ?) ORDER BY namespace`,
+	x := xdalFor(db)
+	rows, err := x.Query(ctx, x.Dialect().TranslateSQL(`SELECT DISTINCT namespace FROM `+migrate.DefaultTable+` WHERE namespace NOT IN (?, ?, ?) ORDER BY namespace`),
 		CoreMigrationNamespace, SchemaMigrationNamespace, legacyAdoptionNamespace)
 	if err != nil {
 		return nil, err

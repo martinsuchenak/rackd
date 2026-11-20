@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/martinsuchenak/xdal/pkg/migrate"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 )
 
 // ErrDatabaseInUse is returned by RestoreDatabase when another process has the database open.
@@ -200,9 +201,28 @@ func appliedVersions(ctx context.Context, db *sql.DB) ([]string, error) {
 }
 
 func tableExists(ctx context.Context, db *sql.DB, name string) bool {
+	q := "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?"
+	switch backendOf(db) {
+	case xdal.DialectPostgres:
+		q = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1"
+	case xdal.DialectMySQL:
+		q = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?"
+	}
 	var n int
-	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", name).Scan(&n)
+	err := db.QueryRowContext(ctx, q, name).Scan(&n)
 	return err == nil && n > 0
+}
+
+// countTables counts the tables in a PostgreSQL or MySQL database: in the
+// current schema on PostgreSQL.
+func countTables(ctx context.Context, db *sql.DB) (int, error) {
+	q := "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema()"
+	if backendOf(db) == xdal.DialectMySQL {
+		q = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()"
+	}
+	var n int
+	err := db.QueryRowContext(ctx, q).Scan(&n)
+	return n, err
 }
 
 // RestoreDatabase replaces the database at dbPath with a verified backup. The
