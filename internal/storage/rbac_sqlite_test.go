@@ -260,7 +260,7 @@ func TestRBACStorageMutationWithCancelledContextStillRebuilds(t *testing.T) {
 	// Revoke in the DB without rebuilding, then rebuild the way a mutator does
 	// after its commit, with a request context the client has already
 	// cancelled. The rebuild must still happen.
-	if _, err := storage.db.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ?`, role.ID); err != nil {
+	if _, err := storage.q.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = ?`, role.ID); err != nil {
 		t.Fatalf("revoking permission failed: %v", err)
 	}
 	cancelled, cancel := context.WithCancel(ctx)

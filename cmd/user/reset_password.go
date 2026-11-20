@@ -85,7 +85,7 @@ func ResetPasswordCommand() *cli.Command {
 			// Sessions are stored hashed, so existing sessions cannot be
 			// looked up and invalidated by token here; remove any lingering
 			// sessions for this user id directly.
-			sessionStore := storage.NewSQLiteSessionStore(store.DB())
+			sessionStore := store.Sessions()
 			_ = sessionStore.DeleteByUser(ctx, user.ID)
 
 			fmt.Printf("Password for %q reset successfully.\n", username)

@@ -290,7 +290,7 @@ func newSessionStore(cfg *config.Config, store storage.ExtendedStorage) (auth.Se
 	case "sqlite":
 		if sqliteStore, ok := store.(*storage.SQLiteStorage); ok {
 			log.Info("Using SQLite Database session store")
-			return storage.NewSQLiteSessionStore(sqliteStore.DB()), nil
+			return sqliteStore.Sessions(), nil
 		}
 		log.Warn("SQLite session store requested but underlying store is not SQLite")
 

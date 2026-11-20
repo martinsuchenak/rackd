@@ -38,11 +38,11 @@ func (s *SQLiteStorage) CreateUser(ctx context.Context, user *model.User) error 
 	// A new user holds no roles yet, so is_admin starts false; assigning the
 	// admin role sets it.
 	query := `INSERT INTO users (id, username, email, full_name, password_hash, is_active, is_admin, created_at, updated_at, last_login_at) 
-	          VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	_, err := s.db.ExecContext(ctx, query,
+	_, err := s.q.ExecContext(ctx, query,
 		user.ID, user.Username, user.Email, user.FullName,
-		user.PasswordHash, user.IsActive,
+		user.PasswordHash, user.IsActive, false,
 		user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
 	)
 	user.IsAdmin = false
@@ -64,7 +64,7 @@ func (s *SQLiteStorage) GetUser(ctx context.Context, id string) (*model.User, er
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
+	err := s.q.QueryRowContext(ctx, query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -94,7 +94,7 @@ func (s *SQLiteStorage) GetUserByUsername(ctx context.Context, username string) 
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, query, username).Scan(
+	err := s.q.QueryRowContext(ctx, query, username).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -124,7 +124,7 @@ func (s *SQLiteStorage) GetUserByEmail(ctx context.Context, email string) (*mode
 	var user model.User
 	var lastLoginAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, query, email).Scan(
+	err := s.q.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
 		&user.PasswordHash, &user.IsActive, &user.IsAdmin,
 		&user.CreatedAt, &user.UpdatedAt, &lastLoginAt,
@@ -149,12 +149,12 @@ func (s *SQLiteStorage) ListUsers(ctx context.Context, filter *model.UserFilter)
 	var args []interface{}
 
 	if filter != nil && filter.Username != "" {
-		query += " AND username LIKE ?"
+		query += " AND " + likeLower("username")
 		args = append(args, "%"+filter.Username+"%")
 	}
 
 	if filter != nil && filter.Email != "" {
-		query += " AND email LIKE ?"
+		query += " AND " + likeLower("email")
 		args = append(args, "%"+filter.Email+"%")
 	}
 
@@ -176,7 +176,7 @@ func (s *SQLiteStorage) ListUsers(ctx context.Context, filter *model.UserFilter)
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -221,7 +221,7 @@ func (s *SQLiteStorage) UpdateUser(ctx context.Context, user *model.User) error 
 	query := `UPDATE users SET username = ?, email = ?, full_name = ?, password_hash = ?, is_active = ?, updated_at = ? 
 	          WHERE id = ?`
 
-	result, err := s.db.ExecContext(ctx, query,
+	result, err := s.q.ExecContext(ctx, query,
 		user.Username, user.Email, user.FullName, user.PasswordHash, user.IsActive,
 		user.UpdatedAt, user.ID,
 	)
@@ -247,7 +247,7 @@ func (s *SQLiteStorage) DeleteUser(ctx context.Context, id string) error {
 	}
 
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)`, id).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check user existence: %w", err)
 	}
@@ -255,7 +255,7 @@ func (s *SQLiteStorage) DeleteUser(ctx context.Context, id string) error {
 		return ErrUserNotFound
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -270,7 +270,7 @@ func (s *SQLiteStorage) UpdateUserLastLogin(ctx context.Context, id string, last
 
 	query := `UPDATE users SET last_login_at = ? WHERE id = ?`
 
-	_, err := s.db.ExecContext(ctx, query, lastLogin, id)
+	_, err := s.q.ExecContext(ctx, query, lastLogin, id)
 	if err != nil {
 		return fmt.Errorf("failed to update user last login: %w", err)
 	}
@@ -285,7 +285,7 @@ func (s *SQLiteStorage) UpdateUserPassword(ctx context.Context, id, passwordHash
 
 	query := `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`
 
-	_, err := s.db.ExecContext(ctx, query, passwordHash, nowUTC(), id)
+	_, err := s.q.ExecContext(ctx, query, passwordHash, nowUTC(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update user password: %w", err)
 	}
@@ -295,7 +295,7 @@ func (s *SQLiteStorage) UpdateUserPassword(ctx context.Context, id, passwordHash
 
 func (s *SQLiteStorage) UserCount(ctx context.Context) (int, error) {
 	var count int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
+	err := s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count users: %w", err)
 	}

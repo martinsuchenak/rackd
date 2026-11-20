@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/pkg/model"
@@ -29,7 +30,7 @@ func (s *SQLiteStorage) CreateOAuthClient(ctx context.Context, client *model.OAu
 		createdByUserID = client.CreatedByUserID
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO oauth_clients (id, name, secret_hash, redirect_uris, grant_types, response_types,
 			token_endpoint_auth, scope, client_uri, logo_uri, is_confidential, created_by_user_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -44,7 +45,7 @@ func (s *SQLiteStorage) GetOAuthClient(ctx context.Context, clientID string) (*m
 	var redirectURIs, grantTypes, responseTypes string
 	var createdByUserID sql.NullString
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 			token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 			created_by_user_id, created_at, updated_at
@@ -74,14 +75,14 @@ func (s *SQLiteStorage) ListOAuthClients(ctx context.Context, createdByUserID st
 	var err error
 
 	if createdByUserID == "" {
-		rows, err = s.db.QueryContext(ctx, `
+		rows, err = s.q.QueryContext(ctx, `
 			SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 				token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 				created_by_user_id, created_at, updated_at
 			FROM oauth_clients ORDER BY created_at DESC
 		`)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `
+		rows, err = s.q.QueryContext(ctx, `
 			SELECT id, name, secret_hash, redirect_uris, grant_types, response_types,
 				token_endpoint_auth, scope, client_uri, logo_uri, is_confidential,
 				created_by_user_id, created_at, updated_at
@@ -115,7 +116,7 @@ func (s *SQLiteStorage) ListOAuthClients(ctx context.Context, createdByUserID st
 }
 
 func (s *SQLiteStorage) DeleteOAuthClient(ctx context.Context, clientID string) error {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM oauth_clients WHERE id = ?`, clientID)
+	result, err := s.q.ExecContext(ctx, `DELETE FROM oauth_clients WHERE id = ?`, clientID)
 	if err != nil {
 		return err
 	}
@@ -129,18 +130,18 @@ func (s *SQLiteStorage) DeleteOAuthClient(ctx context.Context, clientID string) 
 // --- Authorization Codes ---
 
 func (s *SQLiteStorage) CreateAuthorizationCode(ctx context.Context, code *model.OAuthAuthorizationCode) error {
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, scope,
 			code_challenge, code_challenge_method, expires_at, created_at, used)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, code.CodeHash, code.ClientID, code.UserID, code.RedirectURI, code.Scope,
-		code.CodeChallenge, code.CodeChallengeMethod, code.ExpiresAt, code.CreatedAt)
+		code.CodeChallenge, code.CodeChallengeMethod, code.ExpiresAt, code.CreatedAt, false)
 	return err
 }
 
 func (s *SQLiteStorage) GetAuthorizationCode(ctx context.Context, codeHash string) (*model.OAuthAuthorizationCode, error) {
 	var code model.OAuthAuthorizationCode
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT code_hash, client_id, user_id, redirect_uri, scope,
 			code_challenge, code_challenge_method, expires_at, created_at, used
 		FROM oauth_authorization_codes WHERE code_hash = ?
@@ -164,7 +165,7 @@ func (s *SQLiteStorage) GetAuthorizationCode(ctx context.Context, codeHash strin
 }
 
 func (s *SQLiteStorage) MarkAuthorizationCodeUsed(ctx context.Context, codeHash string) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE oauth_authorization_codes SET used = 1 WHERE code_hash = ? AND used = 0`, codeHash)
+	result, err := s.q.ExecContext(ctx, `UPDATE oauth_authorization_codes SET used = ? WHERE code_hash = ? AND used = ?`, true, codeHash, false)
 	if err != nil {
 		return err
 	}
@@ -182,7 +183,7 @@ func (s *SQLiteStorage) MarkAuthorizationCodeUsed(ctx context.Context, codeHash 
 }
 
 func (s *SQLiteStorage) CleanupExpiredCodes(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_authorization_codes WHERE expires_at < ? OR used = 1`, nowUTC())
+	_, err := s.q.ExecContext(ctx, `DELETE FROM oauth_authorization_codes WHERE expires_at < ? OR used = ?`, nowUTC(), true)
 	return err
 }
 
@@ -194,7 +195,7 @@ func (s *SQLiteStorage) CreateOAuthToken(ctx context.Context, token *model.OAuth
 	}
 	token.CreatedAt = nowUTC()
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO oauth_tokens (id, token_type, token_hash, client_id, user_id, scope,
 			expires_at, created_at, revoked_at, parent_token_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -205,7 +206,7 @@ func (s *SQLiteStorage) CreateOAuthToken(ctx context.Context, token *model.OAuth
 
 func (s *SQLiteStorage) GetOAuthTokenByHash(ctx context.Context, tokenHash string) (*model.OAuthToken, error) {
 	var token model.OAuthToken
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, token_type, token_hash, client_id, user_id, scope,
 			expires_at, created_at, revoked_at, parent_token_id
 		FROM oauth_tokens WHERE token_hash = ?
@@ -232,7 +233,7 @@ func (s *SQLiteStorage) GetOAuthTokenByHash(ctx context.Context, tokenHash strin
 // This is used for refresh token replay detection.
 func (s *SQLiteStorage) GetOAuthTokenByHashIncludingRevoked(ctx context.Context, tokenHash string) (*model.OAuthToken, error) {
 	var token model.OAuthToken
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, token_type, token_hash, client_id, user_id, scope,
 			expires_at, created_at, revoked_at, parent_token_id
 		FROM oauth_tokens WHERE token_hash = ?
@@ -251,7 +252,7 @@ func (s *SQLiteStorage) GetOAuthTokenByHashIncludingRevoked(ctx context.Context,
 
 func (s *SQLiteStorage) RevokeOAuthToken(ctx context.Context, tokenID string) error {
 	now := nowUTC()
-	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, tokenID)
+	_, err := s.q.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, tokenID)
 	return err
 }
 
@@ -259,7 +260,7 @@ func (s *SQLiteStorage) RevokeOAuthToken(ctx context.Context, tokenID string) er
 // this call did. Refresh uses it so a token can be exchanged only once, even
 // by two requests at the same moment.
 func (s *SQLiteStorage) ClaimOAuthToken(ctx context.Context, tokenID string) (bool, error) {
-	res, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, nowUTC(), tokenID)
+	res, err := s.q.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, nowUTC(), tokenID)
 	if err != nil {
 		return false, err
 	}
@@ -272,31 +273,67 @@ func (s *SQLiteStorage) ClaimOAuthToken(ctx context.Context, tokenID string) (bo
 // issues an access token whose child is the next refresh token, so a thief who
 // refreshed first holds a grandchild, which revoking direct children missed.
 func (s *SQLiteStorage) RevokeOAuthTokenChain(ctx context.Context, refreshTokenID string) error {
-	_, err := s.db.ExecContext(ctx, `
+	// The chain is found first and revoked second: MySQL can't update a table
+	// that a subquery of the same statement reads.
+	tx, err := s.q.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.QueryContext(ctx, `
 		WITH RECURSIVE chain(id) AS (
-			SELECT ?
+			SELECT id FROM oauth_tokens WHERE id = ?
 			UNION
 			SELECT t.id FROM oauth_tokens t JOIN chain c ON t.parent_token_id = c.id
 		)
-		UPDATE oauth_tokens SET revoked_at = ?
-		WHERE id IN (SELECT id FROM chain) AND revoked_at IS NULL
-	`, refreshTokenID, nowUTC())
-	return err
+		SELECT id FROM chain
+	`, refreshTokenID)
+	if err != nil {
+		return err
+	}
+	var ids []any
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return err
+	}
+	// Batched, so a long chain stays inside every backend's limit on bound
+	// parameters.
+	now := nowUTC()
+	const batch = 500
+	for start := 0; start < len(ids); start += batch {
+		part := ids[start:min(start+batch, len(ids))]
+		if _, err := tx.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ?
+			WHERE id IN (?`+strings.Repeat(",?", len(part)-1)+`) AND revoked_at IS NULL`,
+			append([]any{now}, part...)...); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStorage) RevokeOAuthTokensByClient(ctx context.Context, clientID string) error {
 	now := nowUTC()
-	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE client_id = ? AND revoked_at IS NULL`, now, clientID)
+	_, err := s.q.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE client_id = ? AND revoked_at IS NULL`, now, clientID)
 	return err
 }
 
 func (s *SQLiteStorage) RevokeOAuthTokensByUser(ctx context.Context, userID string) error {
 	now := nowUTC()
-	_, err := s.db.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, now, userID)
+	_, err := s.q.ExecContext(ctx, `UPDATE oauth_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, now, userID)
 	return err
 }
 
 func (s *SQLiteStorage) CleanupExpiredTokens(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ?`, nowUTC())
+	_, err := s.q.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ?`, nowUTC())
 	return err
 }

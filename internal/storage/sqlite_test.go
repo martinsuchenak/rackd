@@ -223,6 +223,13 @@ const testBackendEnv = "RACKD_TEST_BACKEND"
 // portable; on a server backend newTestStorage skips tests in other files.
 // The list goes away once every area is converted.
 var portableTestFiles = map[string]bool{
+	"identity_backends_test.go":     true,
+	"user_test.go":                  true,
+	"apikey_test.go":                true,
+	"session_sqlite_test.go":        true,
+	"rbac_sqlite_test.go":           true,
+	"user_roles_batch_test.go":      true,
+	"oauth_sqlite_test.go":          true,
 	"datacenter_sqlite_test.go":     true,
 	"network_sqlite_test.go":        true,
 	"pool_sqlite_test.go":           true,

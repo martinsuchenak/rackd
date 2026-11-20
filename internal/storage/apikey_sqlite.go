@@ -29,7 +29,7 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 		key.CreatedAt = nowUTC()
 	}
 
-	query := `INSERT INTO api_keys (id, name, key, user_id, description, created_at, last_used_at, expires_at, scopes)
+	query := `INSERT INTO api_keys (id, name, ` + s.q.ident("key") + `, user_id, description, created_at, last_used_at, expires_at, scopes)
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	var userID sql.NullString
@@ -37,7 +37,7 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 		userID = sql.NullString{String: key.UserID, Valid: true}
 	}
 
-	_, err := s.db.ExecContext(ctx, query,
+	_, err := s.q.ExecContext(ctx, query,
 		key.ID, key.Name, key.Key, userID, key.Description,
 		key.CreatedAt, key.LastUsedAt, key.ExpiresAt, nullString(strings.Join(key.Scopes, " ")),
 	)
@@ -48,8 +48,11 @@ func (s *SQLiteStorage) CreateAPIKey(ctx context.Context, key *model.APIKey) err
 	return nil
 }
 
-// apiKeyColumns are the columns scanAPIKey reads, in order.
-const apiKeyColumns = `id, name, key, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at, scopes`
+// apiKeyColumns lists the columns scanAPIKey reads. "key" is quoted: it is
+// reserved in MySQL.
+func (s *SQLiteStorage) apiKeyColumns() string {
+	return `id, name, ` + s.q.ident("key") + `, COALESCE(user_id, ''), description, created_at, last_used_at, expires_at, scopes`
+}
 
 func scanAPIKey(row interface{ Scan(dest ...any) error }) (*model.APIKey, error) {
 	var key model.APIKey
@@ -74,7 +77,7 @@ func (s *SQLiteStorage) GetAPIKey(ctx context.Context, id string) (*model.APIKey
 	if id == "" {
 		return nil, ErrInvalidID
 	}
-	key, err := scanAPIKey(s.db.QueryRowContext(ctx, `SELECT `+apiKeyColumns+` FROM api_keys WHERE id = ?`, id))
+	key, err := scanAPIKey(s.q.QueryRowContext(ctx, `SELECT `+s.apiKeyColumns()+` FROM api_keys WHERE id = ?`, id))
 	if err == sql.ErrNoRows {
 		return nil, ErrAPIKeyNotFound
 	}
@@ -89,7 +92,7 @@ func (s *SQLiteStorage) GetAPIKeyByKey(ctx context.Context, keyStr string) (*mod
 	if keyStr == "" {
 		return nil, fmt.Errorf("key cannot be empty")
 	}
-	key, err := scanAPIKey(s.db.QueryRowContext(ctx, `SELECT `+apiKeyColumns+` FROM api_keys WHERE key = ?`, keyStr))
+	key, err := scanAPIKey(s.q.QueryRowContext(ctx, `SELECT `+s.apiKeyColumns()+` FROM api_keys WHERE `+s.q.ident("key")+` = ?`, keyStr))
 	if err == sql.ErrNoRows {
 		return nil, ErrAPIKeyNotFound
 	}
@@ -101,13 +104,13 @@ func (s *SQLiteStorage) GetAPIKeyByKey(ctx context.Context, keyStr string) (*mod
 
 // ListAPIKeys retrieves all API keys matching the filter
 func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFilter) ([]model.APIKey, error) {
-	query := `SELECT ` + apiKeyColumns + ` FROM api_keys`
+	query := `SELECT ` + s.apiKeyColumns() + ` FROM api_keys`
 	var conditions []string
 	var args []any
 
 	if filter != nil {
 		if filter.Name != "" {
-			conditions = append(conditions, "name LIKE ?")
+			conditions = append(conditions, likeLower("name"))
 			args = append(args, "%"+filter.Name+"%")
 		}
 		if filter.UserID != "" {
@@ -131,7 +134,7 @@ func (s *SQLiteStorage) ListAPIKeys(ctx context.Context, filter *model.APIKeyFil
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list API keys: %w", err)
 	}
@@ -161,7 +164,7 @@ func (s *SQLiteStorage) UpdateAPIKeyLastUsed(ctx context.Context, id string, las
 
 	query := `UPDATE api_keys SET last_used_at = ? WHERE id = ?`
 
-	_, err := s.db.ExecContext(ctx, query, lastUsed, id)
+	_, err := s.q.ExecContext(ctx, query, lastUsed, id)
 	if err != nil {
 		return fmt.Errorf("failed to update API key last used: %w", err)
 	}
@@ -177,7 +180,7 @@ func (s *SQLiteStorage) DeleteAPIKey(ctx context.Context, id string) error {
 
 	// Check if key exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM api_keys WHERE id = ?)`, id).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM api_keys WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check API key existence: %w", err)
 	}
@@ -185,7 +188,7 @@ func (s *SQLiteStorage) DeleteAPIKey(ctx context.Context, id string) error {
 		return ErrAPIKeyNotFound
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM api_keys WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM api_keys WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete API key: %w", err)
 	}
