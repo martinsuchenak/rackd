@@ -95,6 +95,9 @@ func NormalizeError(err error) error {
 		}
 	}
 	if field, ok := storage.DuplicateField(err); ok {
+		if field == "" {
+			return ErrAlreadyExists
+		}
 		return fmt.Errorf("%w: %s is already in use", ErrAlreadyExists, field)
 	}
 	if field, ok := storage.MissingField(err); ok {

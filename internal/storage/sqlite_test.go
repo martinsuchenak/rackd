@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -270,11 +271,22 @@ func skipWithoutSearch(t *testing.T) {
 	}
 }
 
-// callerIsPortable reports whether newTestStorage's caller is in a
-// portable test file.
+// callerIsPortable reports whether the running test function is in a
+// portable test file. It walks up the stack to the Test function itself, so
+// storage opened through a helper in another file is judged by the test.
 func callerIsPortable() bool {
-	_, file, _, ok := runtime.Caller(2)
-	return ok && portableTestFiles[filepath.Base(file)]
+	pcs := make([]uintptr, 32)
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs)])
+	for {
+		f, more := frames.Next()
+		name := f.Function[strings.LastIndex(f.Function, ".")+1:]
+		if strings.HasPrefix(name, "Test") && strings.HasSuffix(f.File, "_test.go") {
+			return portableTestFiles[filepath.Base(f.File)]
+		}
+		if !more {
+			return false
+		}
+	}
 }
 
 func testBackend() string {

@@ -23,7 +23,7 @@ func (s *SQLiteStorage) CreateCustomFieldDefinition(ctx context.Context, def *mo
 	}
 
 	_, err = s.q.ExecContext(ctx, `
-		INSERT INTO custom_field_definitions (id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at)
+		INSERT INTO custom_field_definitions (id, name, `+s.q.ident("key")+`, type, required, options, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, def.ID, def.Name, def.Key, def.Type, def.Required, string(optionsJSON), def.Description, def.CreatedAt, def.UpdatedAt)
 
@@ -44,7 +44,7 @@ func (s *SQLiteStorage) GetCustomFieldDefinition(ctx context.Context, id string)
 	var optionsJSON string
 
 	err := s.q.QueryRowContext(ctx, `
-		SELECT id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at
+		SELECT id, name, `+s.q.ident("key")+`, type, required, options, description, created_at, updated_at
 		FROM custom_field_definitions WHERE id = ?
 	`, id).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
 
@@ -68,8 +68,8 @@ func (s *SQLiteStorage) GetCustomFieldDefinitionByKey(ctx context.Context, key s
 	var optionsJSON string
 
 	err := s.q.QueryRowContext(ctx, `
-		SELECT id, name, ` + s.q.ident("key") + `, type, required, options, description, created_at, updated_at
-		FROM custom_field_definitions WHERE ` + s.q.ident("key") + ` = ?
+		SELECT id, name, `+s.q.ident("key")+`, type, required, options, description, created_at, updated_at
+		FROM custom_field_definitions WHERE `+s.q.ident("key")+` = ?
 	`, key).Scan(&def.ID, &def.Name, &def.Key, &def.Type, &def.Required, &optionsJSON, &def.Description, &def.CreatedAt, &def.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -124,7 +124,7 @@ func (s *SQLiteStorage) UpdateCustomFieldDefinition(ctx context.Context, def *mo
 	}
 
 	result, err := s.q.ExecContext(ctx, `
-		UPDATE custom_field_definitions SET name = ?, ` + s.q.ident("key") + ` = ?, type = ?, required = ?, options = ?, description = ?, updated_at = ?
+		UPDATE custom_field_definitions SET name = ?, `+s.q.ident("key")+` = ?, type = ?, required = ?, options = ?, description = ?, updated_at = ?
 		WHERE id = ?
 	`, def.Name, def.Key, def.Type, def.Required, string(optionsJSON), def.Description, def.UpdatedAt, def.ID)
 
@@ -306,7 +306,7 @@ func scanCustomFieldValues(rows *sql.Rows) ([]model.CustomFieldValue, error) {
 func (s *SQLiteStorage) GetDevicesByCustomField(ctx context.Context, fieldKey, value string) ([]string, error) {
 	// First get the field ID from the key
 	var fieldID string
-	err := s.q.QueryRowContext(ctx, `SELECT id FROM custom_field_definitions WHERE ` + s.q.ident("key") + ` = ?`, fieldKey).Scan(&fieldID)
+	err := s.q.QueryRowContext(ctx, `SELECT id FROM custom_field_definitions WHERE `+s.q.ident("key")+` = ?`, fieldKey).Scan(&fieldID)
 	if err == sql.ErrNoRows {
 		return nil, ErrCustomFieldNotFound
 	}
