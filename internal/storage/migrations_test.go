@@ -299,7 +299,7 @@ func TestRollbackAndUpgradeTakeBackups(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pre-rollback backup does not verify: %v", err)
 	}
-	if info.Migrations != len(migrations) || info.LatestMigration != latest {
+	if info.Migrations != len(migrations)+len(portableMigrations()) || info.LatestMigration != baselineVersion {
 		t.Errorf("pre-rollback backup should hold the full history: %+v", info)
 	}
 

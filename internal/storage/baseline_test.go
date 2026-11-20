@@ -3,12 +3,14 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/martinsuchenak/xdal/pkg/migrate"
 	"github.com/martinsuchenak/xdal/pkg/sqlite"
@@ -61,6 +63,32 @@ func TestBaselineMatchesLegacySchema(t *testing.T) {
 
 	if diff := diffLines(describeSeed(t, legacy.db), describeSeed(t, baseDB)); diff != "" {
 		t.Errorf("baseline seed differs from the legacy seed (- legacy, + baseline):\n%s", diff)
+	}
+}
+
+// A legacy rollback is refused once portable migrations after the baseline
+// are applied, and allowed while only the baseline is.
+func TestRollbackStopsAtPortableMigrations(t *testing.T) {
+	ctx := context.Background()
+	s, err := NewSQLiteStorageWithOptions(t.TempDir(), StorageOptions{SkipPreMigrationBackup: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if err := requireOnlyBaseline(ctx, s.db); err != nil {
+		t.Fatalf("only the baseline is applied: %v", err)
+	}
+	q, args, err := xdal.NewQueryBuilder(sqlite.NewDialect()).Insert(migrate.DefaultTable).
+		Set("namespace", SchemaMigrationNamespace).Set("version", "29990101000000").Set("name", "later").
+		Set("checksum", "-").Set("applied_at", time.Now().UTC()).Set("duration_ms", 0).Set("dirty", false).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(ctx, q, args...); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RollbackMigrations(ctx, s.db, 1, "", MigrationOptions{}); !errors.Is(err, migrate.ErrInvalid) {
+		t.Errorf("rollback under a later schema migration: %v, want ErrInvalid", err)
 	}
 }
 

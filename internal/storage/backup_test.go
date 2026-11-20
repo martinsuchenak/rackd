@@ -58,7 +58,7 @@ func TestBackupWhileWriting(t *testing.T) {
 		t.Errorf("backup mode = %v, want 0600", fi.Mode().Perm())
 	}
 	info, err := VerifyBackup(ctx, dst)
-	if err != nil || info.Migrations != len(migrations) {
+	if err != nil || info.Migrations != len(migrations)+len(portableMigrations()) {
 		t.Errorf("verify = %+v, %v", info, err)
 	}
 	if _, err := BackupFile(ctx, path, dst); err == nil {
@@ -87,7 +87,7 @@ func TestBackupOverwrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("overwrite: %v", err)
 	}
-	if info.Path != dst || info.Migrations != len(migrations) {
+	if info.Path != dst || info.Migrations != len(migrations)+len(portableMigrations()) {
 		t.Errorf("info = %+v", info)
 	}
 	if _, err := VerifyBackup(ctx, dst); err != nil {
