@@ -10,10 +10,10 @@ import (
 
 // CreateAuditLog creates a new audit log entry
 func (s *SQLiteStorage) CreateAuditLog(ctx context.Context, log *model.AuditLog) error {
-	return insertAuditLog(ctx, s.db, log)
+	return s.insertAuditLog(ctx, s.q, log)
 }
 
-func insertAuditLog(ctx context.Context, db sqlTx, log *model.AuditLog) error {
+func (s *SQLiteStorage) insertAuditLog(ctx context.Context, c dbConn, log *model.AuditLog) error {
 	if log.ID == "" {
 		log.ID = uuid.New().String()
 	}
@@ -21,12 +21,14 @@ func insertAuditLog(ctx context.Context, db sqlTx, log *model.AuditLog) error {
 		log.Timestamp = nowUTC()
 	}
 
-	// OR IGNORE: an id is written once, so a retried batch can't fail on
-	// entries that made it the first time.
-	_, err := db.ExecContext(ctx, `
-		INSERT OR IGNORE INTO audit_logs (id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, log.ID, log.Timestamp, log.Action, log.Resource, log.ResourceID, log.UserID, log.Username, log.IPAddress, log.Changes, log.Status, log.Error, log.Source)
+	// An id is written once, so a retried batch can't fail on entries that
+	// made it the first time.
+	_, err := execBuilt(ctx, c, s.q.builder().Insert("audit_logs").
+		Set("id", log.ID).Set("timestamp", log.Timestamp).Set("action", log.Action).
+		Set("resource", log.Resource).Set("resource_id", log.ResourceID).Set("user_id", log.UserID).
+		Set("username", log.Username).Set("ip_address", log.IPAddress).Set("changes", log.Changes).
+		Set("status", log.Status).Set("error", log.Error).Set("source", log.Source).
+		OnConflict("id").DoNothing())
 
 	return err
 }
@@ -73,7 +75,7 @@ func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFi
 		query, args = appendPagination(query, args, &filter.Pagination)
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +104,7 @@ func (s *SQLiteStorage) ListAuditLogs(ctx context.Context, filter *model.AuditFi
 func (s *SQLiteStorage) GetAuditLog(ctx context.Context, id string) (*model.AuditLog, error) {
 	var log model.AuditLog
 	var source sql.NullString
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, timestamp, action, resource, resource_id, user_id, username, ip_address, changes, status, error, source
 		FROM audit_logs WHERE id = ?
 	`, id).Scan(&log.ID, &log.Timestamp, &log.Action, &log.Resource, &log.ResourceID, &log.UserID, &log.Username, &log.IPAddress, &log.Changes, &log.Status, &log.Error, &source)
@@ -119,6 +121,6 @@ func (s *SQLiteStorage) GetAuditLog(ctx context.Context, id string) (*model.Audi
 // DeleteOldAuditLogs deletes audit logs older than specified days
 func (s *SQLiteStorage) DeleteOldAuditLogs(ctx context.Context, olderThanDays int) error {
 	cutoff := nowUTC().AddDate(0, 0, -olderThanDays)
-	_, err := s.db.ExecContext(ctx, "DELETE FROM audit_logs WHERE timestamp < ?", cutoff)
+	_, err := s.q.ExecContext(ctx, "DELETE FROM audit_logs WHERE timestamp < ?", cutoff)
 	return err
 }

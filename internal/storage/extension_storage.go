@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 
 	"github.com/martinsuchenak/xdal/pkg/migrate"
 	"github.com/martinsuchenak/xdal/pkg/sqlite"
@@ -22,7 +23,13 @@ func (s *SQLiteStorage) XDAL() xdal.DBInterface {
 // namespace of the migration tracking table. Like core's, they are backed up
 // first when the extension already has migrations applied.
 func (s *SQLiteStorage) RunExtensionMigrations(ctx context.Context, namespace string, steps []migrate.Migration) (MigrationResult, error) {
-	res, err := runNamespaceMigrations(ctx, s.db, namespace, steps, s.migrateOpts)
+	opts := s.migrateOpts
+	if s.q.x.Dialect().Name() != xdal.DialectSQLite {
+		// The backup copies a SQLite file; a database server is backed up
+		// with its own tools.
+		opts.BackupDir = ""
+	}
+	res, err := runNamespaceMigrations(ctx, s.db, s.q.x, namespace, steps, opts)
 	if res.BackupPath != "" {
 		s.migrateOpts.BackupDir = "" // one backup covers this start-up
 	}
@@ -32,7 +39,7 @@ func (s *SQLiteStorage) RunExtensionMigrations(ctx context.Context, namespace st
 // RunExtensionMigrationsOn applies an extension's migrations on db, for the
 // CLI, which has no storage open.
 func RunExtensionMigrationsOn(ctx context.Context, db *sql.DB, namespace string, steps []migrate.Migration, opts MigrationOptions) (MigrationResult, error) {
-	return runNamespaceMigrations(ctx, db, namespace, steps, opts)
+	return runNamespaceMigrations(ctx, db, sqlite.NewSQLiteDB(db, nil), namespace, steps, opts)
 }
 
 // reservedNamespace reports whether a migration namespace belongs to core.
@@ -40,20 +47,22 @@ func reservedNamespace(ns string) bool {
 	return ns == CoreMigrationNamespace || ns == SchemaMigrationNamespace || ns == legacyAdoptionNamespace
 }
 
-func newNamespaceMigrator(db *sql.DB, namespace string, steps []migrate.Migration) (*migrate.Migrator, error) {
+func newNamespaceMigrator(x xdal.DBInterface, namespace string, steps []migrate.Migration) (*migrate.Migrator, error) {
 	if reservedNamespace(namespace) {
 		return nil, fmt.Errorf("migration namespace %q is reserved", namespace)
 	}
-	m, err := migrate.New(sqlite.NewSQLiteDB(db, nil), steps, migrate.Options{Namespace: namespace, Logger: migrationLogger{}})
+	m, err := migrate.New(x, steps, migrate.Options{Namespace: namespace, Logger: migrationLogger{}})
 	if err != nil {
 		return nil, fmt.Errorf("%s migrations: %w", namespace, err)
 	}
 	return m, nil
 }
 
-func runNamespaceMigrations(ctx context.Context, db *sql.DB, namespace string, steps []migrate.Migration, opts MigrationOptions) (MigrationResult, error) {
+// runNamespaceMigrations applies steps on x. db is the same database, used
+// for the backup, which only a SQLite caller asks for.
+func runNamespaceMigrations(ctx context.Context, db *sql.DB, x xdal.DBInterface, namespace string, steps []migrate.Migration, opts MigrationOptions) (MigrationResult, error) {
 	var res MigrationResult
-	m, err := newNamespaceMigrator(db, namespace, steps)
+	m, err := newNamespaceMigrator(x, namespace, steps)
 	if err != nil {
 		return res, err
 	}
@@ -91,7 +100,7 @@ type PermissionGrant struct {
 // alone, so changes administrators made are kept. RBAC is rebuilt when anything
 // was added.
 func (s *SQLiteStorage) EnsurePermissions(ctx context.Context, grants []PermissionGrant) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -111,7 +120,7 @@ func (s *SQLiteStorage) EnsurePermissions(ctx context.Context, grants []Permissi
 	return nil
 }
 
-func ensurePermissions(ctx context.Context, tx *sql.Tx, grants []PermissionGrant) (int, error) {
+func ensurePermissions(ctx context.Context, tx dbConn, grants []PermissionGrant) (int, error) {
 	added := 0
 	now := nowUTC()
 	for _, g := range grants {
@@ -128,8 +137,10 @@ func ensurePermissions(ctx context.Context, tx *sql.Tx, grants []PermissionGrant
 			id, g.Resource+":"+g.Action, g.Resource, g.Action, now); err != nil {
 			return added, fmt.Errorf("failed to add permission %s:%s: %w", g.Resource, g.Action, err)
 		}
-		for _, role := range g.DefaultRoles {
-			res, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO role_permissions (role_id, permission_id, created_at)
+		// The permission is new, so its only grants are the ones made here;
+		// a role listed twice is granted once.
+		for _, role := range slices.Compact(slices.Sorted(slices.Values(g.DefaultRoles))) {
+			res, err := tx.ExecContext(ctx, `INSERT INTO role_permissions (role_id, permission_id, created_at)
 				SELECT id, ?, ? FROM roles WHERE name = ?`, id, now, role)
 			if err != nil {
 				return added, fmt.Errorf("failed to grant %s:%s to %s: %w", g.Resource, g.Action, role, err)
@@ -165,7 +176,7 @@ func ExtensionMigrationStatus(ctx context.Context, db *sql.DB, namespace string,
 		}
 		return out, nil
 	}
-	m, err := newNamespaceMigrator(db, namespace, steps)
+	m, err := newNamespaceMigrator(sqlite.NewSQLiteDB(db, nil), namespace, steps)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +198,7 @@ func RollbackExtensionMigrations(ctx context.Context, db *sql.DB, namespace stri
 			return MigrationResult{}, fmt.Errorf("%w: %s", migrate.ErrUnknownVersion, toVersion)
 		}
 	}
-	m, err := newNamespaceMigrator(db, namespace, steps)
+	m, err := newNamespaceMigrator(sqlite.NewSQLiteDB(db, nil), namespace, steps)
 	if err != nil {
 		return MigrationResult{}, err
 	}

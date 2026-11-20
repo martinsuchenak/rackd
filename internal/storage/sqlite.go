@@ -363,10 +363,10 @@ func (s *SQLiteStorage) drainAudit(first *model.AuditLog) []*model.AuditLog {
 func (s *SQLiteStorage) persistAuditEntries(entries []*model.AuditLog) {
 	ctx := context.Background()
 	if len(entries) > 1 {
-		if tx, err := s.db.BeginTx(ctx, nil); err == nil {
+		if tx, err := s.q.BeginTx(ctx, nil); err == nil {
 			ok := true
 			for _, e := range entries {
-				if err := insertAuditLog(ctx, tx, e); err != nil {
+				if err := s.insertAuditLog(ctx, tx, e); err != nil {
 					ok = false
 					break
 				}
