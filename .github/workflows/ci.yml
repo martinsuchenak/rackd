@@ -73,6 +73,49 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
           govulncheck ./...
 
+  # Storage code written on xdal must behave the same on every backend the
+  # plan supports. The TestDialect* tests run on SQLite in the main job; this
+  # one runs them on PostgreSQL and MySQL 8 too, and fails if either is
+  # missing rather than skipping it.
+  dialects:
+    name: Go (storage on PostgreSQL and MySQL)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rackd
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: rackd_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U rackd -d rackd_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: rackd_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -ptestpass"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      XDAL_TEST_POSTGRES_DSN: postgres://rackd:testpass@localhost:5432/rackd_test?sslmode=disable
+      XDAL_TEST_MYSQL_DSN: root:testpass@tcp(localhost:3306)/rackd_test?parseTime=true
+      XDAL_TEST_REQUIRE: postgres,mysql
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Test storage on every backend
+        run: go test -run Dialect -count=1 -v ./pkg/... ./internal/storage/...
+
   race:
     name: Go (race detector)
     runs-on: ubuntu-24.04

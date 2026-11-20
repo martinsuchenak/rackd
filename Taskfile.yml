@@ -95,6 +95,16 @@ tasks:
     cmds:
       - go test ./... -v -count=1 -race -timeout 30m
 
+  test:dialects:
+    desc: Run the TestDialect* storage tests on SQLite, PostgreSQL and MySQL (needs Docker)
+    env:
+      XDAL_TEST_POSTGRES_DSN: postgres://rackd:testpass@localhost:15432/rackd_test?sslmode=disable
+      XDAL_TEST_MYSQL_DSN: root:testpass@tcp(localhost:13306)/rackd_test?parseTime=true
+      XDAL_TEST_REQUIRE: postgres,mysql
+    cmds:
+      - docker compose -f docker-compose.test.yml up -d --wait
+      - go test -run Dialect -count=1 ./pkg/... ./internal/storage/...
+
   test:cover:
     desc: Run tests and show per-function coverage
     cmds:

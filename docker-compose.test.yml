@@ -1,0 +1,31 @@
+# Databases for `task test:dialects`, which runs the TestDialect* storage
+# tests on PostgreSQL and MySQL as well as SQLite. Not used by rackd itself:
+# it runs on SQLite. Uses the same ports as xdal's test databases, so only one
+# of the two sets can be up at a time (either works).
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: rackd
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: rackd_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rackd -d rackd_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+      MYSQL_DATABASE: rackd_test
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ptestpass"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
