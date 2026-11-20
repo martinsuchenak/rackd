@@ -113,6 +113,18 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set up Task
+        run: go install github.com/go-task/task/v3/cmd/task@${{ env.TASK_VERSION }}
+
+      # The run covers every package, and internal/ui embeds the built assets.
+      - name: Build UI assets
+        run: task ui:build
+
       - name: Test storage on every backend
         run: go test -run Dialect -count=1 -v ./...
 
