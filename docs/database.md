@@ -307,7 +307,7 @@ devices
 
 ## Migrations
 
-Core migrations are defined in order in `internal/storage/migrations.go`, starting with `20240120080000_initial_schema`; each has an Up and a Down step. Pending migrations run on server start (or with `rackd migrate run`); on an existing database Rackd takes a pre-migration backup first.
+Core migrations come in two tracks. The legacy track in `internal/storage/migrations.go` (namespace `core`, starting with `20240120080000_initial_schema`) is the SQLite history up to November 2026 and no longer changes. The portable track in `internal/storage/baseline.go` (namespace `schema`) starts with a baseline that builds the same schema on PostgreSQL and MySQL; on SQLite it is only recorded. New schema changes go in the portable track. Pending migrations run on server start (or with `rackd migrate run`); on an existing database Rackd takes a pre-migration backup first.
 
 `rackd migrate status --data-dir <dir>` lists the applied and pending migrations, and `rackd migrate rollback` reverts them; see the [CLI reference](cli-reference.md#rackd-migrate) and [Backup & Restore](backup.md).
 

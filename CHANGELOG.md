@@ -20,6 +20,16 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
   SQLite, PostgreSQL and MySQL 8, each on a fresh database with the test's
   migration track applied. `task test:dialects` runs the `TestDialect*`
   tests on all three in Docker, and a CI job does the same on every change.
+- A portable core migration track (namespace `schema`). Its baseline creates
+  the full core schema and seed data on PostgreSQL and MySQL; on SQLite it is
+  only recorded, since the existing migrations already built the schema.
+  `rackd migrate status` lists it. New schema changes go in this track.
+
+### Changed
+
+- The SQLite-only core migrations are frozen at the baseline. Existing
+  databases upgrade exactly as before; the one new step they run records the
+  baseline and changes no tables.
 
 ## [0.7.3] - 2026-11-19
 

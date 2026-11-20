@@ -259,22 +259,50 @@ func RunMigrationsWithOptions(ctx context.Context, db *sql.DB, opts MigrationOpt
 	if err != nil {
 		return res, migrationError(err, "")
 	}
-	if len(pending) == 0 {
+	sm, err := newSchemaMigrator(sqlite.NewSQLiteDB(db, nil))
+	if err != nil {
+		return res, err
+	}
+	schemaPending, err := sm.Pending(ctx)
+	if err != nil {
+		return res, migrationError(err, "")
+	}
+	if len(pending) == 0 && len(schemaPending) == 0 {
 		return res, nil
 	}
 
+	// An existing database (one with legacy history) is snapshotted first.
 	if len(pending) < len(migrations) {
-		res.BackupPath, err = preMigrationBackup(ctx, db, opts, "up-"+pending[len(pending)-1].Version)
+		last := pending
+		if len(schemaPending) > 0 {
+			last = schemaPending
+		}
+		res.BackupPath, err = preMigrationBackup(ctx, db, opts, "up-"+last[len(last)-1].Version)
 		if err != nil {
 			return res, err
 		}
 	}
 
+	// The legacy track builds the schema up to the baseline; the portable
+	// track records the baseline and applies everything after it.
 	res.Versions, err = m.Up(ctx)
 	if err != nil {
 		return res, migrationError(err, res.BackupPath)
 	}
+	applied, err := sm.Up(ctx)
+	res.Versions = append(res.Versions, applied...)
+	if err != nil {
+		return res, migrationError(err, res.BackupPath)
+	}
 	return res, nil
+}
+
+// newSchemaMigrator wraps db for the portable migration track.
+func newSchemaMigrator(db xdal.DBInterface) (*migrate.Migrator, error) {
+	return migrate.New(db, portableMigrations(), migrate.Options{
+		Namespace: SchemaMigrationNamespace,
+		Logger:    migrationLogger{},
+	})
 }
 
 // RollbackMigrations reverts core migrations newest first: everything newer than
@@ -376,6 +404,23 @@ func GetMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, err
 	}
 
 	m, err := newCoreMigrator(db)
+	if err != nil {
+		return nil, err
+	}
+	return migratorStatus(ctx, m)
+}
+
+// GetSchemaMigrationStatus returns the status of the portable migration track.
+// It does not write to the database.
+func GetSchemaMigrationStatus(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
+	if !tableExists(ctx, db, migrate.DefaultTable) {
+		var out []MigrationStatus
+		for _, m := range portableMigrations() {
+			out = append(out, MigrationStatus{Version: m.Version, Name: m.Name})
+		}
+		return out, nil
+	}
+	m, err := newSchemaMigrator(sqlite.NewSQLiteDB(db, nil))
 	if err != nil {
 		return nil, err
 	}

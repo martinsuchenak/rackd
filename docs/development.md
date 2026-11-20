@@ -237,7 +237,8 @@ internal/storage/
 ├── audit_sqlite.go      # Audit log operations
 ├── dns_sqlite.go        # DNS provider, zone and record operations
 ├── discovery_sqlite.go  # Discovery scan operations
-├── migrations.go        # Database schema migrations
+├── migrations.go        # Legacy SQLite migrations (frozen)
+├── baseline.go          # Portable migration track: baseline schema and new migrations
 └── *_test.go            # Tests alongside implementation
 ```
 
@@ -480,8 +481,8 @@ Follow this checklist to add a new resource type:
 
 8. **Web UI** (`webui/src/components/widgets.ts` and `webui/src/partials/pages/widgets.html`)
 
-9. **Database Migration** (`internal/storage/migrations.go`)
-   - Add table creation SQL
+9. **Database Migration** (`portableMigrations` in `internal/storage/baseline.go`)
+   - Create the table with xdal's schema builder (`tx.Schema()`), so it applies on every backend
    - Add default permissions
 
 10. **Documentation** (`docs/`)
@@ -587,8 +588,26 @@ otherwise. `task test:dialects` starts both in Docker
 (`docker-compose.test.yml`) and runs the tests on all three, and CI does the
 same on every change, failing if a backend is missing.
 
-Core's existing tables come from SQLite-only migrations, so a portable
-migration track can't reference them yet.
+To test against core's tables, pass `storage.SchemaMigrationNamespace` and
+the core portable track, which builds the whole core schema on every backend.
+
+### Core Migrations
+
+Core has two migration tracks:
+
+- **Legacy** (`internal/storage/migrations.go`, namespace `core`): the
+  SQLite-only history up to November 2026. It is frozen;
+  `TestLegacyTrackIsFrozen` fails if it changes. On SQLite it still runs
+  first, so existing databases upgrade exactly as before.
+- **Portable** (`portableMigrations` in `internal/storage/baseline.go`,
+  namespace `schema`): starts with a baseline that creates the schema the
+  legacy track ends with, on PostgreSQL and MySQL. On SQLite the baseline is
+  only recorded, since the legacy track already built it.
+  `TestBaselineMatchesLegacySchema` checks that both build the same tables,
+  columns, keys, indexes and seed rows.
+
+Every new schema change goes in the portable track, after the baseline,
+written with xdal's schema builder.
 
 ### Test Categories
 

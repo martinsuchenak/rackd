@@ -198,7 +198,8 @@ func TestAdoptLegacyHistoryFromV0021(t *testing.T) {
 		t.Fatalf("upgrade from v0.0.21 failed: %v", err)
 	}
 	newer := migrations[legacyFixtureMigrations:]
-	if len(res.Versions) != len(newer) || res.Versions[0] != newer[0].Version {
+	// The legacy migrations added since, then the portable baseline.
+	if len(res.Versions) != len(newer)+1 || res.Versions[0] != newer[0].Version || res.Versions[len(newer)] != baselineVersion {
 		t.Errorf("expected the migrations added after v0.0.21 to run, got %+v", res.Versions)
 	}
 	if res.BackupPath == "" {
