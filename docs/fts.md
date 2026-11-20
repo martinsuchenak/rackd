@@ -79,6 +79,20 @@ This hybrid approach provides comprehensive search coverage while leveraging FTS
 
 Special characters in search queries are automatically escaped to prevent FTS5 syntax errors. Queries are wrapped in quotes for phrase matching.
 
+### PostgreSQL and MySQL
+
+FTS5 is SQLite's. On PostgreSQL and MySQL, search matches the query as a
+case-insensitive substring of the same columns instead, with `%`, `_` and `\`
+in the query taken literally. Their own full-text search behaves differently
+from FTS5 and from each other (MySQL ignores short words and stopwords, for
+example), while a substring finds what someone typing part of a name expects.
+The tables are scanned rather than indexed, which is fine at inventory sizes.
+Tag, domain and address matching is the same on every backend.
+
+The two can differ at the edges: FTS5 matches whole words with a prefix on the
+last one, so `outer` doesn't find `core-router` on SQLite but does on
+PostgreSQL and MySQL.
+
 ## Migration
 
 The FTS implementation is added via migration `20260203110000_add_fts_search`:

@@ -30,7 +30,7 @@ Other tables:
 - **Custom fields**: `custom_field_definitions`, `custom_field_values`
 - **Circuits and NAT**: `circuits`, `nat_mappings`
 - **DNS**: `dns_provider_configs`, `dns_zones`, `dns_records`
-- **Search**: FTS5 tables `devices_fts`, `networks_fts`, `datacenters_fts`; see [Full-Text Search](fts.md)
+- **Search**: FTS5 tables `devices_fts`, `networks_fts`, `datacenters_fts` on SQLite; a substring match on PostgreSQL and MySQL; see [Full-Text Search](fts.md)
 
 ## Tables
 

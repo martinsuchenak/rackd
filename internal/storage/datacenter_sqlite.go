@@ -78,21 +78,20 @@ func (s *SQLiteStorage) ListDatacenters(ctx context.Context, filter *model.Datac
 	return datacenters, nil
 }
 
-// SearchDatacenters performs a full-text search across datacenter fields using FTS5
+// SearchDatacenters searches datacenter names, locations and descriptions
+// (see textMatch).
 func (s *SQLiteStorage) SearchDatacenters(ctx context.Context, query string) ([]model.Datacenter, error) {
 	if query == "" {
 		return s.ListDatacenters(ctx, nil)
 	}
 
-	ftsQuery := escapeFTSQuery(query)
-
+	join, where, args := s.textMatch("datacenters", "d", query, "name", "location", "description")
 	rows, err := s.q.QueryContext(ctx, `
 		SELECT d.id, d.name, d.location, d.description, d.created_at, d.updated_at
-		FROM datacenters d
-		INNER JOIN datacenters_fts fts ON d.id = fts.id
-		WHERE datacenters_fts MATCH ?
+		FROM datacenters d `+join+`
+		WHERE `+where+`
 		ORDER BY d.name
-	`, ftsQuery)
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search datacenters: %w", err)
 	}
