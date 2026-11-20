@@ -564,8 +564,11 @@ is set explicitly.
 Rackd runs on SQLite, but new storage code is written so it can also run on
 PostgreSQL and MySQL 8, the backends planned for high availability:
 
-- Queries go through xdal's query builder (`storage.XDAL()` in core,
-  `Host.DB()` in extensions), not hand-written SQL.
+- Core storage runs its queries on `s.q`, which goes through xdal and
+  rewrites `?` placeholders for the backend. Hand-written SQL there must be
+  SQL every backend accepts; anything that differs uses a helper or xdal's
+  query builder (see "Making a storage area portable" below). Extensions use
+  `Host.DB()` and the builder.
 - New tables come from migrations written with xdal's schema builder
   (`tx.Schema()` in a `migrate.Migration`), in their own migration namespace.
 - IP addresses and prefixes are stored as 16-byte keys from `pkg/ipkey`, so
@@ -590,6 +593,32 @@ same on every change, failing if a backend is missing.
 
 To test against core's tables, pass `storage.SchemaMigrationNamespace` and
 the core portable track, which builds the whole core schema on every backend.
+
+### Making a Storage Area Portable
+
+Core storage is being converted area by area. To convert one:
+
+- Run its queries on `s.q` instead of `s.db`, and take `dbConn` instead of
+  `*sql.Tx` in helpers that run inside a transaction.
+- Replace SQLite-only SQL:
+  - `INSERT OR REPLACE` / `ON CONFLICT` → the builder's
+    `OnConflict(...).DoUpdate(...)` or `.DoNothing()`;
+  - `LIKE` for user searches → `likeLower(column)`, since PostgreSQL's
+    `LIKE` is case-sensitive;
+  - `= 1` / `= 0` on flag columns → a `bool` argument;
+  - a column named `key` → `s.q.ident("key")` (reserved in MySQL).
+- Check constraint errors with `isUniqueViolation`, `DuplicateField`,
+  `MissingField` and `IsForeignKeyFailure`, which read every backend's
+  errors, not with SQLite's message text.
+- In a transaction that carries on after a step fails (bulk operations),
+  run each step in `tx.attempt`, a savepoint: PostgreSQL refuses every later
+  statement in a transaction once one has failed.
+- Add the area's test files to `portableTestFiles` in `sqlite_test.go`.
+
+`newTestStorage` opens the backend named by `RACKD_TEST_BACKEND` (`sqlite`,
+`postgres` or `mysql`); on a server backend it skips tests in files not yet
+listed as portable. `task test:dialects` and CI run the storage suite on all
+three.
 
 ### Core Migrations
 

@@ -20,7 +20,7 @@ func (s *SQLiteStorage) CreateCircuit(ctx context.Context, circuit *model.Circui
 
 	tagsJSON, _ := json.Marshal(circuit.Tags)
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := s.q.ExecContext(ctx, `
 		INSERT INTO circuits (
 			id, name, circuit_id, provider, type, status, capacity_mbps,
 			datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
@@ -52,7 +52,7 @@ func (s *SQLiteStorage) GetCircuit(ctx context.Context, id string) (*model.Circu
 	var datacenterAID, datacenterBID, deviceAID, deviceBID sql.NullString
 	var installDate, terminateDate sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 			datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 			port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -113,7 +113,7 @@ func (s *SQLiteStorage) GetCircuitByCircuitID(ctx context.Context, circuitID str
 	var datacenterAID, datacenterBID, deviceAID, deviceBID sql.NullString
 	var installDate, terminateDate sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, circuit_id, provider, type, status, capacity_mbps,
 			datacenter_a_id, datacenter_b_id, device_a_id, device_b_id,
 			port_a, port_b, ip_address_a, ip_address_b, vlan_id,
@@ -195,7 +195,7 @@ func (s *SQLiteStorage) ListCircuits(ctx context.Context, filter *model.CircuitF
 		}
 		if len(filter.Tags) > 0 {
 			for _, tag := range filter.Tags {
-				conditions = append(conditions, "tags LIKE ?")
+				conditions = append(conditions, likeLower("tags"))
 				args = append(args, "%\""+tag+"\"%")
 			}
 		}
@@ -213,7 +213,7 @@ func (s *SQLiteStorage) ListCircuits(ctx context.Context, filter *model.CircuitF
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list circuits: %w", err)
 	}
@@ -280,7 +280,7 @@ func (s *SQLiteStorage) UpdateCircuit(ctx context.Context, circuit *model.Circui
 
 	tagsJSON, _ := json.Marshal(circuit.Tags)
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := s.q.ExecContext(ctx, `
 		UPDATE circuits SET
 			name = ?, circuit_id = ?, provider = ?, type = ?, status = ?, capacity_mbps = ?,
 			datacenter_a_id = ?, datacenter_b_id = ?, device_a_id = ?, device_b_id = ?,
@@ -316,7 +316,7 @@ func (s *SQLiteStorage) DeleteCircuit(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	result, err := s.db.ExecContext(ctx, `DELETE FROM circuits WHERE id = ?`, id)
+	result, err := s.q.ExecContext(ctx, `DELETE FROM circuits WHERE id = ?`, id)
 	if err != nil {
 		return err
 	}
@@ -344,7 +344,7 @@ func (s *SQLiteStorage) GetCircuitsByDevice(ctx context.Context, deviceID string
 		tags, created_at, updated_at
 		FROM circuits WHERE device_a_id = ? OR device_b_id = ?`
 
-	rows, err := s.db.QueryContext(ctx, query, deviceID, deviceID)
+	rows, err := s.q.QueryContext(ctx, query, deviceID, deviceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get circuits by device: %w", err)
 	}

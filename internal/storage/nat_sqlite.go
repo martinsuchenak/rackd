@@ -22,18 +22,18 @@ func (e *NATEndpointInUseError) Error() string {
 // natEndpointInUse finds another enabled mapping on the same external
 // endpoint as m, when m is enabled. Port 0 forwards every port (1:1 NAT) and
 // protocol "any" both TCP and UDP, so each overlaps the specific ones.
-func natEndpointInUse(ctx context.Context, tx *sql.Tx, m *model.NATMapping) error {
+func natEndpointInUse(ctx context.Context, tx dbConn, m *model.NATMapping) error {
 	if !m.Enabled {
 		return nil
 	}
 	var e NATEndpointInUseError
 	err := tx.QueryRowContext(ctx, `
 		SELECT id, name FROM nat_mappings
-		WHERE id <> ? AND enabled = 1 AND external_ip = ?
+		WHERE id <> ? AND enabled = ? AND external_ip = ?
 		  AND (protocol = ? OR protocol = 'any' OR ? = 'any')
 		  AND (external_port = ? OR external_port = 0 OR ? = 0)
 		ORDER BY created_at LIMIT 1
-	`, m.ID, m.ExternalIP, m.Protocol, m.Protocol, m.ExternalPort, m.ExternalPort).Scan(&e.ID, &e.Name)
+	`, m.ID, true, m.ExternalIP, m.Protocol, m.Protocol, m.ExternalPort, m.ExternalPort).Scan(&e.ID, &e.Name)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -56,7 +56,7 @@ func (s *SQLiteStorage) CreateNATMapping(ctx context.Context, mapping *model.NAT
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -95,7 +95,7 @@ func (s *SQLiteStorage) GetNATMapping(ctx context.Context, id string) (*model.NA
 	var tagsJSON string
 	var deviceID, datacenterID, networkID sql.NullString
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, external_ip, external_port, internal_ip, internal_port,
 			protocol, device_id, description, enabled, datacenter_id, network_id,
 			tags, created_at, updated_at
@@ -173,7 +173,7 @@ func (s *SQLiteStorage) ListNATMappings(ctx context.Context, filter *model.NATFi
 		}
 		if len(filter.Tags) > 0 {
 			for _, tag := range filter.Tags {
-				conditions = append(conditions, "tags LIKE ?")
+				conditions = append(conditions, likeLower("tags"))
 				args = append(args, "%\""+tag+"\"%")
 			}
 		}
@@ -191,7 +191,7 @@ func (s *SQLiteStorage) ListNATMappings(ctx context.Context, filter *model.NATFi
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list NAT mappings: %w", err)
 	}
@@ -247,7 +247,7 @@ func (s *SQLiteStorage) UpdateNATMapping(ctx context.Context, mapping *model.NAT
 
 	tagsJSON, _ := json.Marshal(mapping.Tags)
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -304,7 +304,7 @@ func (s *SQLiteStorage) DeleteNATMapping(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	result, err := s.db.ExecContext(ctx, `DELETE FROM nat_mappings WHERE id = ?`, id)
+	result, err := s.q.ExecContext(ctx, `DELETE FROM nat_mappings WHERE id = ?`, id)
 	if err != nil {
 		return err
 	}

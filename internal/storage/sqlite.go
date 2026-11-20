@@ -17,12 +17,16 @@ import (
 	"github.com/martinsuchenak/rackd/internal/audit"
 	"github.com/martinsuchenak/rackd/internal/log"
 	"github.com/martinsuchenak/rackd/pkg/model"
+	"github.com/martinsuchenak/xdal/pkg/sqlite"
 	_ "modernc.org/sqlite"
 )
 
 // SQLiteStorage implements ExtendedStorage using SQLite
 type SQLiteStorage struct {
-	db        *sql.DB
+	db *sql.DB
+	// q runs queries on the same database through xdal, so they work on
+	// every backend. Storage code moves from db to q as it is made portable.
+	q         portableDB
 	auditChan chan *model.AuditLog
 	auditDone chan struct{}
 	auditWG   sync.WaitGroup
@@ -92,6 +96,7 @@ func NewSQLiteStorageWithOptions(dataDir string, opts StorageOptions) (*SQLiteSt
 
 	s := &SQLiteStorage{
 		db:        db,
+		q:         portableDB{x: sqlite.NewSQLiteDB(db, nil)},
 		auditChan: make(chan *model.AuditLog, 1000),
 		auditDone: make(chan struct{}),
 	}
@@ -223,6 +228,7 @@ func NewSQLiteStorageWithPath(dbPath string) (*SQLiteStorage, error) {
 
 	s := &SQLiteStorage{
 		db:        db,
+		q:         portableDB{x: sqlite.NewSQLiteDB(db, nil)},
 		auditChan: make(chan *model.AuditLog, 1000),
 		auditDone: make(chan struct{}),
 	}
@@ -279,10 +285,11 @@ func newUUID() string {
 	return id.String()
 }
 
-// nowUTC returns the current time in UTC.
-// All storage methods MUST use this instead of time.Now() directly.
+// nowUTC returns the current time in UTC, to the microsecond: the precision
+// PostgreSQL and MySQL store, so a time written and read back is unchanged on
+// every backend. All storage methods MUST use this instead of time.Now().
 func nowUTC() time.Time {
-	return time.Now().UTC()
+	return time.Now().UTC().Truncate(time.Microsecond)
 }
 
 // nullString returns a sql.NullString for empty strings

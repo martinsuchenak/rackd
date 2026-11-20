@@ -231,6 +231,7 @@ func TestDatacenterOperations_ListAll(t *testing.T) {
 }
 
 func TestDatacenterOperations_Search(t *testing.T) {
+	skipWithoutSearch(t)
 	storage := newTestStorage(t)
 	defer func() { _ = storage.Close() }()
 	ctx := context.Background()

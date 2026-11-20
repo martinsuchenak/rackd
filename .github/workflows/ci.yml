@@ -128,6 +128,18 @@ jobs:
       - name: Test storage on every backend
         run: go test -run Dialect -count=1 -v ./...
 
+      # The storage suite itself, on each server backend. Areas not yet
+      # converted are skipped there (see portableTestFiles).
+      - name: Storage suite on PostgreSQL
+        env:
+          RACKD_TEST_BACKEND: postgres
+        run: go test -count=1 ./internal/storage/...
+
+      - name: Storage suite on MySQL
+        env:
+          RACKD_TEST_BACKEND: mysql
+        run: go test -count=1 ./internal/storage/...
+
   race:
     name: Go (race detector)
     runs-on: ubuntu-24.04

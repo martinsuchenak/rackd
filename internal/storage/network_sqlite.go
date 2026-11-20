@@ -21,7 +21,7 @@ func (s *SQLiteStorage) ListNetworks(ctx context.Context, filter *model.NetworkF
 
 	if filter != nil {
 		if filter.Name != "" {
-			conditions = append(conditions, "name LIKE ?")
+			conditions = append(conditions, likeLower("name"))
 			args = append(args, "%"+filter.Name+"%")
 		}
 		if filter.DatacenterID != "" {
@@ -46,7 +46,7 @@ func (s *SQLiteStorage) ListNetworks(ctx context.Context, filter *model.NetworkF
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list networks: %w", err)
 	}
@@ -91,7 +91,7 @@ func (s *SQLiteStorage) SearchNetworks(ctx context.Context, query string) ([]mod
 
 	ftsQuery := escapeFTSQuery(query)
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.q.QueryContext(ctx, `
 		SELECT n.id, n.name, n.subnet, n.vlan_id, n.datacenter_id, n.description,
 		       n.created_at, n.updated_at
 		FROM networks n
@@ -144,7 +144,7 @@ func (s *SQLiteStorage) GetNetwork(ctx context.Context, id string) (*model.Netwo
 	network := &model.Network{}
 	var vlanID sql.NullInt64
 	var datacenterID sql.NullString
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, subnet, vlan_id, datacenter_id, description, created_at, updated_at
 		FROM networks WHERE id = ?
 	`, id).Scan(
@@ -175,7 +175,7 @@ func (s *SQLiteStorage) CreateNetwork(ctx context.Context, network *model.Networ
 		return fmt.Errorf("network is nil")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -194,7 +194,7 @@ func (s *SQLiteStorage) CreateNetwork(ctx context.Context, network *model.Networ
 }
 
 // createNetworkInTx creates a network within an existing transaction
-func (s *SQLiteStorage) createNetworkInTx(ctx context.Context, tx *sql.Tx, network *model.Network) error {
+func (s *SQLiteStorage) createNetworkInTx(ctx context.Context, tx dbConn, network *model.Network) error {
 
 	// Generate ID if not provided
 	if network.ID == "" {
@@ -229,7 +229,7 @@ func (s *SQLiteStorage) UpdateNetwork(ctx context.Context, network *model.Networ
 
 	// Check if network exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, network.ID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, network.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check network existence: %w", err)
 	}
@@ -239,7 +239,7 @@ func (s *SQLiteStorage) UpdateNetwork(ctx context.Context, network *model.Networ
 
 	network.UpdatedAt = nowUTC()
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		UPDATE networks SET name = ?, subnet = ?, vlan_id = ?, datacenter_id = ?, description = ?, updated_at = ?
 		WHERE id = ?
 	`, network.Name, network.Subnet, nullInt(network.VLANID),
@@ -259,7 +259,7 @@ func (s *SQLiteStorage) DeleteNetwork(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -278,7 +278,7 @@ func (s *SQLiteStorage) DeleteNetwork(ctx context.Context, id string) error {
 }
 
 // deleteNetworkInTx deletes a network within an existing transaction
-func (s *SQLiteStorage) deleteNetworkInTx(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) deleteNetworkInTx(ctx context.Context, tx dbConn, id string) error {
 
 	// Check if network exists
 	var exists bool
@@ -319,7 +319,7 @@ func (s *SQLiteStorage) GetNetworkDevices(ctx context.Context, networkID string)
 
 	// Check if network exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, networkID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM networks WHERE id = ?)`, networkID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check network existence: %w", err)
 	}
@@ -351,7 +351,7 @@ func (s *SQLiteStorage) GetNetworkUtilization(ctx context.Context, networkID str
 
 	// Count used IPs (addresses assigned to this network)
 	var usedIPs int
-	err = s.db.QueryRowContext(ctx, `
+	err = s.q.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT ip) FROM addresses WHERE network_id = ?
 	`, networkID).Scan(&usedIPs)
 	if err != nil {
