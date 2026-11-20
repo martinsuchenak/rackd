@@ -69,7 +69,7 @@ func TestAuditBatchFallsBackPerEntry(t *testing.T) {
 	s.persistAuditEntries(batch)
 
 	var n int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE resource_id = 'batch'`).Scan(&n); err != nil {
+	if err := s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_logs WHERE resource_id = 'batch'`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 2 {
