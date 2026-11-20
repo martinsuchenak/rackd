@@ -157,6 +157,9 @@ func VerifyBackup(ctx context.Context, path string) (*BackupInfo, error) {
 	for _, m := range migrations {
 		known[m.Version] = true
 	}
+	for _, m := range portableMigrations() {
+		known[m.Version] = true
+	}
 	info := &BackupInfo{Path: path, SizeBytes: fi.Size(), Migrations: len(versions)}
 	for _, v := range versions {
 		if v > info.LatestMigration {
@@ -173,7 +176,8 @@ func appliedVersions(ctx context.Context, db *sql.DB) ([]string, error) {
 	var query string
 	switch {
 	case tableExists(ctx, db, migrate.DefaultTable):
-		query = "SELECT version FROM " + migrate.DefaultTable + " WHERE namespace = '" + CoreMigrationNamespace + "' AND dirty = 0"
+		// Core's history spans the legacy and the portable track.
+		query = "SELECT version FROM " + migrate.DefaultTable + " WHERE namespace IN ('" + CoreMigrationNamespace + "', '" + SchemaMigrationNamespace + "') AND dirty = 0"
 	case tableExists(ctx, db, legacyMigrationTable):
 		query = "SELECT version FROM " + legacyMigrationTable + " WHERE success = 1"
 	default:

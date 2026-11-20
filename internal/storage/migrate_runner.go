@@ -320,7 +320,27 @@ func RollbackMigrations(ctx context.Context, db *sql.DB, steps int, toVersion st
 	if err != nil {
 		return MigrationResult{}, err
 	}
+	if err := requireOnlyBaseline(ctx, db); err != nil {
+		return MigrationResult{}, err
+	}
 	return rollback(ctx, db, m, steps, toVersion, opts, "")
+}
+
+// requireOnlyBaseline refuses a legacy rollback once portable migrations after
+// the baseline are applied: they build on the legacy schema, and reverting it
+// under them would leave their history claiming changes that are gone.
+func requireOnlyBaseline(ctx context.Context, db *sql.DB) error {
+	statuses, err := GetSchemaMigrationStatus(ctx, db)
+	if err != nil {
+		return err
+	}
+	for _, s := range statuses {
+		if s.Applied && s.Version != baselineVersion {
+			return fmt.Errorf("%w: schema migration %s %s is applied on top of the core migrations; "+
+				"restore a backup from before it instead of rolling core back", migrate.ErrInvalid, s.Version, s.Name)
+		}
+	}
+	return nil
 }
 
 // rollback reverts the latest steps migrations of m, or every one newer than
