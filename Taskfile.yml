@@ -103,7 +103,7 @@ tasks:
       XDAL_TEST_REQUIRE: postgres,mysql
     cmds:
       - docker compose -f docker-compose.test.yml up -d --wait
-      - go test -run Dialect -count=1 ./pkg/... ./internal/storage/...
+      - go test -run Dialect -count=1 ./...
 
   test:cover:
     desc: Run tests and show per-function coverage

@@ -42,6 +42,9 @@ func TestRoundTrip(t *testing.T) {
 	if _, err := ipkey.ToAddr([]byte{1, 2, 3}); err != ipkey.ErrInvalidKey {
 		t.Errorf("short key: %v", err)
 	}
+	if k := ipkey.FromAddr(netip.Addr{}); k != nil {
+		t.Errorf("zero Addr gave key %x, want nil", k)
+	}
 }
 
 func TestRange(t *testing.T) {
