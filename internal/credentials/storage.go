@@ -1,6 +1,7 @@
 package credentials
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/internal/storage"
 	"github.com/martinsuchenak/rackd/pkg/model"
+	"github.com/martinsuchenak/xdal/pkg/sqlite"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 )
 
 var (
@@ -24,21 +27,47 @@ type Storage interface {
 	Delete(id string) error
 }
 
+// SQLiteStorage keeps credentials in the credentials table. Despite the name
+// it runs on any backend xdal supports; see NewStorage.
 type SQLiteStorage struct {
-	db        *sql.DB
+	x         xdal.DBInterface
 	encryptor *Encryptor
 }
 
+// NewSQLiteStorage opens the store on a SQLite database.
 func NewSQLiteStorage(db *sql.DB, encryptionKey []byte) (*SQLiteStorage, error) {
+	if err := storage.RequireTables(db, "credentials"); err != nil {
+		return nil, err
+	}
+	return NewStorage(sqlite.NewSQLiteDB(db, nil), encryptionKey)
+}
+
+// NewStorage opens the store on a database of any backend, such as the one
+// storage.SQLiteStorage.XDAL returns. Its migrations must have run.
+func NewStorage(x xdal.DBInterface, encryptionKey []byte) (*SQLiteStorage, error) {
 	enc, err := NewEncryptor(encryptionKey)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.RequireTables(db, "credentials"); err != nil {
-		return nil, err
-	}
-	return &SQLiteStorage{db: db, encryptor: enc}, nil
+	return &SQLiteStorage{x: x, encryptor: enc}, nil
 }
+
+// Queries are written with "?" placeholders; these rewrite them for the
+// backend.
+func (s *SQLiteStorage) exec(q string, args ...any) (sql.Result, error) {
+	return s.x.Exec(context.Background(), s.x.Dialect().TranslateSQL(q), args...)
+}
+
+func (s *SQLiteStorage) query(q string, args ...any) (*sql.Rows, error) {
+	return s.x.Query(context.Background(), s.x.Dialect().TranslateSQL(q), args...)
+}
+
+func (s *SQLiteStorage) queryRow(q string, args ...any) *sql.Row {
+	return s.x.QueryRow(context.Background(), s.x.Dialect().TranslateSQL(q), args...)
+}
+
+// now returns the current time as storage keeps it: UTC, to the microsecond.
+func now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 func (s *SQLiteStorage) Create(cred *model.Credential) error {
 	if err := cred.Validate(); err != nil {
@@ -47,9 +76,9 @@ func (s *SQLiteStorage) Create(cred *model.Credential) error {
 	if cred.ID == "" {
 		cred.ID = uuid.Must(uuid.NewV7()).String()
 	}
-	now := time.Now()
-	cred.CreatedAt = now
-	cred.UpdatedAt = now
+	t := now()
+	cred.CreatedAt = t
+	cred.UpdatedAt = t
 
 	community, err := s.encryptor.Encrypt(cred.SNMPCommunity)
 	if err != nil {
@@ -72,7 +101,7 @@ func (s *SQLiteStorage) Create(cred *model.Credential) error {
 		return fmt.Errorf("encrypt ssh_key_id: %w", err)
 	}
 
-	_, err = s.db.Exec(`
+	_, err = s.exec(`
 		INSERT INTO credentials (id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, cred.ID, cred.Name, cred.Type, community, v3user, v3auth, v3priv, cred.SSHUsername, sshKey, cred.DatacenterID, cred.Description, cred.CreatedAt, cred.UpdatedAt)
@@ -83,7 +112,7 @@ func (s *SQLiteStorage) Update(cred *model.Credential) error {
 	if err := cred.Validate(); err != nil {
 		return err
 	}
-	cred.UpdatedAt = time.Now()
+	cred.UpdatedAt = now()
 
 	community, err := s.encryptor.Encrypt(cred.SNMPCommunity)
 	if err != nil {
@@ -106,7 +135,7 @@ func (s *SQLiteStorage) Update(cred *model.Credential) error {
 		return fmt.Errorf("encrypt ssh_key_id: %w", err)
 	}
 
-	res, err := s.db.Exec(`
+	res, err := s.exec(`
 		UPDATE credentials SET name=?, type=?, snmp_community=?, snmp_v3_user=?, snmp_v3_auth=?, snmp_v3_priv=?, ssh_username=?, ssh_key_id=?, datacenter_id=?, description=?, updated_at=?
 		WHERE id=?
 	`, cred.Name, cred.Type, community, v3user, v3auth, v3priv, cred.SSHUsername, sshKey, cred.DatacenterID, cred.Description, cred.UpdatedAt, cred.ID)
@@ -121,7 +150,7 @@ func (s *SQLiteStorage) Update(cred *model.Credential) error {
 }
 
 func (s *SQLiteStorage) Get(id string) (*model.Credential, error) {
-	row := s.db.QueryRow(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials WHERE id=?`, id)
+	row := s.queryRow(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials WHERE id=?`, id)
 	return s.scanCredential(row)
 }
 
@@ -129,9 +158,9 @@ func (s *SQLiteStorage) List(datacenterID string) ([]model.Credential, error) {
 	var rows *sql.Rows
 	var err error
 	if datacenterID == "" {
-		rows, err = s.db.Query(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials ORDER BY name`)
+		rows, err = s.query(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials ORDER BY name`)
 	} else {
-		rows, err = s.db.Query(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials WHERE datacenter_id=? OR datacenter_id='' ORDER BY name`, datacenterID)
+		rows, err = s.query(`SELECT id, name, type, snmp_community, snmp_v3_user, snmp_v3_auth, snmp_v3_priv, ssh_username, ssh_key_id, datacenter_id, description, created_at, updated_at FROM credentials WHERE datacenter_id=? OR datacenter_id='' ORDER BY name`, datacenterID)
 	}
 	if err != nil {
 		return nil, err
@@ -152,29 +181,27 @@ func (s *SQLiteStorage) List(datacenterID string) ([]model.Credential, error) {
 // Delete removes a credential and clears it from any scan profile that
 // names it, in one transaction, so no profile points at a missing one.
 func (s *SQLiteStorage) Delete(id string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	res, err := tx.Exec(`DELETE FROM credentials WHERE id=?`, id)
-	if err != nil {
-		return err
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrCredentialNotFound
-	}
-	for _, q := range []string{
-		`UPDATE scan_profiles SET snmp_credential_id = NULL WHERE snmp_credential_id = ?`,
-		`UPDATE scan_profiles SET ssh_credential_id = NULL WHERE ssh_credential_id = ?`,
-	} {
-		if _, err := tx.Exec(q, id); err != nil {
+	ctx := context.Background()
+	d := s.x.Dialect()
+	return s.x.WithTx(ctx, nil, func(tx *xdal.Tx) error {
+		res, err := tx.Exec(ctx, d.TranslateSQL(`DELETE FROM credentials WHERE id=?`), id)
+		if err != nil {
 			return err
 		}
-	}
-	return tx.Commit()
+		n, _ := res.RowsAffected()
+		if n == 0 {
+			return ErrCredentialNotFound
+		}
+		for _, q := range []string{
+			`UPDATE scan_profiles SET snmp_credential_id = NULL WHERE snmp_credential_id = ?`,
+			`UPDATE scan_profiles SET ssh_credential_id = NULL WHERE ssh_credential_id = ?`,
+		} {
+			if _, err := tx.Exec(ctx, d.TranslateSQL(q), id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *SQLiteStorage) scanCredential(row *sql.Row) (*model.Credential, error) {

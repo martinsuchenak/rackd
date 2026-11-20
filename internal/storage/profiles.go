@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/pkg/model"
+	"github.com/martinsuchenak/xdal/pkg/sqlite"
 )
 
 var ErrProfileNotFound = errors.New("scan profile not found")
@@ -21,14 +22,20 @@ type ProfileStorage interface {
 }
 
 type SQLiteProfileStorage struct {
-	db *sql.DB
+	q portableDB
 }
 
 func NewSQLiteProfileStorage(db *sql.DB) (*SQLiteProfileStorage, error) {
 	if err := RequireTables(db, "scan_profiles"); err != nil {
 		return nil, err
 	}
-	return &SQLiteProfileStorage{db: db}, nil
+	return &SQLiteProfileStorage{q: portableDB{x: sqlite.NewSQLiteDB(db, nil)}}, nil
+}
+
+// Profiles returns the scan profiles store on this storage's database, whichever
+// backend it is.
+func (s *SQLiteStorage) Profiles() *SQLiteProfileStorage {
+	return &SQLiteProfileStorage{q: s.q}
 }
 
 func (s *SQLiteProfileStorage) Create(ctx context.Context, profile *model.ScanProfile) error {
@@ -43,7 +50,7 @@ func (s *SQLiteProfileStorage) Create(ctx context.Context, profile *model.ScanPr
 	profile.UpdatedAt = now
 
 	portsJSON, _ := json.Marshal(profile.Ports)
-	_, err := s.db.Exec(`
+	_, err := s.q.ExecContext(context.Background(), `
 		INSERT INTO scan_profiles (id, name, scan_type, ports, enable_snmp, enable_ssh, snmp_credential_id, ssh_credential_id, timeout_sec, max_workers, description, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, profile.ID, profile.Name, profile.ScanType, string(portsJSON), profile.EnableSNMP, profile.EnableSSH,
@@ -58,7 +65,7 @@ func (s *SQLiteProfileStorage) Update(ctx context.Context, profile *model.ScanPr
 	profile.UpdatedAt = nowUTC()
 
 	portsJSON, _ := json.Marshal(profile.Ports)
-	res, err := s.db.Exec(`
+	res, err := s.q.ExecContext(context.Background(), `
 		UPDATE scan_profiles SET name=?, scan_type=?, ports=?, enable_snmp=?, enable_ssh=?, snmp_credential_id=?, ssh_credential_id=?,
 		       timeout_sec=?, max_workers=?, description=?, updated_at=?
 		WHERE id=?
@@ -75,12 +82,12 @@ func (s *SQLiteProfileStorage) Update(ctx context.Context, profile *model.ScanPr
 }
 
 func (s *SQLiteProfileStorage) Get(ctx context.Context, id string) (*model.ScanProfile, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, snmp_credential_id, ssh_credential_id, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles WHERE id=?`, id)
+	row := s.q.QueryRowContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, snmp_credential_id, ssh_credential_id, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles WHERE id=?`, id)
 	return s.scanProfile(row)
 }
 
 func (s *SQLiteProfileStorage) List(ctx context.Context) ([]model.ScanProfile, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, snmp_credential_id, ssh_credential_id, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles ORDER BY name`)
+	rows, err := s.q.QueryContext(ctx, `SELECT id, name, scan_type, ports, enable_snmp, enable_ssh, snmp_credential_id, ssh_credential_id, timeout_sec, max_workers, description, created_at, updated_at FROM scan_profiles ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +113,7 @@ func (s *SQLiteProfileStorage) List(ctx context.Context) ([]model.ScanProfile, e
 }
 
 func (s *SQLiteProfileStorage) Delete(ctx context.Context, id string) error {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM scan_profiles WHERE id=?`, id)
+	res, err := s.q.ExecContext(ctx, `DELETE FROM scan_profiles WHERE id=?`, id)
 	if err != nil {
 		return err
 	}

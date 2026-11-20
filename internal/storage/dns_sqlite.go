@@ -19,7 +19,7 @@ func (s *SQLiteStorage) CreateDNSProvider(ctx context.Context, provider *model.D
 		return fmt.Errorf("provider is nil")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -38,7 +38,7 @@ func (s *SQLiteStorage) CreateDNSProvider(ctx context.Context, provider *model.D
 }
 
 // createDNSProviderInTx creates a DNS provider within an existing transaction
-func (s *SQLiteStorage) createDNSProviderInTx(ctx context.Context, tx *sql.Tx, provider *model.DNSProviderConfig) error {
+func (s *SQLiteStorage) createDNSProviderInTx(ctx context.Context, tx dbConn, provider *model.DNSProviderConfig) error {
 	// Generate ID if not provided
 	if provider.ID == "" {
 		provider.ID = newUUID()
@@ -68,7 +68,7 @@ func (s *SQLiteStorage) GetDNSProvider(ctx context.Context, id string) (*model.D
 	}
 
 	provider := &model.DNSProviderConfig{}
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, type, endpoint, token, description, created_at, updated_at
 		FROM dns_provider_configs WHERE id = ?
 	`, id).Scan(
@@ -93,7 +93,7 @@ func (s *SQLiteStorage) GetDNSProviderByName(ctx context.Context, name string) (
 	}
 
 	provider := &model.DNSProviderConfig{}
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, type, endpoint, token, description, created_at, updated_at
 		FROM dns_provider_configs WHERE name = ?
 	`, name).Scan(
@@ -137,7 +137,7 @@ func (s *SQLiteStorage) ListDNSProviders(ctx context.Context, filter *model.DNSP
 	}
 	query, args = appendPagination(query, args, pg)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS providers: %w", err)
 	}
@@ -177,7 +177,7 @@ func (s *SQLiteStorage) UpdateDNSProvider(ctx context.Context, provider *model.D
 
 	// Check if provider exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_provider_configs WHERE id = ?)`, provider.ID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_provider_configs WHERE id = ?)`, provider.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS provider existence: %w", err)
 	}
@@ -187,7 +187,7 @@ func (s *SQLiteStorage) UpdateDNSProvider(ctx context.Context, provider *model.D
 
 	provider.UpdatedAt = nowUTC()
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		UPDATE dns_provider_configs SET name = ?, type = ?, endpoint = ?, token = ?, description = ?, updated_at = ?
 		WHERE id = ?
 	`, provider.Name, provider.Type, provider.Endpoint, provider.Token,
@@ -209,7 +209,7 @@ func (s *SQLiteStorage) DeleteDNSProvider(ctx context.Context, id string) error 
 
 	// Check if provider exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_provider_configs WHERE id = ?)`, id).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_provider_configs WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS provider existence: %w", err)
 	}
@@ -219,7 +219,7 @@ func (s *SQLiteStorage) DeleteDNSProvider(ctx context.Context, id string) error 
 
 	// Check if provider is in use by any zones
 	var zoneCount int
-	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM dns_zones WHERE provider_id = ?`, id).Scan(&zoneCount)
+	err = s.q.QueryRowContext(ctx, `SELECT COUNT(*) FROM dns_zones WHERE provider_id = ?`, id).Scan(&zoneCount)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS provider usage: %w", err)
 	}
@@ -227,7 +227,7 @@ func (s *SQLiteStorage) DeleteDNSProvider(ctx context.Context, id string) error 
 		return fmt.Errorf("cannot delete DNS provider: %d zone(s) still reference it", zoneCount)
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM dns_provider_configs WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM dns_provider_configs WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete DNS provider: %w", err)
 	}
@@ -246,7 +246,7 @@ func (s *SQLiteStorage) CreateDNSZone(ctx context.Context, zone *model.DNSZone) 
 		return fmt.Errorf("zone is nil")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -265,7 +265,7 @@ func (s *SQLiteStorage) CreateDNSZone(ctx context.Context, zone *model.DNSZone) 
 }
 
 // createDNSZoneInTx creates a DNS zone within an existing transaction
-func (s *SQLiteStorage) createDNSZoneInTx(ctx context.Context, tx *sql.Tx, zone *model.DNSZone) error {
+func (s *SQLiteStorage) createDNSZoneInTx(ctx context.Context, tx dbConn, zone *model.DNSZone) error {
 	// Generate ID if not provided
 	if zone.ID == "" {
 		zone.ID = newUUID()
@@ -317,7 +317,7 @@ func (s *SQLiteStorage) GetDNSZone(ctx context.Context, id string) (*model.DNSZo
 	var networkID, ptrZone, lastSyncError sql.NullString
 	var lastSyncAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, provider_id, network_id, auto_sync, create_ptr, ptr_zone,
 		       ttl, description, last_sync_at, last_sync_status, last_sync_error, created_at, updated_at
 		FROM dns_zones WHERE id = ?
@@ -361,7 +361,7 @@ func (s *SQLiteStorage) GetDNSZoneByName(ctx context.Context, name string) (*mod
 	var networkID, ptrZone, lastSyncError sql.NullString
 	var lastSyncAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, name, provider_id, network_id, auto_sync, create_ptr, ptr_zone,
 		       ttl, description, last_sync_at, last_sync_status, last_sync_error, created_at, updated_at
 		FROM dns_zones WHERE name = ?
@@ -431,7 +431,7 @@ func (s *SQLiteStorage) ListDNSZones(ctx context.Context, filter *model.DNSZoneF
 	}
 	query, args = appendPagination(query, args, pgz)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS zones: %w", err)
 	}
@@ -490,7 +490,7 @@ func (s *SQLiteStorage) UpdateDNSZone(ctx context.Context, zone *model.DNSZone) 
 
 	// Check if zone exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_zones WHERE id = ?)`, zone.ID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_zones WHERE id = ?)`, zone.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS zone existence: %w", err)
 	}
@@ -511,7 +511,7 @@ func (s *SQLiteStorage) UpdateDNSZone(ctx context.Context, zone *model.DNSZone) 
 		lastSyncErrorParam = sql.NullString{String: *zone.LastSyncError, Valid: true}
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		UPDATE dns_zones SET name = ?, provider_id = ?, network_id = ?, auto_sync = ?, create_ptr = ?,
 		                    ptr_zone = ?, ttl = ?, description = ?, last_sync_at = ?, last_sync_status = ?,
 		                    last_sync_error = ?, updated_at = ?
@@ -535,7 +535,7 @@ func (s *SQLiteStorage) DeleteDNSZone(ctx context.Context, id string) error {
 		return ErrInvalidID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -554,7 +554,7 @@ func (s *SQLiteStorage) DeleteDNSZone(ctx context.Context, id string) error {
 }
 
 // deleteDNSZoneInTx deletes a DNS zone within an existing transaction
-func (s *SQLiteStorage) deleteDNSZoneInTx(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) deleteDNSZoneInTx(ctx context.Context, tx dbConn, id string) error {
 	// Check if zone exists
 	var exists bool
 	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_zones WHERE id = ?)`, id).Scan(&exists)
@@ -584,7 +584,7 @@ func (s *SQLiteStorage) GetDNSZonesByNetwork(ctx context.Context, networkID stri
 	        ttl, description, last_sync_at, last_sync_status, last_sync_error, created_at, updated_at
 	        FROM dns_zones WHERE network_id = ? ORDER BY name`
 
-	rows, err := s.db.QueryContext(ctx, query, networkID)
+	rows, err := s.q.QueryContext(ctx, query, networkID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DNS zones by network: %w", err)
 	}
@@ -651,7 +651,7 @@ func (s *SQLiteStorage) CreateDNSRecord(ctx context.Context, record *model.DNSRe
 		return fmt.Errorf("record is nil")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -670,7 +670,7 @@ func (s *SQLiteStorage) CreateDNSRecord(ctx context.Context, record *model.DNSRe
 }
 
 // createDNSRecordInTx creates a DNS record within an existing transaction
-func (s *SQLiteStorage) createDNSRecordInTx(ctx context.Context, tx *sql.Tx, record *model.DNSRecord) error {
+func (s *SQLiteStorage) createDNSRecordInTx(ctx context.Context, tx dbConn, record *model.DNSRecord) error {
 	// Generate ID if not provided
 	if record.ID == "" {
 		record.ID = newUUID()
@@ -721,7 +721,7 @@ func (s *SQLiteStorage) GetDNSRecord(ctx context.Context, id string) (*model.DNS
 	var deviceID, addressID, errorMessage sql.NullString
 	var lastSyncAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 		FROM dns_records WHERE id = ?
 	`, id).Scan(
@@ -764,7 +764,7 @@ func (s *SQLiteStorage) GetDNSRecordByName(ctx context.Context, zoneID, name str
 	var deviceID, addressID, errorMessage sql.NullString
 	var lastSyncAt sql.NullTime
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.q.QueryRowContext(ctx, `
 		SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 		FROM dns_records WHERE zone_id = ? AND name = ? AND type = ?
 	`, zoneID, name, recordType).Scan(
@@ -844,7 +844,7 @@ func (s *SQLiteStorage) ListDNSRecords(ctx context.Context, filter *model.DNSRec
 	}
 	query, args = appendPagination(query, args, pgr)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list DNS records: %w", err)
 	}
@@ -903,7 +903,7 @@ func (s *SQLiteStorage) UpdateDNSRecord(ctx context.Context, record *model.DNSRe
 
 	// Check if record exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_records WHERE id = ?)`, record.ID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_records WHERE id = ?)`, record.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS record existence: %w", err)
 	}
@@ -924,7 +924,7 @@ func (s *SQLiteStorage) UpdateDNSRecord(ctx context.Context, record *model.DNSRe
 		errorMessageParam = sql.NullString{String: *record.ErrorMessage, Valid: true}
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = s.q.ExecContext(ctx, `
 		UPDATE dns_records SET zone_id = ?, device_id = ?, address_id = ?, name = ?, type = ?, value = ?,
 		                    ttl = ?, sync_status = ?, last_sync_at = ?, error_message = ?, updated_at = ?
 		WHERE id = ?
@@ -948,7 +948,7 @@ func (s *SQLiteStorage) DeleteDNSRecord(ctx context.Context, id string) error {
 
 	// Check if record exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_records WHERE id = ?)`, id).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_records WHERE id = ?)`, id).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS record existence: %w", err)
 	}
@@ -956,7 +956,7 @@ func (s *SQLiteStorage) DeleteDNSRecord(ctx context.Context, id string) error {
 		return ErrDNSRecordNotFound
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM dns_records WHERE id = ?`, id)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM dns_records WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete DNS record: %w", err)
 	}
@@ -973,7 +973,7 @@ func (s *SQLiteStorage) DeleteDNSRecordsByZone(ctx context.Context, zoneID strin
 
 	// Check if zone exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_zones WHERE id = ?)`, zoneID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM dns_zones WHERE id = ?)`, zoneID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check DNS zone existence: %w", err)
 	}
@@ -981,7 +981,7 @@ func (s *SQLiteStorage) DeleteDNSRecordsByZone(ctx context.Context, zoneID strin
 		return ErrDNSZoneNotFound
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM dns_records WHERE zone_id = ?`, zoneID)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM dns_records WHERE zone_id = ?`, zoneID)
 	if err != nil {
 		return fmt.Errorf("failed to delete DNS records by zone: %w", err)
 	}
@@ -998,7 +998,7 @@ func (s *SQLiteStorage) DeleteDNSRecordsByDevice(ctx context.Context, deviceID s
 
 	// Check if device exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, deviceID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, deviceID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check device existence: %w", err)
 	}
@@ -1006,7 +1006,7 @@ func (s *SQLiteStorage) DeleteDNSRecordsByDevice(ctx context.Context, deviceID s
 		return ErrDeviceNotFound
 	}
 
-	_, err = s.db.ExecContext(ctx, `DELETE FROM dns_records WHERE device_id = ?`, deviceID)
+	_, err = s.q.ExecContext(ctx, `DELETE FROM dns_records WHERE device_id = ?`, deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete DNS records by device: %w", err)
 	}
@@ -1023,7 +1023,7 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(ctx context.Context, deviceID stri
 
 	// Check if device exists
 	var exists bool
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, deviceID).Scan(&exists)
+	err := s.q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE id = ?)`, deviceID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check device existence: %w", err)
 	}
@@ -1034,7 +1034,7 @@ func (s *SQLiteStorage) GetDNSRecordsByDevice(ctx context.Context, deviceID stri
 	query := `SELECT id, zone_id, device_id, address_id, name, type, value, ttl, sync_status, last_sync_at, error_message, created_at, updated_at
 	        FROM dns_records WHERE device_id = ? ORDER BY zone_id, name, type`
 
-	rows, err := s.db.QueryContext(ctx, query, deviceID)
+	rows, err := s.q.QueryContext(ctx, query, deviceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DNS records by device: %w", err)
 	}

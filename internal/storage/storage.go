@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/martinsuchenak/xdal/pkg/xdal"
 
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
@@ -382,6 +383,12 @@ type ExtendedStorage interface {
 	CountInventory(ctx context.Context) (InventoryCounts, error)
 	Close() error
 	DB() *sql.DB
+	// XDAL is the database wrapped for xdal, on whichever backend it is.
+	XDAL() xdal.DBInterface
+	// Profiles and ScheduledScans are the scan profile and scheduled scan
+	// stores on the same database.
+	Profiles() *SQLiteProfileStorage
+	ScheduledScans() *SQLiteScheduledScanStorage
 }
 
 // NewStorage creates a new base storage instance

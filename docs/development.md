@@ -613,12 +613,19 @@ Core storage is being converted area by area. To convert one:
 - In a transaction that carries on after a step fails (bulk operations),
   run each step in `tx.attempt`, a savepoint: PostgreSQL refuses every later
   statement in a transaction once one has failed.
-- Add the area's test files to `portableTestFiles` in `sqlite_test.go`.
+- Add the area's test files to `portableTestFiles` in `sqlite_test.go`. A
+  test that checks something only SQLite has (a query plan, a PRAGMA) calls
+  `skipUnlessSQLite`.
+- A store kept in its own type (scan profiles, scheduled scans, credentials)
+  takes the storage's connection: `store.Profiles()`,
+  `store.ScheduledScans()`, `credentials.NewStorage(store.XDAL(), key)`.
 
 `newTestStorage` opens the backend named by `RACKD_TEST_BACKEND` (`sqlite`,
 `postgres` or `mysql`); on a server backend it skips tests in files not yet
 listed as portable. `task test:dialects` and CI run the storage suite on all
-three.
+three, against the databases in `docker-compose.test.yml`, which keep their
+data in memory without disk syncs: each test builds a fresh schema, and on
+MySQL that is slow otherwise.
 
 ### Core Migrations
 

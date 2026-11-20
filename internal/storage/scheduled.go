@@ -1,11 +1,13 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/pkg/model"
+	"github.com/martinsuchenak/xdal/pkg/sqlite"
 )
 
 var ErrScheduledScanNotFound = errors.New("scheduled scan not found")
@@ -19,14 +21,20 @@ type ScheduledScanStorage interface {
 }
 
 type SQLiteScheduledScanStorage struct {
-	db *sql.DB
+	q portableDB
 }
 
 func NewSQLiteScheduledScanStorage(db *sql.DB) (*SQLiteScheduledScanStorage, error) {
 	if err := RequireTables(db, "scheduled_scans"); err != nil {
 		return nil, err
 	}
-	return &SQLiteScheduledScanStorage{db: db}, nil
+	return &SQLiteScheduledScanStorage{q: portableDB{x: sqlite.NewSQLiteDB(db, nil)}}, nil
+}
+
+// ScheduledScans returns the scheduled scans store on this storage's database, whichever
+// backend it is.
+func (s *SQLiteStorage) ScheduledScans() *SQLiteScheduledScanStorage {
+	return &SQLiteScheduledScanStorage{q: s.q}
 }
 
 func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {
@@ -40,7 +48,7 @@ func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {
 	scan.CreatedAt = now
 	scan.UpdatedAt = now
 
-	_, err := s.db.Exec(`
+	_, err := s.q.ExecContext(context.Background(), `
 		INSERT INTO scheduled_scans (id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, scan.ID, scan.NetworkID, scan.ProfileID, scan.Name, scan.CronExpression, scan.Enabled, scan.Description, scan.LastRunAt, scan.NextRunAt, scan.CreatedAt, scan.UpdatedAt)
@@ -50,7 +58,7 @@ func (s *SQLiteScheduledScanStorage) Create(scan *model.ScheduledScan) error {
 func (s *SQLiteScheduledScanStorage) Update(scan *model.ScheduledScan) error {
 	scan.UpdatedAt = nowUTC()
 
-	res, err := s.db.Exec(`
+	res, err := s.q.ExecContext(context.Background(), `
 		UPDATE scheduled_scans SET network_id=?, profile_id=?, name=?, cron_expression=?, enabled=?, description=?, last_run_at=?, next_run_at=?, updated_at=?
 		WHERE id=?
 	`, scan.NetworkID, scan.ProfileID, scan.Name, scan.CronExpression, scan.Enabled, scan.Description, scan.LastRunAt, scan.NextRunAt, scan.UpdatedAt, scan.ID)
@@ -65,7 +73,7 @@ func (s *SQLiteScheduledScanStorage) Update(scan *model.ScheduledScan) error {
 }
 
 func (s *SQLiteScheduledScanStorage) Get(id string) (*model.ScheduledScan, error) {
-	row := s.db.QueryRow(`SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans WHERE id=?`, id)
+	row := s.q.QueryRowContext(context.Background(), `SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans WHERE id=?`, id)
 	return s.scanScheduledScan(row)
 }
 
@@ -73,9 +81,9 @@ func (s *SQLiteScheduledScanStorage) List(networkID string) ([]model.ScheduledSc
 	var rows *sql.Rows
 	var err error
 	if networkID == "" {
-		rows, err = s.db.Query(`SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans ORDER BY name`)
+		rows, err = s.q.QueryContext(context.Background(), `SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans ORDER BY name`)
 	} else {
-		rows, err = s.db.Query(`SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans WHERE network_id=? ORDER BY name`, networkID)
+		rows, err = s.q.QueryContext(context.Background(), `SELECT id, network_id, profile_id, name, cron_expression, enabled, description, last_run_at, next_run_at, created_at, updated_at FROM scheduled_scans WHERE network_id=? ORDER BY name`, networkID)
 	}
 	if err != nil {
 		return nil, err
@@ -104,7 +112,7 @@ func (s *SQLiteScheduledScanStorage) List(networkID string) ([]model.ScheduledSc
 }
 
 func (s *SQLiteScheduledScanStorage) Delete(id string) error {
-	res, err := s.db.Exec(`DELETE FROM scheduled_scans WHERE id=?`, id)
+	res, err := s.q.ExecContext(context.Background(), `DELETE FROM scheduled_scans WHERE id=?`, id)
 	if err != nil {
 		return err
 	}

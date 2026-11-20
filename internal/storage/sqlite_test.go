@@ -241,6 +241,13 @@ var portableTestFiles = map[string]bool{
 	"bulk_test.go":                  true,
 	"bulk_tags_test.go":             true,
 	"bulk_savepoint_test.go":        true,
+	"dns_sqlite_test.go":            true,
+	"discovery_sqlite_test.go":      true,
+	"discovery_match_test.go":       true,
+	"profiles_test.go":              true,
+	"scheduled_test.go":             true,
+	"snapshot_sqlite_test.go":       true,
+	"dashboard_utilization_test.go": true,
 }
 
 // reopenPostgres opens the test's PostgreSQL schema again through
@@ -260,6 +267,14 @@ func reopenPostgres(t *testing.T, db *xdaltest.DB) (*sql.DB, xdal.DBInterface) {
 	pool := openPostgresPool(cfg)
 	t.Cleanup(func() { _ = pool.Close() })
 	return pool, postgres.NewPostgresDB(pool, nil)
+}
+
+// skipUnlessSQLite skips a test that checks something only SQLite has.
+func skipUnlessSQLite(t *testing.T, why string) {
+	t.Helper()
+	if b := testBackend(); b != xdal.DialectSQLite {
+		t.Skipf("%s: SQLite only: %s", b, why)
+	}
 }
 
 // skipWithoutSearch skips a full-text search test on the server backends,
