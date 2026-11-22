@@ -225,6 +225,7 @@ const testBackendEnv = "RACKD_TEST_BACKEND"
 var portableTestFiles = map[string]bool{
 	"search_backends_test.go":       true,
 	"database_test.go":              true,
+	"copy_test.go":                  true,
 	"plumbing_backends_test.go":     true,
 	"audit_test.go":                 true,
 	"audit_backpressure_test.go":    true,

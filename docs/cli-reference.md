@@ -2583,6 +2583,7 @@ Available Commands:
    status          Show migration status for core and each extension
    run             Run pending migrations for core and each extension, backing up the database first
    rollback        Revert applied migrations of core or one extension, backing up the database first
+   copy            Copy the SQLite database into an empty PostgreSQL or MySQL database
 
 Global Flags:
    -h, --help  Show help for the command
@@ -2641,6 +2642,26 @@ Flags:
        --to string         Revert every migration newer than this version
        --yes bool          Confirm the rollback; reverting can drop tables and
                            data
+
+Global Flags:
+   -h, --help  Show help for the command
+```
+
+### `rackd migrate copy`
+
+```text
+Name:
+   rackd migrate copy - Copy the SQLite database into an empty PostgreSQL or MySQL database
+
+Usage:
+   rackd migrate copy [flags]
+
+Flags:
+       --data-dir string  Data directory containing rackd.db
+                          (default: DATA_DIR, or ./data)
+       --to string        The database to copy into: postgres://... or
+                          mysql://... (default: DATABASE_URL)
+       --yes bool         Confirm the copy
 
 Global Flags:
    -h, --help  Show help for the command
