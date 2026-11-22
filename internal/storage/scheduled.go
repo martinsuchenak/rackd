@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/pkg/model"
-	"github.com/martinsuchenak/xdal/pkg/sqlite"
 )
 
 var ErrScheduledScanNotFound = errors.New("scheduled scan not found")
@@ -28,7 +27,7 @@ func NewSQLiteScheduledScanStorage(db *sql.DB) (*SQLiteScheduledScanStorage, err
 	if err := RequireTables(db, "scheduled_scans"); err != nil {
 		return nil, err
 	}
-	return &SQLiteScheduledScanStorage{q: portableDB{x: sqlite.NewSQLiteDB(db, nil)}}, nil
+	return &SQLiteScheduledScanStorage{q: portableDB{x: xdalFor(db)}}, nil
 }
 
 // ScheduledScans returns the scheduled scans store on this storage's database, whichever

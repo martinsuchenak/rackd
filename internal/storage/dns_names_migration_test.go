@@ -10,6 +10,7 @@ import (
 )
 
 func TestDNSRecordNamesRelativeMigration(t *testing.T) {
+	skipUnlessSQLite(t, "a migration of the legacy SQLite track")
 	s := newTestStorage(t)
 	defer func() { _ = s.Close() }()
 	ctx := context.Background()

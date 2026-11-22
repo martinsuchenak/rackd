@@ -27,4 +27,19 @@ export MCP_OAUTH_ISSUER_URL="${MCP_OAUTH_ISSUER_URL:-http://${LISTEN_ADDR}}"
 export GOCACHE="${GOCACHE:-${GO_CACHE_DIR}}"
 export GOTMPDIR="${GOTMPDIR:-${GO_TMP_DIR}}"
 
+# E2E_DATABASE_URL runs the main server on PostgreSQL instead of SQLite. The
+# database's public schema is dropped and recreated at every start, so point it
+# only at a database kept for these tests. The extension server stays on SQLite.
+if [ -n "${E2E_DATABASE_URL:-}" ] && [ -z "${E2E_PACKAGE:-}" ]; then
+	case "${E2E_DATABASE_URL}" in
+	postgres://* | postgresql://*) ;;
+	*)
+		echo "E2E_DATABASE_URL must be a postgres:// URL" >&2
+		exit 1
+		;;
+	esac
+	psql "${E2E_DATABASE_URL}" -q -v ON_ERROR_STOP=1 -c 'DROP SCHEMA IF EXISTS public CASCADE' -c 'CREATE SCHEMA public'
+	export DATABASE_URL="${E2E_DATABASE_URL}"
+fi
+
 exec go run "${PACKAGE}" server --dev-mode --listen-addr "${LISTEN_ADDR}" --data-dir "${DATA_DIR}"

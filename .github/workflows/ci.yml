@@ -112,17 +112,18 @@ jobs:
       - name: Test storage on every backend
         run: go test -run Dialect -count=1 -v ./...
 
-      # The storage suite itself, on each server backend. Areas not yet
-      # converted are skipped there (see portableTestFiles).
-      - name: Storage suite on PostgreSQL
+      # Every test on each server backend: the storage suite, and the service,
+      # API and worker tests through storagetest. Tests of something only
+      # SQLite has skip themselves.
+      - name: All tests on PostgreSQL
         env:
           RACKD_TEST_BACKEND: postgres
-        run: go test -count=1 -timeout 30m ./internal/storage/...
+        run: go test -count=1 -timeout 30m ./...
 
-      - name: Storage suite on MySQL
+      - name: All tests on MySQL
         env:
           RACKD_TEST_BACKEND: mysql
-        run: go test -count=1 -timeout 30m ./internal/storage/...
+        run: go test -count=1 -timeout 30m ./...
 
   race:
     name: Go (race detector)

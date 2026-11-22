@@ -9,6 +9,7 @@ import (
 )
 
 func TestScheduledBackupsAreVerifiedAndPruned(t *testing.T) {
+	skipUnlessSQLite(t, "rackd's backups copy a SQLite file")
 	s := newTestStorage(t)
 	defer func() { _ = s.Close() }()
 	ctx := context.Background()

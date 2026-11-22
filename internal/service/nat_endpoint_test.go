@@ -100,10 +100,11 @@ func TestExistingDuplicateNATMappingsStayEditable(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The second is written directly, as an older version would have.
-	if _, err := store.DB().ExecContext(ctx, `
+	x := store.XDAL()
+	if _, err := x.Exec(ctx, x.Dialect().TranslateSQL(`
 		INSERT INTO nat_mappings (id, name, external_ip, external_port, internal_ip, internal_port, protocol, enabled, tags, created_at, updated_at)
-		SELECT 'legacy-dup', 'b', external_ip, external_port, '10.0.0.6', 22, protocol, 1, '[]', created_at, updated_at
-		FROM nat_mappings WHERE id = ?`, first.ID); err != nil {
+		SELECT 'legacy-dup', 'b', external_ip, external_port, '10.0.0.6', 22, protocol, enabled, '[]', created_at, updated_at
+		FROM nat_mappings WHERE id = ?`), first.ID); err != nil {
 		t.Fatal(err)
 	}
 	name := "b renamed"

@@ -11,7 +11,7 @@ import (
 
 // CreateDiscoveredDevice inserts a new discovered device
 func (s *SQLiteStorage) CreateDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) error {
-	if err := insertDiscoveredDevice(ctx, s.q, device); err != nil {
+	if _, err := s.insertDiscoveredDevice(ctx, s.q, device, false); err != nil {
 		return err
 	}
 	s.auditLog(ctx, "create", "discovered_device", device.ID, device)
@@ -27,10 +27,14 @@ func (s *SQLiteStorage) UpdateDiscoveredDevice(ctx context.Context, device *mode
 	return nil
 }
 
-// SaveDiscoveredDevice records a host a scan found: it updates the network's
-// record for the address, keeping its id and first sighting, or creates one.
-// Both happen in one transaction, so overlapping scans of a network can't
-// each create a record for the same host. It reports whether it created one.
+// SaveDiscoveredDevice records a host a scan found: it creates the network's
+// record for the address, or updates the one there, keeping its id and first
+// sighting. It reports whether it created one.
+//
+// The insert gives way to an existing record (the unique index on network
+// and address), so overlapping scans of a network can't each create one for
+// the same host: on PostgreSQL and MySQL the second waits for the first to
+// commit, then updates its record.
 func (s *SQLiteStorage) SaveDiscoveredDevice(ctx context.Context, device *model.DiscoveredDevice) (bool, error) {
 	tx, err := s.q.BeginTx(ctx, nil)
 	if err != nil {
@@ -38,25 +42,28 @@ func (s *SQLiteStorage) SaveDiscoveredDevice(ctx context.Context, device *model.
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var id string
-	var firstSeen sql.NullTime
-	err = tx.QueryRowContext(ctx, `SELECT id, first_seen FROM discovered_devices WHERE network_id = ? AND ip = ?`,
-		device.NetworkID, device.IP).Scan(&id, &firstSeen)
-	created := err == sql.ErrNoRows
-	switch {
-	case created:
-		err = insertDiscoveredDevice(ctx, tx, device)
-	case err != nil:
+	fresh := *device
+	fresh.ID = ""
+	created, err := s.insertDiscoveredDevice(ctx, tx, &fresh, true)
+	if err != nil {
 		return false, err
-	default:
+	}
+	if created {
+		*device = fresh
+	} else {
+		var id string
+		var firstSeen sql.NullTime
+		if err := tx.QueryRowContext(ctx, `SELECT id, first_seen FROM discovered_devices WHERE network_id = ? AND ip = ?`,
+			device.NetworkID, device.IP).Scan(&id, &firstSeen); err != nil {
+			return false, err
+		}
 		device.ID = id
 		if firstSeen.Valid {
 			device.FirstSeen = firstSeen.Time
 		}
-		err = updateDiscoveredDevice(ctx, tx, device)
-	}
-	if err != nil {
-		return false, err
+		if err := updateDiscoveredDevice(ctx, tx, device); err != nil {
+			return false, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return false, err
@@ -69,7 +76,9 @@ func (s *SQLiteStorage) SaveDiscoveredDevice(ctx context.Context, device *model.
 	return created, nil
 }
 
-func insertDiscoveredDevice(ctx context.Context, db sqlTx, device *model.DiscoveredDevice) error {
+// insertDiscoveredDevice adds device. With ifNew it leaves a record already
+// there for the device's network and address alone, and reports false.
+func (s *SQLiteStorage) insertDiscoveredDevice(ctx context.Context, db dbConn, device *model.DiscoveredDevice, ifNew bool) (bool, error) {
 	if device.ID == "" {
 		device.ID = newUUID()
 	}
@@ -84,14 +93,22 @@ func insertDiscoveredDevice(ctx context.Context, db sqlTx, device *model.Discove
 	openPorts, _ := json.Marshal(device.OpenPorts)
 	services, _ := json.Marshal(device.Services)
 
-	_, err := db.ExecContext(ctx, `
-		INSERT INTO discovered_devices (id, ip, mac_address, hostname, network_id, status, confidence,
-			os_guess, vendor, open_ports, services, first_seen, last_seen, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, device.ID, device.IP, device.MACAddress, device.Hostname, device.NetworkID, device.Status,
-		device.Confidence, device.OSGuess, device.Vendor, string(openPorts), string(services),
-		device.FirstSeen, device.LastSeen, device.CreatedAt, device.UpdatedAt)
-	return err
+	q := s.q.builder().Insert("discovered_devices").
+		Set("id", device.ID).Set("ip", device.IP).Set("mac_address", device.MACAddress).
+		Set("hostname", device.Hostname).Set("network_id", device.NetworkID).Set("status", device.Status).
+		Set("confidence", device.Confidence).Set("os_guess", device.OSGuess).Set("vendor", device.Vendor).
+		Set("open_ports", string(openPorts)).Set("services", string(services)).
+		Set("first_seen", device.FirstSeen).Set("last_seen", device.LastSeen).
+		Set("created_at", device.CreatedAt).Set("updated_at", device.UpdatedAt)
+	if ifNew {
+		q = q.OnConflict("network_id", "ip").DoNothing()
+	}
+	res, err := execBuilt(ctx, db, q)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }
 
 func updateDiscoveredDevice(ctx context.Context, db sqlTx, device *model.DiscoveredDevice) error {
