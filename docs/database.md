@@ -18,6 +18,33 @@ DATABASE_URL=mysql://rackd:secret@db.internal:3306/rackd?tls=true
 - `rackd backup`, scheduled backups and pre-migration backups copy a SQLite file, so they don't run on PostgreSQL or MySQL; see [Backup & Restore](backup.md#postgresql-and-mysql).
 - Search matches differently on SQLite than on the database servers; see [Full-Text Search](fts.md).
 
+### Moving an Existing Install
+
+`rackd migrate copy` copies an existing SQLite database into an empty PostgreSQL or MySQL database:
+
+1. Create the database and a user that can create tables in it.
+2. Stop the Rackd server. Changes made while the copy runs would not be copied.
+3. Run the copy. Set `DATABASE_URL` rather than passing `--to`, so the password stays out of your shell history and the process list:
+
+   ```bash
+   export DATABASE_URL=postgres://rackd:secret@db.internal:5432/rackd?sslmode=require
+   rackd migrate copy --data-dir /var/lib/rackd          # shows what it will do
+   rackd migrate copy --data-dir /var/lib/rackd --yes
+   ```
+
+4. Start the server with `DATABASE_URL` set. Keep the SQLite file until you are satisfied; the copy doesn't change it beyond applying pending migrations, after a backup.
+
+The copy applies pending migrations to both databases, including those of extensions compiled into the binary, so the two schemas match. It then reads the whole SQLite database before writing anything, and stops with a list of what needs fixing when a value can't be stored in the target:
+
+- text longer than its column (names, tokens and other indexed text hold at most 255 characters; ids 64);
+- a NUL character, which PostgreSQL can't store;
+- a time it can't read;
+- a reference to a row that no longer exists, left from before foreign keys were enforced.
+
+Nothing is written until the data passes. The rows are then copied in one transaction, and the row counts compared before it commits, so a failed copy leaves the target as it was and can be run again. The copy refuses a target that already holds Rackd data (anything beyond the roles, permissions and scan profiles a new database starts with) or tables that aren't Rackd's.
+
+On MySQL, text comparisons ignore case, so two users, tags or names that differ only in case, which SQLite keeps apart, collide on a unique index. The copy then stops with MySQL's duplicate-entry error naming the value; rename one and run it again.
+
 The rest of this document describes the SQLite schema; PostgreSQL and MySQL have the same tables and columns in their own types.
 
 ## SQLite Configuration

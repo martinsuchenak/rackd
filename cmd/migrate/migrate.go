@@ -33,6 +33,7 @@ func NewCommand(features []extension.Feature) *cli.Command {
 			statusCommand(exts),
 			runCommand(exts),
 			rollbackCommand(exts),
+			copyCommand(exts),
 		},
 	}
 }
@@ -283,6 +284,87 @@ func rollbackCommand(exts []extensionSteps) *cli.Command {
 			for _, v := range res.Versions {
 				fmt.Printf("Reverted %s %s\n", namespace, v)
 			}
+			return nil
+		},
+	}
+}
+
+func copyCommand(exts []extensionSteps) *cli.Command {
+	return &cli.Command{
+		Name:  "copy",
+		Usage: "Copy the SQLite database into an empty PostgreSQL or MySQL database",
+		Flags: []cli.Flag{
+			dataDirFlag(),
+			&cli.StringFlag{Name: "to", Usage: "The database to copy into: postgres://... or mysql://... (default: DATABASE_URL)"},
+			&cli.BoolFlag{Name: "yes", Usage: "Confirm the copy"},
+		},
+		Run: func(ctx context.Context, cmd *cli.Command) error {
+			to := cmd.GetString("to")
+			if to == "" {
+				to = flags.StorageOptions().DatabaseURL
+			}
+			backend, err := storage.DatabaseBackend(to)
+			if err != nil {
+				return err
+			}
+			if backend == "sqlite" {
+				return fmt.Errorf("name the database to copy into: --to postgres://user:pass@host/db or mysql://user:pass@host/db")
+			}
+			dataDir := resolveDataDir(cmd)
+			if !cmd.GetBool("yes") {
+				fmt.Printf("This copies %s into the %s database, which must be empty.\n"+
+					"Stop the Rackd server first: changes made during the copy are not copied.\n"+
+					"Pending migrations are applied to the SQLite database first, after a backup. Re-run with --yes to continue.\n",
+					filepath.Join(dataDir, "rackd.db"), backend)
+				return nil
+			}
+
+			src, err := storage.OpenDatabase(ctx, dataDir, "")
+			if err != nil {
+				return err
+			}
+			defer func() { _ = src.Close() }()
+			dst, err := storage.OpenDatabase(ctx, "", to)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = dst.Close() }()
+			if err := storage.CheckCopyTarget(ctx, dst); err != nil {
+				return err
+			}
+
+			// Both databases at the same schema version, extensions included.
+			opts := storage.MigrationOptions{BackupDir: filepath.Join(dataDir, "backups")}
+			for _, db := range []*sql.DB{src, dst} {
+				res, err := storage.RunMigrationsWithOptions(ctx, db, opts)
+				if err != nil {
+					return fmt.Errorf("migration failed: %w", err)
+				}
+				if res.BackupPath != "" {
+					fmt.Printf("Backup created: %s\n", res.BackupPath)
+					opts.BackupDir = ""
+				}
+				for _, e := range exts {
+					res, err := storage.RunExtensionMigrationsOn(ctx, db, e.name, e.steps, opts)
+					if err != nil {
+						return fmt.Errorf("%s migration failed: %w", e.name, err)
+					}
+					if res.BackupPath != "" {
+						fmt.Printf("Backup created: %s\n", res.BackupPath)
+						opts.BackupDir = ""
+					}
+				}
+			}
+
+			total := 0
+			copied, err := storage.CopyDatabase(ctx, src, dst, func(table string, rows int) {
+				fmt.Printf("  %-28s %d\n", table, rows)
+				total += rows
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Copied %d rows in %d tables. Set DATABASE_URL to the %s database and start the server.\n", total, len(copied), backend)
 			return nil
 		},
 	}
