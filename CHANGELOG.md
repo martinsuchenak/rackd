@@ -9,8 +9,30 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-22
+
+Rackd now runs on PostgreSQL or MySQL 8 as well as SQLite. Existing SQLite
+installs keep working unchanged; moving one to a database server is a single
+command.
+
 ### Added
 
+- `DATABASE_URL` keeps Rackd's data in PostgreSQL
+  (`postgres://user:pass@host:5432/rackd`) or MySQL 8
+  (`mysql://user:pass@host:3306/rackd`) instead of SQLite. Every command that
+  opens the database reads it. The database must be empty the first time:
+  Rackd creates its tables, and refuses a database with other tables but no
+  Rackd migration history. See
+  [Database backends](docs/database.md#database-backends).
+- `rackd migrate copy` copies an existing SQLite database into an empty
+  PostgreSQL or MySQL database. It applies pending migrations to both, checks
+  every value before writing (text too long for its column, NUL characters
+  on PostgreSQL, unreadable times, references to missing rows) and lists what
+  to fix, then copies everything in one transaction and compares row counts
+  before committing. See
+  [Moving an existing install](docs/database.md#moving-an-existing-install).
+- `SESSION_STORE_TYPE=database` keeps sessions in Rackd's database, whichever
+  backend it is; `sqlite`, the default, now means the same.
 - `pkg/ipkey` stores IP addresses and prefixes as 16-byte keys (IPv4 mapped
   into IPv6), so address order, containment, overlap and range scans are
   plain comparisons that behave the same on SQLite, PostgreSQL and MySQL. It
@@ -27,6 +49,18 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 ### Changed
 
+- On PostgreSQL and MySQL, search matches text anywhere in a device's,
+  network's or datacenter's searchable fields, ignoring case; SQLite keeps
+  its full-text index, which matches whole words and word prefixes. See
+  [Full-Text Search](docs/fts.md).
+- Rackd's own backups copy a SQLite file, so on PostgreSQL and MySQL
+  `rackd backup` and `rackd backup restore` refuse to run, `BACKUP_INTERVAL`
+  is ignored with a warning, and no backup is taken before migrations. Back
+  a database server up with its own tools; see
+  [Backup & Restore](docs/backup.md#postgresql-and-mysql).
+- `rackd migrate rollback` refuses to roll back core migrations on PostgreSQL
+  and MySQL; restore a backup instead. Extension migrations roll back on
+  every backend.
 - The SQLite-only core migrations are frozen at the baseline. Existing
   databases upgrade exactly as before; the one new step they run records the
   baseline and changes no tables.
@@ -1001,7 +1035,8 @@ and [GitHub releases](https://github.com/martinsuchenak/rackd/releases).
 
 - Resolved all golangci-lint findings.
 
-[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/martinsuchenak/rackd/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/martinsuchenak/rackd/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/martinsuchenak/rackd/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/martinsuchenak/rackd/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/martinsuchenak/rackd/compare/v0.7.0...v0.7.1
