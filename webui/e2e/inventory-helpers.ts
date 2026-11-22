@@ -116,6 +116,10 @@ export async function createDevice(
 
   const timeout = values.expectTimeout;
   await expect(dialog).toBeHidden(timeout ? { timeout } : undefined);
+  // The list is paginated and sorted by name: once earlier specs have made a
+  // page of devices, a new one can land on a later page. Search narrows the
+  // list to it.
+  await page.locator('#device-search').fill(values.name);
   const row = rowByExactText(page, values.name);
   await expect(row).toBeVisible(timeout ? { timeout } : undefined);
   await expect(row).toContainText(values.ip);
