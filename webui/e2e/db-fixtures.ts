@@ -13,7 +13,13 @@ function nullable(value?: string | null): string {
   return value ? quote(value) : 'NULL';
 }
 
+// E2E_DATABASE_URL: the main server runs on PostgreSQL (see run-e2e-server.sh).
+const DATABASE_URL = process.env.E2E_DATABASE_URL;
+
 function runSQL(sql: string): string {
+  if (DATABASE_URL) {
+    return execFileSync('psql', [DATABASE_URL, '-qAt', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8' }).trim();
+  }
   return execFileSync('sqlite3', [DB_PATH, sql], { encoding: 'utf8' }).trim();
 }
 

@@ -90,6 +90,7 @@ func TestSaveDiscoveredDeviceOnceUnderConcurrentScans(t *testing.T) {
 }
 
 func TestDuplicateRecordMigrationsDedupe(t *testing.T) {
+	skipUnlessSQLite(t, "migrations of the legacy SQLite track")
 	s := newTestStorage(t)
 	defer func() { _ = s.Close() }()
 	ctx := context.Background()

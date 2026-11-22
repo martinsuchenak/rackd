@@ -13,8 +13,10 @@ import (
 // names the table and column in its message, PostgreSQL and MySQL return
 // driver errors with a code. These helpers read all three.
 
-// SQLite: "UNIQUE constraint failed: users.username".
-var sqliteConstraint = regexp.MustCompile(`(UNIQUE|NOT NULL) constraint failed: [A-Za-z_]+\.([A-Za-z_]+)`)
+// SQLite: "UNIQUE constraint failed: users.username", or for a key over
+// several columns "... reservations.pool_id, reservations.ip_address"; the
+// last column is reported, as for PostgreSQL.
+var sqliteConstraint = regexp.MustCompile(`(UNIQUE|NOT NULL) constraint failed: ((?:[A-Za-z_]+\.[A-Za-z_]+)(?:, [A-Za-z_]+\.[A-Za-z_]+)*)`)
 
 // PostgreSQL's detail for a unique violation: "Key (username)=(alice) already exists."
 var pgKeyDetail = regexp.MustCompile(`^Key \(([^)]+)\)=`)
@@ -27,6 +29,14 @@ var (
 	// xdal names table-level unique constraints uq_<table>_<columns>_<hash>.
 	xdalUniqueName = regexp.MustCompile(`^uq_(.+)_[0-9a-f]{8}$`)
 )
+
+// mysqlExpressionIndexColumn names the column of the baseline's partial
+// unique indexes, which MySQL builds as expression indexes and names by
+// index: the column PostgreSQL reports for the same violation.
+var mysqlExpressionIndexColumn = map[string]string{
+	"idx_conflicts_active_duplicate_ip": "ip_address",
+	"idx_reservations_pool_ip_unique":   "ip_address",
+}
 
 // PostgreSQL SQLSTATE and MySQL error numbers for the violations.
 const (
@@ -71,6 +81,9 @@ func DuplicateField(err error) (string, bool) {
 		m := mysqlDuplicateKey.FindStringSubmatch(my.Message)
 		if m == nil {
 			return "", true
+		}
+		if col, ok := mysqlExpressionIndexColumn[m[2]]; ok {
+			return col, true
 		}
 		if u := xdalUniqueName.FindStringSubmatch(m[2]); u != nil && strings.HasPrefix(u[1], m[1]+"_") {
 			return strings.TrimPrefix(u[1], m[1]+"_"), true
@@ -138,7 +151,8 @@ func sqliteColumn(err error, kind string) (string, bool) {
 	if m == nil || m[1] != kind {
 		return "", false
 	}
-	return m[2], true
+	last := lastColumn(m[2])
+	return last[strings.LastIndex(last, ".")+1:], true
 }
 
 // lastColumn returns the last of a comma-separated column list: for a

@@ -42,6 +42,23 @@ func TestConstraintErrorsOnEveryBackend(t *testing.T) {
 		t.Errorf("missing datacenter: IsForeignKeyFailure(%v) = false", err)
 	}
 
+	// The partial unique indexes, which MySQL builds as expression indexes.
+	network := &model.Network{Name: "pooled", Subnet: "10.1.0.0/24"}
+	if err := s.CreateNetwork(ctx, network); err != nil {
+		t.Fatal(err)
+	}
+	pool := &model.NetworkPool{NetworkID: network.ID, Name: "p", StartIP: "10.1.0.10", EndIP: "10.1.0.20"}
+	if err := s.CreateNetworkPool(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		_, err = s.q.ExecContext(ctx, `INSERT INTO reservations (id, pool_id, ip_address, reserved_by, reserved_at, status, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, newUUID(), pool.ID, "10.1.0.11", "test", nowUTC(), "active", nowUTC(), nowUTC())
+	}
+	if field, ok := DuplicateField(err); !ok || field != "ip_address" {
+		t.Errorf("duplicate active reservation: DuplicateField(%v) = %q, %v", err, field, ok)
+	}
+
 	for _, err := range []error{nil, context.Canceled} {
 		if _, ok := DuplicateField(err); ok {
 			t.Errorf("DuplicateField(%v) = true", err)

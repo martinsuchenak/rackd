@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"testing"
+
+	"github.com/martinsuchenak/rackd/internal/testdb"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/martinsuchenak/xdal/pkg/postgres"
@@ -214,56 +214,6 @@ func migratedTemplate() ([]byte, error) {
 	return templateData, templateErr
 }
 
-// testBackendEnv picks the database newTestStorage opens: sqlite (the
-// default), postgres or mysql. The server backends need the xdaltest DSN
-// variables; `task test:backends` sets everything up.
-const testBackendEnv = "RACKD_TEST_BACKEND"
-
-// portableTestFiles are the test files whose storage area has been made
-// portable; on a server backend newTestStorage skips tests in other files.
-// The list goes away once every area is converted.
-var portableTestFiles = map[string]bool{
-	"search_backends_test.go":       true,
-	"database_test.go":              true,
-	"copy_test.go":                  true,
-	"plumbing_backends_test.go":     true,
-	"audit_test.go":                 true,
-	"audit_backpressure_test.go":    true,
-	"webhook_sqlite_test.go":        true,
-	"identity_backends_test.go":     true,
-	"user_test.go":                  true,
-	"apikey_test.go":                true,
-	"session_sqlite_test.go":        true,
-	"rbac_sqlite_test.go":           true,
-	"user_roles_batch_test.go":      true,
-	"oauth_sqlite_test.go":          true,
-	"datacenter_sqlite_test.go":     true,
-	"network_sqlite_test.go":        true,
-	"pool_sqlite_test.go":           true,
-	"pool_membership_test.go":       true,
-	"reservation_sqlite_test.go":    true,
-	"reservation_lifecycle_test.go": true,
-	"conflict_sqlite_test.go":       true,
-	"overlap_test.go":               true,
-	"device_sqlite_test.go":         true,
-	"device_relations_test.go":      true,
-	"relationship_sqlite_test.go":   true,
-	"custom_field_sqlite_test.go":   true,
-	"circuit_sqlite_test.go":        true,
-	"nat_sqlite_test.go":            true,
-	"constraint_errors_test.go":     true,
-	"bulk_test.go":                  true,
-	"bulk_tags_test.go":             true,
-	"bulk_savepoint_test.go":        true,
-	"dns_sqlite_test.go":            true,
-	"discovery_sqlite_test.go":      true,
-	"discovery_match_test.go":       true,
-	"profiles_test.go":              true,
-	"scheduled_test.go":             true,
-	"snapshot_sqlite_test.go":       true,
-	"dashboard_utilization_test.go": true,
-}
-
 // reopenPostgres opens the test's PostgreSQL schema again through
 // openPostgresPool, the way rackd opens PostgreSQL, rather than xdaltest's
 // plain pool.
@@ -291,30 +241,8 @@ func skipUnlessSQLite(t *testing.T, why string) {
 	}
 }
 
-// callerIsPortable reports whether the running test function is in a
-// portable test file. It walks up the stack to the Test function itself, so
-// storage opened through a helper in another file is judged by the test.
-func callerIsPortable() bool {
-	pcs := make([]uintptr, 32)
-	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs)])
-	for {
-		f, more := frames.Next()
-		name := f.Function[strings.LastIndex(f.Function, ".")+1:]
-		if strings.HasPrefix(name, "Test") && strings.HasSuffix(f.File, "_test.go") {
-			return portableTestFiles[filepath.Base(f.File)]
-		}
-		if !more {
-			return false
-		}
-	}
-}
-
-func testBackend() string {
-	if b := os.Getenv(testBackendEnv); b != "" {
-		return b
-	}
-	return xdal.DialectSQLite
-}
+// testBackend is the database newTestStorage opens: RACKD_TEST_BACKEND.
+func testBackend() string { return testdb.Backend() }
 
 // Helper function to create a test storage: a private copy of a migrated
 // database, so each test starts from the same fresh state.
@@ -324,9 +252,6 @@ func testBackend() string {
 func newTestStorage(t *testing.T) *SQLiteStorage {
 	t.Helper()
 	if b := testBackend(); b != xdal.DialectSQLite {
-		if !callerIsPortable() {
-			t.Skipf("%s: this area's storage isn't portable yet", b)
-		}
 		db := xdaltest.Open(t, b)
 		sqlDB, x := db.SQL, db.DB
 		if b == xdal.DialectPostgres {

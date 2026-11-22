@@ -1,4 +1,5 @@
-// Package storagetest gives tests a fresh, migrated SQLite store quickly.
+// Package storagetest gives tests a fresh, migrated store quickly: SQLite by
+// default, or the backend RACKD_TEST_BACKEND names (see testdb).
 //
 // Migrating a new database runs every migration, which takes about half a
 // second under the race detector; test suites open hundreds. New migrates one
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/martinsuchenak/rackd/internal/storage"
+	"github.com/martinsuchenak/rackd/internal/testdb"
 )
 
 var (
@@ -50,6 +52,14 @@ func migrated() ([]byte, error) {
 // closed when the test ends.
 func New(tb testing.TB) *storage.SQLiteStorage {
 	tb.Helper()
+	if b := testdb.Backend(); b != "sqlite" {
+		s, err := storage.NewSQLiteStorageWithOptions("", storage.StorageOptions{DatabaseURL: testdb.NewURL(tb, b)})
+		if err != nil {
+			tb.Fatalf("storagetest: opening a %s database: %v", b, err)
+		}
+		tb.Cleanup(func() { _ = s.Close() })
+		return s
+	}
 	data, err := migrated()
 	if err != nil {
 		tb.Fatalf("storagetest: migrating the template database: %v", err)

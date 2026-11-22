@@ -8,6 +8,7 @@ import (
 // Every pooled connection runs with WAL and synchronous=NORMAL; FULL made
 // each commit wait for the disk, which was slow on network storage.
 func TestConnectionsUseWALAndNormalSync(t *testing.T) {
+	skipUnlessSQLite(t, "SQLite connection pragmas")
 	s := newTestStorage(t)
 	defer func() { _ = s.Close() }()
 	ctx := context.Background()

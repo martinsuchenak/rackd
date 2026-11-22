@@ -2,17 +2,15 @@ package storage
 
 import (
 	"context"
-	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	gomysql "github.com/go-sql-driver/mysql"
 	"github.com/martinsuchenak/xdal/pkg/migrate"
 	"github.com/martinsuchenak/xdal/pkg/xdal"
 	"github.com/martinsuchenak/xdal/pkg/xdaltest"
 
+	"github.com/martinsuchenak/rackd/internal/testdb"
 	"github.com/martinsuchenak/rackd/pkg/model"
 )
 
@@ -68,37 +66,7 @@ func TestMySQLConfigFromURL(t *testing.T) {
 }
 
 // databaseURLFor returns a DATABASE_URL for the test database db.
-func databaseURLFor(t *testing.T, db *xdaltest.DB) string {
-	t.Helper()
-	switch db.Name {
-	case xdal.DialectPostgres:
-		var schema string
-		if err := db.SQL.QueryRow("SELECT current_schema()").Scan(&schema); err != nil {
-			t.Fatal(err)
-		}
-		u, err := url.Parse(os.Getenv(xdaltest.EnvPostgresDSN))
-		if err != nil {
-			t.Fatal(err)
-		}
-		q := u.Query()
-		q.Set("search_path", schema)
-		u.RawQuery = q.Encode()
-		return u.String()
-	case xdal.DialectMySQL:
-		var name string
-		if err := db.SQL.QueryRow("SELECT DATABASE()").Scan(&name); err != nil {
-			t.Fatal(err)
-		}
-		cfg, err := gomysql.ParseDSN(os.Getenv(xdaltest.EnvMySQLDSN))
-		if err != nil {
-			t.Fatal(err)
-		}
-		u := url.URL{Scheme: "mysql", User: url.UserPassword(cfg.User, cfg.Passwd), Host: cfg.Addr, Path: "/" + name}
-		return u.String()
-	}
-	t.Fatalf("no DATABASE_URL for %s", db.Name)
-	return ""
-}
+func databaseURLFor(t *testing.T, db *xdaltest.DB) string { return testdb.URL(t, db) }
 
 // Opening storage through DATABASE_URL, as the server and commands do.
 func TestOpenWithDatabaseURL(t *testing.T) {

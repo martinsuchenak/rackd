@@ -43,7 +43,7 @@ func setupExtendedTestHandler(t *testing.T, withSessions, withCredentials, withP
 	}
 
 	if withCredentials {
-		credStore, err := credentials.NewSQLiteStorage(store.DB(), []byte("0123456789abcdef0123456789abcdef"))
+		credStore, err := credentials.NewStorage(store.XDAL(), []byte("0123456789abcdef0123456789abcdef"))
 		if err != nil {
 			t.Fatalf("failed to create credential storage: %v", err)
 		}

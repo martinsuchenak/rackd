@@ -598,7 +598,8 @@ backend or use `storage.RunMigrations` for it.
 
 ### Making a Storage Area Portable
 
-Core storage is being converted area by area. To convert one:
+Storage runs on SQLite, PostgreSQL and MySQL 8. When writing or changing a
+query:
 
 - Run its queries on `s.q` instead of `s.db`, and take `dbConn` instead of
   `*sql.Tx` in helpers that run inside a transaction.
@@ -615,9 +616,12 @@ Core storage is being converted area by area. To convert one:
 - In a transaction that carries on after a step fails (bulk operations),
   run each step in `tx.attempt`, a savepoint: PostgreSQL refuses every later
   statement in a transaction once one has failed.
-- Add the area's test files to `portableTestFiles` in `sqlite_test.go`. A
-  test that checks something only SQLite has (a query plan, a PRAGMA) calls
-  `skipUnlessSQLite`.
+- Read before you write only inside a transaction that SQLite serialises:
+  on PostgreSQL and MySQL two callers can both find nothing and both insert.
+  Insert first with `OnConflict(...).DoNothing()` and check the rows
+  affected, as `SaveDiscoveredDevice` does.
+- A test that checks something only SQLite has (a query plan, a PRAGMA, a
+  legacy migration, a `.db` backup) calls `skipUnlessSQLite`.
 - A store kept in its own type (scan profiles, scheduled scans, sessions,
   credentials) takes the storage's connection: `store.Profiles()`,
   `store.ScheduledScans()`, `store.Sessions()`,
@@ -626,12 +630,19 @@ Core storage is being converted area by area. To convert one:
   MySQL also refuses an `UPDATE` whose subquery reads the table being
   updated, so select the rows first, then update them.
 
-`newTestStorage` opens the backend named by `RACKD_TEST_BACKEND` (`sqlite`,
-`postgres` or `mysql`); on a server backend it skips tests in files not yet
-listed as portable. `task test:dialects` and CI run the storage suite on all
-three, against the databases in `docker-compose.test.yml`, which keep their
-data in memory without disk syncs: each test builds a fresh schema, and on
-MySQL that is slow otherwise.
+`newTestStorage`, and `storagetest.New` for tests outside the storage
+package, open the backend named by `RACKD_TEST_BACKEND` (`sqlite`, `postgres`
+or `mysql`; see `internal/testdb`). `task test:dialects` and CI run every
+test on PostgreSQL and on MySQL, against the databases in
+`docker-compose.test.yml`, which keep their data in memory without disk
+syncs: each test builds a fresh schema, and on MySQL that is slow otherwise.
+
+The Playwright suite runs on PostgreSQL with `E2E_DATABASE_URL` set to a
+database kept for it; its `public` schema is emptied at every start:
+
+```bash
+E2E_DATABASE_URL=postgres://rackd:testpass@localhost:15432/rackd_e2e?sslmode=disable task test:e2e
+```
 
 ### Core Migrations
 

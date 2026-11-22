@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/martinsuchenak/rackd/pkg/model"
-	"github.com/martinsuchenak/xdal/pkg/sqlite"
 )
 
 var ErrProfileNotFound = errors.New("scan profile not found")
@@ -29,7 +28,7 @@ func NewSQLiteProfileStorage(db *sql.DB) (*SQLiteProfileStorage, error) {
 	if err := RequireTables(db, "scan_profiles"); err != nil {
 		return nil, err
 	}
-	return &SQLiteProfileStorage{q: portableDB{x: sqlite.NewSQLiteDB(db, nil)}}, nil
+	return &SQLiteProfileStorage{q: portableDB{x: xdalFor(db)}}, nil
 }
 
 // Profiles returns the scan profiles store on this storage's database, whichever

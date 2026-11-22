@@ -10,6 +10,7 @@ import (
 // Before this migration, users promoted by granting the admin role kept
 // is_admin = 0, and users created with is_admin = 1 had no admin rights.
 func TestSyncIsAdminMigration(t *testing.T) {
+	skipUnlessSQLite(t, "a migration of the legacy SQLite track")
 	s := newTestStorage(t)
 	ctx := context.Background()
 	admin, err := s.GetRoleByName(ctx, "admin")
@@ -57,6 +58,7 @@ func TestSyncIsAdminMigration(t *testing.T) {
 }
 
 func TestScrubDeliveryErrorURLsMigration(t *testing.T) {
+	skipUnlessSQLite(t, "a migration of the legacy SQLite track")
 	s := newTestStorage(t)
 	ctx := context.Background()
 	hook := &model.Webhook{Name: "h", URL: "https://hooks.example/x", Active: true, Events: []model.EventType{model.EventTypeDeviceCreated}}
