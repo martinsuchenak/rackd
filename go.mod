@@ -3,10 +3,10 @@ module github.com/martinsuchenak/rackd
 go 1.27.4
 
 require (
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/google/uuid v1.6.0
 	github.com/gosnmp/gosnmp v1.47.0
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.13.0
 	github.com/martinsuchenak/go-rbac v0.1.0
 	github.com/martinsuchenak/xdal v0.2.0
 	github.com/paularlott/cli v0.10.3
@@ -30,7 +30,7 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/microsoft/go-mssqldb v1.10.0 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
